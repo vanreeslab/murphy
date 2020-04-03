@@ -4,11 +4,19 @@ default :
   image : immc/murphy-ci:v1.0
   before_script:
     - OMP_NUM_THREADS=1
+    - "mkdir build"
 
 
-style:
+build:
   script:
-    - "cpplint --filter=-whitespace/line_length,-runtime/printf --output=junit src/* 2> cpplint_report.xml"
-  artifacts:
-    reports:
-      junit: cpplint_report.xml
+    - "make destroy"
+    - "ARCH_FILE=make_arch/make.docker_gcc make -j"
+
+# style:
+#   script:
+#     - "cpplint --filter=-whitespace/line_length,-runtime/printf --output=junit src/* 2> cpplint_report.xml"
+#   artifacts:
+#     reports:
+#       junit: cpplint_report.xml
+
+
