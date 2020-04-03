@@ -3,7 +3,7 @@
 #include <p8est_extended.h>
 
 #include "block.hpp"
-#include "iterator.hpp"
+#include "operator.hpp"
 
 using std::string;
 
@@ -119,7 +119,7 @@ void Grid::AddField(Field* field) {
         // create a new lda entry
         lda_[key] = field->lda();
         // add the field to everyblock
-        Iterator<nullptr_t>(&Block::AddField, this, field, nullptr);
+        Operator<nullptr_t>(&Block::AddField, this, field, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -134,7 +134,7 @@ void Grid::DeleteField(Field* field) {
         // create a new lda entry
         lda_.erase(key);
         // add the field to everyblock
-        Iterator<nullptr_t>(&Block::DeleteField, this, field, nullptr);
+        Operator<nullptr_t>(&Block::DeleteField, this, field, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;

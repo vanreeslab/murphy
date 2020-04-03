@@ -19,7 +19,7 @@ Block::Block(const real_t length[3], const real_t xyz[3],const sid_t level) {
     }
     //-------------------------------------------------------------------------
     m_end;
-};
+}
 
 Block::~Block() {
     // need to delete the fields not deleted yet
