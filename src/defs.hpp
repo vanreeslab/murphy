@@ -85,15 +85,24 @@
  * @brief return a memory index given 3D position (i0,i1,i2), a stride (str) and a ghost size (gs)
  * 
  */
-#define m_sidx(i0, i1, i2, ida, str, gs)                                      \
-    ({                                                                        \
-        __typeof__(i0) _i0   = (i0);                                          \
-        __typeof__(i1) _i1   = (i1);                                          \
-        __typeof__(i2) _i2   = (i2);                                          \
-        __typeof__(ida) _ida = (ida);                                         \
-        __typeof__(str) _str = (str);                                         \
-        __typeof__(gs) _gs   = (gs);                                          \
-        (_gs + _i0) + _str*((_gs + _i1) + _str * ((_gs + _i2) + _str * _ida)) \
+#define m_sidx(i0, i1, i2, ida, str, gs)                                       \
+    ({                                                                         \
+        __typeof__(i0) _i0   = (i0);                                           \
+        __typeof__(i1) _i1   = (i1);                                           \
+        __typeof__(i2) _i2   = (i2);                                           \
+        __typeof__(ida) _ida = (ida);                                          \
+        __typeof__(str) _str = (str);                                          \
+        __typeof__(gs) _gs   = (gs);                                           \
+        (_gs + _i0) + _str*((_gs + _i1) + _str * ((_gs + _i2) + _str * _ida)); \
+    })
+
+/**
+ * @brief return the memory index given 3D position and a dimension number
+ * 
+ */
+#define m_idx(i0, i1, i2, ida)                   \
+    ({                                           \
+        m_sidx(i0, i1, i2, ida, M_STRIDE, M_GS); \
     })
 
 /**

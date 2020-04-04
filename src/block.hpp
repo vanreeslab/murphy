@@ -16,6 +16,10 @@ class Block {
     Block(const real_t length[3],const real_t xyz[3],const sid_t level);
     ~Block();
 
+    const real_t* xyz() const { return xyz_; }
+    const real_t* hgrid() const { return hgrid_; }
+    real_p        data(Field* fid);
+
     void AddField(const qid_t* qid, Field* fid, nullptr_t ctx);
     void DeleteField(const qid_t* qid, Field* fid, nullptr_t ctx);
 };

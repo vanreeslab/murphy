@@ -1,6 +1,7 @@
 #include "grid.hpp"
 
 #include <p8est_extended.h>
+#include <omp.h>
 
 #include "block.hpp"
 #include "operator.hpp"
@@ -8,6 +9,8 @@
 using std::string;
 
 void cback_CreateBlock(p8est_iter_volume_info_t * info,void *user_data) {
+    m_begin;
+    //-------------------------------------------------------------------------
     p8est_t*              forest     = info->p4est;
     p8est_quadrant_t*     quad       = info->quad;
     p4est_topidx_t        which_tree = info->treeid;
@@ -21,11 +24,17 @@ void cback_CreateBlock(p8est_iter_volume_info_t * info,void *user_data) {
     p8est_qcoord_to_vertex(connect, which_tree, len, len, len, length);
 
     quad->p.user_data = new Block(length, xyz, quad->level);
+    //-------------------------------------------------------------------------
+    m_end;
 }
 
 void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
+    m_begin;
+    //-------------------------------------------------------------------------
     p8est_quadrant_t* quad = info->quad;
     delete ((Block*)quad->p.user_data);
+    //-------------------------------------------------------------------------
+    m_end;
 }
 
 /**
@@ -59,7 +68,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
 
     //-------------------------------------------------------------------------
-    m_log("uniform grid created with %ld blocks on %ld trees using %d cpus", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize);
+    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize,omp_get_max_threads());
     m_end;
 }
 
@@ -71,7 +80,7 @@ Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
     // destroy the remaining blocks
-    p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
+    p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
     // destroy the structures
     p8est_mesh_destroy(mesh_);
     p8est_ghost_destroy(ghost_);
@@ -119,7 +128,7 @@ void Grid::AddField(Field* field) {
         // create a new lda entry
         lda_[key] = field->lda();
         // add the field to everyblock
-        Operator<nullptr_t>(&Block::AddField, this, field, nullptr);
+        DoOp<nullptr_t>(&Block::AddField, this, field, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -134,7 +143,7 @@ void Grid::DeleteField(Field* field) {
         // create a new lda entry
         lda_.erase(key);
         // add the field to everyblock
-        Operator<nullptr_t>(&Block::DeleteField, this, field, nullptr);
+        DoOp<nullptr_t>(&Block::DeleteField, this, field, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;

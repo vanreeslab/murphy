@@ -5,11 +5,23 @@ RUN echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 #RUN apt update
 #RUN apt upgrade -y
 RUN apt-get -y update && apt-get install -y \
-make git g++ linux-libc-dev vim wget unzip cmake \
-libhdf5-mpi-dev libfftw3-dev libopenmpi-dev openmpi-bin \
-python3 python3-pip
+    make git gfortran gcc g++ linux-libc-dev vim wget unzip cmake \
+    automake autoconf m4 libblas-dev liblapack-dev \
+    libhdf5-mpi-dev libfftw3-dev libopenmpi-dev openmpi-bin \
+    python3 python3-pip
 
-RUN pip3 install cpplint
+#p4est
+RUN git clone --recursive https://github.com/cburstedde/p4est
+RUN cd /p4est &&\
+    git checkout feature-mesh-edge &&\
+    git submodule init && git submodule update &&\
+    ./bootstrap &&\
+    CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-valgrind-clean &&\
+    make install -j
+RUN rm -rf /p4est
+
+#cpp lint
+#RUN pip3 install cpplint
 
 VOLUME ["/etc/gitlab-runner"]
 

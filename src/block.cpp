@@ -28,6 +28,16 @@ Block::~Block() {
     }
 }
 
+real_p Block::data(Field* fid) {
+#ifndef NDEBUG
+    datamap_t::iterator it = data_map_.find(fid->name());
+    m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
+    return it->second;
+#else
+    return data_map_[fid->name()];
+#endif
+}
+
 void Block::AddField(const qid_t* qid, Field* fid, nullptr_t ctx) {
     m_begin;
     m_assert(ctx == nullptr, "no context is need in this function");
