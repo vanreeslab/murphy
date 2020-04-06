@@ -19,7 +19,8 @@ int main(int argc, char** argv){
     real_t center[3] = {l[0]*0.5,l[1]*0.5,l[2]*0.5};
     SetGaussian gaussian = SetGaussian(0.1,center);
 
-    DoOp<Operator*>(CallOp,grid,vort,&gaussian);
+    // DoOp<OperatorF*>(CallOp,grid,vort,&gaussian);
+    gaussian.DoOp(grid,vort);
 
 
     delete(vort);

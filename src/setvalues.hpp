@@ -5,7 +5,7 @@
 #include "operator.hpp"
 
 
-class SetGaussian : public Operator
+class SetGaussian : public OperatorF
 {
    protected:
     real_t sigma_     = 0.1;
@@ -13,7 +13,7 @@ class SetGaussian : public Operator
 
    public:
     SetGaussian(real_t sigma, real_t center[3]);
-    void DoOp(const qid_t* qid, Block* block, Field* fid);
+    void apply(const qid_t* qid, Block* block, Field* fid);
 };
 
 // class SetValueSinus : public Operator {

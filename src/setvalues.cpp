@@ -11,7 +11,7 @@ SetGaussian::SetGaussian(real_t sigma, real_t center[3]){
     m_end;
 }
 
-void SetGaussian::DoOp(const qid_t* qid, Block* block, Field* fid) {
+void SetGaussian::apply(const qid_t* qid, Block* block, Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     real_t        pos[3];
