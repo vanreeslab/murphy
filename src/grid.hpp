@@ -35,7 +35,11 @@ class Grid {
 
     p8est_t*      forest() { return forest_; }
     p8est_mesh_t* mesh() { return mesh_; }
-    bool          is_mesh_valid() { return is_mesh_valid_; }
+
+    bool     is_mesh_valid() const { return is_mesh_valid_; }
+    int      mpirank() const { return forest_->mpirank; }
+    MPI_Comm mpicomm() const { return forest_->mpicomm; }
+    lid_t    local_num_quadrants() const { return forest_->local_num_quadrants; }
 
     size_t LocalMemSize() const;
     size_t LocalNumDof() const;

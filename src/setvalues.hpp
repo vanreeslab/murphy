@@ -4,16 +4,15 @@
 #include "murphy.hpp"
 #include "operator.hpp"
 
-
-class SetGaussian : public OperatorF
-{
+class SetGaussian : public OperatorF {
    protected:
     real_t sigma_     = 0.1;
     real_t center_[3] = {0, 0, 0};
 
+    void apply(const qid_t* qid, Block* block, Field* fid);
+
    public:
     SetGaussian(real_t sigma, real_t center[3]);
-    void apply(const qid_t* qid, Block* block, Field* fid);
 };
 
 // class SetValueSinus : public Operator {

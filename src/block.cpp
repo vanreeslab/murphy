@@ -5,17 +5,17 @@ using std::string;
 /**
  * @brief constructs a new Block given a 3D length and a position
  * 
- * @param length the length of the current block (x,y,z)
+ * @param length the length of the current block (unique number)
  * @param xyz the position of the left,bottom corner (x,y,z)
  * @param level the level of the block
  */
-Block::Block(const real_t length[3], const real_t xyz[3],const sid_t level) {
+Block::Block(const real_t length, const real_t xyz[3],const sid_t level) {
      m_begin;
     //-------------------------------------------------------------------------
     level_ = level;
     for (int id = 0; id < 3; id++) {
         xyz_[id]   = xyz[id];
-        hgrid_[id] = length[id] / M_N;
+        hgrid_[id] = length / M_N;
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -31,6 +31,16 @@ Block::~Block() {
 real_p Block::data(Field* fid) {
 #ifndef NDEBUG
     datamap_t::iterator it = data_map_.find(fid->name());
+    m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
+    return it->second;
+#else
+    return data_map_[fid->name()];
+#endif
+}
+
+const real_p Block::data(const Field* fid) const{
+#ifndef NDEBUG
+    datamap_t::const_iterator it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
     return it->second;
 #else

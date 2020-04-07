@@ -10,17 +10,17 @@ using std::string;
 using std::to_string;
 
 class Field {
-   public:
-    sid_t  lda_          ;
-    string name_         ;
-    bool   ghost_status_ ;
+   protected:
+    sid_t  lda_;
+    string name_;
+    bool   ghost_status_;
 
+   public:
     Field(string name, sid_t lda) {
-        name_ = name;
-        lda_  = lda;
+        name_         = name;
+        lda_          = lda;
         ghost_status_ = false;
     }
-
     string name() const;
     sid_t  lda() const;
 

@@ -18,12 +18,9 @@ void cback_CreateBlock(p8est_iter_volume_info_t * info,void *user_data) {
     // get the starting position
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-    // get the length of the quadrant
-    real_t         length[3];
-    p4est_qcoord_t len = P8EST_QUADRANT_LEN(quad->level);
-    p8est_qcoord_to_vertex(connect, which_tree, len, len, len, length);
-
-    quad->p.user_data = new Block(length, xyz, quad->level);
+    
+    real_t len        = P8EST_QUADRANT_LEN(quad->level) / P8EST_ROOT_LEN;
+    quad->p.user_data = new Block(len, xyz, quad->level);
     //-------------------------------------------------------------------------
     m_end;
 }

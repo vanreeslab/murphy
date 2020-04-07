@@ -39,14 +39,14 @@
  */
 class OperatorF {
    public:
-   /**
+    /**
     * @brief Implementation of this virtual function has to be provided by the user as a member function
     */
     virtual void apply(const qid_t* qid, Block* block, Field* fid) = 0;
     /**
      * @brief call OperatorF::apply() on each block and change the ghost status of Field to `false`
      */
-    void         DoOp(Grid* grid, Field* field);
+    virtual void DoOp(Grid* grid, Field* field);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF::DoOp()) to apply the operation to a considered Block
@@ -65,14 +65,14 @@ void CallOpF(const qid_t* qid, Block* block, Field* fid, OperatorF* op);
  */
 class ConstOperatorF {
    public:
-   /**
+    /**
     * @brief Implementation of this virtual function has to be provided by the user as a member function
     */
     virtual void apply(const qid_t* qid, Block* block, const Field* fid) = 0;
     /**
      * @brief call ConstOperatorF::apply() on each block
      */
-    void         DoOp(Grid* grid, Field* field);
+    virtual void DoOp(Grid* grid, Field* field);
 };
 /**
  * @brief this function is called by DoOp_() function (through ConstOperatorF::DoOp()) to apply the operation to a considered Block
@@ -91,14 +91,14 @@ void ConstCallOpF(const qid_t* qid, Block* block, const Field* fid, ConstOperato
  */
 class OperatorF2F {
    public:
-   /**
+    /**
     * @brief Implementation of this virtual function has to be provided by the user as a member function
     */
     virtual void apply(const qid_t* qid, Block* block, const Field* fid_src, Field* fid_trg) = 0;
     /**
      * @brief call OperatorF2F::apply() on each block and change the ghost status of the Field field_trg to `false`
      */
-    void         DoOp(Grid* grid, const Field* field_src, Field* field_trg);
+    virtual void DoOp(Grid* grid, const Field* field_src, Field* field_trg);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF2F::DoOp()) to apply the operation to a considered Block
@@ -110,8 +110,6 @@ class OperatorF2F {
  * @param op the OperatorF2F object containing all the needed data
  */
 void CallOpF2F(const qid_t* qid, Block* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
-
-
 
 //=================================================================================================
 /**
@@ -233,7 +231,6 @@ void DoOp(const op_t<T, const Field*, Field*> op, Grid* grid, Field* field_src, 
     m_verb("setting the ghosts of %s to false", field_trg->name().c_str());
     field_trg->SetGhostStatus(false);
 }
-
 
 //=========================================================================================
 /**
