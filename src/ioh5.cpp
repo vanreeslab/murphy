@@ -210,7 +210,7 @@ void IOH5::xmf_write_header_(const Grid* grid) {
     }
     // the number of quadrant written by each proc (in bytes)
     int count  = offset / (M_IOH5_LINE_LEN * sizeof(char));  // number of lines in the header
-    int qnum   = grid->local_num_quadrants() * 17;           // number of lines per quadrant
+    int qnum   = grid->local_num_quadrants() * 27;           // number of lines per quadrant
     int posend = count + qnum;                               // the final position
     // get count, the position of proc i (in lines!!) as the sum of the position of procs 0 -> (i-1)
     MPI_Scan(&posend, &count, 1, MPI_INT, MPI_SUM, comm);
@@ -262,7 +262,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, Block* block, const Field* fid) {
     // the size of the grid has to be +1 since the 3DCoRectMesh is defined as vertex-centered
     char line[M_IOH5_LINE_LEN];
     // we need an extra space for the final character
-    char msg[17 * M_IOH5_LINE_LEN + 1];
+    char msg[27 * M_IOH5_LINE_LEN + 1];
     // - L1
     sprintf(line, "\n<!-- tree num %d, quad num %d for %d -->", qid->tid, qid->qid, mpirank_);
     sprintf(msg, "%-128s", line);
@@ -317,10 +317,32 @@ void IOH5::xmf_write_block_(const qid_t* qid, Block* block, const Field* fid) {
     // - L16
     sprintf(msg, "%s%-128s", msg, "\n              </Attribute>");
     // - L17
+    sprintf(msg, "%s%-128s", msg, "\n              <Attribute Name=\"rank\" AttributeType=\"Scalar\" Center=\"Grid\">");
+    // - L18
+    sprintf(msg, "%s%-128s", msg, "\n                  <DataItem Dimensions=\"1\" NumberType=\"UInt\" Format=\"XML\">");
+    // - L19
+    sprintf(line, "\n                      %d",mpirank_);
+    sprintf(msg, "%s%-128s", msg, line);
+    // - L20
+    sprintf(msg, "%s%-128s", msg, "\n                  </DataItem>");
+    // - L21
+    sprintf(msg, "%s%-128s", msg, "\n              </Attribute>");
+    // - L22
+    sprintf(msg, "%s%-128s", msg, "\n              <Attribute Name=\"tree\" AttributeType=\"Scalar\" Center=\"Grid\">");
+    // - L23
+    sprintf(msg, "%s%-128s", msg, "\n                  <DataItem Dimensions=\"1\" NumberType=\"UInt\" Format=\"XML\">");
+    // - L24
+    sprintf(line, "\n                      %d",qid->tid);
+    sprintf(msg, "%s%-128s", msg, line);
+    // - L25
+    sprintf(msg, "%s%-128s", msg, "\n                  </DataItem>");
+    // - L26
+    sprintf(msg, "%s%-128s", msg, "\n              </Attribute>");
+    // - L27
     sprintf(msg, "%s%-128s", msg, "\n         </Grid>");
     // write the header
     MPI_Status status;
-    MPI_File_write(xmf_file_, msg, 17, line_type_, &status);
+    MPI_File_write(xmf_file_, msg, 27, line_type_, &status);
     //-------------------------------------------------------------------------
     m_end;
 }
