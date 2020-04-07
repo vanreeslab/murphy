@@ -23,7 +23,7 @@ IOH5::~IOH5() {
     m_end;
 }
 
-void IOH5::DoOp(Grid* grid, Field* field) {
+void IOH5::operator()(Grid* grid, Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the field name
@@ -38,7 +38,7 @@ void IOH5::DoOp(Grid* grid, Field* field) {
     //     grid_ghost_end(grid,ex,field);
     // }
     // call the standard operator
-    ConstOperatorF::DoOp(grid, field);
+    ConstOperatorF::operator()(grid, field);
     // print the footer
     xmf_write_footer_(grid);
     hdf5_write_footer_(grid);

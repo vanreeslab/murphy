@@ -47,10 +47,9 @@ class IOH5 : public ConstOperatorF {
     ~IOH5();
 
     void apply(const qid_t* qid, Block* block, const Field* fid);
-    ;
-    void dump_ghost(const bool dump_ghost) { dump_ghost_ = dump_ghost; }
-
-    void DoOp(Grid* grid, Field* field);
+    void dump_ghost(const bool dump_ghost) { dump_ghost_ = dump_ghost; };
+    
+    void operator()(Grid* grid, Field* field);
 };
 
 #endif

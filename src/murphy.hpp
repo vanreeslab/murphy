@@ -47,4 +47,21 @@ typedef struct qid_ext_t : qid_t {
     p4est_locidx_t lid; /*<local id, is used for ghost element id etc */
 }qid_ext_t;
 
+
+/**
+ * @brief defines the interaction of two sub set two field, i.e. a place in memory
+ * 
+ */
+typedef struct dom2dom_t {
+    // lid_t shift[3];
+    lid_t stride; /**< target memory stride */
+    lid_t gs;     /**< target ghost size */
+    lid_t start[3];
+    lid_t range[3];
+    // lid_t src_stride; /**< src memory stride */
+    // lid_t src_gs;     /**< src ghost size */
+    // lid_t src_start[3];
+    // lid_t src_range[3];
+} dom_t;
+
 #endif  // SRC_MURPHY_HPP_

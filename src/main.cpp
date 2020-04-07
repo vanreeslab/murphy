@@ -17,19 +17,20 @@ int main(int argc, char** argv) {
         bool periodic[3] = {false, true, false};
         int  l[3]        = {1, 2, 3};
 
-        Grid*  grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
+        // create a grid
+        Grid*  grid = new Grid(2, periodic, l, MPI_COMM_WORLD, NULL);
+        // create a field
         Field* vort = new Field("vorticity", 3);
         grid->AddField(vort);
-
         // set a Gaussian
         real_t      center[3] = {l[0] * 0.5, l[1] * 0.5, l[2] * 0.5};
         SetGaussian gaussian  = SetGaussian(0.1, center);
-        gaussian.DoOp(grid, vort);
-
+        gaussian(grid, vort);
         // create a dumper and dump
         IOH5 mydump = IOH5("data");
-        mydump.DoOp(grid, vort);
+        mydump(grid, vort);
 
+        // destroy the grid and the field
         delete (vort);
         delete (grid);
     }

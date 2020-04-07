@@ -46,7 +46,7 @@ class OperatorF {
     /**
      * @brief call OperatorF::apply() on each block and change the ghost status of Field to `false`
      */
-    virtual void DoOp(Grid* grid, Field* field);
+    virtual void operator()(Grid* grid, Field* field);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF::DoOp()) to apply the operation to a considered Block
@@ -72,7 +72,7 @@ class ConstOperatorF {
     /**
      * @brief call ConstOperatorF::apply() on each block
      */
-    virtual void DoOp(Grid* grid, Field* field);
+    virtual void operator()(Grid* grid, Field* field);
 };
 /**
  * @brief this function is called by DoOp_() function (through ConstOperatorF::DoOp()) to apply the operation to a considered Block
@@ -98,7 +98,7 @@ class OperatorF2F {
     /**
      * @brief call OperatorF2F::apply() on each block and change the ghost status of the Field field_trg to `false`
      */
-    virtual void DoOp(Grid* grid, const Field* field_src, Field* field_trg);
+    virtual void operator()(Grid* grid, const Field* field_src, Field* field_trg);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF2F::DoOp()) to apply the operation to a considered Block

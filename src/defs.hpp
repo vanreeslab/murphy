@@ -13,11 +13,19 @@
 #define M_HN MN / 2  // the half size of one block
 #define M_STRIDE (2 * M_GS + M_N)
 
+
+#define m_isaligned(a)                      \
+    ({                                      \
+        const void* _a = (a);               \
+        ((uintptr_t)_a) % M_ALIGNMENT == 0; \
+    })
+
 #if defined(__INTEL_COMPILER)
-#define m_assume_aligned(a)          \
-    ({                               \
-        __typeof__(a) a_ = (a);      \
-        __assume_aligned(a_, FLUPS); \
+#define m_assume_aligned(a)                                  \
+    ({                                                       \
+        __typeof__(a) a_ = (a);                              \
+        m_assert(m_isaligned(a_), "data has to be aligned"); \
+        __assume_aligned(a_, M_ALIGNMENT);                   \
     })
 #define m_calloc(size)                                 \
     ({                                                 \
@@ -31,10 +39,11 @@
         _mm_free(data); \
     })
 #elif defined(__GNUC__)
-#define m_assume_aligned(a)                  \
-    ({                                       \
-        __typeof__(a) a_ = (a);              \
-        __builtin_assume_aligned(a_, FLUPS); \
+#define m_assume_aligned(a)                                  \
+    ({                                                       \
+        __typeof__(a) a_ = (a);                              \
+        m_assert(m_isaligned(a_), "data has to be aligned"); \
+        __builtin_assume_aligned(a_, M_ALIGNMENT);           \
     })
 #define m_calloc(size)                                            \
     ({                                                            \

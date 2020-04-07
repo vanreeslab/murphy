@@ -18,8 +18,8 @@ void cback_CreateBlock(p8est_iter_volume_info_t * info,void *user_data) {
     // get the starting position
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-    
-    real_t len        = P8EST_QUADRANT_LEN(quad->level) / P8EST_ROOT_LEN;
+
+    real_t len        = P8EST_QUADRANT_LEN(quad->level)*(1.0/P8EST_ROOT_LEN);
     quad->p.user_data = new Block(len, xyz, quad->level);
     //-------------------------------------------------------------------------
     m_end;
@@ -37,7 +37,10 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
 /**
  * @brief Construct a new grid_t: initialize the p8est objects
  * 
- * @param ilvl the initialization level
+ * The grid is initialized at @ref ilvl as a uniform grid.
+ * It means that the number of blocks = (l[0]*l[1]*l[2]) * (2^ilvl)
+ * 
+ * @param ilvl the initialization level, for every tree
  * @param isper isper[i] indicates that the ith direction is periodic (x:0 y:1 z:2)
  * @param L the number of trees in each direction, i.e. the aspect ratio of the domain
  * @param comm the communicator to use
@@ -54,7 +57,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     p8est_connectivity_t* connect = p8est_connectivity_new_brick(l[0], l[1], l[2], isper[0], isper[1], isper[2]);
 
     // create the forest at a given level, the associated ghost and mesh object
-    forest_ = p8est_new_ext(comm, connect, 0, ilvl, 0, sizeof(Block*), nullptr, nullptr);
+    forest_ = p8est_new_ext(comm, connect, 0, ilvl, 1, sizeof(Block*), nullptr, nullptr);
     ghost_  = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
     mesh_   = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
 

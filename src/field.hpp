@@ -27,7 +27,9 @@ class Field {
     void SetGhostStatus(bool status) { ghost_status_ = status; }
 };
 
-class SubField : public Field {
-};
+// class SubField : public Field {
+//    protected:
+    
+// };
 
 #endif  // SRC_FIELD_HPP_
