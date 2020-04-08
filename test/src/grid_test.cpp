@@ -26,6 +26,6 @@ TEST_F(test_Grid, creation_non_null) {
 }
 TEST_F(test_Grid, creation_num_dof) {
     // create a grid
-    size_t numdof = l_[0] * l_[1] * l_[2] * pow(2, 3*lvl_) ;//* (M_N * M_N * M_N);
+    size_t numdof = l_[0] * l_[1] * l_[2] * pow(2, 3*lvl_) * (M_N * M_N * M_N);
     ASSERT_EQ(grid_->LocalNumDof(), numdof);
 }
