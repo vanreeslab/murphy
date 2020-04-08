@@ -7,12 +7,22 @@ default :
     - "mkdir build"
     - "mkdir test/build"
 
-build:
+# list of the stages
+stages:
+  - build
+  - test
+  - validation
+
+# =============================================================================
+build gcc:
+  stage: build
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
 
+# =============================================================================
 test:
+  stage: test
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
@@ -24,7 +34,9 @@ test:
     reports:
       junit: report_test.xml
 
+# =============================================================================
 validation:
+  stage: validation
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
