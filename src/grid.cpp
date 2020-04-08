@@ -38,7 +38,7 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
  * @brief Construct a new grid_t: initialize the p8est objects
  * 
  * The grid is initialized at @ref ilvl as a uniform grid.
- * It means that the number of blocks = (l[0]*l[1]*l[2]) * (2^ilvl)
+ * It means that the number of blocks = (l[0]*l[1]*l[2]) * (2^ilvl)^3
  * 
  * @param ilvl the initialization level, for every tree
  * @param isper isper[i] indicates that the ith direction is periodic (x:0 y:1 z:2)
