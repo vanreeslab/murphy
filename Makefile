@@ -36,9 +36,9 @@ NAME := murphy
 TARGET := $(NAME)
 
 #-----------------------------------------------------------------------------
-BUILDDIR := ./build
-SRC_DIR := ./src
-OBJ_DIR := ./build
+SRC_DIR := src
+TEST_DIR := test
+OBJ_DIR := build
 
 ## add the headers to the vpaths
 INC := -I$(SRC_DIR)
@@ -65,20 +65,31 @@ P4EST_LIBNAME ?= -lsc -lp4est
 INC += -I$(P4EST_INC)
 LIB += -L$(P4EST_LIB) $(P4EST_LIBNAME) -Wl,-rpath,$(P4EST_LIB)
 
+#---- GTEST
+GTEST_INC ?= /usr/include
+GTEST_LIB ?= /usr/lib
+GTEST_LIBNAME ?= -lgtest
+
 #-----------------------------------------------------------------------------
 ## add the wanted folders - common folders
 SRC := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
 HEAD := $(wildcard $(SRC_DIR)/*.hpp)
-API := $(wildcard $(SRC_DIR)/*.h)
+TSRC := $(notdir $(wildcard $(TEST_DIR)/$(SRC_DIR)/*.cpp))
+THEAD := $(wildcard $(TEST_DIR)/$(SRC_DIR)/*.hpp)
 
 ## generate object list
 DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
 OBJ := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 IN := $(SRC:%.cpp=$(OBJ_DIR)/%.in)
+TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
+TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
 
 ################################################################################
-$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp $(HEAD) $(API)
+$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp $(HEAD)
 	$(CXX) $(CXXFLAGS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
+
+$(TEST_DIR)/$(OBJ_DIR)/%.o : $(TEST_DIR)/$(SRC_DIR)/%.cpp $(THEAD)
+	$(CXX) $(CXXFLAGS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
 
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -E $< -o $@
@@ -86,8 +97,6 @@ $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
 ################################################################################
 default: $(TARGET)
 
-
-# compile static and dynamic lib
 all: $(TARGET)
 
 preproc: $(IN)
@@ -95,18 +104,22 @@ preproc: $(IN)
 $(TARGET): $(OBJ)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIB)
 
-test:
-	@echo $(SRC)
+test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
+	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
 clean:
-	@rm -f $(OBJ_DIR)/*.o
-	@rm -f $(TARGET)
+	@rm -rf $(OBJ_DIR)/*.o
+	@rm -rf $(TARGET)
+	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
+	@rm -rf $(TARGET)_test
 
 destroy:
 	@rm -rf $(OBJ_DIR)/*.o
 	@rm -rf $(OBJ_DIR)/*.d
 	@rm -rf $(TARGET)
-	@rm -rf $(OBJ_DIR)/*
+	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
+	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.d
+	@rm -rf $(TARGET)_test
 
 info: logo
 	$(info prefix = $(PREFIX)/lib )
@@ -126,10 +139,11 @@ info: logo
 	$(info ------------)
 	$(info LIST OF OBJECTS:)
 	$(info - SRC = $(SRC))
-	$(info - OBJ A2A = $(OBJ_A2A))
-	$(info - OBJ NB = $(OBJ_NB))
+	$(info - OBJ = $(OBJ))
 	$(info - DEP = $(DEP))
-	$(info - LGF_DATA = $(LGF_DATA))
+	$(info - test SRC = $(TSRC))
+	$(info - test OBJ = $(TOBJ))
+	$(info - test DEP = $(TDEP))
 	$(info ------------)
 
 .NOTPARALLEL: logo

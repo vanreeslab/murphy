@@ -5,18 +5,33 @@ default :
   before_script:
     - OMP_NUM_THREADS=1
     - "mkdir build"
-
+    - "mkdir test/build"
 
 build:
   script:
     - "make destroy"
-    - "ARCH_FILE=make_arch/make.docker_gcc make -j"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
 
-# style:
-#   script:
-#     - "cpplint --filter=-whitespace/line_length,-runtime/printf --output=junit src/* 2> cpplint_report.xml"
-#   artifacts:
-#     reports:
-#       junit: cpplint_report.xml
+test:
+  script:
+    - "make destroy"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
+    - "./murphy_test --gtest_filter=test_* --gtest_output="xml:report_test.xml" "
+    - "gcovr -r . -e test "
+  artifacts:
+    paths:
+      - report_test.xml
+    reports:
+      junit: report_test.xml
 
-
+validation:
+  script:
+    - "make destroy"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
+    - "./murphy_test --gtest_filter=valid_* --gtest_output="xml:report_valid.xml" "
+    - "gcovr -r . -e test "
+  artifacts:
+    paths:
+      - report_valid.xml
+    reports:
+      junit: report_valid.xml
