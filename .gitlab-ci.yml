@@ -16,7 +16,7 @@ test:
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
-    - "./murphy_test --gtest_filter=test_* --gtest_output="xml:report_test.xml" "
+    - "./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     paths:
@@ -28,7 +28,7 @@ validation:
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
-    - "./murphy_test --gtest_filter=valid_* --gtest_output="xml:report_valid.xml" "
+    - "./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     paths:
