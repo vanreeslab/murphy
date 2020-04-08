@@ -8,7 +8,8 @@ RUN apt-get -y update && apt-get install -y \
     make git gfortran gcc g++ linux-libc-dev vim wget unzip cmake \
     automake autoconf m4 libblas-dev liblapack-dev \
     libhdf5-mpi-dev libfftw3-dev libopenmpi-dev openmpi-bin \
-    python3 python3-pip
+    python3 python3-pip \
+    gcovr
 
 #p4est
 RUN git clone --recursive https://github.com/cburstedde/p4est
@@ -19,6 +20,13 @@ RUN cd /p4est &&\
     CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-valgrind-clean &&\
     make install -j
 RUN rm -rf /p4est
+
+#Google test
+RUN git clone https://github.com/google/googletest.git
+RUN cd /googletest &&\
+    cmake . -DCMAKE_INSTALL_PREFIX=/soft/googletest-gcc7 &&\
+    make install -j
+RUN rm -rf /googletest
 
 #cpp lint
 #RUN pip3 install cpplint
