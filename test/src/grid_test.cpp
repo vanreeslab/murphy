@@ -21,6 +21,9 @@ class test_Grid : public ::testing::Test {
 };
 
 TEST_F(test_Grid, creation_non_null) {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    if(rank == 1) grid_ = nullptr;
     // create a grid
     ASSERT_NE(grid_, nullptr);
 }
