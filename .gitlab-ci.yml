@@ -4,8 +4,8 @@ default :
   image : immc/murphy-ci:v1.0
   before_script:
     - OMP_NUM_THREADS=1
-    - "mkdir build"
-    - "mkdir test/build"
+    - "mkdir -p build"
+    - "mkdir -p test/build"
 
 # list of the stages
 stages:
@@ -21,11 +21,24 @@ build gcc:
     - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
 
 # =============================================================================
-test:
+build test:
   stage: test
+  artifacts: 
+    paths: 
+      - ./murphy_test
+      - ./build/*.gcda
+      - ./build/*.gcno
+    when: on_success
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
+
+# =============================================================================
+compilation:
+  stage: test
+  dependencies:
+    - build test
+  script:
     - "mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
@@ -35,13 +48,11 @@ test:
 # =============================================================================
 validation:
   stage: validation
+  dependencies:
+    - build test
   script:
-    - "make destroy"
-    - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
     - "mpirun -n 3 ./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
     - "gcovr -r . -e test "
   artifacts:
-    paths:
-      - report_valid.xml
     reports:
       junit: report_valid_*.xml
