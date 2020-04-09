@@ -26,13 +26,11 @@ test:
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
-    - "./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
-    paths:
-      - report_test.xml
     reports:
-      junit: report_test.xml
+      junit: report_test_*.xml
 
 # =============================================================================
 validation:
@@ -40,10 +38,10 @@ validation:
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
-    - "./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
+    - "mpirun -n 3 ./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     paths:
       - report_valid.xml
     reports:
-      junit: report_valid.xml
+      junit: report_valid_*.xml
