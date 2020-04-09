@@ -14,15 +14,15 @@ stages:
   - validation
 
 # =============================================================================
-build gcc:
+build gcc :
   stage: build
   script:
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
 
 # =============================================================================
-build test:
-  stage: test
+build test :
+  stage: build
   artifacts: 
     paths: 
       - ./murphy_test
@@ -34,7 +34,7 @@ build test:
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
 
 # =============================================================================
-compilation:
+test :
   stage: test
   dependencies:
     - build test
@@ -46,7 +46,7 @@ compilation:
       junit: report_test_*.xml
 
 # =============================================================================
-validation:
+validation :
   stage: validation
   dependencies:
     - build test
