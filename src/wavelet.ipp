@@ -1,10 +1,8 @@
-#include "wavelet.hpp"
-
 #include <cmath>
-
 using std::pow;
 
-void Wavelet::Copy_(const real_p sdata, real_p tdata) const {
+template <int order>
+void Wavelet<order>::Copy_(const real_p sdata, real_p tdata) const {
     m_begin;
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
@@ -27,8 +25,8 @@ void Wavelet::Copy_(const real_p sdata, real_p tdata) const {
     //-------------------------------------------------------------------------
     m_end;
 }
-
-void Wavelet::Coarsen_(const lid_t dlvl, const real_p sdata, real_p tdata) const {
+template <int order>
+void Wavelet<order>::Coarsen_(const lid_t dlvl, const real_p sdata, real_p tdata) const {
     m_begin;
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
@@ -64,15 +62,15 @@ void Wavelet::Coarsen_(const lid_t dlvl, const real_p sdata, real_p tdata) const
     //-------------------------------------------------------------------------
     m_end;
 }
-
-void Wavelet::Refine_(const real_p sdata, real_p tdata) const {
+template <int order>
+void Wavelet<order>::Refine_(const real_p sdata, real_p tdata) const {
     m_begin;
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
     m_assume_aligned(tdata);
     m_assume_aligned(sdata);
 
-    const lid_t   hslen = hslen_ / 2;
+    const lid_t   hslen = order / 2;
     const real_t* hs    = hs_ + hslen;
     const real_t* sign  = sgn_ + hslen;
 
@@ -88,9 +86,9 @@ void Wavelet::Refine_(const real_p sdata, real_p tdata) const {
                 m_assume_aligned(ltdata);
                 const real_p lsdata = sdata + m_sidx(ik0, ik1, ik2, 0, srcstr_, 0);
 
-                for (int dm2 = -hslen; dm2 <= hslen; dm2++) {
-                    for (int dm1 = -hslen; dm1 <= hslen; dm1++) {
-                        for (int dm0 = -hslen; dm0 <= hslen; dm0++) {
+                for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
+                    for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
+                        for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
                             // get the current parent's data
                             const real_t ldata = lsdata[m_sidx(dm0, dm1, dm2, 0, srcstr_, 0)];
                             const real_t fact  = hs[dm2] * hs[dm1] * hs[dm0];

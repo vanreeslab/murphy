@@ -2,6 +2,7 @@
 #define SRC_DEFS_HPP_
 
 #include <mpi.h>
+
 #include <cstdio>
 
 #define M_N 16
@@ -9,10 +10,9 @@
 #define M_ALIGNMENT 16  // the alignement in bytes
 #define M_MPI_REAL MPI_DOUBLE
 
-#define M_DN 2 * MN  // the double size of one block
-#define M_HN MN / 2  // the half size of one block
+#define M_DN (2 * M_N)  // the double size of one block
+#define M_HN (M_N / 2)  // the half size of one block
 #define M_STRIDE (2 * M_GS + M_N)
-
 
 #define m_isaligned(a)                      \
     ({                                      \
@@ -84,7 +84,7 @@
         pos[2] = (_i2 + 0.5) * hgrid[2] + xyz[2]; \
     })
 
-#define m_blockmemsize(lda)                                \
+#define m_blockmemsize(lda)                             \
     ({                                                  \
         __typeof__(lda) _lda = (lda);                   \
         (size_t)(lda * M_STRIDE * M_STRIDE * M_STRIDE); \
@@ -106,6 +106,15 @@
     })
 
 /**
+ * @brief return the memory index given 3D position, a dimension number and a @ref MemLayout
+ * 
+ */
+#define m_midx(i0, i1, i2, ida, mem)                       \
+    ({                                                     \
+        m_sidx(i0, i1, i2, ida, mem->stride(), mem->gs()); \
+    })
+
+/**
  * @brief return the memory index given 3D position and a dimension number
  * 
  */
@@ -115,27 +124,37 @@
     })
 
 /**
+ * @brief return the lenght of a quadrant at a given level
+ * 
+ */
+#define m_quad_len(level)                                  \
+    ({                                                     \
+        __typeof__(level) lvl_ = (level);                  \
+        1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(lvl_)); \
+    })
+
+/**
  * @brief m_log will be displayed as a log
  * 
  */
 #ifndef LOG_ALLRANKS
-#define m_log(format, ...)                               \
-    ({                                                   \
-        int rank;                                        \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);            \
-        if (rank == 0) {                                 \
-            char def_nhyipns[1024];                      \
-            sprintf(def_nhyipns, format, ##__VA_ARGS__); \
+#define m_log(format, ...)                                 \
+    ({                                                     \
+        int rank;                                          \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);              \
+        if (rank == 0) {                                   \
+            char def_nhyipns[1024];                        \
+            sprintf(def_nhyipns, format, ##__VA_ARGS__);   \
             fprintf(stdout, "[murphy] %s\n", def_nhyipns); \
-        }                                                \
+        }                                                  \
     })
 #else
-#define m_log(format, ...)                                    \
-    ({                                                        \
-        int rank;                                             \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);                 \
-        char def_nhyipns[1024];                               \
-        sprintf(def_nhyipns, format, ##__VA_ARGS__);          \
+#define m_log(format, ...)                                      \
+    ({                                                          \
+        int rank;                                               \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);                   \
+        char def_nhyipns[1024];                                 \
+        sprintf(def_nhyipns, format, ##__VA_ARGS__);            \
         fprintf(stdout, "[%d murphy] %s\n", rank, def_nhyipns); \
     })
 #endif
@@ -144,12 +163,12 @@
  * 
  */
 #ifdef VERBOSE
-#define m_verb(format, ...)                                   \
-    ({                                                        \
-        int rank;                                             \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);                 \
-        char def_nhyipns[1024];                               \
-        sprintf(def_nhyipns, format, ##__VA_ARGS__);          \
+#define m_verb(format, ...)                                     \
+    ({                                                          \
+        int rank;                                               \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);                   \
+        char def_nhyipns[1024];                                 \
+        sprintf(def_nhyipns, format, ##__VA_ARGS__);            \
         fprintf(stdout, "[%d murphy] %s\n", rank, def_nhyipns); \
     })
 #else

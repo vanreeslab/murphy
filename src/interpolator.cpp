@@ -1,14 +1,14 @@
 #include "interpolator.hpp"
 
-void Interpolator::operator()(SubBlock* block_src, GhostBlock* block_trg) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    Interpolator::operator()(block_trg->dlvl(), block_trg->shift(), block_src, block_trg);
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// void Interpolator::operator()(GhostBlock* block_trg) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     Interpolator::operator()(block_trg->dlvl(), block_trg->shift(), block_src, block_trg);
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
-void Interpolator::operator()(const lid_t dlvl, const lid_t shift[3], SubBlock* block_src, SubBlock* block_trg) {
+void Interpolator::interpolate_(const lid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg) {
     m_begin;
     m_assert(dlvl <= 2, "we cannot handle a difference in level > 2");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
@@ -27,8 +27,8 @@ void Interpolator::operator()(const lid_t dlvl, const lid_t shift[3], SubBlock* 
     trgstr_ = block_trg->stride();
 
     // get the correct aligned arrays
-    real_p data_src_ = block_src->data() + m_sidx(shift[0], shift[1], shift[2], 0, srcstr_, srcgs_);
-    real_p data_trg_ = block_trg->data() + m_sidx(0, 0, 0, 0, srcstr_, srcgs_);
+    real_p data_src_ = data_src + m_midx(shift[0], shift[1], shift[2], 0, block_src);
+    real_p data_trg_ = data_trg + m_midx(0, 0, 0, 0, block_trg);
 
     // call the correct function
     if (dlvl == -1) {

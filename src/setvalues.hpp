@@ -9,7 +9,7 @@ class SetGaussian : public OperatorF {
     real_t sigma_     = 0.1;
     real_t center_[3] = {0, 0, 0};
 
-    void apply(const qid_t* qid, Block* block, Field* fid);
+    void apply(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
     SetGaussian(real_t sigma, real_t center[3]);

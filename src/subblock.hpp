@@ -1,38 +1,38 @@
 #ifndef SRC_SUBBLOCK_HPP_
 #define SRC_SUBBLOCK_HPP_
 
+#include "gridblock.hpp"
+#include "memlayout.hpp"
 #include "murphy.hpp"
 
-class SubBlock {
+/**
+ * @brief Implementation of a @ref MemLayout as a sub part of a @ref GridBlock
+ * 
+ */
+class SubBlock : public MemLayout {
    protected:
     lid_t gs_;
     lid_t stride_;
     lid_t start_[3];
     lid_t range_[3];
 
-    real_p data_;
+    // store the block I depend on
+    GridBlock* origin_;
 
    public:
-    lid_t gs() const { return gs_; }
-    lid_t stride() const { return stride_; }
-    lid_t start(const int id) const { return start_[id]; }
-    lid_t range(const int id) const { return range_[id]; }
+    /**
+     * @name Memory Layout Implementation
+     * 
+     * @{ */
+    inline lid_t gs() const override { return gs_; }
+    inline lid_t stride() const override { return stride_; }
+    inline lid_t start(const int id) const override { return start_[id]; }
+    inline lid_t range(const int id) const override { return range_[id]; }
+    /** @} */
 
-    real_p data() { return data_; }
-};
-
-class GhostBlock : public SubBlock {
-   protected:
-    lid_t  dlvl_;
-    lid_t  shift_[3];
-    real_p data_src_;
-
-   public:
-    lid_t dlvl() const { return dlvl_; }
-    lid_t shift(const int id) const { return shift_[id]; }
-
-    lid_t* shift() { return shift_; }
-    real_p data_src() { return data_src_; }
+    inline lid_t level() const { return origin_->level(); }
+    
+    GridBlock* origin() { return origin_; }
 };
 
 #endif  // SRC_GHOSTBLOCK_HPP_

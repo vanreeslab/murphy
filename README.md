@@ -1,6 +1,6 @@
 # murphy
 
-Anything that can go wrong will go wrong
+Anything that can ~~go wrong~~ **scale strong** will ~~go wrong~~ **scale strong**
 
 
 #### Possible compilation flag

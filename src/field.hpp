@@ -15,6 +15,8 @@ class Field {
     string name_;
     bool   ghost_status_;
 
+
+
    public:
     Field(string name, sid_t lda) {
         name_         = name;

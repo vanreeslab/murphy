@@ -6,6 +6,7 @@
 #include "grid.hpp"
 #include "ioh5.hpp"
 #include "setvalues.hpp"
+#include "ghost.hpp"
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
@@ -18,7 +19,7 @@ int main(int argc, char** argv) {
         int  l[3]        = {1, 2, 3};
 
         // create a grid
-        Grid*  grid = new Grid(2, periodic, l, MPI_COMM_WORLD, NULL);
+        Grid*  grid = new Grid(1, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
         Field* vort = new Field("vorticity", 3);
         grid->AddField(vort);
@@ -27,10 +28,15 @@ int main(int argc, char** argv) {
         SetGaussian gaussian  = SetGaussian(0.1, center);
         gaussian(grid, vort);
         // create a dumper and dump
-        IOH5 mydump = IOH5("data");
-        mydump(grid, vort);
+        // IOH5 mydump = IOH5("data");
+        // mydump(grid, vort);
 
+        // create a ghost 
+        Ghost* ghost = new Ghost(grid);
+
+    
         // destroy the grid and the field
+        delete(ghost);
         delete (vort);
         delete (grid);
     }

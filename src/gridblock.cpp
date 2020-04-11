@@ -1,4 +1,4 @@
-#include "block.hpp"
+#include "gridblock.hpp"
 
 using std::string;
 
@@ -9,7 +9,7 @@ using std::string;
  * @param xyz the position of the left,bottom corner (x,y,z)
  * @param level the level of the block
  */
-Block::Block(const real_t length, const real_t xyz[3],const sid_t level) {
+GridBlock::GridBlock(const real_t length, const real_t xyz[3],const sid_t level) {
      m_begin;
     //-------------------------------------------------------------------------
     level_ = level;
@@ -21,14 +21,14 @@ Block::Block(const real_t length, const real_t xyz[3],const sid_t level) {
     m_end;
 }
 
-Block::~Block() {
+GridBlock::~GridBlock() {
     // need to delete the fields not deleted yet
     for (datamap_t::iterator iter = data_map_.begin(); iter != data_map_.end(); iter++) {
         m_free(iter->second);
     }
 }
 
-real_p Block::data(Field* fid) {
+real_p GridBlock::data(Field* fid) {
 #ifndef NDEBUG
     datamap_t::iterator it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
@@ -38,7 +38,7 @@ real_p Block::data(Field* fid) {
 #endif
 }
 
-const real_p Block::data(const Field* fid) const{
+const real_p GridBlock::data(const Field* fid) const{
 #ifndef NDEBUG
     datamap_t::const_iterator it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
@@ -48,7 +48,7 @@ const real_p Block::data(const Field* fid) const{
 #endif
 }
 
-void Block::AddField(const qid_t* qid, Field* fid, nullptr_t ctx) {
+void GridBlock::AddField(const qid_t* qid, Field* fid, nullptr_t ctx) {
     m_begin;
     m_assert(ctx == nullptr, "no context is need in this function");
     //-------------------------------------------------------------------------
@@ -66,7 +66,7 @@ void Block::AddField(const qid_t* qid, Field* fid, nullptr_t ctx) {
     m_end;
 }
 
-void Block::DeleteField(const qid_t* qid, Field* fid, nullptr_t ctx) {
+void GridBlock::DeleteField(const qid_t* qid, Field* fid, nullptr_t ctx) {
     m_begin;
     m_assert(ctx == nullptr, "no context is need in this function");
     //-------------------------------------------------------------------------

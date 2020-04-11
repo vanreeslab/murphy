@@ -27,22 +27,56 @@
 #ifndef SRC_OPERATOR_HPP_
 #define SRC_OPERATOR_HPP_
 
-#include "block.hpp"
+#include "gridblock.hpp"
 #include "field.hpp"
 #include "grid.hpp"
 #include "murphy.hpp"
 
 //=================================================================================================
 /**
- * @brief A simple operator on a block, which modifies its content
+ * @brief A simple operator on a block, which does not use a field
+ * 
+ */
+class OperatorS {
+   public:
+    /**
+     * @brief Implementation of this virtual function has to be provided by the user as a member function
+     * 
+     * @param qid the id of the quadrant
+     * @param block the block itself
+     * @param fid the field on which we execute the operation
+     */
+    virtual void apply(const qid_t* qid, GridBlock* block) = 0;
+    /**
+     * @brief call OperatorF::apply() on each block and change the ghost status of Field to `false`
+     */
+    virtual void operator()(Grid* grid);
+};
+/**
+ * @brief this function is called by DoOp_() function (through OperatorF::DoOp()) to apply the operation to a considered Block
+ * 
+ * @param qid the reference of the block, see qid_t
+ * @param block the Block itself
+ * @param fid it's value has to be nullptr, still we keep it to match the @ref op_t definition
+ * @param op the OperatorS object containing all the needed data
+ */
+void CallOpS(const qid_t* qid, GridBlock* block, nullptr_t* fid, OperatorS* op);
+
+//=================================================================================================
+/**
+ * @brief A field operator on a block, which modifies its content
  * 
  */
 class OperatorF {
    public:
     /**
-    * @brief Implementation of this virtual function has to be provided by the user as a member function
-    */
-    virtual void apply(const qid_t* qid, Block* block, Field* fid) = 0;
+     * @brief Implementation of this virtual function has to be provided by the user as a member function
+     * 
+     * @param qid the id of the quadrant
+     * @param block the block itself
+     * @param fid the field on which we execute the operation
+     */
+    virtual void apply(const qid_t* qid, GridBlock* block, Field* fid) = 0;
     /**
      * @brief call OperatorF::apply() on each block and change the ghost status of Field to `false`
      */
@@ -56,19 +90,23 @@ class OperatorF {
  * @param fid the field on which we operate
  * @param op the OperatorF object containing all the needed data
  */
-void CallOpF(const qid_t* qid, Block* block, Field* fid, OperatorF* op);
+void CallOpF(const qid_t* qid, GridBlock* block, Field* fid, OperatorF* op);
 
 //=================================================================================================
 /**
- * @brief a constant Operator, i.e. which does not modify the Field
+ * @brief a constant field Operator, i.e. which does not modify the considered field
  * 
  */
 class ConstOperatorF {
    public:
     /**
-    * @brief Implementation of this virtual function has to be provided by the user as a member function
-    */
-    virtual void apply(const qid_t* qid, Block* block, const Field* fid) = 0;
+     * @brief Implementation of this virtual function has to be provided by the user as a member function
+     * 
+     * @param qid the id of the quadrant
+     * @param block the block itself
+     * @param fid the field on which we execute it
+     */
+    virtual void apply(const qid_t* qid, GridBlock* block, const Field* fid) = 0;
     /**
      * @brief call ConstOperatorF::apply() on each block
      */
@@ -82,7 +120,7 @@ class ConstOperatorF {
  * @param fid the field on which we operate
  * @param op the ConstOperatorF object containing all the needed data
  */
-void ConstCallOpF(const qid_t* qid, Block* block, const Field* fid, ConstOperatorF* op);
+void ConstCallOpF(const qid_t* qid, GridBlock* block, const Field* fid, ConstOperatorF* op);
 
 //=================================================================================================
 /**
@@ -93,8 +131,13 @@ class OperatorF2F {
    public:
     /**
     * @brief Implementation of this virtual function has to be provided by the user as a member function
+    * 
+    * @param qid the id of the quadrant which corresponds to the current block
+    * @param block the current block itself
+    * @param fid_src the source fi
+    * @param fid_trg 
     */
-    virtual void apply(const qid_t* qid, Block* block, const Field* fid_src, Field* fid_trg) = 0;
+    virtual void apply(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
     /**
      * @brief call OperatorF2F::apply() on each block and change the ghost status of the Field field_trg to `false`
      */
@@ -109,7 +152,7 @@ class OperatorF2F {
  * @param fid_trg the target field
  * @param op the OperatorF2F object containing all the needed data
  */
-void CallOpF2F(const qid_t* qid, Block* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
+void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
 
 //=================================================================================================
 /**
@@ -132,7 +175,7 @@ void CallOpF2F(const qid_t* qid, Block* block, const Field* fid_src, Field* fid_
  * @tparam F The parameter pack of Fields* which is passed
  */
 template <typename T, typename... F>
-using op_t = void (*)(const qid_t* qid, Block* block, F... fid, T);
+using op_t = void (*)(const qid_t* qid, GridBlock* block, F... fid, T);
 
 /**
  * @brief The actual implementation of the Block iteration
@@ -146,7 +189,7 @@ using op_t = void (*)(const qid_t* qid, Block* block, F... fid, T);
  * @param data the user-defined data forwared to the operator
  */
 template <typename O, typename T, typename... F>
-void DoOp_(const O op, Grid* grid, F... field, T data) {
+void DoOp_F_(const O op, Grid* grid, F... field, T data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -166,7 +209,7 @@ void DoOp_(const O op, Grid* grid, F... field, T data) {
         myid.tid = mesh->quad_to_tree[bid];
         // the quadrants can be from differents trees -> get the correct one
         p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-        Block*            block = reinterpret_cast<Block*>(quad->p.user_data);
+        GridBlock*            block = reinterpret_cast<GridBlock*>(quad->p.user_data);
         // send the task
         op(&myid, block, field..., data);
     }
@@ -189,7 +232,7 @@ void DoOp_(const O op, Grid* grid, F... field, T data) {
 template <typename T>
 void DoOp(const op_t<T, Field*> op, Grid* grid, Field* field, T data) {
     // execute the operator on the blocks
-    DoOp_<op_t<T, Field*>, T, Field*>(op, grid, field, data);
+    DoOp_F_<op_t<T, Field*>, T, Field*>(op, grid, field, data);
     // set the ghost as changed
     m_verb("setting the ghosts of %s to false", field->name().c_str());
     field->SetGhostStatus(false);
@@ -208,7 +251,7 @@ void DoOp(const op_t<T, Field*> op, Grid* grid, Field* field, T data) {
 template <typename T>
 void DoOp(const op_t<T, const Field*> op, Grid* grid, Field* field, T data) {
     // execute the operator on the blocks
-    DoOp_<op_t<T, const Field*>, T, const Field*>(op, grid, field, data);
+    DoOp_F_<op_t<T, const Field*>, T, const Field*>(op, grid, field, data);
     // no change of the ghost is needed
 }
 
@@ -226,7 +269,7 @@ void DoOp(const op_t<T, const Field*> op, Grid* grid, Field* field, T data) {
 template <typename T>
 void DoOp(const op_t<T, const Field*, Field*> op, Grid* grid, Field* field_src, Field* field_trg, T data) {
     // execute the operation on the blocks
-    DoOp_<op_t<T, const Field*, Field*>, T, const Field*, Field*>(op, grid, field_src, field_trg, data);
+    DoOp_F_<op_t<T, const Field*, Field*>, T, const Field*, Field*>(op, grid, field_src, field_trg, data);
     // set the field_trg ghosts as changed
     m_verb("setting the ghosts of %s to false", field_trg->name().c_str());
     field_trg->SetGhostStatus(false);
@@ -239,7 +282,7 @@ void DoOp(const op_t<T, const Field*, Field*> op, Grid* grid, Field* field_src, 
  * @tparam T the type of the user-defined variable
  */
 template <typename T>
-using bop_t = void (Block::*)(const qid_t* qid, Field* fid, T);
+using bop_t = void (GridBlock::*)(const qid_t* qid, Field* fid, T);
 
 /**
  * @brief iterates over all the blocks in the forest and call the block member function provided
@@ -272,7 +315,7 @@ void DoOp(const bop_t<T> op, Grid* grid, Field* field, T data) {
             myid.tid = it;
             // the quadrants can be from differents trees -> get the correct one
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-            Block*            block = reinterpret_cast<Block*>(quad->p.user_data);
+            GridBlock*            block = reinterpret_cast<GridBlock*>(quad->p.user_data);
             // send the task following https://en.cppreference.com/w/cpp/language/pointer
             (block->*op)(&myid, field, data);
         }

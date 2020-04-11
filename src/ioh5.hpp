@@ -38,18 +38,18 @@ class IOH5 : public ConstOperatorF {
     void xmf_write_footer_(const Grid* grid);
     void hdf5_write_footer_(const Grid* grid);
     // blocks
-    void xmf_write_block_(const qid_t* qid, Block* block, const Field* fid);
-    void hdf5_write_block_(const qid_t* qid, Block* block, const Field* fid);
+    void xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid);
+    void hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fid);
     // write a block
 
    public:
     IOH5(string folder);
     ~IOH5();
 
-    void apply(const qid_t* qid, Block* block, const Field* fid);
     void dump_ghost(const bool dump_ghost) { dump_ghost_ = dump_ghost; };
-    
-    void operator()(Grid* grid, Field* field);
+
+    void apply(const qid_t* qid, GridBlock* block, const Field* fid) override;
+    void operator()(Grid* grid, Field* field) override;
 };
 
 #endif

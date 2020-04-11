@@ -3,7 +3,7 @@
 #include <p8est_extended.h>
 #include <omp.h>
 
-#include "block.hpp"
+#include "gridblock.hpp"
 #include "operator.hpp"
 
 using std::string;
@@ -19,8 +19,8 @@ void cback_CreateBlock(p8est_iter_volume_info_t * info,void *user_data) {
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
 
-    real_t len        = P8EST_QUADRANT_LEN(quad->level)*(1.0/P8EST_ROOT_LEN);
-    quad->p.user_data = new Block(len, xyz, quad->level);
+    real_t len        = m_quad_len(quad->level);
+    quad->p.user_data = new GridBlock(len, xyz, quad->level);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -29,7 +29,7 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
     m_begin;
     //-------------------------------------------------------------------------
     p8est_quadrant_t* quad = info->quad;
-    delete ((Block*)quad->p.user_data);
+    delete ((GridBlock*)quad->p.user_data);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -57,7 +57,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     p8est_connectivity_t* connect = p8est_connectivity_new_brick(l[0], l[1], l[2], isper[0], isper[1], isper[2]);
 
     // create the forest at a given level, the associated ghost and mesh object
-    forest_ = p8est_new_ext(comm, connect, 0, ilvl, 1, sizeof(Block*), nullptr, nullptr);
+    forest_ = p8est_new_ext(comm, connect, 0, ilvl, 1, sizeof(GridBlock*), nullptr, nullptr);
     ghost_  = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
     mesh_   = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
 
@@ -128,7 +128,7 @@ void Grid::AddField(Field* field) {
         // create a new lda entry
         lda_[key] = field->lda();
         // add the field to everyblock
-        DoOp<nullptr_t>(&Block::AddField, this, field, nullptr);
+        DoOp<nullptr_t>(&GridBlock::AddField, this, field, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -143,7 +143,7 @@ void Grid::DeleteField(Field* field) {
         // create a new lda entry
         lda_.erase(key);
         // add the field to everyblock
-        DoOp<nullptr_t>(&Block::DeleteField, this, field, nullptr);
+        DoOp<nullptr_t>(&GridBlock::DeleteField, this, field, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;

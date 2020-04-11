@@ -46,7 +46,7 @@ void IOH5::operator()(Grid* grid, Field* field) {
     m_end;
 }
 
-void IOH5::apply(const qid_t* qid, Block* block, const Field* fid) {
+void IOH5::apply(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     xmf_write_block_(qid, block, fid);
@@ -72,7 +72,7 @@ void IOH5::hdf5_write_header_(const Grid* grid) {
     m_end;
 }
 
-void IOH5::hdf5_write_block_(const qid_t* qid, Block* block, const Field* fid) {
+void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the attribute
@@ -248,7 +248,7 @@ void IOH5::xmf_write_footer_(const Grid* grid) {
     //-------------------------------------------------------------------------
     m_end;
 }
-void IOH5::xmf_write_block_(const qid_t* qid, Block* block, const Field* fid) {
+void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     string fname     = filename_ + "_";

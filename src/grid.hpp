@@ -33,8 +33,10 @@ class Grid {
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
 
-    p8est_t*      forest() { return forest_; }
-    p8est_mesh_t* mesh() { return mesh_; }
+    p8est_t*              forest() { return forest_; }
+    p8est_mesh_t*         mesh() { return mesh_; }
+    p8est_ghost_t*        ghost() { return ghost_; }
+    p8est_connectivity_t* connect() { return forest_->connectivity; }
 
     bool     is_mesh_valid() const { return is_mesh_valid_; }
     int      mpirank() const { return forest_->mpirank; }

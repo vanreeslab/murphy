@@ -1,8 +1,12 @@
 /**
  * @file Profiler.cpp
  * @author Thomas Gillis and Denis-Gabriel Caprace
- * @copyright Copyright © UCLouvain 2019
+ * @copyright MIT
  * 
+ * 
+ * header MURPHY
+ * 
+ * ----------------------------------------------------------------------------
  * FLUPS is a Fourier-based Library of Unbounded Poisson Solvers.
  * 
  * Copyright (C) <2019> <Universite catholique de Louvain (UCLouvain), Belgique>
@@ -29,6 +33,7 @@
 
 /**
  * @brief Construct a new Timer Agent
+ * @copyright From FLUPS (GPLv3 or later), see license in LICENSE file
  * 
  * @param name the name
  */
