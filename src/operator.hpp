@@ -27,10 +27,14 @@
 #ifndef SRC_OPERATOR_HPP_
 #define SRC_OPERATOR_HPP_
 
-#include "gridblock.hpp"
+#include <limits>
+
 #include "field.hpp"
 #include "grid.hpp"
+#include "gridblock.hpp"
 #include "murphy.hpp"
+
+using std::numeric_limits;
 
 //=================================================================================================
 /**
@@ -180,6 +184,8 @@ using op_t = void (*)(const qid_t* qid, GridBlock* block, F... fid, T);
 /**
  * @brief The actual implementation of the Block iteration
  * 
+ * @warning We use a omp directive to loop over the blocks, hence the data is set as firstprivate!
+ * 
  * @tparam O the type of operator that is used, see the definition of op_t
  * @tparam T the type of data given as user-defined data.
  * @tparam F the parameter pack containing the list of the fields which is taken as input/output, see the definition of opt_t
@@ -198,7 +204,7 @@ void DoOp_F_(const O op, Grid* grid, F... field, T data) {
     p8est_mesh_t* mesh    = grid->mesh();
     const lid_t   nqlocal = mesh->local_num_quadrants;  // number of trees * number of elem/tree
 
-#pragma omp parallel for
+#pragma omp parallel for firstprivate(data)
     for (lid_t bid = 0; bid < nqlocal; bid++) {
         // get the tree
         p8est_tree_t* tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
@@ -209,7 +215,7 @@ void DoOp_F_(const O op, Grid* grid, F... field, T data) {
         myid.tid = mesh->quad_to_tree[bid];
         // the quadrants can be from differents trees -> get the correct one
         p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-        GridBlock*            block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+        GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
         // send the task
         op(&myid, block, field..., data);
     }
@@ -235,7 +241,7 @@ void DoOp(const op_t<T, Field*> op, Grid* grid, Field* field, T data) {
     DoOp_F_<op_t<T, Field*>, T, Field*>(op, grid, field, data);
     // set the ghost as changed
     m_verb("setting the ghosts of %s to false", field->name().c_str());
-    field->SetGhostStatus(false);
+    field->ghost_status(false);
 }
 
 /**
@@ -272,7 +278,7 @@ void DoOp(const op_t<T, const Field*, Field*> op, Grid* grid, Field* field_src, 
     DoOp_F_<op_t<T, const Field*, Field*>, T, const Field*, Field*>(op, grid, field_src, field_trg, data);
     // set the field_trg ghosts as changed
     m_verb("setting the ghosts of %s to false", field_trg->name().c_str());
-    field_trg->SetGhostStatus(false);
+    field_trg->ghost_status(false);
 }
 
 //=========================================================================================
@@ -305,8 +311,10 @@ void DoOp(const bop_t<T> op, Grid* grid, Field* field, T data) {
 
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
         p8est_tree_t* tree    = p8est_tree_array_index(forest->trees, it);
-        const lid_t   nqlocal = tree->quadrants.elem_count;
-#pragma omp parallel for
+        const size_t  nqlocal = tree->quadrants.elem_count;
+        m_assert(nqlocal < (numeric_limits<lid_t>::max()), "has to be smaller than the largest integer...");
+
+#pragma omp parallel for firstprivate(data)
         for (lid_t bid = 0; bid < nqlocal; bid++) {
             // get the id
             qid_t myid;
@@ -315,12 +323,12 @@ void DoOp(const bop_t<T> op, Grid* grid, Field* field, T data) {
             myid.tid = it;
             // the quadrants can be from differents trees -> get the correct one
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-            GridBlock*            block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+            GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
             // send the task following https://en.cppreference.com/w/cpp/language/pointer
             (block->*op)(&myid, field, data);
         }
         // downgrade the ghost status since we changed its value
-        field->SetGhostStatus(false);
+        field->ghost_status(false);
         //-------------------------------------------------------------------------
         m_end;
     }

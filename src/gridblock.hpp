@@ -36,6 +36,7 @@ class GridBlock : public MemLayout {
     const real_t hgrid(const int id) const { return hgrid_[id]; }
 
     real_p       data(Field* fid);
+    real_p       data(const Field* fid, const sid_t ida);
     const real_p data(const Field* fid) const;
 
     void AddField(const qid_t* qid, Field* fid, nullptr_t ctx);

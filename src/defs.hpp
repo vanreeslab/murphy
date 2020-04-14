@@ -49,7 +49,7 @@
     ({                                                            \
         void*  data;                                              \
         size_t size_ = (size_t)(size);                            \
-        int    err   = posix_memalign(&data, M_ALIGNMENT, size_); \
+        int err = posix_memalign(&data, M_ALIGNMENT, size_); \
         memset(data, 0, size_);                                   \
         data;                                                     \
     })
@@ -91,36 +91,53 @@
     })
 
 /**
- * @brief return a memory index given 3D position (i0,i1,i2), a stride (str) and a ghost size (gs)
+ * @brief returns the memory position of (0,0,0)
  * 
  */
-#define m_sidx(i0, i1, i2, ida, str, gs)                                       \
-    ({                                                                         \
-        __typeof__(i0) _i0   = (i0);                                           \
-        __typeof__(i1) _i1   = (i1);                                           \
-        __typeof__(i2) _i2   = (i2);                                           \
-        __typeof__(ida) _ida = (ida);                                          \
-        __typeof__(str) _str = (str);                                          \
-        __typeof__(gs) _gs   = (gs);                                           \
-        (_gs + _i0) + _str*((_gs + _i1) + _str * ((_gs + _i2) + _str * _ida)); \
+#define m_zeroidx(ida, mem)                                        \
+    ({                                                             \
+        sid_t  ida_ = (ida);                                       \
+        lid_t  gs_  = (mem->gs());                                 \
+        size_t str_ = (size_t)(mem->stride());                     \
+        (size_t)(gs_ + str_ * (gs_ + str_ * (gs_ + str_ * ida_))); \
     })
 
 /**
- * @brief return the memory index given 3D position, a dimension number and a @ref MemLayout
+ * @brief return the shift in memory to reach a 3D position (i0,i1,i2) given a stride (str).
+ * 
+ * This macro is to be used with the function GridBlock::data()
+ * 
+ * @note: we cast the stride to size_t to ensure a proper conversion while computing the adress
  * 
  */
-#define m_midx(i0, i1, i2, ida, mem)                       \
-    ({                                                     \
-        m_sidx(i0, i1, i2, ida, mem->stride(), mem->gs()); \
+#define m_sidx(i0, i1, i2, ida, str)                               \
+    ({                                                             \
+        lid_t  i0_  = (i0);                                        \
+        lid_t  i1_  = (i1);                                        \
+        lid_t  i2_  = (i2);                                        \
+        sid_t  ida_ = (ida);                                       \
+        size_t str_ = (size_t)(str);                               \
+        (size_t)(i0_ + str_ * (i1_ + str_ * (i2_ + str_ * ida_))); \
+    })
+
+/**
+ * @brief return the shift in memory to reach a 3D position (i0,i1,i2) given a MemLayout mem
+ * 
+ * This macro is equivalent to @ref m_sidx with a stride given by MemLayout::stride()
+ * 
+ */
+#define m_midx(i0, i1, i2, ida, mem)            \
+    ({                                          \
+        m_sidx(i0, i1, i2, ida, mem->stride()); \
     })
 
 /**
  * @brief return the memory index given 3D position and a dimension number
  * 
  */
-#define m_idx(i0, i1, i2, ida)                   \
-    ({                                           \
-        m_sidx(i0, i1, i2, ida, M_STRIDE, M_GS); \
+#define m_idx(i0, i1, i2)                \
+    ({                                   \
+        m_sidx(i0, i1, i2, 0, M_STRIDE); \
     })
 
 /**

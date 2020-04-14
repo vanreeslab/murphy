@@ -13,6 +13,7 @@
 class PhysBlock : public SubBlock {
    protected:
     sid_t normal_sign_[3]; /**< the sign of the normal to the fphy*/
+
    public:
     sid_t normal_sign(const sid_t id) const { return normal_sign_[id]; }
 

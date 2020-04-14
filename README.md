@@ -20,3 +20,13 @@ However, some exceptions are made to the mentionned guide style:
 - the macro definitions acting as functions are name `m_myfunction`. The `m_` states for `Murphy`
 - the files are names in lowercase with a `.cpp` and `.hpp` extension, alike the class it contains (e.g. class `Grid` in `grid.cpp`)
 - Callback functions used to interface with p4est start with `cback_`
+
+
+
+
+##### Misc
+
+
+We define two positions of the memory pointer:
+- the absolute position, which is the pointer to the memory allocated
+- the 0-pointer, which is the pointer to the effective memory, i.e. withouth any ghost points. 

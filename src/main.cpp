@@ -7,6 +7,7 @@
 #include "ioh5.hpp"
 #include "setvalues.hpp"
 #include "ghost.hpp"
+#include "wavelet.hpp"
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
@@ -32,14 +33,20 @@ int main(int argc, char** argv) {
         // mydump(grid, vort);
 
         // create a ghost 
-        Ghost* ghost = new Ghost(grid);
+        Wavelet<3>* interp = new Wavelet<3>();
+        Ghost* ghost = new Ghost(grid,interp);
+
+        ghost->pull(vort);
 
     
         // destroy the grid and the field
+        delete(interp);
         delete(ghost);
         delete (vort);
         delete (grid);
     }
+
+    m_log("\n\nleaving, bye bye murphy\n");
     //-------------------------------------------------------------------------
     sc_finalize();
     MPI_Finalize();

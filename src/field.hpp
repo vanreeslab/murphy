@@ -7,31 +7,27 @@
 #include "murphy.hpp"
 
 using std::string;
-using std::to_string;
 
 class Field {
    protected:
-    sid_t  lda_;
+    sid_t lda_;  //!< indicate how many dimension is in the field [0,lda_[
+    // sid_t  ida_;  //!< indicate the current working dimension, if any
     string name_;
     bool   ghost_status_;
 
-
-
    public:
-    Field(string name, sid_t lda) {
-        name_         = name;
-        lda_          = lda;
-        ghost_status_ = false;
-    }
-    string name() const;
-    sid_t  lda() const;
+    Field(string name, sid_t lda);
 
-    void SetGhostStatus(bool status) { ghost_status_ = status; }
+    sid_t  lda() const { return lda_; };
+    string name() const { return name_; };
+
+    void ghost_status(bool status) { ghost_status_ = status; };
+
+    // void SelectDimension(const sid_t ida);
+    // void ReleaseDimension(const sid_t ida);
+
+    // sid_t StartDimension() const;
+    // sid_t EndDimension() const;
 };
-
-// class SubField : public Field {
-//    protected:
-    
-// };
 
 #endif  // SRC_FIELD_HPP_

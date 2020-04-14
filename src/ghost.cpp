@@ -1,6 +1,8 @@
 #include "ghost.hpp"
 
 #include "murphy.hpp"
+#include "omp.h"
+#include "wavelet.hpp"
 
 // from paper p4est, table 1, S vector
 static const sid_t edge2face[12][2]  = {{2, 4}, {3, 4}, {2, 5}, {3, 5}, {0, 4}, {1, 4}, {0, 5}, {1, 5}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
@@ -9,11 +11,12 @@ static const sid_t corner2face[8][3] = {{0, 2, 4}, {1, 2, 4}, {0, 3, 4}, {1, 3, 
 static const int facelimit[4] = {0, 24, 120, 144};
 static const int edgelimit[4] = {0, 24, 72, 96};
 
-Ghost::Ghost(Grid* grid) {
+Ghost::Ghost(Grid* grid,Interpolator* interpolator) {
     m_begin;
-    m_assert(grid->is_mesh_valid(),"the mesh needs to be valid before entering here");
+    m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     grid_           = grid;
+    interpolator_   = interpolator;
     p8est_t* forest = grid_->forest();
     // allocate the lists
     block_sibling_ = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
@@ -35,6 +38,12 @@ Ghost::Ghost(Grid* grid) {
     // call the simple operator to init the lists
     OperatorS::operator()(grid);
 
+    // initialize the working coarse memory
+    int nthreads = omp_get_max_threads();
+    coarse_tmp_   = (real_p*)m_calloc(sizeof(real_p) * nthreads);
+    for (int it = 0; it < nthreads; it++) {
+        coarse_tmp_[it] =(real_t*) m_calloc(sizeof(real_t) * M_CLEN * M_CLEN * M_CLEN);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -46,19 +55,19 @@ Ghost::~Ghost() {
     // clear the lists
     for (int ib = 0; ib < forest->local_num_quadrants; ib++) {
         // free the blocks
-        for (list<GhostBlock*>::iterator biter = block_sibling_[ib]->begin(); biter != block_sibling_[ib]->end(); biter++) {
+        for (auto biter = block_sibling_[ib]->begin(); biter != block_sibling_[ib]->end(); biter++) {
             delete (*biter);
         }
-        for (list<GhostBlock*>::iterator biter = ghost_sibling_[ib]->begin(); biter != ghost_sibling_[ib]->end(); biter++) {
+        for (auto biter = ghost_sibling_[ib]->begin(); biter != ghost_sibling_[ib]->end(); biter++) {
             delete (*biter);
         }
-        for (list<GhostBlock*>::iterator biter = block_parent_[ib]->begin(); biter != block_parent_[ib]->end(); biter++) {
+        for (auto biter = block_parent_[ib]->begin(); biter != block_parent_[ib]->end(); biter++) {
             delete (*biter);
         }
-        for (list<GhostBlock*>::iterator biter = ghost_parent_[ib]->begin(); biter != ghost_parent_[ib]->end(); biter++) {
+        for (auto biter = ghost_parent_[ib]->begin(); biter != ghost_parent_[ib]->end(); biter++) {
             delete (*biter);
         }
-        for (list<PhysBlock*>::iterator  piter = phys_[ib]->begin(); piter != phys_[ib]->end(); piter++) {
+        for (auto piter = phys_[ib]->begin(); piter != phys_[ib]->end(); piter++) {
             delete (*piter);
         }
         // purge everything
@@ -68,12 +77,18 @@ Ghost::~Ghost() {
         delete (ghost_parent_[ib]);
         delete (phys_[ib]);
     }
-
     m_free(block_sibling_);
     m_free(ghost_sibling_);
     m_free(block_parent_);
     m_free(ghost_parent_);
     m_free(phys_);
+
+    // free the temp memory
+    int nthreads = omp_get_max_threads();
+    for (int it = 0; it < nthreads; it++) {
+        m_free(coarse_tmp_[it]);
+    }
+    m_free(coarse_tmp_);
 
     // free the memory
     m_free(mirrors_);
@@ -82,7 +97,40 @@ Ghost::~Ghost() {
     m_end;
 }
 
-void Ghost::apply(const qid_t* qid, GridBlock* block)  {
+/**
+ * @brief takes ghost values among neighbors and update the block's values
+ * 
+ * @param field 
+ * @param current_ida 
+ */
+void Ghost::pull(Field* field){
+    m_begin;
+    //-------------------------------------------------------------------------
+    
+    for(sid_t ida = 0; ida<3; ida++){
+        // setup the current ida
+        ida_ = ida;
+        // send the ghost
+
+
+        // receive the ghosts
+        
+        // get a ghost copy
+        OperatorF::operator()(grid_,field);
+    }
+    // set the ghost fields as ready
+    field->ghost_status(true);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief initialize the ghost data for a given block
+ * 
+ * @param qid 
+ * @param block 
+ */
+void Ghost::apply(const qid_t* qid, GridBlock* block) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the current lists
@@ -96,12 +144,11 @@ void Ghost::apply(const qid_t* qid, GridBlock* block)  {
     // // temporary sc array used to get the ghosts
     sc_array_t*    ngh_quad = sc_array_new(sizeof(qdrt_t*));
     sc_array_t*    ngh_enc  = sc_array_new(sizeof(int));
-    // sc_array_t*    ngh_qid  = sc_array_new(sizeof(int));
     p8est_t*       forest   = grid_->forest();
     p8est_mesh_t*  mesh     = grid_->mesh();
     p8est_ghost_t* ghost    = grid_->ghost();
 
-    for (int ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
+    for (sid_t ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
         // reset the quadrant and encoding stuff
         sc_array_reset(ngh_quad);
         sc_array_reset(ngh_enc);
@@ -153,18 +200,63 @@ void Ghost::apply(const qid_t* qid, GridBlock* block)  {
     }
     sc_array_destroy(ngh_quad);
     sc_array_destroy(ngh_enc);
-    // sc_array_destroy(ngh_qid);
-
     //-------------------------------------------------------------------------
     m_end;
 }
 
-
-
-void Ghost::apply(const qid_t* qid, GridBlock* block, const Field* fid){
+/**
+ * @brief computes the ghost points for a block given a field and the direction ida_
+ * 
+ * @param qid 
+ * @param block 
+ * @param fid 
+ */
+void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
-    printf("kikouu");
+    // get the working direction given the thread
+    const int ithread = omp_get_thread_num();
+    real_p tmp = coarse_tmp_[ithread];
+
+    // get a subblock describing the ghost memory
+    lid_t     ghost_start[3] = {0, 0, 0};
+    lid_t     ghost_range[3] = {M_N, M_N, M_N};
+    SubBlock* ghost_subblock = new SubBlock(0, M_N, ghost_start, ghost_range);
+
+    // determine if we have to use the coarse representationun
+    const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
+
+    for (auto biter = block_sibling_[qid->cid]->begin(); biter != block_sibling_[qid->cid]->end(); biter++) {
+        GhostBlock* gblock = (*biter);
+        // get the current blocks
+        GridBlock* ngh_block = gblock->block_src();
+        // get the memory pointers
+        real_p data_src = ngh_block->data(fid,ida_);
+        real_p data_trg = cur_block->data(fid,ida_);
+        // launch the interpolation
+        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ngh_block,data_src,cur_block,data_trg);
+    }
+    for (auto biter = ghost_sibling_[qid->cid]->begin(); biter != ghost_sibling_[qid->cid]->end(); biter++) {
+        GhostBlock* gblock = (*biter);
+        // get the memory pointers for the ghost, where the send/recv call put the meaningfull info
+        real_p data_src = gblock->data_src();
+        real_p data_trg = cur_block->data(fid,ida_);
+        // launch the interpolation
+        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ghost_subblock,data_src,cur_block,data_trg);
+    }
+    for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
+        GhostBlock* gblock = (*biter);
+    }
+    for (auto biter = ghost_parent_[qid->cid]->begin(); biter != ghost_parent_[qid->cid]->end(); biter++) {
+        GhostBlock* gblock = (*biter);
+    }
+    for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
+        PhysBlock* gblock = (*piter);
+    }
+
+
+    delete (ghost_subblock);
+
     //-------------------------------------------------------------------------
     m_end;
 }

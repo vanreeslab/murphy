@@ -1,42 +1,60 @@
+
 #ifndef SRC_INTERPOLATE_HPP_
 #define SRC_INTERPOLATE_HPP_
 
 #include "field.hpp"
+#include "ghostblock.hpp"
+#include "memlayout.hpp"
 #include "murphy.hpp"
 #include "p8est.h"
-#include "memlayout.hpp"
 
+/**
+ * @brief Defines all the required information to perform an interpolation on a given block
+ * 
+ * Since the interpolation is done within threads, those values cannot belong to the object 
+ * and must be created each time an interpolation is needed
+ */
+typedef struct interp_ctx_t {
+    lid_t srcstr;       //!< the source stride
+    lid_t trgstr;       //!< the target stride
+    lid_t trgstart[3];  //!< first index needed in the target memory
+    lid_t trgend[3];    //!< last index needed in the target memory
+
+#ifndef NDEBUG
+    // for debug only
+    lid_t srcstart[3];  //!< first index available in the source memory
+    lid_t srcend[3];    //!< last index available in the source memory
+#endif
+
+    /**
+     * @name position pointers
+     * 
+     * They both refer the position (0,0,0) of the target, hence the ghostsize is assumed to be zero
+     * @{
+     */
+    real_p sdata;  //!< refers the (0,0,0) location of the target memory, in the source layout
+    real_p tdata;  //!< refers the (0,0,0) location of the target memory
+    /** @} */
+} interp_ctx_t;
+
+
+/**
+ * @brief defines a set of function used to interpolate
+ * 
+ * The memory description relies on the MemLayout object and they are working on one dimension at a time.
+ * 
+ */
 class Interpolator {
-   protected:
-    lid_t srcgs_;
-    lid_t trggs_;
-    lid_t srcstr_;
-    lid_t trgstr_;
-    lid_t trgstart_[3];
-    lid_t trgend_[3];
-    lid_t srcstart_[3];
-    lid_t srcend_[3];
-
    public:
-    
+    // virtual void operator()(const Field* field, const sid_t ida, GhostBlock* block);
+    // virtual void operator()(const Field* field, const sid_t ida, GridBlock* block, GridBlock* block_trg);
+    // virtual void operator()(const Field* field, const sid_t ida, GridBlock* block_trg, MemLayout* block_src, real_p data_src);
+    virtual void interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+
    protected:
-
-   /**
-    * @brief interpolate the data from data_src to data_trg
-    * 
-    * @param dlvl the difference of level: level_src - level_trg, i.e. > 0 means coarsening, = 0 means copy and < 0 means refinement
-    * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
-    * @param block_src description of @ref data_src memory layout 
-    * @param data_src the actual src memory
-    * @param block_trg descripiton of @ref data_trg
-    * @param data_trg the actual target memory
-    */
-    virtual void interpolate_(const lid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
-
-    
-    virtual void Coarsen_(const lid_t dlvl, const real_p sdata, real_p tdata) const = 0;
-    virtual void Refine_(const real_p sdata, real_p tdata) const                    = 0;
-    virtual void Copy_(const real_p sdata, real_p tdata) const                      = 0;
+    virtual void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const = 0;
+    virtual void Refine_(const interp_ctx_t* ctx) const                    = 0;
+    virtual void Copy_(const interp_ctx_t* ctx) const                      = 0;
 };
 
 #endif  // SRC_INTERPOLATE_HPP_

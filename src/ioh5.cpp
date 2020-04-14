@@ -2,6 +2,9 @@
 
 #include "mpi.h"
 
+
+using std::to_string;
+
 IOH5::IOH5(string folder) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -124,7 +127,7 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
     hsize_t memcount[4]  = {1, M_N, M_N, M_N};
     hsize_t memblock[4]  = {1, 1, 1, 1};
     hsize_t memstride[4] = {(hsize_t)fid->lda(), 1, 1, 1};
-    hsize_t memoffset[4] = {0, M_GS, M_GS, M_GS};  // offset in memory
+    hsize_t memoffset[4] = {0, 0, 0, 0};  // offset in memory
 
     if (dump_ghost_) {
         // size fo the file block
@@ -136,9 +139,9 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
         memcount[2] = M_STRIDE;
         memcount[3] = M_STRIDE;
         // offset in memory
-        memoffset[1] = 0;
-        memoffset[2] = 0;
-        memoffset[3] = 0;
+        memoffset[1] = -M_GS;
+        memoffset[2] = -M_GS;
+        memoffset[3] = -M_GS;
     }
 
     //looping over the vector components.
