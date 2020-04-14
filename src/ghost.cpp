@@ -220,8 +220,8 @@ void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
 
     // get a subblock describing the ghost memory
     lid_t     ghost_start[3] = {0, 0, 0};
-    lid_t     ghost_range[3] = {M_N, M_N, M_N};
-    SubBlock* ghost_subblock = new SubBlock(0, M_N, ghost_start, ghost_range);
+    lid_t     ghost_end[3] = {M_N, M_N, M_N};
+    SubBlock* ghost_subblock = new SubBlock(0, M_N, ghost_start, ghost_end);
 
     // determine if we have to use the coarse representationun
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
@@ -234,7 +234,7 @@ void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         real_p data_src = ngh_block->data(fid,ida_);
         real_p data_trg = cur_block->data(fid,ida_);
         // launch the interpolation
-        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ngh_block,data_src,cur_block,data_trg);
+        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ngh_block,data_src,gblock,data_trg);
     }
     for (auto biter = ghost_sibling_[qid->cid]->begin(); biter != ghost_sibling_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);
@@ -242,7 +242,7 @@ void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         real_p data_src = gblock->data_src();
         real_p data_trg = cur_block->data(fid,ida_);
         // launch the interpolation
-        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ghost_subblock,data_src,cur_block,data_trg);
+        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ghost_subblock,data_src,gblock,data_trg);
     }
     for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);

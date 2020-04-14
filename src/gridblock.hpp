@@ -25,7 +25,7 @@ class GridBlock : public MemLayout {
     inline lid_t gs() const override { return M_GS; };
     inline lid_t stride() const override { return M_STRIDE; };
     inline lid_t start(const int id) const override { return 0; };
-    inline lid_t range(const int id) const override { return M_N; };
+    inline lid_t end(const int id) const override { return M_N; };
     /** @}*/
 
     const sid_t   level() const { return level_; }

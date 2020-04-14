@@ -2,7 +2,6 @@
 
 #include "mpi.h"
 
-
 using std::to_string;
 
 IOH5::IOH5(string folder) {
@@ -49,6 +48,10 @@ void IOH5::operator()(Grid* grid, Field* field) {
     m_end;
 }
 
+void IOH5::dump_ghost(const bool dump_ghost) {
+    dump_ghost_ = dump_ghost;
+}
+
 void IOH5::apply(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -62,8 +65,15 @@ void IOH5::hdf5_write_header_(const Grid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the full name
-    string folder      = folder_ + "/" + filename_;
-    string extFilename = folder_ + "/" + filename_ + "/" + filename_ + "_rank" + to_string(mpirank_) + ".h5";
+    string folder;
+    string extFilename;
+    if (dump_ghost_) {
+        folder      = folder_ + "/g_" + filename_;
+        extFilename = folder_ + "/g_" + filename_ + "/g_" + filename_ + "_rank" + to_string(mpirank_) + ".h5";
+    } else {
+        folder      = folder_ + "/" + filename_;
+        extFilename = folder_ + "/" + filename_ + "/" + filename_ + "_rank" + to_string(mpirank_) + ".h5";
+    }
     // create the folder if it does not exist
     struct stat st = {0};
     if (stat(folder.c_str(), &st) == -1) {
@@ -127,7 +137,7 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
     hsize_t memcount[4]  = {1, M_N, M_N, M_N};
     hsize_t memblock[4]  = {1, 1, 1, 1};
     hsize_t memstride[4] = {(hsize_t)fid->lda(), 1, 1, 1};
-    hsize_t memoffset[4] = {0, 0, 0, 0};  // offset in memory
+    hsize_t memoffset[4] = {0, M_GS, M_GS, M_GS};  // offset in memory !! we shift the memory to get the real pointer, not the (0,0,0) one
 
     if (dump_ghost_) {
         // size fo the file block
@@ -139,9 +149,9 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
         memcount[2] = M_STRIDE;
         memcount[3] = M_STRIDE;
         // offset in memory
-        memoffset[1] = -M_GS;
-        memoffset[2] = -M_GS;
-        memoffset[3] = -M_GS;
+        memoffset[1] = 0;
+        memoffset[2] = 0;
+        memoffset[3] = 0;
     }
 
     //looping over the vector components.
@@ -154,8 +164,9 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
         status    = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, stride, count, bsize);
         // select the hyperslab of the memory
         status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, memoffset, memstride, memcount, memblock);
-        // do the writting
-        status = H5Dwrite(fileset, H5T_NATIVE_DOUBLE, memspace, filespace, H5P_DEFAULT, block->data(fid));
+        // do the writting for the data, we need to shift it by hand since memoffset cannot be < 0
+        real_p data = block->data(fid) + m_midx(-M_GS, -M_GS, -M_GS, 0, block);
+        status = H5Dwrite(fileset, H5T_NATIVE_DOUBLE, memspace, filespace, H5P_DEFAULT,data );
     }
 
     //-------------------------------------------------------------------------
@@ -175,8 +186,13 @@ void IOH5::hdf5_write_footer_(const Grid* grid) {
 void IOH5::xmf_write_header_(const Grid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
-    sc_MPI_Comm comm  = grid->mpicomm();
-    string      fname = folder_ + "/" + filename_ + ".xmf";
+    sc_MPI_Comm comm = grid->mpicomm();
+    string fname;
+    if (dump_ghost_) {
+        fname = folder_ + "/g_" + filename_ + ".xmf";
+    } else {
+        fname = folder_ + "/" + filename_ + ".xmf";
+    }
     // rank 0 creates the folder if it doesn't exist
     if (mpirank_ == 0) {
         struct stat st = {0};
@@ -254,7 +270,11 @@ void IOH5::xmf_write_footer_(const Grid* grid) {
 void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
-    string fname     = filename_ + "_";
+    if (dump_ghost_) {
+        string fname = "g_" + filename_ + "_";
+    } else {
+        string fname = filename_ + "_";
+    }
     string attribute = "tree" + to_string(qid->tid) + "_quad" + to_string(qid->qid);
     string folder    = folder_;
     // get grid specs
@@ -313,7 +333,11 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
 
     sprintf(msg, "%s%-128s", msg, line);
     // - L14
-    sprintf(line, "\n                      %s/%s_rank%d.h5:/%s", filename_.c_str(), filename_.c_str(), mpirank_, attribute.c_str());
+    if (dump_ghost_) {
+        sprintf(line, "\n                      g_%s/g_%s_rank%d.h5:/%s", filename_.c_str(), filename_.c_str(), mpirank_, attribute.c_str());
+    } else {
+        sprintf(line, "\n                      %s/%s_rank%d.h5:/%s", filename_.c_str(), filename_.c_str(), mpirank_, attribute.c_str());
+    }
     sprintf(msg, "%s%-128s", msg, line);
     // - L15
     sprintf(msg, "%s%-128s", msg, "\n                  </DataItem>");
@@ -324,7 +348,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     // - L18
     sprintf(msg, "%s%-128s", msg, "\n                  <DataItem Dimensions=\"1\" NumberType=\"UInt\" Format=\"XML\">");
     // - L19
-    sprintf(line, "\n                      %d",mpirank_);
+    sprintf(line, "\n                      %d", mpirank_);
     sprintf(msg, "%s%-128s", msg, line);
     // - L20
     sprintf(msg, "%s%-128s", msg, "\n                  </DataItem>");
@@ -335,7 +359,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     // - L23
     sprintf(msg, "%s%-128s", msg, "\n                  <DataItem Dimensions=\"1\" NumberType=\"UInt\" Format=\"XML\">");
     // - L24
-    sprintf(line, "\n                      %d",qid->tid);
+    sprintf(line, "\n                      %d", qid->tid);
     sprintf(msg, "%s%-128s", msg, line);
     // - L25
     sprintf(msg, "%s%-128s", msg, "\n                  </DataItem>");

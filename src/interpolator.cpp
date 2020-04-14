@@ -11,8 +11,8 @@
 //     if()
 //     // create a subblock describing the ghost memory
 //     int gstart[3] = {0,0,0};
-//     int grange[3] = {M_N,M_N,M_N};
-//     SubBlock ghostblock = SubBlock(0,M_N,gstart,grange);
+//     int gend[3] = {M_N,M_N,M_N};
+//     SubBlock ghostblock = SubBlock(0,M_N,gstart,gend);
 //     real_p src_data = block->data_src();
 
 //     interpolate_(dlvl,shift,&ghostblock,src_data,block,trg_data);
@@ -61,16 +61,23 @@ void Interpolator::interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     // create the interpolation context
     interp_ctx_t ctx;
 
+
+    m_verb("entering interpolator with shift = %d %d %d",shift[0],shift[1],shift[2]);
+    m_verb("entering interpolator with srcstart = %d %d %d",block_src->start(0),block_src->start(1),block_src->start(2));
+    m_verb("entering interpolator with srcend = %d %d %d",block_src->end(0),block_src->end(1),block_src->end(2));
+    m_verb("entering interpolator with trgstart = %d %d %d",block_trg->start(0),block_trg->start(1),block_trg->start(2));
+    m_verb("entering interpolator with trgend = %d %d %d",block_trg->end(0),block_trg->end(1),block_trg->end(2));
+
     // get memory details
     for (int id = 0; id < 3; id++) {
         // the parent starting and ending is place form the child point of view
 #ifndef NDEBUG
         // the starting position of the source contains the ghosts, by definition
-        ctx.srcstart[id] = (block_src->start(id) - block_src->gs()) - shift[id];
-        ctx.srcend[id]   = block_src->start(id) - block_src->gs() + block_src->range(id) - shift[id];
+        ctx.srcstart[id] = block_src->start(id) - shift[id];
+        ctx.srcend[id]   = block_src->end(id) - shift[id];
 #endif
         ctx.trgstart[id] = block_trg->start(id);
-        ctx.trgend[id]   = block_trg->start(id) + block_trg->range(id);
+        ctx.trgend[id]   = block_trg->end(id);
     }
     ctx.srcstr = block_src->stride();
     ctx.trgstr = block_trg->stride();
@@ -79,6 +86,8 @@ void Interpolator::interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
     ctx.sdata = data_src + m_midx(shift[0], shift[1], shift[2], 0, block_src);
     ctx.tdata = data_trg;
+
+    
 
     // call the correct function
     if (dlvl == -1) {

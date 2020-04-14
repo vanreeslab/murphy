@@ -46,7 +46,7 @@ class IOH5 : public ConstOperatorF {
     IOH5(string folder);
     ~IOH5();
 
-    void dump_ghost(const bool dump_ghost) { dump_ghost_ = dump_ghost; };
+    void dump_ghost(const bool dump_ghost);
 
     void apply(const qid_t* qid, GridBlock* block, const Field* fid) override;
     void operator()(Grid* grid, Field* field) override;

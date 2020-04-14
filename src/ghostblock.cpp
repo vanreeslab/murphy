@@ -54,20 +54,21 @@ void GhostBlock::GhostBlock_(GridBlock* me, const qdrt_t* ngh, const real_t pos_
     // compute the lenght of a quadrant at the neighbor's level
     real_t len_ngh = m_quad_len(ngh->level);
 
+    m_verb("my location = %f %f %f, my neighbor = %f %f %f\n",me->xyz(0),me->xyz(1),me->xyz(2),pos_ngh[0],pos_ngh[1],pos_ngh[2]);
+
     for (int id = 0; id < 3; id++) {
         // the shift = (my position - the neighbor position) expressed in the number of point in my neighbor
-        real_t shift = ((me->xyz(id) - pos_ngh[id]) / len_ngh) * M_N;
-        shift_[id]   = (lid_t)shift;
-        m_assert(((real_t)shift_[id]) == shift, "the shift has to be an integer");
+        real_t shift_pos = me->xyz(id) - pos_ngh[id];
+        shift_[id]       = (lid_t)(shift_pos / len_ngh) * M_N;
         // the start = the position of my neighbor in my frame, bounded to 0
-        real_t start = m_max(pos_ngh[id] - me->xyz(id), 0.0) / me->hgrid(id);
-        start_[id]   = (lid_t)start;
-        m_assert(((real_t)start_[id]) == start, "the start position has to be an integer");
-        // the range = how many my nieghbor can give to me - how many I can receive
-        real_t range = m_min(len_ngh / me->hgrid(id), me->stride() - start_[0]);
-        range_[id]   = (lid_t)range;
-        m_assert(((real_t)range_[id]) == range, "the range has to be an integer");
+        lid_t start_idx = (lid_t)((pos_ngh[id] - me->xyz(id)) / me->hgrid(id));
+        start_[id]      = m_max(start_idx, -me->gs());
+        // the end = min of how many my nieghbor can give to me and how many I can receive
+        lid_t end_idx = (lid_t)((pos_ngh[id] + len_ngh - me->xyz(id)) / me->hgrid(id));
+        end_[id]      = m_min(end_idx, me->end(id) + me->gs());
+        // m_assert(((real_t)end_[id]) == end, "the end has to be an integer");
     }
     //-------------------------------------------------------------------------
+    m_verb("ghost block create: %d %d %d to %d %d %d with shift = %d %d %d",start_[0],start_[1],start_[2],end_[0],end_[1],end_[2],shift_[0],shift_[1],shift_[2]);
     m_end;
 }

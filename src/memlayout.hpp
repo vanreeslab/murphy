@@ -12,7 +12,7 @@ class MemLayout {
     virtual lid_t gs() const                = 0;
     virtual lid_t stride() const            = 0;
     virtual lid_t start(const int id) const = 0;
-    virtual lid_t range(const int id) const = 0;
+    virtual lid_t end(const int id) const = 0;
 };
 
 #endif  // SRC_MEMLAYOUT_HPP_
