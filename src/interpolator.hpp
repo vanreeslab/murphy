@@ -49,7 +49,7 @@ class Interpolator {
     // virtual void operator()(const Field* field, const sid_t ida, GhostBlock* block);
     // virtual void operator()(const Field* field, const sid_t ida, GridBlock* block, GridBlock* block_trg);
     // virtual void operator()(const Field* field, const sid_t ida, GridBlock* block_trg, MemLayout* block_src, real_p data_src);
-    virtual void interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+    virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
 
    protected:
     virtual void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const = 0;

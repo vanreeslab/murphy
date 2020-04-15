@@ -56,7 +56,7 @@ real_p GridBlock::data(const Field* fid, const sid_t ida) {
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
     // check the alignment in memory
     real_p data = it->second + m_zeroidx(ida, this);
-    m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
+    m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
     return data;
 #else
     return data_map_[fid->name()] + m_zeroidx(ida, this);
@@ -75,9 +75,8 @@ const real_p GridBlock::data(const Field* fid) const {
 #endif
 }
 
-void GridBlock::AddField(const qid_t* qid, Field* fid, nullptr_t ctx) {
+void GridBlock::AddField(Field* fid) {
     m_begin;
-    m_assert(ctx == nullptr, "no context is need in this function");
     //-------------------------------------------------------------------------
     string name = fid->name();
     // try to find the field
@@ -93,13 +92,21 @@ void GridBlock::AddField(const qid_t* qid, Field* fid, nullptr_t ctx) {
     m_end;
 }
 
-void GridBlock::DeleteField(const qid_t* qid, Field* fid, nullptr_t ctx) {
+void GridBlock::DeleteField(Field* fid) {
     m_begin;
-    m_assert(ctx == nullptr, "no context is need in this function");
     //-------------------------------------------------------------------------
     string name = fid->name();
-    m_free(data_map_[name]);
-    data_map_.erase(name);
+    // try to find the field
+    datamap_t::iterator it = data_map_.find(name);
+    // if not found, create it
+    if (it != data_map_.end()) {
+        m_verb("deleting field %s to the block", name.c_str());
+        m_free(data_map_[name]);
+        data_map_.erase(name);
+    } else {
+        m_verb("no field %s in the block", name.c_str());
+    }
+
     //-------------------------------------------------------------------------
     m_end;
 }

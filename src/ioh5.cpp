@@ -25,20 +25,22 @@ IOH5::~IOH5() {
     m_end;
 }
 
-void IOH5::operator()(Grid* grid, Field* field) {
+void IOH5::operator()(ForestGrid* grid, Field* field) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    IOH5::operator()(grid, field, field->name());
+    //-------------------------------------------------------------------------
+    m_end;
+}
+void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the field name
-    filename_ = field->name();
+    filename_ = name;
     mpirank_  = grid->mpirank();
     // print the header
     xmf_write_header_(grid);
     hdf5_write_header_(grid);
-    // // compute the ghost if needed:
-    // if(dump_ghost_){
-    //     exchange_t* ex= grid_ghost_start(grid,field);
-    //     grid_ghost_end(grid,ex,field);
-    // }
     // call the standard operator
     ConstOperatorF::operator()(grid, field);
     // print the footer
@@ -52,7 +54,7 @@ void IOH5::dump_ghost(const bool dump_ghost) {
     dump_ghost_ = dump_ghost;
 }
 
-void IOH5::apply(const qid_t* qid, GridBlock* block, const Field* fid) {
+void IOH5::ApplyConstOperatorF(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     xmf_write_block_(qid, block, fid);
@@ -61,7 +63,7 @@ void IOH5::apply(const qid_t* qid, GridBlock* block, const Field* fid) {
     m_end;
 }
 
-void IOH5::hdf5_write_header_(const Grid* grid) {
+void IOH5::hdf5_write_header_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the full name
@@ -179,11 +181,11 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
     m_end;
 }
 
-void IOH5::hdf5_write_footer_(const Grid* grid) {
+void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
     H5Fclose(hdf5_file_);
 }
 
-void IOH5::xmf_write_header_(const Grid* grid) {
+void IOH5::xmf_write_header_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     sc_MPI_Comm comm = grid->mpicomm();
@@ -241,7 +243,7 @@ void IOH5::xmf_write_header_(const Grid* grid) {
     m_end;
 }
 
-void IOH5::xmf_write_footer_(const Grid* grid) {
+void IOH5::xmf_write_footer_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     // we have to wait that everybody has finished before writting the footer

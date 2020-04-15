@@ -3,10 +3,10 @@
 #include <iostream>
 
 #include "field.hpp"
+#include "ghost.hpp"
 #include "grid.hpp"
 #include "ioh5.hpp"
 #include "setvalues.hpp"
-#include "ghost.hpp"
 #include "wavelet.hpp"
 
 int main(int argc, char** argv) {
@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
         int  l[3]        = {1, 2, 3};
 
         // create a grid
-        Grid*  grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
+        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
         Field* vort = new Field("vorticity", 3);
         grid->AddField(vort);
@@ -29,25 +29,25 @@ int main(int argc, char** argv) {
         SetGaussian gaussian  = SetGaussian(0.1, center);
         gaussian(grid, vort);
 
-        // create a dumper and dump
-        IOH5 mydump1 = IOH5("data");
-        mydump1(grid, vort);
-
-        // create a ghost
-        Wavelet<3>* interp = new Wavelet<3>();
-        Ghost* ghost = new Ghost(grid,interp);
-
-        ghost->pull(vort);
+        grid->GhostPull(vort);
 
         // create a dumper and dump
         IOH5 mydump2 = IOH5("data");
         mydump2.dump_ghost(true);
         mydump2(grid, vort);
 
-    
+        grid->Refine(1);
+
+        // create a dumper and dump
+        IOH5 mydump1 = IOH5("data");
+        mydump1(grid, vort,"vort_fine");
+
+
+        grid->Coarsen(1);
+
+        mydump1(grid, vort,"vort_coarse");
+
         // destroy the grid and the field
-        delete(interp);
-        delete(ghost);
         delete (vort);
         delete (grid);
     }

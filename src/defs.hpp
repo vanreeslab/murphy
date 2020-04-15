@@ -218,7 +218,7 @@
         if (!(cond)) {                                                                                               \
             char def_nhyzpns[1024];                                                                                  \
             sprintf(def_nhyzpns, __VA_ARGS__);                                                                       \
-            fprintf(stderr, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)", #cond, def_nhyzpns, __FILE__, __LINE__); \
+            fprintf(stderr, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)\n", #cond, def_nhyzpns, __FILE__, __LINE__); \
             MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                               \
         }                                                                                                            \
     })

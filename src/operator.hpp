@@ -30,7 +30,7 @@
 #include <limits>
 
 #include "field.hpp"
-#include "grid.hpp"
+#include "forestgrid.hpp"
 #include "gridblock.hpp"
 #include "murphy.hpp"
 
@@ -50,11 +50,11 @@ class OperatorS {
      * @param block the block itself
      * @param fid the field on which we execute the operation
      */
-    virtual void apply(const qid_t* qid, GridBlock* block) = 0;
+    virtual void ApplyOperatorS(const qid_t* qid, GridBlock* block) = 0;
     /**
      * @brief call OperatorF::apply() on each block and change the ghost status of Field to `false`
      */
-    virtual void operator()(Grid* grid);
+    virtual void operator()(ForestGrid* grid);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF::DoOp()) to apply the operation to a considered Block
@@ -80,11 +80,11 @@ class OperatorF {
      * @param block the block itself
      * @param fid the field on which we execute the operation
      */
-    virtual void apply(const qid_t* qid, GridBlock* block, Field* fid) = 0;
+    virtual void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) = 0;
     /**
      * @brief call OperatorF::apply() on each block and change the ghost status of Field to `false`
      */
-    virtual void operator()(Grid* grid, Field* field);
+    virtual void operator()(ForestGrid* grid, Field* field);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF::DoOp()) to apply the operation to a considered Block
@@ -110,11 +110,11 @@ class ConstOperatorF {
      * @param block the block itself
      * @param fid the field on which we execute it
      */
-    virtual void apply(const qid_t* qid, GridBlock* block, const Field* fid) = 0;
+    virtual void ApplyConstOperatorF(const qid_t* qid, GridBlock* block, const Field* fid) = 0;
     /**
      * @brief call ConstOperatorF::apply() on each block
      */
-    virtual void operator()(Grid* grid, Field* field);
+    virtual void operator()(ForestGrid* grid, Field* field);
 };
 /**
  * @brief this function is called by DoOp_() function (through ConstOperatorF::DoOp()) to apply the operation to a considered Block
@@ -141,11 +141,11 @@ class OperatorF2F {
     * @param fid_src the source fi
     * @param fid_trg 
     */
-    virtual void apply(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
+    virtual void ApplyOperatorF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
     /**
      * @brief call OperatorF2F::apply() on each block and change the ghost status of the Field field_trg to `false`
      */
-    virtual void operator()(Grid* grid, const Field* field_src, Field* field_trg);
+    virtual void operator()(ForestGrid* grid, const Field* field_src, Field* field_trg);
 };
 /**
  * @brief this function is called by DoOp_() function (through OperatorF2F::DoOp()) to apply the operation to a considered Block
@@ -195,7 +195,7 @@ using op_t = void (*)(const qid_t* qid, GridBlock* block, F... fid, T);
  * @param data the user-defined data forwared to the operator
  */
 template <typename O, typename T, typename... F>
-void DoOp_F_(const O op, Grid* grid, F... field, T data) {
+void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -225,7 +225,7 @@ void DoOp_F_(const O op, Grid* grid, F... field, T data) {
 
 //=================================================================================================
 /**
- * @brief wraps the function DoOp_() for an operator (`op_t<T, Field*>`, see @ref op_t), which performs the actual implementation
+ * @brief wraps the function DoOp_F_() for an operator (`op_t<T, Field*>`, see @ref op_t), which performs the actual implementation
  * 
  * We first call the operation on the blocks, then set the ghosts as changed
  * 
@@ -236,7 +236,7 @@ void DoOp_F_(const O op, Grid* grid, F... field, T data) {
  * @param data the context, i.e. user custom data to forward to the operator
  */
 template <typename T>
-void DoOp(const op_t<T, Field*> op, Grid* grid, Field* field, T data) {
+void DoOp(const op_t<T, Field*> op, ForestGrid* grid, Field* field, T data) {
     // execute the operator on the blocks
     DoOp_F_<op_t<T, Field*>, T, Field*>(op, grid, field, data);
     // set the ghost as changed
@@ -245,7 +245,7 @@ void DoOp(const op_t<T, Field*> op, Grid* grid, Field* field, T data) {
 }
 
 /**
- * @brief wraps the function DoOp_() for a constant operator (`const op_t<T, const Field*>`, see @ref op_t), which performs the actual implementation
+ * @brief wraps the function DoOp_F_() for a constant operator (`const op_t<T, const Field*>`, see @ref op_t), which performs the actual implementation
  * 
  * 
  * @tparam T the type of data which is given as context to the operator
@@ -255,14 +255,14 @@ void DoOp(const op_t<T, Field*> op, Grid* grid, Field* field, T data) {
  * @param data the context, i.e. user custom data to forward to the operator
  */
 template <typename T>
-void DoOp(const op_t<T, const Field*> op, Grid* grid, Field* field, T data) {
+void DoOp(const op_t<T, const Field*> op, ForestGrid* grid, Field* field, T data) {
     // execute the operator on the blocks
     DoOp_F_<op_t<T, const Field*>, T, const Field*>(op, grid, field, data);
     // no change of the ghost is needed
 }
 
 /**
- * @brief wraps the function DoOp_() for a field to field operator (`op_t<T, const Field*, Field*>`, see @ref op_t), which performs the actual implementation
+ * @brief wraps the function DoOp_F_() for a field to field operator (`op_t<T, const Field*, Field*>`, see @ref op_t), which performs the actual implementation
  * 
  * We first call the operation on the blocks, then set the ghosts as changed
  * 
@@ -273,65 +273,12 @@ void DoOp(const op_t<T, const Field*> op, Grid* grid, Field* field, T data) {
  * @param data the context, i.e. user custom data to forward to the operator
  */
 template <typename T>
-void DoOp(const op_t<T, const Field*, Field*> op, Grid* grid, Field* field_src, Field* field_trg, T data) {
+void DoOp(const op_t<T, const Field*, Field*> op, ForestGrid* grid, Field* field_src, Field* field_trg, T data) {
     // execute the operation on the blocks
     DoOp_F_<op_t<T, const Field*, Field*>, T, const Field*, Field*>(op, grid, field_src, field_trg, data);
     // set the field_trg ghosts as changed
     m_verb("setting the ghosts of %s to false", field_trg->name().c_str());
     field_trg->ghost_status(false);
-}
-
-//=========================================================================================
-/**
- * @brief pointer to an member function of the class Block
- * 
- * @tparam T the type of the user-defined variable
- */
-template <typename T>
-using bop_t = void (GridBlock::*)(const qid_t* qid, Field* fid, T);
-
-/**
- * @brief iterates over all the blocks in the forest and call the block member function provided
- * 
- * Because we operate on Block member functions, we assume that the mesh is not available.
- * Hence, we use the forest instead of the mesh to iterate on the blocks.
- * 
- * @tparam T the type of data which is given as context to the block function
- * @param op the operator itself, see definition of bop_t
- * @param grid the grid on which one want to iterate
- * @param field the field on which the operation has to be done
- * @param data the context, i.e. user custom data to forward to the operator
- */
-template <class T>
-void DoOp(const bop_t<T> op, Grid* grid, Field* field, T data) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    // get the grid info
-    p8est_t* forest = grid->forest();
-
-    for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
-        p8est_tree_t* tree    = p8est_tree_array_index(forest->trees, it);
-        const size_t  nqlocal = tree->quadrants.elem_count;
-        m_assert(nqlocal < (numeric_limits<lid_t>::max()), "has to be smaller than the largest integer...");
-
-#pragma omp parallel for firstprivate(data)
-        for (lid_t bid = 0; bid < nqlocal; bid++) {
-            // get the id
-            qid_t myid;
-            myid.cid = bid + tree->quadrants_offset;
-            myid.qid = bid;
-            myid.tid = it;
-            // the quadrants can be from differents trees -> get the correct one
-            p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-            GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
-            // send the task following https://en.cppreference.com/w/cpp/language/pointer
-            (block->*op)(&myid, field, data);
-        }
-        // downgrade the ghost status since we changed its value
-        field->ghost_status(false);
-        //-------------------------------------------------------------------------
-        m_end;
-    }
 }
 
 #endif  // SRC_OPERATOR_HPP_

@@ -1,15 +1,14 @@
-#ifndef __GHOST_HPP
-#define __GHOST_HPP
+#ifndef SRC_GHOST_HPP_
+#define SRC_GHOST_HPP_
 
-#include <p8est.h>
-#include <p8est_mesh.h>
+#include <list>
 
+#include "forestgrid.hpp"
 #include "ghostblock.hpp"
-#include "grid.hpp"
+#include "interpolator.hpp"
 #include "murphy.hpp"
 #include "operator.hpp"
 #include "physblock.hpp"
-#include "interpolator.hpp"
 
 using std::list;
 
@@ -36,42 +35,36 @@ class Ghost : public OperatorF, public OperatorS {
     real_t* mirrors_ = nullptr;  //!< memory space for the mirror blocks
     real_t* ghosts_  = nullptr;  //!< memory space for the ghost blocks
 
-    Grid* grid_ = nullptr;  //!< the associated grid
-
     sid_t ida_ = -1;  //!< current ghosting dimension
 
-    real_p* coarse_tmp_; //!< working memory that contains a coarse version of the current block, one per thread
+    ForestGrid* grid_;
+    Interpolator* interp_;
 
-    Interpolator* interpolator_;//!< current interpolator used
+    real_p* coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
 
    public:
-    Ghost(Grid* grid,Interpolator* interpolator);
+    Ghost(ForestGrid* grid);
     ~Ghost();
 
-    /**
-     * @brief apply the ghost computation for a field in a given direction
-     * 
-     * @param field the current field
-     * @param current_ida the working dimension
-     */
-    void pull(Field* field);
+    
+    void Pull(Field* field,Interpolator* interp);
 
     /**
      *  @name OperatorS implementation
      *  @{
      */
-    void apply(const qid_t* qid, GridBlock* block) override;
+    void ApplyOperatorS(const qid_t* qid, GridBlock* block) override;
     /** @} */
 
     /**
      *  @name ConstOperatorF implementation
      *  @{
      */
-    void apply(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) override;
     /** @} */
 
    protected:
     //
 };
 
-#endif
+#endif  // SRC_GHOST_HPP_

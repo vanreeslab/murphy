@@ -21,7 +21,8 @@ class Field {
     sid_t  lda() const { return lda_; };
     string name() const { return name_; };
 
-    void ghost_status(bool status) { ghost_status_ = status; };
+    void ghost_status(bool status) { ghost_status_ = status; }
+    inline bool ghost_status() { return ghost_status_ ; }
 
     // void SelectDimension(const sid_t ida);
     // void ReleaseDimension(const sid_t ida);

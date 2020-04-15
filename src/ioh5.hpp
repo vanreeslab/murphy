@@ -11,6 +11,7 @@
 #include "hdf5.h"
 #include "murphy.hpp"
 #include "operator.hpp"
+#include "forestgrid.hpp"
 
 // define macros to strigyfy, both are required!
 #define STR(a) ZSTR(a)
@@ -32,11 +33,11 @@ class IOH5 : public ConstOperatorF {
     MPI_Datatype line_type_;
 
     // headers
-    void xmf_write_header_(const Grid* grid);
-    void hdf5_write_header_(const Grid* grid);
+    void xmf_write_header_(const ForestGrid* grid);
+    void hdf5_write_header_(const ForestGrid* grid);
     // footers
-    void xmf_write_footer_(const Grid* grid);
-    void hdf5_write_footer_(const Grid* grid);
+    void xmf_write_footer_(const ForestGrid* grid);
+    void hdf5_write_footer_(const ForestGrid* grid);
     // blocks
     void xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid);
     void hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fid);
@@ -48,8 +49,10 @@ class IOH5 : public ConstOperatorF {
 
     void dump_ghost(const bool dump_ghost);
 
-    void apply(const qid_t* qid, GridBlock* block, const Field* fid) override;
-    void operator()(Grid* grid, Field* field) override;
+    void ApplyConstOperatorF(const qid_t* qid, GridBlock* block, const Field* fid) override;
+
+    void operator()(ForestGrid* grid, Field* field, string name) ;
+    void operator()(ForestGrid* grid, Field* field) override;
 };
 
 #endif

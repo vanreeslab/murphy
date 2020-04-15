@@ -11,13 +11,14 @@ static const sid_t corner2face[8][3] = {{0, 2, 4}, {1, 2, 4}, {0, 3, 4}, {1, 3, 
 static const int facelimit[4] = {0, 24, 120, 144};
 static const int edgelimit[4] = {0, 24, 72, 96};
 
-Ghost::Ghost(Grid* grid,Interpolator* interpolator) {
+Ghost::Ghost(ForestGrid* grid) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
+    // get the important pointers
     grid_           = grid;
-    interpolator_   = interpolator;
-    p8est_t* forest = grid_->forest();
+    p8est_t* forest = grid->forest();
+
     // allocate the lists
     block_sibling_ = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
     ghost_sibling_ = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
@@ -40,9 +41,9 @@ Ghost::Ghost(Grid* grid,Interpolator* interpolator) {
 
     // initialize the working coarse memory
     int nthreads = omp_get_max_threads();
-    coarse_tmp_   = (real_p*)m_calloc(sizeof(real_p) * nthreads);
+    coarse_tmp_  = (real_p*)m_calloc(sizeof(real_p) * nthreads);
     for (int it = 0; it < nthreads; it++) {
-        coarse_tmp_[it] =(real_t*) m_calloc(sizeof(real_t) * M_CLEN * M_CLEN * M_CLEN);
+        coarse_tmp_[it] = (real_t*)m_calloc(sizeof(real_t) * M_CLEN * M_CLEN * M_CLEN);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -53,7 +54,7 @@ Ghost::~Ghost() {
     //-------------------------------------------------------------------------
     p8est_t* forest = grid_->forest();
     // clear the lists
-    for (int ib = 0; ib < forest->local_num_quadrants; ib++) {
+    for (lid_t ib = 0; ib < forest->local_num_quadrants; ib++) {
         // free the blocks
         for (auto biter = block_sibling_[ib]->begin(); biter != block_sibling_[ib]->end(); biter++) {
             delete (*biter);
@@ -103,20 +104,22 @@ Ghost::~Ghost() {
  * @param field 
  * @param current_ida 
  */
-void Ghost::pull(Field* field){
+void Ghost::Pull(Field* field, Interpolator* interp) {
     m_begin;
     //-------------------------------------------------------------------------
-    
-    for(sid_t ida = 0; ida<3; ida++){
+    // store the current interpolator
+    interp_ = interp;
+
+    // apply on all fields
+    for (sid_t ida = 0; ida < 3; ida++) {
         // setup the current ida
         ida_ = ida;
         // send the ghost
 
-
         // receive the ghosts
-        
+
         // get a ghost copy
-        OperatorF::operator()(grid_,field);
+        OperatorF::operator()(grid_, field);
     }
     // set the ghost fields as ready
     field->ghost_status(true);
@@ -130,7 +133,7 @@ void Ghost::pull(Field* field){
  * @param qid 
  * @param block 
  */
-void Ghost::apply(const qid_t* qid, GridBlock* block) {
+void Ghost::ApplyOperatorS(const qid_t* qid, GridBlock* block) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the current lists
@@ -152,9 +155,8 @@ void Ghost::apply(const qid_t* qid, GridBlock* block) {
         // reset the quadrant and encoding stuff
         sc_array_reset(ngh_quad);
         sc_array_reset(ngh_enc);
-        // sc_array_reset(ngh_qid);
         // get the neighboring quadrant
-        p8est_mesh_get_neighbors(forest, ghost, mesh, qid->cid, ibidule, ngh_quad, ngh_enc, NULL);
+        p8est_mesh_get_neighbors(grid_->forest(), grid_->ghost(), grid_->mesh(), qid->cid, ibidule, ngh_quad, ngh_enc, NULL);
         // decode the status and count the ghosts
         const size_t nghosts = ngh_enc->elem_count;
         //---------------------------------------------------------------------
@@ -205,22 +207,22 @@ void Ghost::apply(const qid_t* qid, GridBlock* block) {
 }
 
 /**
- * @brief computes the ghost points for a block given a field and the direction ida_
+ * @brief computes the ghost points for a block, given a field and the direction ida_
  * 
  * @param qid 
  * @param block 
  * @param fid 
  */
-void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
+void Ghost::ApplyOperatorF(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the working direction given the thread
     const int ithread = omp_get_thread_num();
-    real_p tmp = coarse_tmp_[ithread];
+    real_p    tmp     = coarse_tmp_[ithread];
 
     // get a subblock describing the ghost memory
     lid_t     ghost_start[3] = {0, 0, 0};
-    lid_t     ghost_end[3] = {M_N, M_N, M_N};
+    lid_t     ghost_end[3]   = {M_N, M_N, M_N};
     SubBlock* ghost_subblock = new SubBlock(0, M_N, ghost_start, ghost_end);
 
     // determine if we have to use the coarse representationun
@@ -231,18 +233,18 @@ void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         // get the current blocks
         GridBlock* ngh_block = gblock->block_src();
         // get the memory pointers
-        real_p data_src = ngh_block->data(fid,ida_);
-        real_p data_trg = cur_block->data(fid,ida_);
+        real_p data_src = ngh_block->data(fid, ida_);
+        real_p data_trg = cur_block->data(fid, ida_);
         // launch the interpolation
-        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ngh_block,data_src,gblock,data_trg);
+        interp_->Interpolate(gblock->dlvl(), gblock->shift(), ngh_block, data_src, gblock, data_trg);
     }
     for (auto biter = ghost_sibling_[qid->cid]->begin(); biter != ghost_sibling_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);
         // get the memory pointers for the ghost, where the send/recv call put the meaningfull info
         real_p data_src = gblock->data_src();
-        real_p data_trg = cur_block->data(fid,ida_);
+        real_p data_trg = cur_block->data(fid, ida_);
         // launch the interpolation
-        interpolator_->interpolate(gblock->dlvl(),gblock->shift(),ghost_subblock,data_src,gblock,data_trg);
+        interp_->Interpolate(gblock->dlvl(), gblock->shift(), ghost_subblock, data_src, gblock, data_trg);
     }
     for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);
@@ -253,7 +255,6 @@ void Ghost::apply(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
         PhysBlock* gblock = (*piter);
     }
-
 
     delete (ghost_subblock);
 

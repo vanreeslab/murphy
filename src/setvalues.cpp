@@ -11,7 +11,7 @@ SetGaussian::SetGaussian(real_t sigma, real_t center[3]){
     m_end;
 }
 
-void SetGaussian::apply(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetGaussian::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
     m_begin;
     //-------------------------------------------------------------------------
     real_t        pos[3];
@@ -19,7 +19,6 @@ void SetGaussian::apply(const qid_t* qid, GridBlock* block, Field* fid) {
     const real_t* xyz     = block->xyz();
     const real_t* hgrid   = block->hgrid();
    
-
     for (sid_t ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
 

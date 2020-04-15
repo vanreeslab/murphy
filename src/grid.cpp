@@ -1,39 +1,13 @@
 #include "grid.hpp"
 
-#include <p8est_extended.h>
 #include <omp.h>
+#include <p8est_extended.h>
 
-#include "gridblock.hpp"
+#include "gridcallback.hpp"
 #include "operator.hpp"
+#include "wavelet.hpp"
 
 using std::string;
-
-void cback_CreateBlock(p8est_iter_volume_info_t * info,void *user_data) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    p8est_t*              forest     = info->p4est;
-    p8est_quadrant_t*     quad       = info->quad;
-    p4est_topidx_t        which_tree = info->treeid;
-    p8est_connectivity_t* connect    = forest->connectivity;
-    // get the starting position
-    real_t xyz[3];
-    p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-
-    real_t len        = m_quad_len(quad->level);
-    quad->p.user_data = new GridBlock(len, xyz, quad->level);
-    //-------------------------------------------------------------------------
-    m_end;
-}
-
-void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    p8est_quadrant_t* quad = info->quad;
-    delete ((GridBlock*)quad->p.user_data);
-    //-------------------------------------------------------------------------
-    m_end;
-}
-
 /**
  * @brief Construct a new grid_t: initialize the p8est objects
  * 
@@ -46,29 +20,23 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
  * @param comm the communicator to use
  * @param prof an existing profiler for the programm
  */
-Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof) {
+Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof)
+    : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
-    m_assert(ilvl >= 0, "the init level has to be >= 0");
-    m_assert(ilvl <= P8EST_MAXLEVEL, "the init level has to be <= P8EST_MAXLEVEL(=19)");
     //-------------------------------------------------------------------------
+    // create a default interpolator
+    interp_ = new Wavelet<3>();
+
+    // profiler
     prof_ = prof;
-
-    // create the connect as a box of L[0]xL[1]xL[2] trees
-    p8est_connectivity_t* connect = p8est_connectivity_new_brick(l[0], l[1], l[2], isper[0], isper[1], isper[2]);
-
-    // create the forest at a given level, the associated ghost and mesh object
-    forest_ = p8est_new_ext(comm, connect, 0, ilvl, 1, sizeof(GridBlock*), nullptr, nullptr);
-    ghost_  = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
-    mesh_   = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
-
-    // declare the mesh as valid
-    is_mesh_valid_ = true;
 
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
 
+    // create the ghosts structure
+    ghost_ = new Ghost(this);
     //-------------------------------------------------------------------------
-    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize,omp_get_max_threads());
+    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -79,15 +47,11 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
 Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
+    // destroy the interpolator
+    delete (interp_);
+    delete (ghost_);
     // destroy the remaining blocks
     p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
-    // destroy the structures
-    p8est_mesh_destroy(mesh_);
-    p8est_ghost_destroy(ghost_);
-    // destroy the connectivity and the forest
-    p8est_connectivity_t* connect = forest_->connectivity;
-    p8est_destroy(forest_);
-    p8est_connectivity_destroy(connect);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -96,12 +60,14 @@ size_t Grid::LocalMemSize() const {
     m_begin;
     //-------------------------------------------------------------------------
     size_t memsize = 0;
-    memsize += sizeof(forest_);
-    memsize += sizeof(ghost_);
-    memsize += sizeof(mesh_);
+
+    memsize += sizeof(fields_);
     memsize += sizeof(prof_);
-    memsize += sizeof(lda_) + lda_.size() * sizeof(sid_t);
-    memsize += forest_->local_num_quadrants * (M_N * M_N * M_N) * sizeof(real_t);
+    // memsize += ghost_->LocalMemSize();
+    // memsize += interp_->LocalMemSize();
+    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+        memsize += forest_->local_num_quadrants * (M_N * M_N * M_N) * fid->second->lda() * sizeof(real_t);
+    }
     //-------------------------------------------------------------------------
     m_end;
     return memsize;
@@ -116,19 +82,20 @@ size_t Grid::GlobalNumDof() const {
 
 bool Grid::IsAField(const Field* field) const {
     std::string key = field->name();
-    return (lda_.find(key) != lda_.end());
+    return (fields_.find(key) != fields_.end());
+    // return (std::find(fields_.begin(),fields_.end(),field) != fields_.end());
 }
 
 void Grid::AddField(Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
     if (!IsAField(field)) {
-        //get the key = name of the field
-        string key = field->name();
-        // create a new lda entry
-        lda_[key] = field->lda();
-        // add the field to everyblock
-        DoOp<nullptr_t>(&GridBlock::AddField, this, field, nullptr);
+        // add the field
+        fields_[field->name()] = field;
+        // allocate the field on every block
+        LoopOnGridBlock_(&GridBlock::AddField, field);
+    } else {
+        m_verb("field %s is already in the grid", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -138,13 +105,118 @@ void Grid::DeleteField(Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
     if (IsAField(field)) {
-        //get the key = name of the field
-        string key = field->name();
-        // create a new lda entry
-        lda_.erase(key);
         // add the field to everyblock
-        DoOp<nullptr_t>(&GridBlock::DeleteField, this, field, nullptr);
+        LoopOnGridBlock_(&GridBlock::DeleteField, field);
+        // remove the field
+        fields_.erase(field->name());
+    } else {
+        m_verb("field %s is not in the grid", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;
+}
+
+void Grid::GhostPull(Field* field) {
+    m_begin;
+    m_assert(interp_ != nullptr, "the inteprolator cannot be null");
+    m_assert(IsAField(field), "the field does not belong to this grid");
+    //-------------------------------------------------------------------------
+    // if already computed, return
+    if (field->ghost_status()) {
+        m_log("field %s has already valid ghosts", field->name().c_str());
+        return;
+    } else {
+        ghost_->Pull(field, interp_);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Grid::Refine(const sid_t delta_level) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // we create the new blocks
+    for (int id = 0; id < delta_level; id++) {
+        // compute the ghost needed by the interpolation
+        for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+            // set the working field before entering the callback
+            // working_callback_field_ = fid->second;
+            // get the ghosts needed by the interpolation
+            GhostPull(fid->second);
+        }
+        // delete the soon-to be outdated ghost and mesh
+        delete (ghost_);
+        ResetP4estGhostMesh();
+        // set the grid in the forest for the callback
+        forest_->user_pointer = (void*)this;
+        // do the p4est interpolation by callback
+        p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Yes, nullptr, cback_Interpolate);
+        // balance the partition
+        // TODO
+        // create a new ghost and mesh
+        SetupP4estGhostMesh();
+        ghost_ = new Ghost(this);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Grid::Coarsen(const sid_t delta_level) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // we create the new blocks
+    for (int id = 0; id < delta_level; id++) {
+        // compute the ghost needed by the interpolation
+        for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+            // set the working field before entering the callback
+            // working_callback_field_ = fid->second;
+            // get the ghosts needed by the interpolation
+            GhostPull(fid->second);
+        }
+        // delete the soon-to be outdated ghost and mesh
+        delete (ghost_);
+        ResetP4estGhostMesh();
+        // set the grid in the forest for the callback
+        forest_->user_pointer = (void*)this;
+        // do the p4est interpolation by callback
+        p8est_coarsen_ext(forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
+        // balance the partition
+        // TODO
+        // create a new ghost and mesh
+        SetupP4estGhostMesh();
+        ghost_ = new Ghost(this);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief iterates on the blocks and performs a simple @ref bop_t operation
+ * 
+ * @warning for allocation and block management only. Use Operators for computations
+ * 
+ * @param op 
+ * @param grid 
+ * @param field 
+ */
+void Grid::LoopOnGridBlock_(const bop_t op, Field* field) const {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // get the grid info
+    for (p4est_topidx_t it = forest_->first_local_tree; it <= forest_->last_local_tree; it++) {
+        p8est_tree_t* tree    = p8est_tree_array_index(forest_->trees, it);
+        const size_t  nqlocal = tree->quadrants.elem_count;
+
+#pragma omp parallel for
+        for (size_t bid = 0; bid < nqlocal; bid++) {
+            p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
+            GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+            // apply
+            (block->*op)(field);
+        }
+        // downgrade the ghost status since we changed its value
+        field->ghost_status(false);
+        //-------------------------------------------------------------------------
+        m_end;
+    }
 }
