@@ -9,7 +9,6 @@
  * @param data the associated memory location
  */
 GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_offset[3], real_p data) {
-    m_begin;
     m_assert(m_isaligned(data), "memory is not aligned, which is not good");
     //-------------------------------------------------------------------------
     data_src_ = data;
@@ -21,7 +20,6 @@ GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_o
     // setup the indexesd
     GhostBlock_(me, ngh, ngh_tree_offset);
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 /**
