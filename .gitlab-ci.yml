@@ -2,10 +2,8 @@
 # do this in front of every test
 default :
   image : immc/murphy-ci:v1.0
-  before_script:
-    - OMP_NUM_THREADS=1
-    - "mkdir -p build"
-    - "mkdir -p test/build"
+  # before_script:
+  #   - "export OMP_NUM_THREADS=1"
 
 # list of the stages
 stages:
@@ -17,6 +15,8 @@ stages:
 build gcc :
   stage: build
   script:
+    - "mkdir -p build"
+    - "mkdir -p test/build"
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
 
@@ -30,16 +30,29 @@ build test :
       - ./build/*.gcno
     when: on_success
   script:
+    - "mkdir -p build"
+    - "mkdir -p test/build"
     - "make destroy"
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
 
 # =============================================================================
-test :
+test no threads:
   stage: test
   dependencies:
     - build test
   script:
-    - "mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "OMP_NUM_THREADS=1 mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "gcovr -r . -e test "
+  artifacts:
+    reports:
+      junit: report_test_*.xml
+
+test with threads:
+  stage: test
+  dependencies:
+    - build test
+  script:
+    - "OMP_NUM_THREADS=4 mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     reports:
