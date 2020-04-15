@@ -1,7 +1,6 @@
 #include "physblock.hpp"
 
 PhysBlock::PhysBlock(const sid_t iface, GridBlock* block) {
-    m_begin;
     //-------------------------------------------------------------------------
     // remember the block origin
     gs_     = block->gs();
@@ -20,5 +19,4 @@ PhysBlock::PhysBlock(const sid_t iface, GridBlock* block) {
     start_[dir]       = (sign == 0) ? (-block->gs()) : (block->stride()-block->gs());
     normal_sign_[dir] = (sign == 0) ? -1 : 1;
     //-------------------------------------------------------------------------
-    m_end;
 }

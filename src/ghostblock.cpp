@@ -31,17 +31,14 @@ GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_o
  * @param ngh a locally own quadrant
  */
 GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh) {
-    m_begin;
     //-------------------------------------------------------------------------
     block_src_ = reinterpret_cast<GridBlock*>(ngh->p.user_data);
     // setup the indexes
     GhostBlock_(me, ngh, block_src_->xyz());
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 void GhostBlock::GhostBlock_(GridBlock* me, const qdrt_t* ngh, const real_t pos_ngh[3]) {
-    m_begin;
     //-------------------------------------------------------------------------
     // store my origin
     // origin_ = me;
@@ -53,8 +50,6 @@ void GhostBlock::GhostBlock_(GridBlock* me, const qdrt_t* ngh, const real_t pos_
 
     // compute the lenght of a quadrant at the neighbor's level
     real_t len_ngh = m_quad_len(ngh->level);
-
-    m_verb("my location = %f %f %f, my neighbor = %f %f %f\n",me->xyz(0),me->xyz(1),me->xyz(2),pos_ngh[0],pos_ngh[1],pos_ngh[2]);
 
     for (int id = 0; id < 3; id++) {
         // the shift = (my position - the neighbor position) expressed in the number of point in my neighbor
@@ -69,6 +64,4 @@ void GhostBlock::GhostBlock_(GridBlock* me, const qdrt_t* ngh, const real_t pos_
         // m_assert(((real_t)end_[id]) == end, "the end has to be an integer");
     }
     //-------------------------------------------------------------------------
-    m_verb("ghost block create: %d %d %d to %d %d %d with shift = %d %d %d",start_[0],start_[1],start_[2],end_[0],end_[1],end_[2],shift_[0],shift_[1],shift_[2]);
-    m_end;
 }

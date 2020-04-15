@@ -17,17 +17,17 @@ Ghost::Ghost(ForestGrid* grid) {
     //-------------------------------------------------------------------------
     // get the important pointers
     grid_           = grid;
-    p8est_t* forest = grid->forest();
+    p8est_mesh_t* mesh = grid->mesh();
 
     // allocate the lists
-    block_sibling_ = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    ghost_sibling_ = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    block_parent_  = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    ghost_parent_  = (list<GhostBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    phys_          = (list<PhysBlock*>**)m_calloc(forest->local_num_quadrants * sizeof(list<PhysBlock*>*));
+    block_sibling_ = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
+    ghost_sibling_ = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
+    block_parent_  = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
+    ghost_parent_  = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
+    phys_          = (list<PhysBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<PhysBlock*>*));
 
     // init the lists
-    for (int ib = 0; ib < forest->local_num_quadrants; ib++) {
+    for (int ib = 0; ib < mesh->local_num_quadrants; ib++) {
         // purge everything
         block_sibling_[ib] = new list<GhostBlock*>();
         ghost_sibling_[ib] = new list<GhostBlock*>();
@@ -37,7 +37,9 @@ Ghost::Ghost(ForestGrid* grid) {
     }
 
     // call the simple operator to init the lists
-    OperatorS::operator()(grid);
+    OperatorS::operator()(grid_);
+
+    // initialize the communications
 
     // initialize the working coarse memory
     int nthreads = omp_get_max_threads();
@@ -51,10 +53,11 @@ Ghost::Ghost(ForestGrid* grid) {
 
 Ghost::~Ghost() {
     m_begin;
+    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-    p8est_t* forest = grid_->forest();
+     p8est_mesh_t* mesh = grid_->mesh();
     // clear the lists
-    for (lid_t ib = 0; ib < forest->local_num_quadrants; ib++) {
+    for (lid_t ib = 0; ib < mesh->local_num_quadrants; ib++) {
         // free the blocks
         for (auto biter = block_sibling_[ib]->begin(); biter != block_sibling_[ib]->end(); biter++) {
             delete (*biter);
@@ -98,29 +101,31 @@ Ghost::~Ghost() {
     m_end;
 }
 
-/**
- * @brief takes ghost values among neighbors and update the block's values
- * 
- * @param field 
- * @param current_ida 
- */
-void Ghost::Pull(Field* field, Interpolator* interp) {
+void Ghost::PushToMirror(Field* field, sid_t ida) {
     m_begin;
     //-------------------------------------------------------------------------
-    // store the current interpolator
+    // store the current interpolator and dimension
+    ida_  = ida;
+    // loop on the mirrors and copy the values
+    LoopOnMirrorBlock_(&Ghost::PushToMirror_,field);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Ghost::MirrorToGhostSend() {
+}
+
+void Ghost::MirrorToGhostRecv() {
+}
+
+void Ghost::PullFromGhost(Field* field, sid_t ida, Interpolator* interp) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // store the current interpolator and dimension
     interp_ = interp;
-
-    // apply on all fields
-    for (sid_t ida = 0; ida < 3; ida++) {
-        // setup the current ida
-        ida_ = ida;
-        // send the ghost
-
-        // receive the ghosts
-
-        // get a ghost copy
-        OperatorF::operator()(grid_, field);
-    }
+    ida_    = ida;
+    // interpolate
+    OperatorF::operator()(grid_, field);
     // set the ghost fields as ready
     field->ghost_status(true);
     //-------------------------------------------------------------------------
@@ -134,7 +139,32 @@ void Ghost::Pull(Field* field, Interpolator* interp) {
  * @param block 
  */
 void Ghost::ApplyOperatorS(const qid_t* qid, GridBlock* block) {
+    //-------------------------------------------------------------------------
+    InitList_(qid, block);
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief computes the ghost points for a block, given a field and the direction ida_
+ * 
+ * @param qid 
+ * @param block 
+ * @param fid 
+ */
+void Ghost::ApplyOperatorF(const qid_t* qid, GridBlock* cur_block, Field* fid) {
+    //-------------------------------------------------------------------------
+    PullFromGhost_(qid, cur_block, fid);
+    //-------------------------------------------------------------------------
+}
+
+void Ghost::InitComm_() {
     m_begin;
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
     //-------------------------------------------------------------------------
     // get the current lists
     list<GhostBlock*>* bsibling = block_sibling_[qid->cid];
@@ -145,18 +175,31 @@ void Ghost::ApplyOperatorS(const qid_t* qid, GridBlock* block) {
 
     // //----------------------------------
     // // temporary sc array used to get the ghosts
-    sc_array_t*    ngh_quad = sc_array_new(sizeof(qdrt_t*));
-    sc_array_t*    ngh_enc  = sc_array_new(sizeof(int));
+    sc_array_t* ngh_quad;
+#pragma omp critical
+    {
+        ngh_quad = sc_array_new(sizeof(qdrt_t*));
+    }
+
+    sc_array_t* ngh_enc;
+#pragma omp critical
+    {
+        ngh_enc = sc_array_new(sizeof(int));
+    }
+
     p8est_t*       forest   = grid_->forest();
     p8est_mesh_t*  mesh     = grid_->mesh();
     p8est_ghost_t* ghost    = grid_->ghost();
 
     for (sid_t ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
-        // reset the quadrant and encoding stuff
-        sc_array_reset(ngh_quad);
-        sc_array_reset(ngh_enc);
-        // get the neighboring quadrant
-        p8est_mesh_get_neighbors(grid_->forest(), grid_->ghost(), grid_->mesh(), qid->cid, ibidule, ngh_quad, ngh_enc, NULL);
+        
+#pragma omp critical
+        {
+            // get the neighboring quadrant
+            sc_array_reset(ngh_quad);
+            sc_array_reset(ngh_enc);
+            p8est_mesh_get_neighbors(grid_->forest(), grid_->ghost(), grid_->mesh(), qid->cid, ibidule, ngh_quad, ngh_enc, NULL);
+        }
         // decode the status and count the ghosts
         const size_t nghosts = ngh_enc->elem_count;
         //---------------------------------------------------------------------
@@ -200,21 +243,25 @@ void Ghost::ApplyOperatorS(const qid_t* qid, GridBlock* block) {
             }
         }
     }
-    sc_array_destroy(ngh_quad);
-    sc_array_destroy(ngh_enc);
+#pragma omp critical
+    {
+        sc_array_destroy(ngh_quad);
+    }
+#pragma omp critical
+    {
+        sc_array_destroy(ngh_enc);
+    }
+    //-------------------------------------------------------------------------
+}
+
+void Ghost::PushToMirror_(const qid_t* qid, GridBlock* block, Field* fid) {
+    m_begin;
+    //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     m_end;
 }
 
-/**
- * @brief computes the ghost points for a block, given a field and the direction ida_
- * 
- * @param qid 
- * @param block 
- * @param fid 
- */
-void Ghost::ApplyOperatorF(const qid_t* qid, GridBlock* cur_block, Field* fid) {
-    m_begin;
+void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     //-------------------------------------------------------------------------
     // get the working direction given the thread
     const int ithread = omp_get_thread_num();
@@ -257,7 +304,33 @@ void Ghost::ApplyOperatorF(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     }
 
     delete (ghost_subblock);
+    //-------------------------------------------------------------------------
+}
 
+void Ghost::LoopOnMirrorBlock_(const gop_t op, Field* field) {
+    m_begin;
+    m_assert(grid_->is_mesh_valid(), "mesh is not valid, unable to process");
+    //-------------------------------------------------------------------------
+    // get the grid info
+    p8est_t*       forest  = grid_->forest();
+    p8est_ghost_t* ghost   = grid_->ghost();
+    const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
+
+#pragma omp parallel for
+    for (lid_t bid = 0; bid < nqlocal; bid++) {
+        // get the mirror quad
+        p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, bid);
+        // get the block and the tree
+        p8est_tree_t* tree  = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);
+        GridBlock*    block = reinterpret_cast<GridBlock*>(mirror->p.user_data);
+        // get the id, in this case the cummulative id = mirror id
+        qid_t myid;
+        myid.cid = bid;
+        myid.qid = mirror->p.piggy3.local_num - tree->quadrants_offset;
+        myid.tid = mirror->p.piggy3.which_tree;
+        // send the task
+        (this->*op)(&myid, block, field);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }

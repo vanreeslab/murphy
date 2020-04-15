@@ -2,8 +2,11 @@
 #define SRC_DEFS_HPP_
 
 #include <mpi.h>
-
+#include <omp.h>
 #include <cstdio>
+#include <p8est.h>
+
+#include <cstdlib>
 
 #define M_N 16
 #define M_GS 2
@@ -45,13 +48,12 @@
         m_assert(m_isaligned(a_), "data has to be aligned"); \
         __builtin_assume_aligned(a_, M_ALIGNMENT);           \
     })
-#define m_calloc(size)                                            \
-    ({                                                            \
-        void*  data;                                              \
-        size_t size_ = (size_t)(size);                            \
-        int err = posix_memalign(&data, M_ALIGNMENT, size_); \
-        memset(data, 0, size_);                                   \
-        data;                                                     \
+#define m_calloc(size)                                    \
+    ({                                                    \
+        size_t size_ = (size_t)(size);                    \
+        void*  data  = aligned_alloc(M_ALIGNMENT, size_); \
+        memset(data, 0, size_);                           \
+        data;                                             \
     })
 #define m_free(data) \
     ({               \
@@ -194,18 +196,6 @@
 #endif
 
 /**
- * @brief entry and exit of functions, enabled if VERBOSE is enabled
- * 
- */
-#define m_begin                         \
-    double def_idajfl_T0 = MPI_Wtime(); \
-    m_verb("----- entering %s", __func__);
-
-#define m_end                           \
-    double def_idajfl_T1 = MPI_Wtime(); \
-    m_verb("----- leaving %s after %lf [s]", __func__, (def_idajfl_T1) - (def_idajfl_T0));
-
-/**
  * @brief m_assert defines the assertion call, disable if NDEBUG is asked
  * 
  */
@@ -223,5 +213,20 @@
         }                                                                                                            \
     })
 #endif
+
+
+/**
+ * @brief entry and exit of functions, enabled if VERBOSE is enabled
+ * 
+ */
+#define m_begin                                                                            \
+    m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
+    double def_idajfl_T0 = MPI_Wtime();                                                    \
+    m_verb("----- entering %s", __func__);
+
+#define m_end                                                                              \
+    m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
+    double def_idajfl_T1 = MPI_Wtime();                                                    \
+    m_verb("----- leaving %s after %lf [s]", __func__, (def_idajfl_T1) - (def_idajfl_T0));
 
 #endif  // SRC_DEFS_HPP_

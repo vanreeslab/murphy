@@ -9,12 +9,21 @@
 #include "murphy.hpp"
 #include "operator.hpp"
 #include "physblock.hpp"
+#include "field.hpp"
 
 using std::list;
 
 #define M_NGHOST (M_N * M_N * M_N)
 #define M_NNEIGHBOR 26
 #define M_CLEN (2 * M_GS + M_HN)
+
+
+
+class Ghost;
+/**
+ * @brief pointer to an member function of the class @ref Ghost
+ */
+using gop_t = void (Ghost::*)(const qid_t* qid, GridBlock* block, Field* fid);
 
 /**
  * @brief performs the ghost update of a given grid field
@@ -46,8 +55,10 @@ class Ghost : public OperatorF, public OperatorS {
     Ghost(ForestGrid* grid);
     ~Ghost();
 
-    
-    void Pull(Field* field,Interpolator* interp);
+    void PushToMirror(Field* field, sid_t ida);
+    void MirrorToGhostSend();
+    void MirrorToGhostRecv();
+    void PullFromGhost(Field* field,sid_t ida, Interpolator* interp);
 
     /**
      *  @name OperatorS implementation
@@ -58,13 +69,23 @@ class Ghost : public OperatorF, public OperatorS {
 
     /**
      *  @name ConstOperatorF implementation
+     * 
      *  @{
      */
     void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) override;
     /** @} */
 
-   protected:
-    //
+
+    protected:
+    void InitComm_();
+    void InitList_(const qid_t* qid, GridBlock* block);
+    
+    void PushToMirror_(const  qid_t* qid, GridBlock* block, Field* fid);
+    void PullFromGhost_(const qid_t* qid, GridBlock* block, Field* fid);  
+
+
+    void LoopOnMirrorBlock_(const gop_t op, Field* field);
 };
+
 
 #endif  // SRC_GHOST_HPP_

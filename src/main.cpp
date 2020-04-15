@@ -10,10 +10,18 @@
 #include "wavelet.hpp"
 
 int main(int argc, char** argv) {
-    MPI_Init(&argc, &argv);
+    int provided;
+    // set MPI_THREAD_FUNNELED or MPI_THREAD_SERIALIZED
+    int requested = MPI_THREAD_FUNNELED;
+    MPI_Init_thread(&argc, &argv, requested, &provided);
+    if (provided != requested) {
+        printf("The MPI-provided thread behavior does not match\n");
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+
     MPI_Comm comm = MPI_COMM_WORLD;
-    sc_init(comm, 1, 1, NULL, SC_LP_ESSENTIAL);
-    p4est_init(NULL, SC_LP_PRODUCTION);
+    sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
+    p4est_init(NULL, SC_LP_SILENT);
     //-------------------------------------------------------------------------
     {
         bool periodic[3] = {false, true, false};
@@ -52,7 +60,7 @@ int main(int argc, char** argv) {
         delete (grid);
     }
 
-    m_log("\n\nleaving, bye bye murphy\n");
+    m_log("leaving, bye bye murphy\n");
     //-------------------------------------------------------------------------
     sc_finalize();
     MPI_Finalize();

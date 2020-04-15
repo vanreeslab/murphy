@@ -3,13 +3,13 @@
 
 
 //=================================================================================================
-void CallOpS(const qid_t* qid, GridBlock* block, nullptr_t fid, OperatorS* op) {
+void CallOpS(const qid_t* qid, GridBlock* block, Field* fid, OperatorS* op) {
     m_assert(fid == nullptr, "the field has to be NULL for an OperatorS object");
     op->ApplyOperatorS(qid, block);
 }
 void OperatorS::operator()(ForestGrid* grid) {
     // execute the operator on the blocks, no 
-    DoOp_F_<op_t<OperatorS*, nullptr_t>, OperatorS*, nullptr_t>(CallOpS, grid, nullptr, this);
+    DoOp_F_<op_t<OperatorS*, Field*>, OperatorS*, Field*>(CallOpS, grid, nullptr, this);
 }
 
 

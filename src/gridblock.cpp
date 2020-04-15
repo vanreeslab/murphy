@@ -24,7 +24,6 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
 GridBlock::~GridBlock() {
     // need to delete the fields not deleted yet
     for (datamap_t::iterator iter = data_map_.begin(); iter != data_map_.end(); iter++) {
-        m_log("deleting field %s from the block", iter->first.c_str());
         m_free(iter->second);
     }
 }

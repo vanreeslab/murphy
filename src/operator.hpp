@@ -207,15 +207,18 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
 #pragma omp parallel for firstprivate(data)
     for (lid_t bid = 0; bid < nqlocal; bid++) {
         // get the tree
-        p8est_tree_t* tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
+        p8est_tree_t* tree;
+        tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
         // get the id
         qid_t myid;
         myid.cid = bid;
         myid.qid = bid - tree->quadrants_offset;
         myid.tid = mesh->quad_to_tree[bid];
         // the quadrants can be from differents trees -> get the correct one
-        p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-        GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+        p8est_quadrant_t* quad;
+        quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+
+        GridBlock* block = reinterpret_cast<GridBlock*>(quad->p.user_data);
         // send the task
         op(&myid, block, field..., data);
     }

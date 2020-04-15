@@ -56,6 +56,11 @@ Grid::~Grid() {
     m_end;
 }
 
+/**
+ * @brief returns the size of the memory (in bytes) taken by the grid
+ * 
+ * @return size_t 
+ */
 size_t Grid::LocalMemSize() const {
     m_begin;
     //-------------------------------------------------------------------------
@@ -122,11 +127,27 @@ void Grid::GhostPull(Field* field) {
     m_assert(IsAField(field), "the field does not belong to this grid");
     //-------------------------------------------------------------------------
     // if already computed, return
-    if (field->ghost_status()) {
+    if (field->ghost_status() || field->lda() < 1) {
         m_log("field %s has already valid ghosts", field->name().c_str());
         return;
     } else {
-        ghost_->Pull(field, interp_);
+        // start the send of the first dimension
+        ghost_->PushToMirror(field,0);
+        ghost_->MirrorToGhostSend();
+
+        for(int ida=1; ida<field->lda(); ida++){
+            // receive the current communication, the mirrors are now free
+            ghost_->MirrorToGhostRecv();
+            // fill the mirror and initiate the next send
+            ghost_->PushToMirror(field,ida);
+            ghost_->MirrorToGhostSend();
+            // handle the last dimension just received
+            ghost_->PullFromGhost(field,ida-1,interp_);
+
+        }
+        // receive and end the last dimension
+        ghost_->MirrorToGhostRecv();
+        ghost_->PullFromGhost(field,field->lda()-1,interp_);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -207,7 +228,7 @@ void Grid::LoopOnGridBlock_(const bop_t op, Field* field) const {
         p8est_tree_t* tree    = p8est_tree_array_index(forest_->trees, it);
         const size_t  nqlocal = tree->quadrants.elem_count;
 
-#pragma omp parallel for
+#pragma omp parallel for firstprivate(field)
         for (size_t bid = 0; bid < nqlocal; bid++) {
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
             GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
