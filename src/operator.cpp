@@ -1,7 +1,5 @@
 #include "operator.hpp"
 
-
-
 //=================================================================================================
 void CallOpS(const qid_t* qid, GridBlock* block, Field* fid, OperatorS* op) {
     m_assert(fid == nullptr, "the field has to be NULL for an OperatorS object");
@@ -11,7 +9,6 @@ void OperatorS::operator()(ForestGrid* grid) {
     // execute the operator on the blocks, no 
     DoOp_F_<op_t<OperatorS*, Field*>, OperatorS*, Field*>(CallOpS, grid, nullptr, this);
 }
-
 
 //=================================================================================================
 void CallOpF(const qid_t* qid, GridBlock* block, Field* fid, OperatorF* op) {
@@ -33,14 +30,24 @@ void ConstOperatorF::operator()(ForestGrid* grid, Field* field) {
     // execute the operation on the blocks
     DoOp_F_<op_t<ConstOperatorF*, const Field*>, ConstOperatorF*, const Field*>(ConstCallOpF, grid, field, this);
 }
+
 //=================================================================================================
 void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op) {
     op->ApplyOperatorF2F(qid, block, fid_src, fid_trg);
 }
-void OperatorF2F::operator()(ForestGrid* grid, const Field* field_src, Field* field_trg) {
+void OperatorF2F::operator()(ForestGrid* grid, Field* field_src, Field* field_trg) {
     // execute the operation on the blocks
     DoOp_F_<op_t<OperatorF2F*, const Field*, Field*>, OperatorF2F*, const Field*, Field*>(CallOpF2F, grid, field_src, field_trg, this);
     // set the field_trg ghosts as changed
     m_verb("setting the ghosts of %s to false", field_trg->name().c_str());
     field_trg->ghost_status(false);
+}
+
+//=================================================================================================
+void ConstCallOpFF(const qid_t* qid, GridBlock* block, const Field* fid_1, const Field* fid_2, ConstOperatorFF* op) {
+    op->ApplyConstOperatorFF(qid, block, fid_1, fid_2);
+}
+void ConstOperatorFF::operator()(ForestGrid* grid, Field* fid_1, Field* fid_2) {
+    // execute the operation on the blocks
+    DoOp_F_<op_t<ConstOperatorFF*, const Field*, const Field*>, ConstOperatorFF*, const Field*, const Field*>(ConstCallOpFF, grid, fid_1, fid_2, this);
 }

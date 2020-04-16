@@ -12,7 +12,6 @@ SetGaussian::SetGaussian(real_t sigma, real_t center[3]){
 }
 
 void SetGaussian::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
-    m_begin;
     //-------------------------------------------------------------------------
     real_t        pos[3];
     real_t        oo_eps2 = 1.0 / (sigma_ * sigma_);
@@ -39,5 +38,4 @@ void SetGaussian::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid)
         }
     }
     //-------------------------------------------------------------------------
-    m_end;
 }

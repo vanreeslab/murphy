@@ -4,7 +4,6 @@ using std::pow;
 
 template <int order>
 void Wavelet<order>::Copy_(const interp_ctx_t* ctx) const {
-    m_begin;
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
     m_assume_aligned(ctx->tdata);
@@ -24,11 +23,9 @@ void Wavelet<order>::Copy_(const interp_ctx_t* ctx) const {
         }
     }
     //-------------------------------------------------------------------------
-    m_end;
 }
 template <int order>
 void Wavelet<order>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
-    m_begin;
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
     m_assume_aligned(ctx->tdata);
@@ -61,11 +58,9 @@ void Wavelet<order>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
         }
     }
     //-------------------------------------------------------------------------
-    m_end;
 }
 template <int order>
 void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
-    m_begin;
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
     m_assume_aligned(ctx->tdata);
@@ -109,5 +104,4 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
         }
     }
     //-------------------------------------------------------------------------
-    m_end;
 }

@@ -99,6 +99,7 @@ void Grid::AddField(Field* field) {
         fields_[field->name()] = field;
         // allocate the field on every block
         LoopOnGridBlock_(&GridBlock::AddField, field);
+        m_verb("field %s has been added to the grid", field->name().c_str());
     } else {
         m_verb("field %s is already in the grid", field->name().c_str());
     }

@@ -54,7 +54,6 @@
     * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
     */
 void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg) {
-    m_begin;
     m_assert(dlvl <= 2, "we cannot handle a difference in level > 2");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
     //-------------------------------------------------------------------------
@@ -96,5 +95,4 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
         Coarsen_(&ctx, dlvl);
     }
     //-------------------------------------------------------------------------
-    m_end;
 }

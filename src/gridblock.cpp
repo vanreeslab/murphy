@@ -75,7 +75,6 @@ const real_p GridBlock::data(const Field* fid) const {
 }
 
 void GridBlock::AddField(Field* fid) {
-    m_begin;
     //-------------------------------------------------------------------------
     string name = fid->name();
     // try to find the field
@@ -88,11 +87,9 @@ void GridBlock::AddField(Field* fid) {
         m_verb("field %s already in the block", name.c_str());
     }
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 void GridBlock::DeleteField(Field* fid) {
-    m_begin;
     //-------------------------------------------------------------------------
     string name = fid->name();
     // try to find the field
@@ -105,7 +102,5 @@ void GridBlock::DeleteField(Field* fid) {
     } else {
         m_verb("no field %s in the block", name.c_str());
     }
-
     //-------------------------------------------------------------------------
-    m_end;
 }

@@ -138,17 +138,17 @@ class OperatorF2F {
     * 
     * @param qid the id of the quadrant which corresponds to the current block
     * @param block the current block itself
-    * @param fid_src the source fi
-    * @param fid_trg 
+    * @param fid_src the source field
+    * @param fid_trg the target field
     */
     virtual void ApplyOperatorF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
     /**
      * @brief call OperatorF2F::apply() on each block and change the ghost status of the Field field_trg to `false`
      */
-    virtual void operator()(ForestGrid* grid, const Field* field_src, Field* field_trg);
+    virtual void operator()(ForestGrid* grid, Field* field_src, Field* field_trg);
 };
 /**
- * @brief this function is called by DoOp_() function (through OperatorF2F::DoOp()) to apply the operation to a considered Block
+ * @brief this function is called by DoOp_() function
  * 
  * @param qid the reference of the block, see qid_t
  * @param block the Block itself, which cannot be modified
@@ -157,6 +157,39 @@ class OperatorF2F {
  * @param op the OperatorF2F object containing all the needed data
  */
 void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
+
+//=================================================================================================
+/**
+ * @brief a Constant Field and Field operator, i.e. which uses the content of two Fields without modifying it
+ * 
+ */
+class ConstOperatorFF {
+   public:
+    /**
+     * @brief Implementation of this virtual function has to be provided by the user as a member function
+     * 
+     * @param qid the id of the quadrant which corresponds to the current block
+     * @param block the current block itself
+     * @param fid_1 a first field
+     * @param fid_2 a second field
+     */
+    virtual void ApplyConstOperatorFF(const qid_t* qid, GridBlock* block, const Field* fid_1,const Field* fid_2) = 0;
+    /**
+     * @brief call ApplyConstOperatorFF() on each block
+     */
+    virtual void operator()(ForestGrid* grid, Field* fid_1, Field* fid_2);
+};
+
+/**
+ * @brief this function is called by DoOp_() function
+ * 
+ * @param qid 
+ * @param block 
+ * @param fid_1 
+ * @param fid_2 
+ * @param op 
+ */
+void ConstCallOpFF(const qid_t* qid, GridBlock* block, const Field* fid_1, const Field* fid_2, ConstOperatorFF* op);
 
 //=================================================================================================
 /**

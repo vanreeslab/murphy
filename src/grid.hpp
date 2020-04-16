@@ -48,6 +48,8 @@ class Grid : public ForestGrid {
     map<string, Field*>::const_iterator FieldBegin() const { return fields_.begin(); }
     map<string, Field*>::const_iterator FieldEnd() const { return fields_.end(); }
 
+    lid_t NField() const { return (lid_t)(fields_.size()); }
+
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
     void DeleteField(Field* field);
