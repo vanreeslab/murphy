@@ -36,7 +36,7 @@ build test :
     - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
 
 # =============================================================================
-test no threads:
+test pure mpi:
   stage: test
   dependencies:
     - build test
@@ -47,12 +47,23 @@ test no threads:
     reports:
       junit: report_test_*.xml
 
-test with threads:
+test threads:
   stage: test
   dependencies:
     - build test
   script:
-    - "OMP_NUM_THREADS=4 mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "OMP_NUM_THREADS=4 mpirun -n 1 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "gcovr -r . -e test "
+  artifacts:
+    reports:
+      junit: report_test_*.xml
+
+test hybrid:
+  stage: test
+  dependencies:
+    - build test
+  script:
+    - "OMP_NUM_THREADS=3 mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     reports:
