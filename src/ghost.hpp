@@ -46,6 +46,11 @@ class Ghost : public OperatorF, public OperatorS {
 
     sid_t ida_ = -1;  //!< current ghosting dimension
 
+    lid_t n_send_request_ = 0;
+    lid_t n_recv_request_ = 0;
+    MPI_Request* mirror_send_ = nullptr;
+    MPI_Request* ghost_recv_ = nullptr;
+
     ForestGrid* grid_;
     Interpolator* interp_;
 

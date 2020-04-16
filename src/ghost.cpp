@@ -16,7 +16,7 @@ Ghost::Ghost(ForestGrid* grid) {
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // get the important pointers
-    grid_           = grid;
+    grid_              = grid;
     p8est_mesh_t* mesh = grid->mesh();
 
     // allocate the lists
@@ -36,10 +36,15 @@ Ghost::Ghost(ForestGrid* grid) {
         phys_[ib]          = new list<PhysBlock*>();
     }
 
-    // call the simple operator to init the lists
+    // allocate the mirror and ghost arrays
+    ghosts_  = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * grid->ghost()->ghosts.elem_count);
+    mirrors_ = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * grid->ghost()->mirrors.elem_count);
+
+    // call the simple operator to init the lists, reset the counter to 0 (needed to count the ghosts)
     OperatorS::operator()(grid_);
 
     // initialize the communications
+    InitComm_();
 
     // initialize the working coarse memory
     int nthreads = omp_get_max_threads();
@@ -48,6 +53,7 @@ Ghost::Ghost(ForestGrid* grid) {
         coarse_tmp_[it] = (real_t*)m_calloc(sizeof(real_t) * M_CLEN * M_CLEN * M_CLEN);
     }
     //-------------------------------------------------------------------------
+    m_log("ghost ready to exchange");
     m_end;
 }
 
@@ -55,7 +61,7 @@ Ghost::~Ghost() {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-     p8est_mesh_t* mesh = grid_->mesh();
+    p8est_mesh_t* mesh = grid_->mesh();
     // clear the lists
     for (lid_t ib = 0; ib < mesh->local_num_quadrants; ib++) {
         // free the blocks
@@ -87,6 +93,16 @@ Ghost::~Ghost() {
     m_free(ghost_parent_);
     m_free(phys_);
 
+    // free the requests
+    for (int ir = 0; ir < n_send_request_; ir++) {
+        MPI_Request_free(mirror_send_ + ir);
+    }
+    m_free(mirror_send_);
+    for (int ir = 0; ir < n_recv_request_; ir++) {
+        MPI_Request_free(ghost_recv_ + ir);
+    }
+    m_free(ghost_recv_);
+
     // free the temp memory
     int nthreads = omp_get_max_threads();
     for (int it = 0; it < nthreads; it++) {
@@ -103,23 +119,47 @@ Ghost::~Ghost() {
 
 void Ghost::PushToMirror(Field* field, sid_t ida) {
     m_begin;
+    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current interpolator and dimension
-    ida_  = ida;
+    ida_ = ida;
     // loop on the mirrors and copy the values
-    LoopOnMirrorBlock_(&Ghost::PushToMirror_,field);
+    LoopOnMirrorBlock_(&Ghost::PushToMirror_, field);
     //-------------------------------------------------------------------------
     m_end;
 }
 
+/**
+ * @brief starts the send requests of the mirror
+ * 
+ * @warning we do not start the reception requests because we are not sure the buffers are available
+ * 
+ */
 void Ghost::MirrorToGhostSend() {
+    m_begin;
+    //-------------------------------------------------------------------------
+    MPI_Startall(n_send_request_, mirror_send_);
+    //-------------------------------------------------------------------------
+    m_end;
 }
 
+/**
+ * @brief starts the reception requests, end the sending request and end the reception requests
+ * 
+ */
 void Ghost::MirrorToGhostRecv() {
+    m_begin;
+    //-------------------------------------------------------------------------
+    MPI_Startall(n_recv_request_, ghost_recv_);
+    MPI_Waitall(n_send_request_, mirror_send_,MPI_STATUSES_IGNORE);
+    MPI_Waitall(n_recv_request_, ghost_recv_,MPI_STATUSES_IGNORE);
+    //-------------------------------------------------------------------------
+    m_end;
 }
 
 void Ghost::PullFromGhost(Field* field, sid_t ida, Interpolator* interp) {
     m_begin;
+    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current interpolator and dimension
     interp_ = interp;
@@ -160,6 +200,69 @@ void Ghost::ApplyOperatorF(const qid_t* qid, GridBlock* cur_block, Field* fid) {
 void Ghost::InitComm_() {
     m_begin;
     //-------------------------------------------------------------------------
+    int            mpi_size = grid_->mpisize();
+    MPI_Comm       mpi_comm = grid_->mpicomm();
+    p8est_ghost_t* ghost    = grid_->ghost();
+
+    // count how many to send and how many to receive
+    n_send_request_ = 0;
+    n_recv_request_ = 0;
+    for (int ir = 0; ir < mpi_size; ir++) {
+        // send
+        lid_t send_first = ghost->mirror_proc_offsets[ir];
+        lid_t send_last  = ghost->mirror_proc_offsets[ir + 1];
+        n_send_request_ += (send_last - send_first) > 0 ? 1 : 0;
+        // recv
+        lid_t recv_first = ghost->proc_offsets[ir];
+        lid_t recv_last  = ghost->proc_offsets[ir + 1];
+        n_recv_request_ += (recv_last - recv_first) > 0 ? 1 : 0;
+    }
+    // allocate the request arrays
+    mirror_send_ = (MPI_Request*)m_calloc(n_send_request_ * sizeof(MPI_Request));
+    ghost_recv_  = (MPI_Request*)m_calloc(n_recv_request_ * sizeof(MPI_Request));
+
+    m_log("allocating %d send and %d recv requests",n_send_request_,n_recv_request_);
+
+    // allocate the requests
+    lid_t  send_request_offset = 0;
+    lid_t  recv_request_offset = 0;
+    size_t ghost_offset        = 0;
+    size_t mirror_offset       = 0;
+    for (int ir = 0; ir < mpi_size; ir++) {
+        // send
+        lid_t send_first = ghost->mirror_proc_offsets[ir];
+        lid_t send_last  = ghost->mirror_proc_offsets[ir + 1];
+        lid_t block2send = send_last - send_first;
+        if (block2send > 0) {
+            // get the starting buffer adress and the size
+            real_p send_buf  = mirrors_ + mirror_offset;
+            int    send_size = block2send * M_NGHOST;
+            // init the send
+            MPI_Send_init(send_buf, send_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, mirror_send_ + send_request_offset);
+            // upate the counters
+            send_request_offset += 1;
+            mirror_offset += send_size;
+        }
+
+        // recv
+        lid_t recv_first = ghost->proc_offsets[ir];
+        lid_t recv_last  = ghost->proc_offsets[ir + 1];
+        lid_t block2recv = recv_last - recv_first;
+        if (block2recv > 0) {
+            // get the starting buffer adress and the size
+            real_p recv_buf  = ghosts_ + ghost_offset;
+            int    recv_size = block2recv * M_NGHOST;
+            // init the send
+            MPI_Recv_init(recv_buf, recv_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, ghost_recv_ + recv_request_offset);
+            // upate the counters
+            recv_request_offset += 1;
+            ghost_offset += recv_size;
+        }
+    }
+
+    m_assert(send_request_offset == n_send_request_, "the two numbers have to match");
+    m_assert(recv_request_offset == n_recv_request_, "the two numbers have to match");
+
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -175,30 +278,29 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 
     // //----------------------------------
     // // temporary sc array used to get the ghosts
-    sc_array_t* ngh_quad;
+    sc_array_t* ngh_quad; // points to the quad
+    sc_array_t* ngh_qid; // give the ID of the quad or ghost
+    sc_array_t* ngh_enc; // get the status
+
 #pragma omp critical
     {
         ngh_quad = sc_array_new(sizeof(qdrt_t*));
+        ngh_enc  = sc_array_new(sizeof(int));
+        ngh_qid  = sc_array_new(sizeof(int));
     }
 
-    sc_array_t* ngh_enc;
-#pragma omp critical
-    {
-        ngh_enc = sc_array_new(sizeof(int));
-    }
-
-    p8est_t*       forest   = grid_->forest();
-    p8est_mesh_t*  mesh     = grid_->mesh();
-    p8est_ghost_t* ghost    = grid_->ghost();
+    p8est_t*       forest = grid_->forest();
+    p8est_mesh_t*  mesh   = grid_->mesh();
+    p8est_ghost_t* ghost  = grid_->ghost();
 
     for (sid_t ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
-        
 #pragma omp critical
         {
             // get the neighboring quadrant
             sc_array_reset(ngh_quad);
             sc_array_reset(ngh_enc);
-            p8est_mesh_get_neighbors(grid_->forest(), grid_->ghost(), grid_->mesh(), qid->cid, ibidule, ngh_quad, ngh_enc, NULL);
+            sc_array_reset(ngh_qid);
+            p8est_mesh_get_neighbors(grid_->forest(), grid_->ghost(), grid_->mesh(), qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
         }
         // decode the status and count the ghosts
         const size_t nghosts = ngh_enc->elem_count;
@@ -208,7 +310,9 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
             sid_t isphys[3] = {0, 0, 0};
             // we only apply the physics to entire faces
             if (ibidule < 6) {
-                phys->push_back(new PhysBlock(ibidule, block));
+                PhysBlock* pb = new PhysBlock(ibidule, block);
+#pragma omp critical
+                phys->push_back(pb);
             }
             // else, the edges and corners will be filled through the face
         }
@@ -219,12 +323,14 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
             const bool isghost = (status < 0);
             qdrt_t*    nghq    = *((qdrt_t**)sc_array_index_int(ngh_quad, nid));
 
-            // create a ghost block and store it given the gap in level
+            // if we have a local quadrant
             if (!isghost) {
                 GhostBlock* gb = new GhostBlock(block, nghq);
                 if (gb->dlvl() >= 0) {
+#pragma omp critical
                     bsibling->push_back(gb);
                 } else {
+#pragma omp critical
                     bparent->push_back(gb);
                 }
             } else {
@@ -233,11 +339,14 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
                 real_t         ngh_tree_offset[3];
                 p8est_qcoord_to_vertex(grid_->connect(), ngh_tree_id, 0, 0, 0, ngh_tree_offset);
 
-                real_p      data = ghosts_ + qid->cid * M_NGHOST;
-                GhostBlock* gb   = new GhostBlock(block, nghq, ngh_tree_offset, data);
+                lid_t       ighost = *(ngh_qid->array + nid * sizeof(int));
+                real_p      data   = ghosts_ + ighost * M_NGHOST;
+                GhostBlock* gb     = new GhostBlock(block, nghq, ngh_tree_offset, data);
                 if (gb->dlvl() >= 0) {
+#pragma omp critical
                     gsibling->push_back(gb);
                 } else {
+#pragma omp critical
                     gparent->push_back(gb);
                 }
             }
@@ -246,19 +355,27 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
     {
         sc_array_destroy(ngh_quad);
-    }
-#pragma omp critical
-    {
         sc_array_destroy(ngh_enc);
+        sc_array_destroy(ngh_qid);
     }
     //-------------------------------------------------------------------------
 }
 
 void Ghost::PushToMirror_(const qid_t* qid, GridBlock* block, Field* fid) {
-    m_begin;
+    m_assert(ida_ >= 0, "the current working dimension has to be correct");
+    m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
+    real_p mirror = mirrors_ + qid->cid * M_NGHOST;
+    real_p data   = block->data(fid, ida_);
+
+    for (int i2 = 0; i2 < M_N; i2++) {
+        for (int i1 = 0; i1 < M_N; i1++) {
+            for (int i0 = 0; i0 < M_N; i0++) {
+                mirror[m_sidx(i0, i1, i2, 0, M_N)] = data[m_idx(i0, i1, i2)];
+            }
+        }
+    }
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
@@ -318,16 +435,17 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, Field* field) {
 
 #pragma omp parallel for
     for (lid_t bid = 0; bid < nqlocal; bid++) {
-        // get the mirror quad
+        // get the mirror quad, this is an empty quad (just a piggy3 struct)
         p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, bid);
-        // get the block and the tree
-        p8est_tree_t* tree  = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);
-        GridBlock*    block = reinterpret_cast<GridBlock*>(mirror->p.user_data);
+        p8est_tree_t*     tree   = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);
         // get the id, in this case the cummulative id = mirror id
         qid_t myid;
         myid.cid = bid;
         myid.qid = mirror->p.piggy3.local_num - tree->quadrants_offset;
         myid.tid = mirror->p.piggy3.which_tree;
+        // use it to retreive the actual quadrant in the correct tree
+        p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+        GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
         // send the task
         (this->*op)(&myid, block, field);
     }

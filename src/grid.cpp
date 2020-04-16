@@ -132,6 +132,7 @@ void Grid::GhostPull(Field* field) {
         m_log("field %s has already valid ghosts", field->name().c_str());
         return;
     } else {
+        m_log("pulling ghosts for field %s", field->name().c_str());
         // start the send of the first dimension
         ghost_->PushToMirror(field,0);
         ghost_->MirrorToGhostSend();

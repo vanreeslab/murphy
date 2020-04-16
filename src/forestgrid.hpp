@@ -16,6 +16,7 @@ class ForestGrid {
 
    public:
     inline int                   mpirank() const { return forest_->mpirank; }
+    inline int                   mpisize() const { return forest_->mpisize; }
     inline MPI_Comm              mpicomm() const { return forest_->mpicomm; }
     inline p8est_t*              forest() const { return forest_; }
     inline p8est_mesh_t*         mesh() const { return mesh_; }

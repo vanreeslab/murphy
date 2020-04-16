@@ -38,6 +38,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     // get the field name
     filename_ = name;
     mpirank_  = grid->mpirank();
+    m_log("dumping field %s to disk (ghost = %d)",name.c_str(),dump_ghost_);
     // print the header
     xmf_write_header_(grid);
     hdf5_write_header_(grid);
@@ -55,12 +56,10 @@ void IOH5::dump_ghost(const bool dump_ghost) {
 }
 
 void IOH5::ApplyConstOperatorF(const qid_t* qid, GridBlock* block, const Field* fid) {
-    m_begin;
     //-------------------------------------------------------------------------
     xmf_write_block_(qid, block, fid);
     hdf5_write_block_(qid, block, fid);
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 void IOH5::hdf5_write_header_(const ForestGrid* grid) {
@@ -87,8 +86,16 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid) {
     m_end;
 }
 
+/**
+ * @brief 
+ * 
+ * every file related option has to be done in a critical section to avoid data races
+ * 
+ * @param qid 
+ * @param block 
+ * @param fid 
+ */
 void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fid) {
-    m_begin;
     //-------------------------------------------------------------------------
     // get the attribute
     string attribute = "tree" + to_string(qid->tid) + "_quad" + to_string(qid->qid);
@@ -112,23 +119,28 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
         field_dims[2] = M_STRIDE;
     }
 
-    // setup the options to have a chuncked dataset
-    hid_t   plist_id   = H5Pcreate(H5P_DATASET_CREATE);
-    hsize_t chk_dim[4] = {4, 4, 4, 1};
-    H5Pset_chunk(plist_id, 4, chk_dim);
-
-    // create dataset and dataspace = the whole hard memory reserved for the file
-    filespace = H5Screate_simple(4, field_dims, NULL);
-    fileset   = H5Dcreate(hdf5_file_, attribute.c_str(), H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Sclose(filespace);
-    H5Pclose(plist_id);
+#pragma omp critical
+    {
+        // setup the options to have a chuncked dataset
+        hid_t   plist_id   = H5Pcreate(H5P_DATASET_CREATE);
+        hsize_t chk_dim[4] = {4, 4, 4, 1};
+        H5Pset_chunk(plist_id, 4, chk_dim);
+        // create dataset and dataspace = the whole hard memory reserved for the file
+        filespace = H5Screate_simple(4, field_dims, NULL);
+        fileset   = H5Dcreate(hdf5_file_, attribute.c_str(), H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        H5Sclose(filespace);
+        H5Pclose(plist_id);
+    }
 
     //-------------------------------------------------------------------------
     /** - select the hyperslab inside the file dataset (=writting location)  */
     //-------------------------------------------------------------------------
     // set the full memory space
     hsize_t memsize[4] = {(hsize_t)fid->lda(), M_STRIDE, M_STRIDE, M_STRIDE};  // the full memory
-    memspace           = H5Screate_simple(4, memsize, NULL);
+#pragma omp critical
+    {
+        memspace = H5Screate_simple(4, memsize, NULL);
+    }
 
     // caracteristics of the hyperslab in the file
     hsize_t count[4]  = {1, 1, 1, 1};                    // how many blocks to write
@@ -162,23 +174,30 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
         offset[3]    = (hsize_t)lia;
         memoffset[0] = (hsize_t)lia;
         // select the hyperslab of the file
-        filespace = H5Dget_space(fileset);
-        status    = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, stride, count, bsize);
-        // select the hyperslab of the memory
-        status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, memoffset, memstride, memcount, memblock);
-        // do the writting for the data, we need to shift it by hand since memoffset cannot be < 0
-        real_p data = block->data(fid) + m_midx(-M_GS, -M_GS, -M_GS, 0, block);
-        status = H5Dwrite(fileset, H5T_NATIVE_DOUBLE, memspace, filespace, H5P_DEFAULT,data );
+#pragma omp critical
+        {
+            filespace = H5Dget_space(fileset);
+            status    = H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, stride, count, bsize);
+            // select the hyperslab of the memory
+            status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, memoffset, memstride, memcount, memblock);
+            // do the writting for the data, we need to shift it by hand since memoffset cannot be < 0
+            real_p data = block->data(fid) + m_midx(-M_GS, -M_GS, -M_GS, 0, block);
+            status      = H5Dwrite(fileset, H5T_NATIVE_DOUBLE, memspace, filespace, H5P_DEFAULT, data);
+        }
     }
 
     //-------------------------------------------------------------------------
     /** - close everything */
     //-------------------------------------------------------------------------
-    H5Dclose(fileset);
-    H5Sclose(filespace);
-    H5Sclose(memspace);
+
+#pragma omp critical
+    {
+        H5Dclose(fileset);
+        H5Sclose(filespace);
+        H5Sclose(memspace);
+    }
+
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
@@ -189,7 +208,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     sc_MPI_Comm comm = grid->mpicomm();
-    string fname;
+    string      fname;
     if (dump_ghost_) {
         fname = folder_ + "/g_" + filename_ + ".xmf";
     } else {
@@ -270,7 +289,6 @@ void IOH5::xmf_write_footer_(const ForestGrid* grid) {
     m_end;
 }
 void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid) {
-    m_begin;
     //-------------------------------------------------------------------------
     if (dump_ghost_) {
         string fname = "g_" + filename_ + "_";
@@ -369,9 +387,12 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     sprintf(msg, "%s%-128s", msg, "\n              </Attribute>");
     // - L27
     sprintf(msg, "%s%-128s", msg, "\n         </Grid>");
-    // write the header
-    MPI_Status status;
-    MPI_File_write(xmf_file_, msg, 27, line_type_, &status);
+
+#pragma omp critical
+    {
+        // write the header
+        MPI_Status status;
+        MPI_File_write(xmf_file_, msg, 27, line_type_, &status);
+    }
     //-------------------------------------------------------------------------
-    m_end;
 }
