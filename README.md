@@ -23,6 +23,14 @@ However, some exceptions are made to the mentionned guide style:
 
 
 
+##### Documentation and implementation strategies
+To get the doxygen documentation, go to the `doc` folder and enter
+```
+doxygen
+```
+You will need `dot` to get a visual graphs. It is a part of Graphivz.
+You can install it using homebrew: `brew install graphviz`.
+
 
 ##### Misc
 
