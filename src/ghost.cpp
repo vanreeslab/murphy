@@ -37,15 +37,14 @@ Ghost::Ghost(ForestGrid* grid) {
         phys_[ib]          = new list<PhysBlock*>();
     }
 
-    // allocate the mirror and ghost arrays
-    ghosts_  = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * grid->ghost()->ghosts.elem_count);
-    mirrors_ = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * grid->ghost()->mirrors.elem_count);
+
+    // initialize the communications and the mirrors, ghosts arrays
+    InitComm_();
 
     // call the simple operator to init the lists, reset the counter to 0 (needed to count the ghosts)
     OperatorS::operator()(grid_);
 
-    // initialize the communications
-    InitComm_();
+    
 
     // initialize the working coarse memory
     int nthreads = omp_get_max_threads();
@@ -139,7 +138,9 @@ void Ghost::PushToMirror(Field* field, sid_t ida) {
 void Ghost::MirrorToGhostSend() {
     m_begin;
     //-------------------------------------------------------------------------
-    MPI_Startall(n_send_request_, mirror_send_);
+    if (n_send_request_ > 0) {
+        MPI_Startall(n_send_request_, mirror_send_);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -151,9 +152,15 @@ void Ghost::MirrorToGhostSend() {
 void Ghost::MirrorToGhostRecv() {
     m_begin;
     //-------------------------------------------------------------------------
-    MPI_Startall(n_recv_request_, ghost_recv_);
-    MPI_Waitall(n_send_request_, mirror_send_,MPI_STATUSES_IGNORE);
-    MPI_Waitall(n_recv_request_, ghost_recv_,MPI_STATUSES_IGNORE);
+    if (n_recv_request_ > 0) {
+        MPI_Startall(n_recv_request_, ghost_recv_);
+    }
+    if (n_send_request_ > 0) {
+        MPI_Waitall(n_send_request_, mirror_send_, MPI_STATUSES_IGNORE);
+    }
+    if (n_recv_request_ > 0) {
+        MPI_Waitall(n_recv_request_, ghost_recv_, MPI_STATUSES_IGNORE);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -205,14 +212,17 @@ void Ghost::InitComm_() {
     MPI_Comm       mpi_comm = grid_->mpicomm();
     p8est_ghost_t* ghost    = grid_->ghost();
 
-    // count how many to send and how many to receive
-    n_send_request_ = 0;
-    n_recv_request_ = 0;
+    // this is the sum of mirrors to send, as a given mirror can be send to multiple ranks
+    // this will not happen for a ghost
+    n_mirror_to_send_ = 0;
+    n_send_request_   = 0;
+    n_recv_request_   = 0;
     for (int ir = 0; ir < mpi_size; ir++) {
         // send
-        lid_t send_first = ghost->mirror_proc_offsets[ir];
-        lid_t send_last  = ghost->mirror_proc_offsets[ir + 1];
-        n_send_request_ += (send_last - send_first) > 0 ? 1 : 0;
+        lid_t send_first  = ghost->mirror_proc_offsets[ir];
+        lid_t send_last   = ghost->mirror_proc_offsets[ir + 1];
+        n_send_request_   = n_send_request_ + ((send_last - send_first) > 0 ? 1 : 0);
+        n_mirror_to_send_ = n_mirror_to_send_ + (send_last - send_first);
         // recv
         lid_t recv_first = ghost->proc_offsets[ir];
         lid_t recv_last  = ghost->proc_offsets[ir + 1];
@@ -222,27 +232,35 @@ void Ghost::InitComm_() {
     mirror_send_ = (MPI_Request*)m_calloc(n_send_request_ * sizeof(MPI_Request));
     ghost_recv_  = (MPI_Request*)m_calloc(n_recv_request_ * sizeof(MPI_Request));
 
-    m_log("allocating %d send and %d recv requests",n_send_request_,n_recv_request_);
+    // allocate the mirror and ghost arrays
+    mirrors_to_local_ = (lid_t*)m_calloc(sizeof(lid_t) * n_mirror_to_send_);
+    mirrors_          = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * n_mirror_to_send_);
+    ghosts_           = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * ghost->ghosts.elem_count);
 
     // allocate the requests
     lid_t  send_request_offset = 0;
     lid_t  recv_request_offset = 0;
-    size_t ghost_offset        = 0;
     size_t mirror_offset       = 0;
     for (int ir = 0; ir < mpi_size; ir++) {
         // send
+        // mirror proc offset tells how many to send
+        // mirror proc mirror tells which mirror is to send
         lid_t send_first = ghost->mirror_proc_offsets[ir];
         lid_t send_last  = ghost->mirror_proc_offsets[ir + 1];
         lid_t block2send = send_last - send_first;
         if (block2send > 0) {
             // get the starting buffer adress and the size
             real_p send_buf  = mirrors_ + mirror_offset;
-            int    send_size = block2send * M_NGHOST;
+            size_t send_size = block2send * M_NGHOST;
             // init the send
             MPI_Send_init(send_buf, send_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, mirror_send_ + send_request_offset);
+            // store the mirror id's
+            for(lid_t ib = send_first; ib< send_last; ib++){
+                mirrors_to_local_[ib] = ghost->mirror_proc_mirrors[ib];
+            }
             // upate the counters
-            send_request_offset += 1;
-            mirror_offset += send_size;
+            send_request_offset = send_request_offset + 1;
+            mirror_offset       = mirror_offset + send_size;
         }
 
         // recv
@@ -251,13 +269,12 @@ void Ghost::InitComm_() {
         lid_t block2recv = recv_last - recv_first;
         if (block2recv > 0) {
             // get the starting buffer adress and the size
-            real_p recv_buf  = ghosts_ + ghost_offset;
+            real_p recv_buf  = ghosts_ + recv_first * M_NGHOST;
             int    recv_size = block2recv * M_NGHOST;
             // init the send
             MPI_Recv_init(recv_buf, recv_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, ghost_recv_ + recv_request_offset);
             // upate the counters
-            recv_request_offset += 1;
-            ghost_offset += recv_size;
+            recv_request_offset = recv_request_offset + 1;
         }
     }
 
@@ -472,12 +489,12 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, Field* field) {
     // get the grid info
     p8est_t*       forest  = grid_->forest();
     p8est_ghost_t* ghost   = grid_->ghost();
-    const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
+    // const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
 
 #pragma omp parallel for
-    for (lid_t bid = 0; bid < nqlocal; bid++) {
+    for (lid_t bid = 0; bid < n_mirror_to_send_; bid++) {
         // get the mirror quad, this is an empty quad (just a piggy3 struct)
-        p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, bid);
+        p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, mirrors_to_local_[bid]);
         p8est_tree_t*     tree   = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);
         // get the id, in this case the cummulative id = mirror id
         qid_t myid;

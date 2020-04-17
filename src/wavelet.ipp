@@ -12,14 +12,20 @@ template <int order>
 void Wavelet<order>::Criterion(MemLayout* block, real_p data, real_t* criterion) {
     //-------------------------------------------------------------------------
     interp_ctx_t ctx;
-    real_t details_max[7];
+    real_t details_max[7] = {0};
     // get memory details
     for (int id = 0; id < 3; id++) {
         ctx.srcstart[id] = block->start(id);
         ctx.srcend[id]   = block->end(id);
+        ctx.trgstart[id] = -1;
+        ctx.trgend[id] = -2;
     }
     ctx.srcstr = block->stride();
     ctx.sdata = data;
+    ctx.trgstr = -1000;
+    ctx.tdata = nullptr;
+
+
     Detail_(&ctx,details_max);
 
     // get the max out of all the details
@@ -135,10 +141,11 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
 
 template <int order>
 void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const {
+    m_assert(!(order==5 && M_GS<4), "the detail computation requires at least 4 ghost points on the current block");
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
-    m_assume_aligned(ctx->tdata);
     m_assume_aligned(ctx->sdata);
+    
 
     const lid_t   hslen = order / 2;
     const real_t* ga    = ga_ + hslen;
@@ -163,68 +170,68 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                 for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
                     const real_t fact = ha[0] * ha[0] * ga[dm0];
                     // this is dx
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 0, 0, 0, ctx->trgstr)] * fact;
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 0, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 1, 0, 0, ctx->trgstr)] * fact;
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 0, 1, 0, ctx->trgstr)] * fact;
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 1, 1, 0, ctx->trgstr)] * fact;
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 0, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 0, 0, 0, ctx->srcstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 0, 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 1, 0, 0, ctx->srcstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 0, 1, 0, ctx->srcstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 1, 1, 0, ctx->srcstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 1, 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 0, 1, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 1, 1, 0, ctx->srcstr)] * fact * sign[dm0];
 
                     // this is dy
-                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 0, 0, 0, ctx->trgstr)] * fact;
-                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 0, 0, 0, ctx->trgstr)] * fact;
-                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 0, 1, 0, ctx->trgstr)] * fact;
-                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 0, 1, 0, ctx->trgstr)] * fact;
-                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 0, 0, 0, ctx->srcstr)] * fact;
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 0, 0, 0, ctx->srcstr)] * fact;
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 1, 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 0, 1, 0, ctx->srcstr)] * fact;
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 1, 1, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 1, 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 0, 1, 0, ctx->srcstr)] * fact;
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 1, 1, 0, ctx->srcstr)] * fact * sign[dm0];
 
                     // this is dz
-                    detail[2] += lsdata[m_sidx(0, 0, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-                    detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-                    detail[2] += lsdata[m_sidx(0, 1, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-                    detail[2] += lsdata[m_sidx(0, 0, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[2] += lsdata[m_sidx(0, 1, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-                    detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-                    detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(0, 0, 2 * dm0 + 0, 0, ctx->srcstr)] * fact;
+                    detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 0, 0, ctx->srcstr)] * fact;
+                    detail[2] += lsdata[m_sidx(0, 1, 2 * dm0 + 0, 0, ctx->srcstr)] * fact;
+                    detail[2] += lsdata[m_sidx(0, 0, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(0, 1, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 0, 0, ctx->srcstr)] * fact;
+                    detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
                 }
 
                 for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
                     for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
                         const real_t fact = ha[0] * ga[dm1] * ga[dm0];
                         // this is dxy
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 0, 0, ctx->trgstr)] * fact;
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm1];
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 1, 0, ctx->trgstr)] * fact;
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm1];
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 0, 0, ctx->srcstr)] * fact;
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 0, 0, ctx->srcstr)] * fact * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 1, 0, ctx->srcstr)] * fact;
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 1, 0, ctx->srcstr)] * fact * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 0, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 1, 0, ctx->srcstr)] * fact * sign[dm0];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
 
                         // this is dyz
-                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->srcstr)] * fact;
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->srcstr)] * fact;
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm1];
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm1];
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
 
                         // this is dxz
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 0, 0, ctx->srcstr)] * fact;
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 0, 0, ctx->srcstr)] * fact;
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
                     }
                 }
 
@@ -233,14 +240,14 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                         for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
                             const real_t fact = ha[0] * ga[dm1] * ga[dm0];
                             // this is dxy
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->trgstr)] * fact;
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm1];
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm2];
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm1] * sign[dm2];
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm2];
-                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1] * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->srcstr)] * fact;
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->srcstr)] * fact * sign[dm0];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->srcstr)] * fact * sign[dm1];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->srcstr)] * fact * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->srcstr)] * fact * sign[dm1] * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->srcstr)] * fact * sign[dm0] * sign[dm1] * sign[dm2];
                         }
                     }
                 }

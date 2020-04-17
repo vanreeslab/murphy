@@ -39,8 +39,10 @@ class Ghost : public OperatorF, public OperatorS {
     list<GhostBlock*>** ghost_parent_;   //!<  list of ghosts that are coarser
     list<PhysBlock*>**  phys_;           //!<  physical blocks
 
-    real_t* mirrors_ = nullptr;  //!< memory space for the mirror blocks
-    real_t* ghosts_  = nullptr;  //!< memory space for the ghost blocks
+    lid_t   n_mirror_to_send_ = 0;        //!< get how many mirrors have to be send
+    lid_t*  mirrors_to_local_ = nullptr;  //!< defines the relation between a mirror and it's local ID used to access p4est mirrors array
+    real_t* mirrors_          = nullptr;  //!< memory space for the mirror blocks
+    real_t* ghosts_           = nullptr;  //!< memory space for the ghost blocks
 
     sid_t ida_ = -1;  //!< current ghosting dimension
 
