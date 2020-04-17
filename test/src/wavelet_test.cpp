@@ -189,9 +189,9 @@ TEST_F(valid_Wavelet, refine_order_5_linear) {
 //==============================================================================================================================
 TEST_F(valid_Wavelet, detail_order_3) {
     // fill the source
-    for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-        for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-            for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
+    for (int i2 = fine_start_[2]-block_fine_->gs(); i2 < fine_end_[2]+block_fine_->gs(); i2++) {
+        for (int i1 = fine_start_[1]-block_fine_->gs(); i1 < fine_end_[1]+block_fine_->gs(); i1++) {
+            for (int i0 = fine_start_[0]-block_fine_->gs(); i0 < fine_end_[0]+block_fine_->gs(); i0++) {
                 real_t x = ((real_t)i0 + 0.5) * hfine_;
                 real_t y = ((real_t)i1 + 0.5) * hfine_;
                 real_t z = ((real_t)i2 + 0.5) * hfine_;
