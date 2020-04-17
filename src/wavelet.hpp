@@ -92,7 +92,8 @@ class Wavelet : public Interpolator {
         }
     }
 
-    void Criterion(MemLayout* block, real_p data, real_t* criterion) override;
+    real_t Criterion(MemLayout* block, real_p data) override;
+    void   Details(MemLayout* block, real_p data, real_t* criterion);
 
    protected:
     void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const override;

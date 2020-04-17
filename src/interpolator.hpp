@@ -46,7 +46,7 @@ typedef struct interp_ctx_t {
  */
 class Interpolator {
    public:
-    virtual void Criterion(MemLayout* block, real_p data, real_t* criterion) = 0;
+    virtual real_t Criterion(MemLayout* block, real_p data) = 0;
 
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
 

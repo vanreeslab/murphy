@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     p4est_init(NULL, SC_LP_SILENT);
     //-------------------------------------------------------------------------
     {
-        bool periodic[3] = {false, false, false};
+        bool periodic[3] = {false, false, true};
         int  l[3]        = {1, 2, 3};
 
         // create a grid
@@ -43,13 +43,13 @@ int main(int argc, char** argv) {
         SetJump setjump   = SetJump(alpha, center);
         setjump(grid, vort);
 
-        // grid->GhostPull(vort);
+        grid->GhostPull(vort);
 
         // create a dumper and dump
         // IOH5 mydump2 = IOH5("data");
         // mydump2.dump_ghost(true);
         // mydump2(grid, vort);
-        // grid->Refine(1);
+        grid->Refine(1);
 
         // create a dumper and dump
         IOH5 mydump1 = IOH5("data");

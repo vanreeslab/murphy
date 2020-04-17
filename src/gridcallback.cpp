@@ -62,8 +62,7 @@ int cback_Wavelet(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant) 
     for (int ida = 0; ida < fid->lda(); ida++) {
         m_verb("analysing the details on block for field %s, dim = %d",fid->name().c_str(),ida);
         real_p data = block->data(fid, ida);
-        real_t norm = 0.0;
-        interp->Criterion(block, data, &norm);
+        real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
         // refine the whole grid if one dimension needs to be refined
@@ -90,8 +89,7 @@ int cback_Wavelet(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]
         GridBlock* block = reinterpret_cast<GridBlock*>(quadrant[id]->p.user_data);
         for (int ida = 0; ida < fid->lda(); ida++) {
             real_p data = block->data(fid, ida);
-            real_t norm = 0.0;
-            interp->Criterion(block, data, &norm);
+            real_t norm = interp->Criterion(block, data);
             // coarsen if the norm is bigger
             coarsen = (norm < grid->ctol());
             // coarsen the whole grid if one dimension needs to be coarsened

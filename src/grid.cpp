@@ -177,6 +177,8 @@ void Grid::Refine(const sid_t delta_level) {
         // do the p4est interpolation by callback
         p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Yes, nullptr, cback_Interpolate);
         // balance the partition
+        p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+        // partition the grid
         // TODO
         // create a new ghost and mesh
         SetupP4estGhostMesh();
@@ -210,6 +212,8 @@ void Grid::Coarsen(const sid_t delta_level) {
         // do the p4est interpolation by callback
         p8est_coarsen_ext(forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
         // balance the partition
+        p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+        // partition the grid
         // TODO
         // create a new ghost and mesh
         SetupP4estGhostMesh();
@@ -257,6 +261,8 @@ void Grid::Adapt(Field* field) {
     // coarsen the needed block
     p8est_coarsen_ext(forest_, 0, 0, cback_Wavelet, nullptr, cback_Interpolate);
     // balance the partition
+    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+    // partition the grid
     // TODO
     // create a new ghost and mesh
     SetupP4estGhostMesh();

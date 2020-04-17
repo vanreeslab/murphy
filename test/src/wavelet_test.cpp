@@ -85,38 +85,51 @@ TEST_F(valid_Wavelet, refine_order_3_linear) {
     }
 }
 //==============================================================================================================================
-// TEST_F(valid_Wavelet, order_3_quad) {
-//     // fill the source
-//     for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
-//         for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
-//             for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
-//                 real_t x = ((real_t)i0 + 0.5) * hcoarse_;
-//                 real_t y = ((real_t)i1 + 0.5) * hcoarse_;
-//                 real_t z = ((real_t)i2 + 0.5) * hcoarse_;
+TEST_F(valid_Wavelet, order_3_moments) {
+    real_t coarse_mom_1 = 0.0;
+    real_t coarse_mom_2 = 0.0;
+    // fill the source
+    for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
+        for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
+            for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
+                real_t x = ((real_t)i0 + 0.5) * hcoarse_;
+                real_t y = ((real_t)i1 + 0.5) * hcoarse_;
+                real_t z = ((real_t)i2 + 0.5) * hcoarse_;
 
-//                 data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x * x + y * y + z * z;
-//             }
-//         }
-//     }
+                data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x * x + y * y + z * z;
 
-//     // do the interpolation (-1 is refinement)
-//     Wavelet<3>* interp   = new Wavelet<3>();
-//     lid_t       shift[3] = {0};
-//     interp->Interpolate(-1, shift, block_coarse_, data_coarse_, block_fine_, data_fine_);
+                if ((0 <= i0 && i0 < coarse_end_[0] - M_GS) && (0 <= i1 && i1 < coarse_end_[1] - M_GS) && (0 <= i2 && i2 < coarse_end_[2] - M_GS)) {
+                    coarse_mom_1 += std::pow(data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)], 1) * (hcoarse_ * hcoarse_ * hcoarse_);
+                    coarse_mom_2 += std::pow(data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)], 2) * (hcoarse_ * hcoarse_ * hcoarse_);
+                }
+            }
+        }
+    }
 
-//     // check the result
+    // do the interpolation (-1 is refinement)
+    Wavelet<3>* interp   = new Wavelet<3>();
+    lid_t       shift[3] = {0};
+    interp->Interpolate(-1, shift, block_coarse_, data_coarse_, block_fine_, data_fine_);
 
-//     for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-//         for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-//             for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-//                 real_t x = ((real_t)i0 + 0.5) * hfine_;
-//                 real_t y = ((real_t)i1 + 0.5) * hfine_;
-//                 real_t z = ((real_t)i2 + 0.5) * hfine_;
-//                 EXPECT_NEAR(data_fine_[m_midx(i0, i1, i2, 0, block_fine_)], x * x + y * y + z * z, DOUBLE_TOL) << "fails for " << i0 << " " << i1 << " " << i2 << " hgrid = " << hfine_;
-//             }
-//         }
-//     }
-// }
+    // check the result
+    real_t fine_mom_1 = 0.0;
+    real_t fine_mom_2 = 0.0;
+    for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
+        for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
+            for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
+                real_t x = ((real_t)i0 + 0.5) * hfine_;
+                real_t y = ((real_t)i1 + 0.5) * hfine_;
+                real_t z = ((real_t)i2 + 0.5) * hfine_;
+
+                fine_mom_1 += std::pow(data_fine_[m_midx(i0, i1, i2, 0, block_fine_)], 1) * (hfine_ * hfine_ * hfine_);
+                fine_mom_2 += std::pow(data_fine_[m_midx(i0, i1, i2, 0, block_fine_)], 2) * (hfine_ * hfine_ * hfine_);
+            }
+        }
+    }
+
+    EXPECT_NEAR(coarse_mom_1, fine_mom_1, DOUBLE_TOL);
+    // EXPECT_NEAR(coarse_mom_2, fine_mom_2, DOUBLE_TOL);
+}
 
 //==============================================================================================================================
 TEST_F(valid_Wavelet, refine_order_5_linear) {
@@ -153,45 +166,66 @@ TEST_F(valid_Wavelet, refine_order_5_linear) {
 }
 
 //==============================================================================================================================
-// TEST_F(valid_Wavelet, order_5_quad) {
-//     // fill the source
-//     for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
-//         for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
-//             for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
-//                 real_t x = ((real_t)i0 + 0.5) * hcoarse_;
-//                 real_t y = ((real_t)i1 + 0.5) * hcoarse_;
-//                 real_t z = ((real_t)i2 + 0.5) * hcoarse_;
+TEST_F(valid_Wavelet, order_5_moments) {
+    real_t coarse_mom_0 = 0.0;
+    real_t coarse_mom_1 = 0.0;
+    real_t coarse_mom_2 = 0.0;
+    // fill the source
+    for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
+        for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
+            for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
+                real_t x  = ((real_t)i0 + 0.5) * hcoarse_;
+                real_t y  = ((real_t)i1 + 0.5) * hcoarse_;
+                real_t z  = ((real_t)i2 + 0.5) * hcoarse_;
+                real_t r2 = x * x + y * y + z * z;
 
-//                 data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x * x + y * y + z * z;
-//             }
-//         }
-//     }
+                data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = r2;
 
-//     // do the interpolation (-1 is refinement)
-//     Wavelet<5>* interp   = new Wavelet<5>();
-//     lid_t       shift[3] = {0};
-//     interp->Interpolate(-1, shift, block_coarse_, data_coarse_, block_fine_, data_fine_);
+                if ((0 <= i0 && i0 < coarse_end_[0] - M_GS) && (0 <= i1 && i1 < coarse_end_[1] - M_GS) && (0 <= i2 && i2 < coarse_end_[2] - M_GS)) {
+                    real_t r = std::sqrt(r2);
+                    coarse_mom_0 += std::pow(r, 0) * data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] * (hcoarse_ * hcoarse_ * hcoarse_);
+                    coarse_mom_1 += std::pow(r, 1) * data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] * (hcoarse_ * hcoarse_ * hcoarse_);
+                    coarse_mom_2 += std::pow(r, 2) * data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] * (hcoarse_ * hcoarse_ * hcoarse_);
+                }
+            }
+        }
+    }
 
-//     // check the result
+    // do the interpolation (-1 is refinement)
+    Wavelet<5>* interp   = new Wavelet<5>();
+    lid_t       shift[3] = {0};
+    interp->Interpolate(-1, shift, block_coarse_, data_coarse_, block_fine_, data_fine_);
 
-//     for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-//         for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-//             for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-//                 real_t x = ((real_t)i0 + 0.5) * hfine_;
-//                 real_t y = ((real_t)i1 + 0.5) * hfine_;
-//                 real_t z = ((real_t)i2 + 0.5) * hfine_;
-//                 EXPECT_NEAR(data_fine_[m_midx(i0, i1, i2, 0, block_fine_)], x * x + y * y + z * z, DOUBLE_TOL) << "fails for " << i0 << " " << i1 << " " << i2 << " hgrid = " << hfine_;
-//             }
-//         }
-//     }
-// }
+    // check the result
+    real_t fine_mom_0 = 0.0;
+    real_t fine_mom_1 = 0.0;
+    real_t fine_mom_2 = 0.0;
+    for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
+        for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
+            for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
+                real_t x  = ((real_t)i0 + 0.5) * hfine_;
+                real_t y  = ((real_t)i1 + 0.5) * hfine_;
+                real_t z  = ((real_t)i2 + 0.5) * hfine_;
+                real_t r2 = x * x + y * y + z * z;
+
+                real_t r = std::sqrt(r2);
+                fine_mom_0 += std::pow(r, 0) * data_fine_[m_midx(i0, i1, i2, 0, block_fine_)] * (hfine_ * hfine_ * hfine_);
+                fine_mom_1 += std::pow(r, 1) * data_fine_[m_midx(i0, i1, i2, 0, block_fine_)] * (hfine_ * hfine_ * hfine_);
+                fine_mom_2 += std::pow(r, 2) * data_fine_[m_midx(i0, i1, i2, 0, block_fine_)] * (hfine_ * hfine_ * hfine_);
+            }
+        }
+    }
+    EXPECT_NEAR(coarse_mom_0, fine_mom_0, DOUBLE_TOL);
+    // EXPECT_NEAR(coarse_mom_1, fine_mom_1, DOUBLE_TOL);
+    // EXPECT_NEAR(coarse_mom_2, fine_mom_2, DOUBLE_TOL);
+}
 
 //==============================================================================================================================
 TEST_F(valid_Wavelet, detail_order_3) {
     // fill the source
-    for (int i2 = fine_start_[2]-block_fine_->gs(); i2 < fine_end_[2]+block_fine_->gs(); i2++) {
-        for (int i1 = fine_start_[1]-block_fine_->gs(); i1 < fine_end_[1]+block_fine_->gs(); i1++) {
-            for (int i0 = fine_start_[0]-block_fine_->gs(); i0 < fine_end_[0]+block_fine_->gs(); i0++) {
+    for (int i2 = fine_start_[2] - block_fine_->gs(); i2 < fine_end_[2] + block_fine_->gs(); i2++) {
+        for (int i1 = fine_start_[1] - block_fine_->gs(); i1 < fine_end_[1] + block_fine_->gs(); i1++) {
+            for (int i0 = fine_start_[0] - block_fine_->gs(); i0 < fine_end_[0] + block_fine_->gs(); i0++) {
                 real_t x = ((real_t)i0 + 0.5) * hfine_;
                 real_t y = ((real_t)i1 + 0.5) * hfine_;
                 real_t z = ((real_t)i2 + 0.5) * hfine_;
@@ -203,9 +237,12 @@ TEST_F(valid_Wavelet, detail_order_3) {
 
     // do the interpolation (-1 is refinement)
     Wavelet<3>* interp     = new Wavelet<3>();
-    real_t      detail_max = 0.0;
-    interp->Criterion(block_fine_, data_fine_, &detail_max);
-    ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL);
+    real_t      detail_max[8] = {0};
+    interp->Details(block_fine_, data_fine_, detail_max);
+    
+    ASSERT_NEAR(detail_max[0], hfine_, DOUBLE_TOL); // d_x = 1
+    ASSERT_NEAR(detail_max[1], hfine_, DOUBLE_TOL); // d_y = 1
+    ASSERT_NEAR(detail_max[2], hfine_, DOUBLE_TOL); // d_z = 1
 }
 
 //==============================================================================================================================

@@ -9,29 +9,38 @@
 using std::pow;
 
 template <int order>
-void Wavelet<order>::Criterion(MemLayout* block, real_p data, real_t* criterion) {
+real_t Wavelet<order>::Criterion(MemLayout* block, real_p data) {
+    //-------------------------------------------------------------------------
+    real_t details_max[8] = {0};
+    // get memory details
+    Details(block, data, details_max);
+
+    // get the max out of all the details
+    real_t criterion = 0.0;
+    for (int id = 0; id < 7; id++) {
+        criterion = m_max(criterion, details_max[id]);
+    }
+    return criterion;
+    //-------------------------------------------------------------------------
+}
+
+template <int order>
+void Wavelet<order>::Details(MemLayout* block, real_p data, real_t* details_max) {
     //-------------------------------------------------------------------------
     interp_ctx_t ctx;
-    real_t details_max[7] = {0};
     // get memory details
     for (int id = 0; id < 3; id++) {
         ctx.srcstart[id] = block->start(id);
         ctx.srcend[id]   = block->end(id);
         ctx.trgstart[id] = -1;
-        ctx.trgend[id] = -2;
+        ctx.trgend[id]   = -2;
     }
     ctx.srcstr = block->stride();
-    ctx.sdata = data;
+    ctx.sdata  = data;
     ctx.trgstr = -1;
-    ctx.tdata = nullptr;
-
-
-    Detail_(&ctx,details_max);
-    // m_verb("order = %d my details = %e %e %e %e %e %e %e",order,details_max[0],details_max[1],details_max[2],details_max[3],details_max[4],details_max[5],details_max[6]);
-    // get the max out of all the details
-    for (int id = 0; id < 7; id++) {
-        (*criterion) = m_max(*criterion, details_max[id]);
-    }
+    ctx.tdata  = nullptr;
+    // get the details
+    Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
 
@@ -139,6 +148,15 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
     //-------------------------------------------------------------------------
 }
 
+
+
+/**
+ * @brief gets the detail coefficients
+ * 
+ * @tparam order 
+ * @param ctx 
+ * @param details_inf_norm (d_x,d_y,d_z,d_xy,d_yz,d_xz,d_xyz,mean)
+ */
 template <int order>
 void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const {
     m_assert(!(order==5 && M_GS<4), "the detail computation requires at least 4 ghost points on the current block");
@@ -282,7 +300,7 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
 
 
                 // store the max, relatively to the current value
-                for (int id = 0; id < 7; id++) {
+                for (int id = 0; id < 8; id++) {
                     details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
                 }
             }

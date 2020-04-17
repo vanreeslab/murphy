@@ -96,3 +96,41 @@ TEST_F(test_Grid_Uniform, refine_coarsen_uniform_1_level) {
     delete(sol);
 
 }
+
+TEST_F(test_Grid_Uniform, ref_coars_ref_coarse_uniform) {
+    // create a field
+    Field* vort = new Field("vorticity", 3);
+    grid_->AddField(vort);
+    // set a Gaussian
+    real_t      center[3] = {l_[0] * 0.5, l_[1] * 0.5, l_[2] * 0.5};
+    SetGaussian gaussian  = SetGaussian(0.1, center);
+    gaussian(grid_, vort);
+    // refine the grid
+    grid_->Refine(2);
+    // coarsen the grid
+    grid_->Coarsen(1);
+    // coarsen the grid
+    grid_->Refine(1);
+    // coarsen the grid
+    grid_->Coarsen(2);
+    
+    // compare
+    Field* sol = new Field("solution", 3);
+    grid_->AddField(sol);
+    gaussian(grid_, sol);
+
+    real_t norm2,normi;
+    ErrorCalculator myerr;
+    myerr.Norms(grid_,vort,sol,&norm2,&normi);
+
+    // the 2 norm is always smaller
+    ASSERT_LE(norm2,normi);
+    // we retrieve the field
+    ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL);
+    ASSERT_NEAR(normi, 0.0, DOUBLE_TOL);
+
+    // destroy the fields
+    delete (vort);
+    delete(sol);
+
+}
