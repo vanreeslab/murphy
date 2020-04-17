@@ -196,17 +196,16 @@ TEST_F(valid_Wavelet, detail_order_3) {
                 real_t y = ((real_t)i1 + 0.5) * hcoarse_;
                 real_t z = ((real_t)i2 + 0.5) * hcoarse_;
 
-                data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x + y+ z;
+                data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x + y + z;
             }
         }
     }
 
     // do the interpolation (-1 is refinement)
-    Wavelet<3>* interp   = new Wavelet<3>();
-    real_t detail_max = 0;
-    interp->Criterion(block_coarse_,data_coarse_,&detail_max);
-
-    ASSERT_NEAR(detail_max,0.0,DOUBLE_TOL);
+    Wavelet<3>* interp     = new Wavelet<3>();
+    real_t      detail_max = 0;
+    interp->Criterion(block_coarse_, data_coarse_, &detail_max);
+    ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL);
 }
 //==============================================================================================================================
 TEST_F(valid_Wavelet, detail_order_5) {
@@ -218,15 +217,15 @@ TEST_F(valid_Wavelet, detail_order_5) {
                 real_t y = ((real_t)i1 + 0.5) * hcoarse_;
                 real_t z = ((real_t)i2 + 0.5) * hcoarse_;
 
-                data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x + y+ z;
+                data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = x + y + z;
             }
         }
     }
 
     // do the interpolation (-1 is refinement)
-    Wavelet<5>* interp   = new Wavelet<5>();
-    real_t detail_max = 0;
-    interp->Criterion(block_coarse_,data_coarse_,&detail_max);
+    Wavelet<5>* interp     = new Wavelet<5>();
+    real_t      detail_max = 0;
+    interp->Criterion(block_coarse_, data_coarse_, &detail_max);
 
-    ASSERT_NEAR(detail_max,0.0,DOUBLE_TOL);
+    ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL);
 }

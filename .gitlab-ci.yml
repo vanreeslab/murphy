@@ -41,7 +41,7 @@ test pure mpi:
   dependencies:
     - build test
   script:
-    - "OMP_NUM_THREADS=1 mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "OMP_NUM_THREADS=1 mpirun --tag-output -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     reports:
@@ -52,7 +52,7 @@ test threads:
   dependencies:
     - build test
   script:
-    - "OMP_NUM_THREADS=4 mpirun -n 1 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "OMP_NUM_THREADS=4 mpirun --tag-output -n 1 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     reports:
@@ -63,7 +63,7 @@ test hybrid:
   dependencies:
     - build test
   script:
-    - "OMP_NUM_THREADS=3 mpirun -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "OMP_NUM_THREADS=4 mpirun --tag-output -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     reports:
@@ -75,7 +75,7 @@ validation :
   dependencies:
     - build test
   script:
-    - "mpirun -n 3 ./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
+    - "OMP_NUM_THREADS=4 mpirun --tag-output -n 3 ./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
     - "gcovr -r . -e test "
   artifacts:
     reports:
