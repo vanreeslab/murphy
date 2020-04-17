@@ -59,8 +59,6 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
-
-
     m_verb("entering interpolator with shift = %d %d %d",shift[0],shift[1],shift[2]);
     m_verb("entering interpolator with srcstart = %d %d %d",block_src->start(0),block_src->start(1),block_src->start(2));
     m_verb("entering interpolator with srcend = %d %d %d",block_src->end(0),block_src->end(1),block_src->end(2));

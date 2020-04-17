@@ -22,12 +22,12 @@ void Wavelet<order>::Criterion(MemLayout* block, real_p data, real_t* criterion)
     }
     ctx.srcstr = block->stride();
     ctx.sdata = data;
-    ctx.trgstr = -1000;
+    ctx.trgstr = -1;
     ctx.tdata = nullptr;
 
 
     Detail_(&ctx,details_max);
-
+    // m_verb("order = %d my details = %e %e %e %e %e %e %e",order,details_max[0],details_max[1],details_max[2],details_max[3],details_max[4],details_max[5],details_max[6]);
     // get the max out of all the details
     for (int id = 0; id < 7; id++) {
         (*criterion) = m_max(*criterion, details_max[id]);
@@ -155,6 +155,10 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
     ha_tmp[order / 2]    = 0.5;
     const real_t* ha     = ha_tmp + hslen;
 
+
+    // m_verb("order = %d start = %d %d %d, end = %d %d %d",order,ctx->srcstart[0],ctx->srcstart[1],ctx->srcstart[2],ctx->srcend[0],ctx->srcend[1],ctx->srcend[2]);
+    // m_verb("order = %d ga = %f %f %f, ha = %f %f %f, sign= %f %f %f",order,ga[-1],ga[0],ga[1],ha[-1],ha[0],ha[1],sign[-1],sign[0],sign[1]);
+
     // for each of the data for the considered children
     for (int ik2 = ctx->srcstart[2] / 2; ik2 < ctx->srcend[2] / 2; ik2++) {
         for (int ik1 = ctx->srcstart[1] / 2; ik1 < ctx->srcend[1] / 2; ik1++) {
@@ -164,9 +168,12 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                 m_assume_aligned(lsdata);
 
                 // set the detail coefficient to the
-                real_t detail[7] = {0};
+                real_t detail[8];
 
                 // compute all the single coefficients
+                detail[0] = 0.0;
+                detail[1] = 0.0;
+                detail[2] = 0.0;
                 for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
                     const real_t fact = ha[0] * ha[0] * ga[dm0];
                     // this is dx
@@ -198,8 +205,15 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                     detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 0, 0, ctx->srcstr)] * fact;
                     detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
                     detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
-                }
 
+
+                    // m_verb("order = %d, dm0 = %d: fact = %f, sign = %f -> dx = %e, dy = %e, dz = %e",order,dm0,fact,sign[dm0],detail[0],detail[1],detail[2]);
+                }
+                // m_verb("order = %d, =================> dx = %e, dy = %e, dz = %e",order,detail[0],detail[1],detail[2]);
+
+                detail[3] = 0.0;
+                detail[4] = 0.0;
+                detail[5] = 0.0;
                 for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
                     for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
                         const real_t fact = ha[0] * ga[dm1] * ga[dm0];
@@ -235,6 +249,7 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                     }
                 }
 
+                detail[6] = 0.0;
                 for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
                     for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
                         for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
@@ -252,7 +267,21 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                     }
                 }
 
-                // store the max
+                // get the mean value, the last missing ingredient
+                detail[7] = 0.0;
+                detail[7] += lsdata[m_sidx( 0,  0,  0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 1,  0,  0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 0,  1,  0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 0,  0,  1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 0,  1,  1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 1,  1,  0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 1,  0,  1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx( 1,  1,  1, 0, ctx->srcstr)] * 0.125;
+
+                // m_verb("order = %d my details = %f %f %f %f %f %f %f %f",order,detail[0],detail[1],detail[2],detail[3],detail[4],detail[5],detail[6],detail[7]);
+
+
+                // store the max, relatively to the current value
                 for (int id = 0; id < 7; id++) {
                     details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
                 }

@@ -134,22 +134,24 @@ void Grid::GhostPull(Field* field) {
     } else {
         m_log("pulling ghosts for field %s", field->name().c_str());
         // start the send of the first dimension
-        ghost_->PushToMirror(field,0);
+        ghost_->PushToMirror(field, 0);
         ghost_->MirrorToGhostSend();
 
-        for(int ida=1; ida<field->lda(); ida++){
+        for (int ida = 1; ida < field->lda(); ida++) {
             // receive the current communication, the mirrors are now free
             ghost_->MirrorToGhostRecv();
             // fill the mirror and initiate the next send
-            ghost_->PushToMirror(field,ida);
+            ghost_->PushToMirror(field, ida);
             ghost_->MirrorToGhostSend();
             // handle the last dimension just received
-            ghost_->PullFromGhost(field,ida-1,interp_);
-
+            ghost_->PullFromGhost(field, ida - 1, interp_);
         }
         // receive and end the last dimension
         ghost_->MirrorToGhostRecv();
-        ghost_->PullFromGhost(field,field->lda()-1,interp_);
+        ghost_->PullFromGhost(field, field->lda() - 1, interp_);
+
+        // set that everything is ready for the field
+        field->ghost_status(true);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -179,6 +181,10 @@ void Grid::Refine(const sid_t delta_level) {
         // create a new ghost and mesh
         SetupP4estGhostMesh();
         ghost_ = new Ghost(this);
+        // set the ghosting fields as non-valid
+        for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+            fid->second->ghost_status(false);
+        }
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -208,6 +214,56 @@ void Grid::Coarsen(const sid_t delta_level) {
         // create a new ghost and mesh
         SetupP4estGhostMesh();
         ghost_ = new Ghost(this);
+        // set the ghosting fields as non-valid
+        for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+            fid->second->ghost_status(false);
+        }
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    rtol_ = refine_tol;
+    ctol_ = coarsen_tol;
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief adapt = (refine or coarsen once) each block, based on the given field and the tolerance
+ * 
+ * @param field 
+ * @param tol 
+ */
+void Grid::Adapt(Field* field) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // store the criterion field
+    tmp_field_ = field;
+    // compute the ghost needed by the interpolation of everyblock
+    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+        GhostPull(fid->second);
+    }
+    // delete the soon-to be outdated ghost and mesh
+    delete (ghost_);
+    ResetP4estGhostMesh();
+    // set the grid in the forest for the callback
+    forest_->user_pointer = (void*)this;
+    // refine the needed blocks
+    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Wavelet, nullptr, cback_Interpolate);
+    // coarsen the needed block
+    p8est_coarsen_ext(forest_, 0, 0, cback_Wavelet, nullptr, cback_Interpolate);
+    // balance the partition
+    // TODO
+    // create a new ghost and mesh
+    SetupP4estGhostMesh();
+    ghost_ = new Ghost(this);
+    // set the ghosting fields as non-valid
+    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+        fid->second->ghost_status(false);
     }
     //-------------------------------------------------------------------------
     m_end;

@@ -28,6 +28,10 @@ class Grid : public ForestGrid {
     Ghost*        ghost_  = nullptr;
     Interpolator* interp_ = nullptr;
 
+    real_t rtol_      = 1.0e-2;
+    real_t ctol_      = 1.0e-4;
+    Field* tmp_field_ = nullptr;  //!< working field, needed by the adaptation of the grid
+
    public:
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
@@ -43,12 +47,10 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    // Field* working_callback_field() const { return working_callback_field_; }
+    lid_t NField() const { return (lid_t)(fields_.size()); }
 
     map<string, Field*>::const_iterator FieldBegin() const { return fields_.begin(); }
     map<string, Field*>::const_iterator FieldEnd() const { return fields_.end(); }
-
-    lid_t NField() const { return (lid_t)(fields_.size()); }
 
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
@@ -64,13 +66,18 @@ class Grid : public ForestGrid {
     void GhostPull(Field* field);
     /**@}*/
 
-     /**
+    /**
      * @name Grid adaptation
      * 
      * @{
      */
+    real_t rtol() const { return rtol_; }
+    real_t ctol() const { return ctol_; }
+    Field* tmp_field() const { return tmp_field_; }
+    void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void Refine(const sid_t delta_level);
     void Coarsen(const sid_t delta_level);
+    void Adapt( Field* field);
     /**@}*/
 
    private:

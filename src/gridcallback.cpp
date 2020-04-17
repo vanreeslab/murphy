@@ -33,6 +33,7 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
 }
 
 
+
 int cback_Yes(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -44,6 +45,67 @@ int cback_Yes(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]) {
     m_begin;
     //-------------------------------------------------------------------------
     return (true);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+// this is refinement
+int cback_Wavelet(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
+    GridBlock*    block   = reinterpret_cast<GridBlock*>(quadrant->p.user_data);
+    Interpolator* interp = grid->interp();
+    // get the field and check each dimension
+    bool   refine = false;
+    Field* fid    = grid->tmp_field();
+    for (int ida = 0; ida < fid->lda(); ida++) {
+        m_verb("analysing the details on block for field %s, dim = %d",fid->name().c_str(),ida);
+        real_p data = block->data(fid, ida);
+        real_t norm = 0.0;
+        interp->Criterion(block, data, &norm);
+        // refine if the norm is bigger
+        refine = (norm > grid->rtol());
+        // refine the whole grid if one dimension needs to be refined
+        if (refine) {
+            break;
+        }
+    }
+    // refine if the criterion is bigger than the tolerance
+    return refine;
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+// this is coarsening
+int cback_Wavelet(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    Interpolator* interp = grid->interp();
+    // for each of the children
+    bool   coarsen = false;
+    Field* fid     = grid->tmp_field();
+    for (int id = 0; id < P8EST_CHILDREN; id++) {
+        GridBlock* block = reinterpret_cast<GridBlock*>(quadrant[id]->p.user_data);
+        for (int ida = 0; ida < fid->lda(); ida++) {
+            real_p data = block->data(fid, ida);
+            real_t norm = 0.0;
+            interp->Criterion(block, data, &norm);
+            // coarsen if the norm is bigger
+            coarsen = (norm < grid->ctol());
+            // coarsen the whole grid if one dimension needs to be coarsened
+            if (coarsen) {
+                break;
+            }
+        }
+        // coarsen the whole grid if one block needs to be coarsened
+        if (coarsen) {
+            break;
+        }
+    }
+    // refine if the criterion is bigger than the tolerance
+    return coarsen;
     //-------------------------------------------------------------------------
     m_end;
 }

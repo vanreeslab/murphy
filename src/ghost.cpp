@@ -174,8 +174,6 @@ void Ghost::PullFromGhost(Field* field, sid_t ida, Interpolator* interp) {
     ida_    = ida;
     // interpolate
     OperatorF::operator()(grid_, field);
-    // set the ghost fields as ready
-    field->ghost_status(true);
     //-------------------------------------------------------------------------
     m_end;
 }

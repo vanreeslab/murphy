@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     p4est_init(NULL, SC_LP_SILENT);
     //-------------------------------------------------------------------------
     {
-        bool periodic[3] = {false, true, false};
+        bool periodic[3] = {false, false, false};
         int  l[3]        = {1, 2, 3};
 
         // create a grid
@@ -34,26 +34,31 @@ int main(int argc, char** argv) {
         grid->AddField(vort);
         // set a Gaussian
         real_t      center[3] = {l[0] * 0.5, l[1] * 0.5, l[2] * 0.5};
-        SetGaussian gaussian  = SetGaussian(0.1, center);
-        gaussian(grid, vort);
+        // SetGaussian gaussian  = SetGaussian(0.01, center);
+        // gaussian(grid, vort);
 
-        grid->GhostPull(vort);
+        real_t alpha[3] = {0.0, 0.0, 1.0};
+        // SetAbs setabs   = SetAbs(alpha, center);
+        // setabs(grid, vort);
+        SetJump setjump   = SetJump(alpha, center);
+        setjump(grid, vort);
+
+        // grid->GhostPull(vort);
 
         // create a dumper and dump
-        IOH5 mydump2 = IOH5("data");
-        mydump2.dump_ghost(true);
-        mydump2(grid, vort);
-
-        grid->Refine(1);
+        // IOH5 mydump2 = IOH5("data");
+        // mydump2.dump_ghost(true);
+        // mydump2(grid, vort);
+        // grid->Refine(1);
 
         // create a dumper and dump
         IOH5 mydump1 = IOH5("data");
         mydump1(grid, vort,"vort_fine");
 
 
-        grid->Coarsen(1);
+        grid->Adapt(vort);
 
-        mydump1(grid, vort,"vort_coarse");
+        mydump1(grid, vort,"vort_adapt");
 
         // destroy the grid and the field
         delete (vort);
