@@ -46,9 +46,8 @@ typedef struct interp_ctx_t {
  */
 class Interpolator {
    public:
-    // virtual void operator()(const Field* field, const sid_t ida, GhostBlock* block);
-    // virtual void operator()(const Field* field, const sid_t ida, GridBlock* block, GridBlock* block_trg);
-    // virtual void operator()(const Field* field, const sid_t ida, GridBlock* block_trg, MemLayout* block_src, real_p data_src);
+    virtual void Criterion(MemLayout* block, real_p data, real_t* criterion) = 0;
+
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
 
    protected:

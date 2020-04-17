@@ -4,12 +4,13 @@
 #include "omp.h"
 #include "wavelet.hpp"
 
-// from paper p4est, table 1, S vector
-static const sid_t edge2face[12][2]  = {{2, 4}, {3, 4}, {2, 5}, {3, 5}, {0, 4}, {1, 4}, {0, 5}, {1, 5}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
-static const sid_t corner2face[8][3] = {{0, 2, 4}, {1, 2, 4}, {0, 3, 4}, {1, 3, 4}, {0, 2, 5}, {1, 2, 5}, {0, 3, 5}, {1, 3, 5}};
+// // from paper p4est, table 1, S vector
+// static const sid_t edge2face[12][2]  = {{2, 4}, {3, 4}, {2, 5}, {3, 5}, {0, 4}, {1, 4}, {0, 5}, {1, 5}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
+// static const sid_t corner2face[8][3] = {{0, 2, 4}, {1, 2, 4}, {0, 3, 4}, {1, 3, 4}, {0, 2, 5}, {1, 2, 5}, {0, 3, 5}, {1, 3, 5}};
 
-static const int facelimit[4] = {0, 24, 120, 144};
-static const int edgelimit[4] = {0, 24, 72, 96};
+// static const int facelimit[4] = {0, 24, 120, 144};
+// static const int edgelimit[4] = {0, 24, 72, 96};
+
 
 Ghost::Ghost(ForestGrid* grid) {
     m_begin;
@@ -378,6 +379,16 @@ void Ghost::PushToMirror_(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief given an updated @ref ghost_ arrays,
+ * compute the ghosts points for the current block (field @ref fid, dimension @ref ida_)
+ * 
+ * @warning this function runs inside an OpenMP parallel region
+ * 
+ * @param qid the quadrant id, see @ref qid_t
+ * @param cur_block the current grid block, see @ref GridBlock
+ * @param fid the current field, see @ref Field
+ */
 void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     //-------------------------------------------------------------------------
     // get the working direction given the thread
@@ -389,9 +400,18 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     lid_t     ghost_end[3]   = {M_N, M_N, M_N};
     SubBlock* ghost_subblock = new SubBlock(0, M_N, ghost_start, ghost_end);
 
+    lid_t     coarse_start[3] = {0, 0, 0};
+    lid_t     coarse_end[3]   = {M_HN, M_HN, M_HN};
+    SubBlock* coarse_subblock = new SubBlock(M_GS, M_CLEN, coarse_start, coarse_end);
+
     // determine if we have to use the coarse representationun
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
+    // if so, reset the coarse info
+    if(do_coarse){
+        memset(tmp,0,M_CLEN*M_CLEN*M_CLEN*sizeof(real_t));
+    }
 
+    // do the blocks, on my level or finer
     for (auto biter = block_sibling_[qid->cid]->begin(); biter != block_sibling_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);
         // get the current blocks
@@ -401,7 +421,18 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         real_p data_trg = cur_block->data(fid, ida_);
         // launch the interpolation
         interp_->Interpolate(gblock->dlvl(), gblock->shift(), ngh_block, data_src, gblock, data_trg);
+
+        // we need to interpolate on the coarse version of myself as well
+        if (do_coarse) {
+            for (int id = 0; id < 3; id++) {
+                coarse_start[id] = CoarseFromBlock(gblock->start(id));
+                coarse_end[id]   = CoarseFromBlock(gblock->end(id));
+            }
+            coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+            interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), ngh_block, data_src, coarse_subblock, tmp);
+        }
     }
+    // do the ghosts, on my level or finer
     for (auto biter = ghost_sibling_[qid->cid]->begin(); biter != ghost_sibling_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);
         // get the memory pointers for the ghost, where the send/recv call put the meaningfull info
@@ -409,6 +440,16 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         real_p data_trg = cur_block->data(fid, ida_);
         // launch the interpolation
         interp_->Interpolate(gblock->dlvl(), gblock->shift(), ghost_subblock, data_src, gblock, data_trg);
+
+        // we need to interpolate on the coarse version of myself as well
+        if (do_coarse) {
+            for (int id = 0; id < 3; id++) {
+                coarse_start[id] = CoarseFromBlock(gblock->start(id));
+                coarse_end[id]   = CoarseFromBlock(gblock->end(id));
+            }
+            coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+            interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), ghost_subblock, data_src, coarse_subblock, tmp);
+        }
     }
     for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);

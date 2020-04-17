@@ -1,6 +1,33 @@
+#ifndef SRC_WAVELET_IPP_
+#define SRC_WAVELET_IPP_
+
 #include <cmath>
 
+#include "murphy.hpp"
+#include "wavelet.hpp"
+
 using std::pow;
+
+template <int order>
+void Wavelet<order>::Criterion(MemLayout* block, real_p data, real_t* criterion) {
+    //-------------------------------------------------------------------------
+    interp_ctx_t ctx;
+    real_t details_max[7];
+    // get memory details
+    for (int id = 0; id < 3; id++) {
+        ctx.srcstart[id] = block->start(id);
+        ctx.srcend[id]   = block->end(id);
+    }
+    ctx.srcstr = block->stride();
+    ctx.sdata = data;
+    Detail_(&ctx,details_max);
+
+    // get the max out of all the details
+    for (int id = 0; id < 7; id++) {
+        (*criterion) = m_max(*criterion, details_max[id]);
+    }
+    //-------------------------------------------------------------------------
+}
 
 template <int order>
 void Wavelet<order>::Copy_(const interp_ctx_t* ctx) const {
@@ -68,7 +95,7 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
 
     const lid_t   hslen = order / 2;
     const real_t* hs    = hs_ + hslen;
-    const real_t* sign  = sgn_ + hslen;
+    const real_t* sign  = sgn_hs_ + hslen;
 
     // for each of the data for the considered children
     for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
@@ -105,3 +132,127 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
     }
     //-------------------------------------------------------------------------
 }
+
+template <int order>
+void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const {
+    //-------------------------------------------------------------------------
+    // assure alignment for both target and source
+    m_assume_aligned(ctx->tdata);
+    m_assume_aligned(ctx->sdata);
+
+    const lid_t   hslen = order / 2;
+    const real_t* ga    = ga_ + hslen;
+    const real_t* sign  = sgn_ga_ + hslen;
+
+    real_t ha_tmp[order] = {0};
+    ha_tmp[order / 2]    = 0.5;
+    const real_t* ha     = ha_tmp + hslen;
+
+    // for each of the data for the considered children
+    for (int ik2 = ctx->srcstart[2] / 2; ik2 < ctx->srcend[2] / 2; ik2++) {
+        for (int ik1 = ctx->srcstart[1] / 2; ik1 < ctx->srcend[1] / 2; ik1++) {
+            for (int ik0 = ctx->srcstart[0] / 2; ik0 < ctx->srcend[0] / 2; ik0++) {
+                //get the local adress of the dady
+                real_p lsdata = ctx->sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
+                m_assume_aligned(lsdata);
+
+                // set the detail coefficient to the
+                real_t detail[7] = {0};
+
+                // compute all the single coefficients
+                for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
+                    const real_t fact = ha[0] * ha[0] * ga[dm0];
+                    // this is dx
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 0, 0, 0, ctx->trgstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 0, 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 1, 0, 0, ctx->trgstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 0, 1, 0, ctx->trgstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 0, 1, 1, 0, ctx->trgstr)] * fact;
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 0, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[0] += lsdata[m_sidx(2 * dm0 + 1, 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+
+                    // this is dy
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 0, 0, 0, ctx->trgstr)] * fact;
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 0, 0, 0, ctx->trgstr)] * fact;
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 0, 1, 0, ctx->trgstr)] * fact;
+                    detail[1] += lsdata[m_sidx(0, 2 * dm0 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 0, 1, 0, ctx->trgstr)] * fact;
+                    detail[1] += lsdata[m_sidx(1, 2 * dm0 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+
+                    // this is dz
+                    detail[2] += lsdata[m_sidx(0, 0, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
+                    detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
+                    detail[2] += lsdata[m_sidx(0, 1, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
+                    detail[2] += lsdata[m_sidx(0, 0, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(0, 1, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
+                    detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                    detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                }
+
+                for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
+                    for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
+                        const real_t fact = ha[0] * ga[dm1] * ga[dm0];
+                        // this is dxy
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 0, 0, ctx->trgstr)] * fact;
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 1, 0, ctx->trgstr)] * fact;
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 1, 0, ctx->trgstr)] * fact * sign[dm0];
+                        detail[3] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+
+                        // this is dyz
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
+                        detail[4] += lsdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
+                        detail[4] += lsdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+
+                        // this is dxz
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                        detail[5] += lsdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                    }
+                }
+
+                for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
+                    for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
+                        for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
+                            const real_t fact = ha[0] * ga[dm1] * ga[dm0];
+                            // this is dxy
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->trgstr)] * fact;
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm1];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm1] * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm2];
+                            detail[6] += lsdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1] * sign[dm2];
+                        }
+                    }
+                }
+
+                // store the max
+                for (int id = 0; id < 7; id++) {
+                    details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
+                }
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+#endif

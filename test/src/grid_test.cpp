@@ -3,7 +3,6 @@
 #include "error.hpp"
 #include "gtest/gtest.h"
 
-
 #define DOUBLE_TOL 1e-13
 
 using std::pow;
