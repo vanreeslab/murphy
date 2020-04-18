@@ -32,7 +32,7 @@ void SetGaussian::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid)
                     const real_t x2   = pos[2] - center_[2];
                     const real_t rho2 = x0 * x0 + x1 * x1 + x2 * x2;
                     
-                    data[m_idx(i0, i1, i2)] = oo_eps2 * std::exp(-rho2);
+                    data[m_idx(i0, i1, i2)] = oo_eps2 * std::exp(-rho2*oo_eps2);
                 }
             }
         }
