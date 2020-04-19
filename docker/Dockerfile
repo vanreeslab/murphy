@@ -5,7 +5,7 @@ RUN echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 #RUN apt update
 #RUN apt upgrade -y
 RUN apt-get -y update && apt-get install -y \
-    make git gfortran gcc g++ linux-libc-dev vim wget unzip cmake \
+    make git gfortran gcc g++ linux-libc-dev vim wget unzip cmake valgrind \
     automake autoconf m4 libblas-dev liblapack-dev \
     libhdf5-mpi-dev libfftw3-dev libopenmpi-dev openmpi-bin \
     python3 python3-pip \
@@ -17,7 +17,7 @@ RUN cd /p4est &&\
     git checkout feature-mesh-edge &&\
     git submodule init && git submodule update &&\
     ./bootstrap &&\
-    CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-valgrind-clean &&\
+    CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-openmp --enable-valgrind-clean &&\
     make install -j
 RUN rm -rf /p4est
 
