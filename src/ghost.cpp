@@ -388,7 +388,6 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
         }
     }
 
-    m_verb("dbg: tree %d, quad %d; %d blocks, %d ghosts, %d phys", qid->tid, qid->qid, block_sibling_[qid->cid]->size(), ghost_sibling_[qid->cid]->size(), phys_[qid->cid]->size());
 #pragma omp critical
     {
         sc_array_destroy(ngh_quad);
@@ -447,7 +446,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         memset(tmp, 0, M_CLEN * M_CLEN * M_CLEN * sizeof(real_t));
     }
 
-    m_verb("dbg: tree %d, quad %d; %d blocks, %d ghosts, %d phys", qid->tid, qid->qid, block_sibling_[qid->cid]->size(), ghost_sibling_[qid->cid]->size(), phys_[qid->cid]->size());
+    m_verb("dbg: tree %d, quad %d: %ld blocks, %ld ghosts, %ld phys", qid->tid, qid->qid, block_sibling_[qid->cid]->size(), ghost_sibling_[qid->cid]->size(), phys_[qid->cid]->size());
 
     //-------------------------------------------------------------------------
     // do the blocks, on my level or finer
@@ -608,6 +607,15 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         bctype_t bctype = fid->bctype(ida_, gblock->iface());
         if (bctype == M_BC_EVEN) {
             EvenBoundary_4 bc = EvenBoundary_4();
+            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+        } else if (bctype == M_BC_ODD) {
+            OddBoundary_4 bc = OddBoundary_4();
+            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+        } else if (bctype == M_BC_EXTRAP) {
+            ExtrapBoundary_4 bc = ExtrapBoundary_4();
+            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+        } else if (bctype == M_BC_ZERO) {
+            ZeroBoundary bc = ZeroBoundary();
             bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
         } else {
             m_assert(false, "this type of BC is not implemented yet");

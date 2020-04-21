@@ -31,7 +31,9 @@ int main(int argc, char** argv) {
         // create a field
         Field* vort = new Field("vorticity", 3);
         // set an EVEN bc for everybody (everywhere and in each dimension)
-        vort->bctype(M_BC_EVEN);
+        // vort->bctype(M_BC_ODD);
+        vort->bctype(M_BC_EXTRAP);
+        // vort->bctype(M_BC_ZERO);
         // register the field to the grid
         grid->AddField(vort);
 
@@ -40,10 +42,12 @@ int main(int argc, char** argv) {
         // SetGaussian gaussian  = SetGaussian(0.2, center);
         // gaussian(grid, vort);
 
-        real_t     freq[3]   = {1.0, 0.0, 0.0};
+        real_t     freq[3]   = {1.0, 1.0, 1.0};
         real_t     length[3] = {(real_t)l[0],(real_t)l[1],(real_t)l[2]};
-        SetCosinus cosinus   = SetCosinus(length, freq);
-        cosinus(grid, vort);
+        // SetCosinus cosinus   = SetCosinus(length, freq);
+        // cosinus(grid, vort);
+        SetSinus sinus   = SetSinus(length, freq);
+        sinus(grid,vort);
 
         // real_t alpha[3] = {0.0, 0.0, 1.0};
         // // SetAbs setabs   = SetAbs(alpha, center);
