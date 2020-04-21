@@ -1,9 +1,9 @@
 #include "ghost.hpp"
 
+#include "boundary.hpp"
 #include "murphy.hpp"
 #include "omp.h"
 #include "wavelet.hpp"
-#include "boundary.hpp"
 
 // // from paper p4est, table 1, S vector
 // static const sid_t edge2face[12][2]  = {{2, 4}, {3, 4}, {2, 5}, {3, 5}, {0, 4}, {1, 4}, {0, 5}, {1, 5}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
@@ -11,7 +11,6 @@
 
 // static const int facelimit[4] = {0, 24, 120, 144};
 // static const int edgelimit[4] = {0, 24, 72, 96};
-
 
 Ghost::Ghost(ForestGrid* grid) {
     m_begin;
@@ -38,14 +37,11 @@ Ghost::Ghost(ForestGrid* grid) {
         phys_[ib]          = new list<PhysBlock*>();
     }
 
-
     // initialize the communications and the mirrors, ghosts arrays
     InitComm_();
 
     // call the simple operator to init the lists, reset the counter to 0 (needed to count the ghosts)
     OperatorS::operator()(grid_);
-
-    
 
     // initialize the working coarse memory
     int nthreads = omp_get_max_threads();
@@ -254,7 +250,7 @@ void Ghost::InitComm_() {
             // init the send
             MPI_Send_init(send_buf, send_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, mirror_send_ + send_request_offset);
             // store the mirror id's
-            for(lid_t ib = send_first; ib< send_last; ib++){
+            for (lid_t ib = send_first; ib < send_last; ib++) {
                 mirrors_to_local_[ib] = ghost->mirror_proc_mirrors[ib];
             }
             // upate the counters
@@ -295,9 +291,9 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 
     // //----------------------------------
     // // temporary sc array used to get the ghosts
-    sc_array_t* ngh_quad; // points to the quad
-    sc_array_t* ngh_qid; // give the ID of the quad or ghost
-    sc_array_t* ngh_enc; // get the status
+    sc_array_t* ngh_quad;  // points to the quad
+    sc_array_t* ngh_qid;   // give the ID of the quad or ghost
+    sc_array_t* ngh_enc;   // get the status
 
 #pragma omp critical
     {
@@ -340,9 +336,33 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
             const bool isghost = (status < 0);
             qdrt_t*    nghq    = *((qdrt_t**)sc_array_index_int(ngh_quad, nid));
 
-            // if we have a local quadrant
+            // get the sign, i.e. the normal to the face, the edge of the corner we consider
+            real_t sign[3];
+            GhostGetSign(ibidule, sign);
+
+            // get the position of the neighbor, as seen by me!!! may be different than the actual one if there is a periodic bc
+            real_t ngh_pos[3];
             if (!isghost) {
-                GhostBlock* gb = new GhostBlock(block, nghq);
+                // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
+                GridBlock* ngh_block = reinterpret_cast<GridBlock*>(nghq->p.user_data);
+                ngh_pos[0]           = ngh_block->xyz(0);
+                ngh_pos[1]           = ngh_block->xyz(1);
+                ngh_pos[2]           = ngh_block->xyz(2);
+            } else {
+                p8est_qcoord_to_vertex(grid_->connect(), nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
+            }
+            for (sid_t id = 0; id < 3; id++) {
+                ngh_pos[id] = block->xyz(id) + fmod(ngh_pos[id] - block->xyz(id) + grid_->domain_periodic(id)*sign[id] * grid_->domain_length(id), grid_->domain_length(id));
+            }
+
+            // create the new block
+            GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos);
+
+            // associate the correct memory and push back
+            if (!isghost) {
+                GridBlock* ngh_block = reinterpret_cast<GridBlock*>(nghq->p.user_data);
+                gb->block_src(ngh_block);
+
                 if (gb->dlvl() >= 0) {
 #pragma omp critical
                     bsibling->push_back(gb);
@@ -350,16 +370,12 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
                     bparent->push_back(gb);
                 }
+                // m_verb("dbg: tree %d, quad %d; block detected for ibidule %d",qid->tid,qid->qid,ibidule);
             } else {
-                // get the position of the tree, used to compute intersection between blocks
-                p4est_topidx_t ngh_tree_id = nghq->p.piggy3.which_tree;
-                real_t         ngh_tree_offset[3];
-                p8est_qcoord_to_vertex(grid_->connect(), ngh_tree_id, 0, 0, 0, ngh_tree_offset);
+                lid_t  ighost = *(ngh_qid->array + nid * sizeof(int));
+                real_p data   = ghosts_ + ighost * M_NGHOST;
+                gb->data_src(data);
 
-                lid_t       ighost = *(ngh_qid->array + nid * sizeof(int));
-                real_p      data   = ghosts_ + ighost * M_NGHOST;
-
-                GhostBlock* gb     = new GhostBlock(block, nghq, ngh_tree_offset, data);
                 if (gb->dlvl() >= 0) {
 #pragma omp critical
                     gsibling->push_back(gb);
@@ -367,9 +383,12 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
                     gparent->push_back(gb);
                 }
+                // m_verb("dbg: tree %d, quad %d; ghost detected for ibidule %d",qid->tid,qid->qid,ibidule);
             }
         }
     }
+
+    m_verb("dbg: tree %d, quad %d; %d blocks, %d ghosts, %d phys", qid->tid, qid->qid, block_sibling_[qid->cid]->size(), ghost_sibling_[qid->cid]->size(), phys_[qid->cid]->size());
 #pragma omp critical
     {
         sc_array_destroy(ngh_quad);
@@ -424,9 +443,11 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     // determine if we have to use the coarse representationun
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
     // if so, reset the coarse info
-    if(do_coarse){
-        memset(tmp,0,M_CLEN*M_CLEN*M_CLEN*sizeof(real_t));
+    if (do_coarse) {
+        memset(tmp, 0, M_CLEN * M_CLEN * M_CLEN * sizeof(real_t));
     }
+
+    m_verb("dbg: tree %d, quad %d; %d blocks, %d ghosts, %d phys", qid->tid, qid->qid, block_sibling_[qid->cid]->size(), ghost_sibling_[qid->cid]->size(), phys_[qid->cid]->size());
 
     //-------------------------------------------------------------------------
     // do the blocks, on my level or finer
@@ -498,7 +519,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             coarse_start[id] = CoarseFromBlock(gblock->start(id));
             coarse_end[id]   = CoarseFromBlock(gblock->end(id));
         }
-        m_verb("originally: start = %d %d %d and end = %d %d %d",gblock->start(0),gblock->start(1),gblock->start(2),gblock->end(0),gblock->end(1),gblock->end(2));
+        m_verb("originally: start = %d %d %d and end = %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
         coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = ngh_block;
@@ -538,17 +559,15 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         }
         coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
         // get memory details
-        lid_t       shift[3]  = {0, 0, 0};
-        MemLayout*  block_src = cur_block;
-        real_p      data_src  = cur_block->data(fid, ida_);
-        MemLayout*  block_trg = coarse_subblock;
-        real_p      data_trg  = tmp + m_zeroidx(0, coarse_subblock);
+        lid_t      shift[3]  = {0, 0, 0};
+        MemLayout* block_src = cur_block;
+        real_p     data_src  = cur_block->data(fid, ida_);
+        MemLayout* block_trg = coarse_subblock;
+        real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
         // interpolate
         interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg);
 
-
         // do here some physics
-
 
         // reset the coarse sublock to the full position
         for (int id = 0; id < 3; id++) {
@@ -586,13 +605,12 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
         PhysBlock* gblock = (*piter);
         // get the direction and the corresponding bctype
-        bctype_t bctype = fid->bctype(ida_,gblock->iface());
-        if(bctype == M_BC_EVEN){
+        bctype_t bctype = fid->bctype(ida_, gblock->iface());
+        if (bctype == M_BC_EVEN) {
             EvenBoundary_4 bc = EvenBoundary_4();
-            bc(0.0,cur_block->hgrid(),gblock,cur_block->data(fid,ida_));
-        }else
-        {
-            m_assert(false,"this type of BC is not implemented yet");
+            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+        } else {
+            m_assert(false, "this type of BC is not implemented yet");
         }
     }
     delete (ghost_subblock);
@@ -604,8 +622,8 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, Field* field) {
     m_assert(grid_->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
     // get the grid info
-    p8est_t*       forest  = grid_->forest();
-    p8est_ghost_t* ghost   = grid_->ghost();
+    p8est_t*       forest = grid_->forest();
+    p8est_ghost_t* ghost  = grid_->ghost();
     // const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
 
 #pragma omp parallel for

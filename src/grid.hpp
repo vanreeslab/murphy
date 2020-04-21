@@ -20,8 +20,6 @@ using std::numeric_limits;
 
 class Grid : public ForestGrid {
    protected:
-    // Field* working_callback_field_ = nullptr; /**< defines a current working field, used in the callback functions */
-
     map<string, Field*> fields_; /**< map of every field registered to this grid. The key is the field name (for easier access) */
 
     Prof*         prof_   = nullptr; /**< the profiler */
@@ -35,7 +33,7 @@ class Grid : public ForestGrid {
    public:
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
-
+    
     size_t LocalMemSize() const;
     size_t LocalNumDof() const;
     size_t GlobalNumDof() const;

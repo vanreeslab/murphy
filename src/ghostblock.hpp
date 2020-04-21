@@ -16,9 +16,6 @@ class GhostBlock : public SubBlock {
     sid_t dlvl_;      //!< delta level = neighbor level - my level (see @ref Interpolator)
     lid_t shift_[3];  //!<  my (0,0,0) in the framework of my neighbour  (see @ref Interpolator::interpolate_())
 
-    // GridBlock* origin_;
-
-    bool isghost_ = false;
     union {
         real_p     data_src_;   //!<  the ghost source comes from another rank
         GridBlock* block_src_;  //!< the ghost source comes from the same rank, so we store the @ref GridBlock
@@ -33,11 +30,14 @@ class GhostBlock : public SubBlock {
     real_p     data_src() { return data_src_; }
     GridBlock* block_src() { return block_src_; }
 
-    GhostBlock(GridBlock* me, const qdrt_t* ngh);
-    GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_offset[3], real_p data);
+    // GhostBlock(GridBlock* me, const qdrt_t* ngh);
+    // GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_offset[3], real_p data);
 
-   protected:
-    void GhostBlock_(GridBlock* me, const qdrt_t* ngh, const real_t ngh_pos[3]);
+//    protected:
+    GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3]) ;
+
+    void data_src(real_p data) { data_src_ = data; }
+    void block_src(GridBlock* block) { block_src_ = block; }
 };
 
 #endif  // SRC_GHOST_BLOCK_HPP_

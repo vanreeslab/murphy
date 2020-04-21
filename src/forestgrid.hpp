@@ -8,6 +8,9 @@
 
 class ForestGrid {
    protected:
+    real_t domain_length_[3];
+    bool   domain_periodic_[3];
+
     p8est_t*       forest_ = nullptr;
     p8est_mesh_t*  mesh_   = nullptr;
     p8est_ghost_t* ghost_  = nullptr;
@@ -22,6 +25,9 @@ class ForestGrid {
     inline p8est_mesh_t*         mesh() const { return mesh_; }
     inline p8est_ghost_t*        ghost() const { return ghost_; }
     inline p8est_connectivity_t* connect() const { return forest_->connectivity; }
+
+    real_t domain_length(const sid_t id) { return domain_length_[id]; }
+    bool   domain_periodic(const sid_t id) { return domain_periodic_[id]; }
 
     inline bool  is_mesh_valid() const { return is_mesh_valid_; }
     inline lid_t local_num_quadrants() const { return forest_->local_num_quadrants; }

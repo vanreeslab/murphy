@@ -90,7 +90,41 @@ class Ghost : public OperatorF, public OperatorS {
     void LoopOnMirrorBlock_(const gop_t op, Field* field);
 };
 
+void static GhostGetSign(sid_t ibidule, real_t sign[3]) {
+    // we need to find the sign = the direction of the normal:
+    sign[0] = 0;
+    sign[1] = 0;
+    sign[2] = 0;
 
+    // check depending on the plane, the edge of the corner
+    if (ibidule < 6) {
+        sid_t dir = ibidule / 2;
+        sign[dir] = ((ibidule % 2) == 1) ? 1 : -1;
+    } else if (ibidule < 18) {
+        sid_t iedge = ibidule - 6;
+        /*
+        the plane convention for the sign variable convention for the sign
+        2 +--------------+ 3
+          |              |
+          |              |
+
+          |dir2          |
+          |              |
+        0 +--------------+ 1
+            dir1
+        */
+        sid_t dir  = iedge / 4;           // this is the direction of the edge
+        sid_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z or y if dir = x
+        sid_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
+        sign[dir1] = ((iedge % 4) % 2) == 1 ? +1 : -1;
+        sign[dir2] = ((iedge % 4) / 2) == 1 ? +1 : -1;
+    } else {
+        sid_t icorner = ibidule - 18;
+        sign[0]       = (icorner % 2) == 1 ? +1 : -1;
+        sign[1]       = ((icorner % 4) / 2) == 1 ? +1 : -1;
+        sign[2]       = (icorner / 4) == 1 ? +1 : -1;
+    }
+}
 
 /**
  * @brief given a starting id in a block, returns the corresponding starting id for the coarse representation of it
@@ -121,7 +155,7 @@ class Ghost : public OperatorF, public OperatorS {
  */
 static inline lid_t CoarseFromBlock(const lid_t a) {
     const lid_t b = (a + M_N);
-    const lid_t c = ( b/ M_N) % 2;
+    const lid_t c = (b / M_N) % 2;
     return (a / M_N) * M_HN + (a % M_N) / (c + 1);
 };
 

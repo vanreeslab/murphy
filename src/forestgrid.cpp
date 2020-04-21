@@ -1,5 +1,7 @@
 #include "forestgrid.hpp"
 
+#include <cmath>
+
 ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm) {
     m_begin;
     m_assert(ilvl >= 0, "the init level has to be >= 0");
@@ -13,12 +15,20 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
     forest_->user_pointer = nullptr;
     // set the ghost and the mesh
     SetupP4estGhostMesh();
+
+    // store the domain periodicity and domain size
+    domain_length_[0]   = (real_t)l[0];
+    domain_length_[1]   = (real_t)l[1];
+    domain_length_[2]   = (real_t)l[2];
+    domain_periodic_[0] = isper;
+    domain_periodic_[1] = isper;
+    domain_periodic_[2] = isper;
+
     //-------------------------------------------------------------------------
     m_end;
 }
 
-
-ForestGrid::~ForestGrid(){
+ForestGrid::~ForestGrid() {
     m_begin;
     //-------------------------------------------------------------------------
     // delete the ghost and the mesh
@@ -56,7 +66,7 @@ void ForestGrid::SetupP4estGhostMesh() {
     //-------------------------------------------------------------------------
     ghost_ = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
     mesh_  = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
-    
+
     is_mesh_valid_ = true;
     //-------------------------------------------------------------------------
     m_end;
