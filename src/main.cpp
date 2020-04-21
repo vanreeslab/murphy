@@ -24,18 +24,26 @@ int main(int argc, char** argv) {
     p4est_init(NULL, SC_LP_SILENT);
     //-------------------------------------------------------------------------
     {
-        bool periodic[3] = {true, true, true};
-        int  l[3]        = {3, 3, 3};
-
+        bool periodic[3] = {false, false, true};
+        int  l[3]        = {2, 2, 2};
         // create a grid
-        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
+        Grid* grid = new Grid(1, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
         Field* vort = new Field("vorticity", 3);
+        // set an EVEN bc for everybody (everywhere and in each dimension)
+        vort->bctype(M_BC_EVEN);
+        // register the field to the grid
         grid->AddField(vort);
+
         // set a Gaussian
-        real_t      center[3] = {l[0] * 0.5, l[1] * 0.5, l[2] * 0.5};
-        SetGaussian gaussian  = SetGaussian(0.2, center);
-        gaussian(grid, vort);
+        // real_t      center[3] = {l[0] * 0.5, l[1] * 0.5, l[2] * 0.5};
+        // SetGaussian gaussian  = SetGaussian(0.2, center);
+        // gaussian(grid, vort);
+
+        real_t     freq[3]   = {1.0, 0.0, 0.0};
+        real_t     length[3] = {(real_t)l[0],(real_t)l[1],(real_t)l[2]};
+        SetCosinus cosinus   = SetCosinus(length, freq);
+        cosinus(grid, vort);
 
         // real_t alpha[3] = {0.0, 0.0, 1.0};
         // // SetAbs setabs   = SetAbs(alpha, center);
@@ -55,13 +63,19 @@ int main(int argc, char** argv) {
         IOH5 mydump = IOH5("data");
         mydump(grid, vort,"vort_fine");
 
-        grid->Adapt(vort);
-
         grid->GhostPull(vort);
 
-        mydump(grid, vort,"vort_adapt");
+        // IOH5 mydump = IOH5("data");
         mydump.dump_ghost(true);
-        mydump(grid, vort,"vort_adapt");
+        mydump(grid, vort,"vort_fine");
+
+        // grid->Adapt(vort);
+
+        // grid->GhostPull(vort);
+
+        // mydump(grid, vort,"vort_adapt");
+        // mydump.dump_ghost(true);
+        // mydump(grid, vort,"vort_adapt");
 
 
         // destroy the grid and the field

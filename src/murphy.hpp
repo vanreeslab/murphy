@@ -48,6 +48,15 @@ typedef struct qid_ext_t : qid_t {
 }qid_ext_t;
 
 
+
+typedef enum bctype_t{
+    M_BC_EVEN, //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
+    M_BC_ODD, //!< ODD condition: imposes a zero value wrt the interface
+    M_BC_ZERO, //!< set 0 outside the computational domain
+    M_BC_EXTRAP //!< extrapolate outside the computational domain
+}bctype_t;
+
+
 // /**
 //  * @brief defines the interaction of two sub set two field, i.e. a place in memory
 //  * 

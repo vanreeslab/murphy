@@ -117,3 +117,76 @@ void SetJump::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
     }
     //-------------------------------------------------------------------------
 }
+
+SetSinus::SetSinus(real_t length[3], real_t freq[3]) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    for (int id = 0; id < 3; id++) {
+        length_[id] = length[id];
+        freq_[id]   = freq[id];
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void SetSinus::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+    //-------------------------------------------------------------------------
+    real_t        pos[3];
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
+
+    for (sid_t ida = 0; ida < fid->lda(); ida++) {
+        real_p data = block->data(fid, ida);
+
+        for (int i2 = 0; i2 < M_N; i2++) {
+            for (int i1 = 0; i1 < M_N; i1++) {
+                for (int i0 = 0; i0 < M_N; i0++) {
+                    // get the position
+                    m_pos(pos, i0, i1, i2, hgrid, xyz);
+
+                    data[m_idx(i0, i1, i2)] = std::sin(2.0 * M_PI * pos[0] / length_[0] * freq_[0]) +
+                                              std::sin(2.0 * M_PI * pos[1] / length_[1] * freq_[1]) +
+                                              std::sin(2.0 * M_PI * pos[2] / length_[2] * freq_[2]);
+                }
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+
+SetCosinus::SetCosinus(real_t length[3], real_t freq[3]) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    for (int id = 0; id < 3; id++) {
+        length_[id] = length[id];
+        freq_[id]   = freq[id];
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void SetCosinus::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+    //-------------------------------------------------------------------------
+    real_t        pos[3];
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
+
+    for (sid_t ida = 0; ida < fid->lda(); ida++) {
+        real_p data = block->data(fid, ida);
+
+        for (int i2 = 0; i2 < M_N; i2++) {
+            for (int i1 = 0; i1 < M_N; i1++) {
+                for (int i0 = 0; i0 < M_N; i0++) {
+                    // get the position
+                    m_pos(pos, i0, i1, i2, hgrid, xyz);
+
+                    data[m_idx(i0, i1, i2)] = std::cos(2.0 * M_PI * pos[0] / length_[0] * freq_[0]);
+                                              std::cos(2.0 * M_PI * pos[1] / length_[1] * freq_[1]) +
+                                              std::cos(2.0 * M_PI * pos[2] / length_[2] * freq_[2]);
+                }
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}

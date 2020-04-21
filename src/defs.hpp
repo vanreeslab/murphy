@@ -86,6 +86,17 @@
         pos[2] = (_i2 + 0.5) * hgrid[2] + xyz[2]; \
     })
 
+#define m_pos_relative(offset, i0, i1, i2, hgrid) \
+    ({                                      \
+        __typeof__(i0) _i0 = (i0);          \
+        __typeof__(i1) _i1 = (i1);          \
+        __typeof__(i2) _i2 = (i2);          \
+                                            \
+        offset[0] = (_i0 + 0.5) * hgrid[0]; \
+        offset[1] = (_i1 + 0.5) * hgrid[1]; \
+        offset[2] = (_i2 + 0.5) * hgrid[2]; \
+    })
+
 #define m_blockmemsize(lda)                             \
     ({                                                  \
         __typeof__(lda) _lda = (lda);                   \

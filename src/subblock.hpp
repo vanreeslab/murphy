@@ -1,7 +1,6 @@
 #ifndef SRC_SUBBLOCK_HPP_
 #define SRC_SUBBLOCK_HPP_
 
-#include "gridblock.hpp"
 #include "memlayout.hpp"
 #include "murphy.hpp"
 

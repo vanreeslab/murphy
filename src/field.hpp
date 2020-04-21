@@ -15,8 +15,11 @@ class Field {
     string name_;
     bool   ghost_status_;
 
+    bctype_t* bctype_[6];
+
    public:
     Field(string name, sid_t lda);
+    ~Field();
 
     sid_t  lda() const { return lda_; };
     string name() const { return name_; };
@@ -24,11 +27,10 @@ class Field {
     void ghost_status(bool status) { ghost_status_ = status; }
     inline bool ghost_status() { return ghost_status_ ; }
 
-    // void SelectDimension(const sid_t ida);
-    // void ReleaseDimension(const sid_t ida);
-
-    // sid_t StartDimension() const;
-    // sid_t EndDimension() const;
+    bctype_t bctype(const sid_t ida, const sid_t iface) { return bctype_[iface][ida]; }
+    void     bctype(bctype_t type, const sid_t ida, const sid_t loc) { bctype_[loc][ida] = type; }
+    void     bctype(bctype_t type, const sid_t ida);
+    void     bctype(bctype_t type);
 };
 
 #endif  // SRC_FIELD_HPP_

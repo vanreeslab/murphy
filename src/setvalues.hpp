@@ -40,4 +40,31 @@ class SetJump : public OperatorF {
     SetJump(real_t alpha[3], real_t center[3]);
 };
 
+
+
+class SetSinus : public OperatorF {
+   protected:
+    real_t freq_[3] = {0, 0, 0};
+    real_t length_[3] = {0.0, 0.0, 0.0};
+
+    void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetSinus(real_t length[3], real_t freq[3]);
+};
+
+
+class SetCosinus : public OperatorF {
+   protected:
+    real_t freq_[3] = {0, 0, 0};
+    real_t length_[3] = {0.0, 0.0, 0.0};
+
+    void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetCosinus(real_t length[3], real_t freq[3]);
+};
+
+
+
 #endif  // SRC_SETVALUE_HPP_

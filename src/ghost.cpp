@@ -3,6 +3,7 @@
 #include "murphy.hpp"
 #include "omp.h"
 #include "wavelet.hpp"
+#include "boundary.hpp"
 
 // // from paper p4est, table 1, S vector
 // static const sid_t edge2face[12][2]  = {{2, 4}, {3, 4}, {2, 5}, {3, 5}, {0, 4}, {1, 4}, {0, 5}, {1, 5}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
@@ -230,7 +231,7 @@ void Ghost::InitComm_() {
     mirror_send_ = (MPI_Request*)m_calloc(n_send_request_ * sizeof(MPI_Request));
     ghost_recv_  = (MPI_Request*)m_calloc(n_recv_request_ * sizeof(MPI_Request));
 
-    // allocate the mirror and ghost arrays
+    // allocate the mirror and ghost arrayss
     mirrors_to_local_ = (lid_t*)m_calloc(sizeof(lid_t) * n_mirror_to_send_);
     mirrors_          = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * n_mirror_to_send_);
     ghosts_           = (real_t*)m_calloc(sizeof(real_t) * M_NGHOST * ghost->ghosts.elem_count);
@@ -357,6 +358,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 
                 lid_t       ighost = *(ngh_qid->array + nid * sizeof(int));
                 real_p      data   = ghosts_ + ighost * M_NGHOST;
+
                 GhostBlock* gb     = new GhostBlock(block, nghq, ngh_tree_offset, data);
                 if (gb->dlvl() >= 0) {
 #pragma omp critical
@@ -583,8 +585,16 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     // finally do some physics
     for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
         PhysBlock* gblock = (*piter);
+        // get the direction and the corresponding bctype
+        bctype_t bctype = fid->bctype(ida_,gblock->iface());
+        if(bctype == M_BC_EVEN){
+            EvenBoundary_4 bc = EvenBoundary_4();
+            bc(0.0,cur_block->hgrid(),gblock,cur_block->data(fid,ida_));
+        }else
+        {
+            m_assert(false,"this type of BC is not implemented yet");
+        }
     }
-
     delete (ghost_subblock);
     //-------------------------------------------------------------------------
 }
