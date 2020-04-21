@@ -18,7 +18,7 @@ GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_o
                          ngh_tree_offset[1] + ngh->y * u_size,
                          ngh_tree_offset[2] + ngh->z * u_size};
     // setup the indexesd
-    GhostBlock_(me, ngh, ngh_tree_offset);
+    GhostBlock_(me, ngh, pos_ngh);
     //-------------------------------------------------------------------------
 }
 
@@ -63,11 +63,9 @@ void GhostBlock::GhostBlock_(GridBlock* me, const qdrt_t* ngh, const real_t pos_
         // m_assert(((real_t)end_[id]) == end, "the end has to be an integer");
     }
 
-
-    if(dlvl_ < 0){
-        m_verb("dbg my pos = %f %f %f",me->xyz(0),me->xyz(1),me->xyz(2));
-        m_verb("dbg ngh pos = %f %f %f",pos_ngh[0],pos_ngh[1],pos_ngh[2]);
-
+    if (dlvl_ < 0) {
+        m_verb("dbg my pos = %f %f %f", me->xyz(0), me->xyz(1), me->xyz(2));
+        m_verb("dbg ngh pos = %f %f %f", pos_ngh[0], pos_ngh[1], pos_ngh[2]);
     }
 
     //-------------------------------------------------------------------------
