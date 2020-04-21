@@ -95,17 +95,19 @@ Ghost::~Ghost() {
         MPI_Request_free(mirror_send_ + ir);
     }
     m_free(mirror_send_);
+    n_send_request_ = 0;
     for (int ir = 0; ir < n_recv_request_; ir++) {
         MPI_Request_free(ghost_recv_ + ir);
     }
     m_free(ghost_recv_);
+    ghost_recv_ = 0;
 
     // free the temp memory
     int nthreads = omp_get_max_threads();
     for (int it = 0; it < nthreads; it++) {
         m_free(coarse_tmp_[it]);
     }
-    m_free(coarse_tmp_);
+    m_free((void*)coarse_tmp_);
 
     // free the memory
     m_free(mirrors_);
@@ -331,7 +333,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
         }
         //---------------------------------------------------------------------
         // this is a real block or a ghost
-        for (int nid = 0; nid < nghosts; nid++) {
+        for (lid_t nid = 0; nid < nghosts; nid++) {
             const int  status  = *(ngh_enc->array + nid * sizeof(int));
             const bool isghost = (status < 0);
             qdrt_t*    nghq    = *((qdrt_t**)sc_array_index_int(ngh_quad, nid));
@@ -370,10 +372,10 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
                     bparent->push_back(gb);
                 }
-                // m_verb("dbg: tree %d, quad %d; block detected for ibidule %d",qid->tid,qid->qid,ibidule);
             } else {
-                lid_t  ighost = *(ngh_qid->array + nid * sizeof(int));
-                real_p data   = ghosts_ + ighost * M_NGHOST;
+                lid_t ighost = *((int*)sc_array_index_int(ngh_qid,nid));
+                m_assert((ighost >= 0) && (ighost < ghost->ghosts.elem_count), "treeid = %d, qid = %d, ibidule = %d, the ID of the ghost is INVALID: %d vs %d, status = %d (nid = %d, nghost = %d, array length=%d)", qid->tid, qid->qid, ibidule, ighost, ghost->ghosts.elem_count, status, nid, nghosts, ngh_qid->elem_count);
+                real_p data = ghosts_ + ighost * M_NGHOST;
                 gb->data_src(data);
 
                 if (gb->dlvl() >= 0) {
