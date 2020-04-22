@@ -49,9 +49,12 @@ class Boundary {
                         f[ip] = ldata[m_midx(idx0, idx1, idx2, 0, block)];
                     }
                     // get the ghost point position
-                    const real_t x = (i0 * isphys[0] + i1 * isphys[1] + i2 * isphys[2]) * hgrid[dir];
+                    real_t pos[3];
+                    // if we have a negative normal, simply the position of the indexes
+                    // if we have a positive normal, we need to substract 1
+                    m_pos_relative(pos, i0 - (fsign[0] == +1), i1 - (fsign[1] == +1), i2 - (fsign[2] == +1), hgrid);
                     // get the ghost value
-                    ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, x, hgrid[dir], offset[dir], fsign[dir], boundary_condition);
+                    ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, pos[dir], hgrid[dir], offset[dir], fsign[dir], boundary_condition);
                 }
             }
         }

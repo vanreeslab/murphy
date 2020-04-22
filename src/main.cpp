@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
         SetExpoCosinus expocos = SetExpoCosinus(center, sigma, length, freq);
         expocos(grid, vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        vort->bctype(M_BC_EVEN);
+        vort->bctype(M_BC_ODD);
         // for(int id=0; id<3; id++){
         //     vort->bctype(M_BC_EXTRAP,id,0);
         //     vort->bctype(M_BC_EXTRAP,id,1);
