@@ -65,6 +65,19 @@ class SetCosinus : public OperatorF {
     SetCosinus(real_t length[3], real_t freq[3]);
 };
 
+class SetExpoCosinus : public OperatorF {
+   protected:
+    real_t center_[3] = {0, 0, 0};
+    real_t sigma_[3] = {0, 0, 0};
+    real_t freq_[3] = {0, 0, 0};
+    real_t length_[3] = {0.0, 0.0, 0.0};
+
+    void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetExpoCosinus(real_t center[3], real_t sigma[3],real_t length[3], real_t freq[3]);
+};
+
 
 
 #endif  // SRC_SETVALUE_HPP_

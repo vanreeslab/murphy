@@ -64,9 +64,8 @@ void ForestGrid::ResetP4estGhostMesh() {
 void ForestGrid::SetupP4estGhostMesh() {
     m_begin;
     //-------------------------------------------------------------------------
-    ghost_ = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
-    mesh_  = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
-
+    ghost_         = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
+    mesh_          = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
     is_mesh_valid_ = true;
     //-------------------------------------------------------------------------
     m_end;

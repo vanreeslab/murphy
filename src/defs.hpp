@@ -214,17 +214,17 @@
 #define m_assert(cond, ...) \
     { ((void)0); }
 #else
-#define m_assert(cond, ...)                                                                                          \
-    ({                                                                                                               \
-        if (!(cond)) {                                                                                               \
-            char def_nhyzpns[1024];                                                                                  \
-            sprintf(def_nhyzpns, __VA_ARGS__);                                                                       \
-            fprintf(stderr, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)\n", #cond, def_nhyzpns, __FILE__, __LINE__); \
-            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                               \
-        }                                                                                                            \
+#define m_assert(cond, ...)                                                                                            \
+    ({                                                                                                                 \
+        if (!(cond)) {                                                                                                 \
+            char def_nhyzpns[1024];                                                                                    \
+            sprintf(def_nhyzpns, __VA_ARGS__);                                                                         \
+            fprintf(stdout, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)\n", #cond, def_nhyzpns, __FILE__, __LINE__); \
+            fflush(stdout);                                                                                            \
+            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                 \
+        }                                                                                                              \
     })
 #endif
-
 
 /**
  * @brief entry and exit of functions, enabled if VERBOSE is enabled

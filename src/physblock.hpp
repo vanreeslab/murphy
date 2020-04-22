@@ -11,11 +11,12 @@
  */
 class PhysBlock : public SubBlock {
    protected:
-    sid_t iface_;  //!< ID of the normal to the face
+    sid_t      iface_;      //!< ID of the normal to the face
     GridBlock* block_src_;  //!< store the reference to the underlying @ref GridBlock
 
    public:
     sid_t iface() { return iface_; };
+    sid_t dir() { return iface_ / 2; };
     PhysBlock(const sid_t iface, GridBlock* block);
 };
 

@@ -4,40 +4,30 @@
 #include "murphy.hpp"
 #include "physblock.hpp"
 
-// /**
-//  * @brief possible positions of a Boundary condition
-//  * 
-//  */
-// typedef enum bcloc_t {
-//     M_X_MINUS, /**< X - */
-//     M_X_PLUS, /**< X + */
-//     M_Y_MINUS, /**< Y - */
-//     M_Y_PLUS, /**< Y + */
-//     M_Z_MINUS, /**< Z - */
-//     M_Z_PLUS  /**< Z + */
-// } bcloc_t;
+static real_t face_sign[6][3]  = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
+static lid_t  face_start[6][3] = {{0, 0, 0}, {M_N - 1, 0, 0}, {0, 0, 0}, {0, M_N - 1, 0}, {0, 0, 0}, {0, 0, M_N - 1}};
 
 template <int npoint>
 class Boundary {
-   protected:
-    const real_t face_sign_[6][3]  = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
-    const lid_t  face_start_[6][3] = {{0, 0, 0}, {M_N - 1, 0, 0}, {0, 0, 0}, {0, M_N - 1, 0}, {0, 0, 0}, {0, 0, M_N - 1}};
-
    public:
     virtual real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t flux) = 0;
 
-    virtual void operator()(const real_t boundary_condition, const real_t hgrid[3], PhysBlock* block, real_p data) {
-        const lid_t*  fstart = face_start_[block->iface()];
-        const real_t* fsign  = face_sign_[block->iface()];
+    /**
+     * note: unless other functions, we need to decouple the starting point (fstart) and the symmetry done on the left and on the right of it for the interpolation
+     */
+    virtual void operator()(const sid_t iface, const lid_t fstart[3], const real_t hgrid[3], const real_t boundary_condition, SubBlock* block, real_p data) {
+        m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
+        //-------------------------------------------------------------------------
         // get the face direction and a boolean array with it
-        const sid_t dir       = block->iface() / 2;
-        const bool  isphys[3] = {dir == 0, dir == 1, dir == 2};
+        const sid_t   dir       = iface / 2;
+        const bool    isphys[3] = {dir == 0, dir == 1, dir == 2};
+        const real_t* fsign     = face_sign[iface];
         // get the offset in memory, i.e. the position of the first point (0,0,0)
         real_t offset[3];
         m_pos_relative(offset, 0, 0, 0, hgrid);
 
         // shift the data to the correct spot
-        real_p ldata = data + m_idx(fstart[0], fstart[1], fstart[2]);
+        real_p ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);
 
         // let's goooo
         for (lid_t i2 = block->start(2); i2 < block->end(2); i2++) {
@@ -48,18 +38,26 @@ class Boundary {
                     for (sid_t ip = 0; ip < npoint; ip++) {
                         // if the direction is not physics, just consider the current ID,
                         // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
-                        f[ip] = ldata[m_idx((!isphys[0]) * i0 - ip * fsign[0] * isphys[0],
-                                            (!isphys[1]) * i1 - ip * fsign[1] * isphys[1],
-                                            (!isphys[2]) * i2 - ip * fsign[2] * isphys[2])];
+                        const lid_t idx0 = (!isphys[0]) * i0 - ip * (lid_t)fsign[0] * isphys[0];
+                        const lid_t idx1 = (!isphys[1]) * i1 - ip * (lid_t)fsign[1] * isphys[1];
+                        const lid_t idx2 = (!isphys[2]) * i2 - ip * (lid_t)fsign[2] * isphys[2];
+
+                        m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride() - block->gs()), "index 0 is wrong: %d = %d - %d * %d * %d with gs=%d and strid=%d", fstart[0] + idx0, (!isphys[0]) * i0, ip, (int)fsign[0], (int)isphys[0], block->gs(), block->stride());
+                        m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride() - block->gs()), "index 1 is wrong: %d = %d - %d * %d * %d with gs=%d and strid=%d", fstart[1] + idx1, (!isphys[1]) * i1, ip, (int)fsign[1], (int)isphys[1], block->gs(), block->stride());
+                        m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride() - block->gs()), "index 2 is wrong: %d = %d - %d * %d * %d with gs=%d and strid=%d", fstart[2] + idx2, (!isphys[2]) * i2, ip, (int)fsign[2], (int)isphys[2], block->gs(), block->stride());
+
+                        f[ip] = ldata[m_midx(idx0, idx1, idx2, 0, block)];
                     }
                     // get the ghost point position
                     const real_t x = (i0 * isphys[0] + i1 * isphys[1] + i2 * isphys[2]) * hgrid[dir];
                     // get the ghost value
-                    ldata[m_idx(i0, i1, i2)] = Stencil_(f, x, hgrid[dir], offset[dir], fsign[dir], boundary_condition);
+                    ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, x, hgrid[dir], offset[dir], fsign[dir], boundary_condition);
                 }
             }
         }
+        fflush(stdout);
     }
+    //-------------------------------------------------------------------------
 };
 
 /**
@@ -77,6 +75,7 @@ class Boundary {
  */
 class EvenBoundary_4 : public Boundary<3> {
     real_t stencil_[3];
+
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t flux) override;
 };
@@ -113,7 +112,6 @@ class ExtrapBoundary_4 : public Boundary<4> {
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
 };
 
-
 /**
  * @brief applies an UNBOUNDED bondary condition by extrapolation
  *
@@ -125,6 +123,5 @@ class ZeroBoundary : public Boundary<0> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
 };
-
 
 #endif  // SRC_BOUNDARY_HPP_

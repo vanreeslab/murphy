@@ -132,7 +132,7 @@ void Grid::GhostPull(Field* field) {
         m_log("field %s has already valid ghosts", field->name().c_str());
         return;
     } else {
-        m_log("pulling ghosts for field %s", field->name().c_str());
+        // m_log("pulling ghosts for field %s", field->name().c_str());
         // start the send of the first dimension
         ghost_->PushToMirror(field, 0);
         ghost_->MirrorToGhostSend();
@@ -152,6 +152,7 @@ void Grid::GhostPull(Field* field) {
 
         // set that everything is ready for the field
         field->ghost_status(true);
+        // m_log("ghosts pulling is done for field %s", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -189,6 +190,7 @@ void Grid::Refine(const sid_t delta_level) {
         }
     }
     //-------------------------------------------------------------------------
+    m_log("refined grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -224,6 +226,7 @@ void Grid::Coarsen(const sid_t delta_level) {
         }
     }
     //-------------------------------------------------------------------------
+    m_log("coarsened grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -272,6 +275,7 @@ void Grid::Adapt(Field* field) {
         fid->second->ghost_status(false);
     }
     //-------------------------------------------------------------------------
+    m_log("adapted grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 

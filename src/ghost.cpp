@@ -315,10 +315,12 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
             sc_array_reset(ngh_quad);
             sc_array_reset(ngh_enc);
             sc_array_reset(ngh_qid);
-            p8est_mesh_get_neighbors(grid_->forest(), grid_->ghost(), grid_->mesh(), qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
+            // m_log("I have a grid with %d blocks and %d ghosts. Looking for neighbor %d of block %d = %d, %d",mesh->local_num_quadrants,ghost->ghosts.elem_count,ibidule,qid->cid,qid->qid,qid->tid);
+            p8est_mesh_get_neighbors(forest, ghost, mesh, qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
         }
         // decode the status and count the ghosts
-        const size_t nghosts = ngh_enc->elem_count;
+        const lid_t nghosts = ngh_enc->elem_count;
+        m_assert(ngh_enc->elem_count < numeric_limits<lid_t>::max(),"the number of ghost is too big");
         //---------------------------------------------------------------------
         // we do the physics
         if (nghosts == 0) {
@@ -354,7 +356,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
                 p8est_qcoord_to_vertex(grid_->connect(), nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
             }
             for (sid_t id = 0; id < 3; id++) {
-                ngh_pos[id] = block->xyz(id) + fmod(ngh_pos[id] - block->xyz(id) + grid_->domain_periodic(id)*sign[id] * grid_->domain_length(id), grid_->domain_length(id));
+                ngh_pos[id] = block->xyz(id) + fmod(ngh_pos[id] - block->xyz(id) + grid_->domain_periodic(id) * sign[id] * grid_->domain_length(id), grid_->domain_length(id));
             }
 
             // create the new block
@@ -374,7 +376,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
                 }
             } else {
                 lid_t ighost = *((int*)sc_array_index_int(ngh_qid,nid));
-                m_assert((ighost >= 0) && (ighost < ghost->ghosts.elem_count), "treeid = %d, qid = %d, ibidule = %d, the ID of the ghost is INVALID: %d vs %d, status = %d (nid = %d, nghost = %d, array length=%d)", qid->tid, qid->qid, ibidule, ighost, ghost->ghosts.elem_count, status, nid, nghosts, ngh_qid->elem_count);
+                m_assert((ighost >= 0) && (ighost < ghost->ghosts.elem_count), "treeid = %d, qid = %d, ibidule = %d, the ID of the ghost is INVALID: %d vs %ld, status = %d (nid = %d, nghost = %d, array length=%ld)", qid->tid, qid->qid, ibidule, ighost, ghost->ghosts.elem_count, status, nid, nghosts, ngh_qid->elem_count);
                 real_p data = ghosts_ + ighost * M_NGHOST;
                 gb->data_src(data);
 
@@ -385,7 +387,6 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
                     gparent->push_back(gb);
                 }
-                // m_verb("dbg: tree %d, quad %d; ghost detected for ibidule %d",qid->tid,qid->qid,ibidule);
             }
         }
     }
@@ -448,8 +449,6 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         memset(tmp, 0, M_CLEN * M_CLEN * M_CLEN * sizeof(real_t));
     }
 
-    m_verb("dbg: tree %d, quad %d: %ld blocks, %ld ghosts, %ld phys", qid->tid, qid->qid, block_sibling_[qid->cid]->size(), ghost_sibling_[qid->cid]->size(), phys_[qid->cid]->size());
-
     //-------------------------------------------------------------------------
     // do the blocks, on my level or finer
     for (auto biter = block_sibling_[qid->cid]->begin(); biter != block_sibling_[qid->cid]->end(); biter++) {
@@ -480,6 +479,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
         }
     }
+
     // do the ghosts, on my level or finer
     for (auto biter = ghost_sibling_[qid->cid]->begin(); biter != ghost_sibling_[qid->cid]->end(); biter++) {
         GhostBlock* gblock = (*biter);
@@ -512,7 +512,6 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     //-------------------------------------------------------------------------
     // copy the coarse blocks to the coarse representation
     for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
-        m_verb("copying the coarse blocks");
         GhostBlock* gblock    = (*biter);
         GridBlock*  ngh_block = gblock->block_src();
         // setup the coarse sublock to the position
@@ -520,7 +519,6 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             coarse_start[id] = CoarseFromBlock(gblock->start(id));
             coarse_end[id]   = CoarseFromBlock(gblock->end(id));
         }
-        m_verb("originally: start = %d %d %d and end = %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
         coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = ngh_block;
@@ -533,7 +531,6 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     }
     // copy the ghost into the coarse representation
     for (auto biter = ghost_parent_[qid->cid]->begin(); biter != ghost_parent_[qid->cid]->end(); biter++) {
-        m_verb("copying the coarse ghosts");
         GhostBlock* gblock = (*biter);
         // update the coarse subblock
         for (int id = 0; id < 3; id++) {
@@ -550,6 +547,8 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
         interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
+
+    // m_log("dbg: tree %d, quad %d: doing coarse ? %d", qid->tid, qid->qid,do_coarse);
     //-------------------------------------------------------------------------
     // do a coarse version of myself and complete with some physics if needed
     if (do_coarse) {
@@ -568,7 +567,43 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         // interpolate
         interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg);
 
-        // do here some physics
+        // do here some physics, to completely fill the coarse block before the interpolation
+        for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
+            PhysBlock* gblock = (*piter);
+            // get the direction and the corresponding bctype
+            const sid_t    dir    = gblock->dir();
+            const bctype_t bctype = fid->bctype(ida_, gblock->iface());
+            // in the face direction, the start and the end are already correct, only the fstart changes
+            lid_t fstart[3];
+            coarse_start[dir] = gblock->start(dir);
+            coarse_end[dir]   = gblock->end(dir);
+            fstart[dir]       = CoarseFromBlock(face_start[gblock->iface()][dir]);
+            // in the other direction, we need to rescale the dimensions
+            for (int id = 1; id < 3; id++) {
+                coarse_start[(dir + id) % 3] = CoarseFromBlock(gblock->start((dir + id) % 3));
+                coarse_end[(dir + id) % 3]   = CoarseFromBlock(gblock->end((dir + id) % 3));
+                fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3]);
+            }
+            // reset the coarse block and get the correct memory location
+            coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+            real_p data_trg = tmp + m_zeroidx(0, coarse_subblock);
+            // get the correct face_start
+            if (bctype == M_BC_EVEN) {
+                EvenBoundary_4 bc = EvenBoundary_4();
+                bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
+            } else if (bctype == M_BC_ODD) {
+                OddBoundary_4 bc = OddBoundary_4();
+                bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
+            } else if (bctype == M_BC_EXTRAP) {
+                ExtrapBoundary_4 bc = ExtrapBoundary_4();
+                bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
+            } else if (bctype == M_BC_ZERO) {
+                ZeroBoundary bc = ZeroBoundary();
+                bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
+            } else {
+                m_assert(false, "this type of BC is not implemented yet");
+            }
+        }
 
         // reset the coarse sublock to the full position
         for (int id = 0; id < 3; id++) {
@@ -609,21 +644,23 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         bctype_t bctype = fid->bctype(ida_, gblock->iface());
         if (bctype == M_BC_EVEN) {
             EvenBoundary_4 bc = EvenBoundary_4();
-            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
         } else if (bctype == M_BC_ODD) {
             OddBoundary_4 bc = OddBoundary_4();
-            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
         } else if (bctype == M_BC_EXTRAP) {
             ExtrapBoundary_4 bc = ExtrapBoundary_4();
-            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
         } else if (bctype == M_BC_ZERO) {
             ZeroBoundary bc = ZeroBoundary();
-            bc(0.0, cur_block->hgrid(), gblock, cur_block->data(fid, ida_));
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
         } else {
             m_assert(false, "this type of BC is not implemented yet");
         }
     }
     delete (ghost_subblock);
+
+    // m_log("dbg: tree %d, quad %d: finiiiish", qid->tid, qid->qid);
     //-------------------------------------------------------------------------
 }
 

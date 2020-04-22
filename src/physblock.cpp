@@ -13,6 +13,7 @@ PhysBlock::PhysBlock(const sid_t iface, GridBlock* block) {
 
     // store the face ID
     iface_ = iface;
+    m_assert(0<= iface &&iface < 6,"iface must be 0<= iface < 6");
     // overwrite in the face direction
     const sid_t dir  = iface_ / 2;
     const sid_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus

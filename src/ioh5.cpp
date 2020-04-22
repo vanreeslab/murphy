@@ -38,7 +38,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     // get the field name
     filename_ = name;
     mpirank_  = grid->mpirank();
-    m_log("dumping field %s to disk (ghost = %d)",name.c_str(),dump_ghost_);
+    m_log("dumping field %s to disk (ghost = %d)", name.c_str(), dump_ghost_);
     // print the header
     xmf_write_header_(grid);
     hdf5_write_header_(grid);
@@ -47,6 +47,8 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     // print the footer
     xmf_write_footer_(grid);
     hdf5_write_footer_(grid);
+    // reset the dump_ghost to false for next dump
+    dump_ghost_ = false;
     //-------------------------------------------------------------------------
     m_end;
 }

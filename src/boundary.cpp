@@ -8,10 +8,6 @@ real_t EvenBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t h,
                        f[1] - normal * flux * (1.0 + offset) * h,
                        f[2] - normal * flux * (2.0 + offset) * h};
     // compute the stencil coefficients
-    // const real_t a = 1.0 / (12.0 * pow(h, 4)) * cor_f[0] - 1.0 / (8.0 * pow(h, 4)) * cor_f[1] + 1.0 / (24.0 * pow(h, 4)) * cor_f[2];
-    // const real_t b = -17.0 / (24.0 * pow(h, 2)) * cor_f[0] + 13.0 / (16.0 * pow(h, 2)) * cor_f[1] - 5.0 / (48.0 * pow(h, 2)) * cor_f[2];
-    // const real_t c = (75.0 / 64.0) * cor_f[0] - (25.0 / 128.0) * cor_f[1] + (3.0 / 128.0) * cor_f[2];
-    // compute the stencil coefficients
     const real_t a = (2.0 * cor_f[0] - 3.0 * cor_f[1] + 1.0 * cor_f[2]) / (24.0 * pow(h, 4));
     const real_t b = (-34.0 * cor_f[0] + 39.0 * cor_f[1] - 5.0 * cor_f[2]) / (48.0 * pow(h, 2));
     const real_t c = (150.0 * cor_f[0] - 25.0 * cor_f[1] + 3.0 * cor_f[2]) / (128.0);
