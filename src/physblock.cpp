@@ -1,6 +1,6 @@
 #include "physblock.hpp"
 
-PhysBlock::PhysBlock(const sid_t iface, GridBlock* block) {
+PhysBlock::PhysBlock(const sid_t iface, MemLayout* block) {
     //-------------------------------------------------------------------------
     // remember the block origin
     gs_     = block->gs();
