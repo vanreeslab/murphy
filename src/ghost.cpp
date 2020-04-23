@@ -321,7 +321,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
         }
         // decode the status and count the ghosts
         const lid_t nghosts = ngh_enc->elem_count;
-        m_assert(ngh_enc->elem_count < numeric_limits<lid_t>::max(),"the number of ghost is too big");
+        m_assert(ngh_enc->elem_count < numeric_limits<lid_t>::max(), "the number of ghost is too big");
         //---------------------------------------------------------------------
         // we do the physics
         if (nghosts == 0) {
@@ -349,7 +349,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
             real_t ngh_pos[3];
             if (!isghost) {
                 // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
-                GridBlock* ngh_block = reinterpret_cast<GridBlock*>(nghq->p.user_data);
+                GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
                 ngh_pos[0]           = ngh_block->xyz(0);
                 ngh_pos[1]           = ngh_block->xyz(1);
                 ngh_pos[2]           = ngh_block->xyz(2);
@@ -365,7 +365,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
 
             // associate the correct memory and push back
             if (!isghost) {
-                GridBlock* ngh_block = reinterpret_cast<GridBlock*>(nghq->p.user_data);
+                GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
                 gb->block_src(ngh_block);
 
                 if (gb->dlvl() >= 0) {
@@ -376,7 +376,7 @@ void Ghost::InitList_(const qid_t* qid, GridBlock* block) {
                     bparent->push_back(gb);
                 }
             } else {
-                lid_t ighost = *((int*)sc_array_index_int(ngh_qid,nid));
+                lid_t ighost = *((int*)sc_array_index_int(ngh_qid, nid));
                 m_assert((ighost >= 0) && (ighost < ghost->ghosts.elem_count), "treeid = %d, qid = %d, ibidule = %d, the ID of the ghost is INVALID: %d vs %ld, status = %d (nid = %d, nghost = %d, array length=%ld)", qid->tid, qid->qid, ibidule, ighost, ghost->ghosts.elem_count, status, nid, nghosts, ngh_qid->elem_count);
                 real_p data = ghosts_ + ighost * M_NGHOST;
                 gb->data_src(data);
@@ -687,7 +687,7 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, Field* field) {
         myid.tid = mirror->p.piggy3.which_tree;
         // use it to retreive the actual quadrant in the correct tree
         p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-        GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+        GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task
         (this->*op)(&myid, block, field);
     }

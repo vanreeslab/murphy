@@ -17,21 +17,6 @@
 //     //-------------------------------------------------------------------------
 // }
 
-// /**
-//  * @brief Initialize the GhostBlock if ngh is a locally own quadrant
-//  * 
-//  * @param me the current block
-//  * @param ngh a locally own quadrant
-//  */
-// GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh) {
-//     //-------------------------------------------------------------------------
-//     block_src_ = reinterpret_cast<GridBlock*>(ngh->p.user_data);
-
-//     m_verb("is my quad a neighbor?? %d ",p8est_quadrant_is_extended(ngh));
-//     // setup the indexes
-//     GhostBlock_(me, ngh, block_src_->xyz());
-//     //-------------------------------------------------------------------------
-// }
 
 GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3]) {
     //-------------------------------------------------------------------------

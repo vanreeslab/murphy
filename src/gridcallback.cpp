@@ -18,7 +18,8 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
 
     real_t len        = m_quad_len(quad->level);
-    quad->p.user_data = new GridBlock(len, xyz, quad->level);
+    // the user data points to the data defined by the grid = GridBlock*
+    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = new GridBlock(len, xyz, quad->level);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -27,7 +28,9 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
     m_begin;
     //-------------------------------------------------------------------------
     p8est_quadrant_t* quad = info->quad;
-    delete ((GridBlock*)quad->p.user_data);
+    GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data)) ;
+    delete (block);
+    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = nullptr;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -54,7 +57,7 @@ int cback_Wavelet(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant) 
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
-    GridBlock*    block   = reinterpret_cast<GridBlock*>(quadrant->p.user_data);
+    GridBlock*    block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     Interpolator* interp = grid->interp();
     // get the field and check each dimension
     bool   refine = false;
@@ -86,7 +89,7 @@ int cback_Wavelet(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]
     bool   coarsen = false;
     Field* fid     = grid->tmp_field();
     for (int id = 0; id < P8EST_CHILDREN; id++) {
-        GridBlock* block = reinterpret_cast<GridBlock*>(quadrant[id]->p.user_data);
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
         for (int ida = 0; ida < fid->lda(); ida++) {
             real_p data = block->data(fid, ida);
             real_t norm = interp->Criterion(block, data);
@@ -136,7 +139,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         real_t     len   = m_quad_len(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        quad->p.user_data = (void*)block;
+        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
@@ -155,10 +158,11 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
 
     // do the required iterpolation
     for(sid_t iout=0; iout<num_outgoing; iout++){
-        GridBlock* block_out = reinterpret_cast<GridBlock*>(outgoing[iout]->p.user_data);
+        GridBlock* block_out = *(reinterpret_cast<GridBlock**>(outgoing[iout]->p.user_data));
 
         for (sid_t iin = 0; iin < num_incoming; iin++) {
-            GridBlock* block_in = reinterpret_cast<GridBlock*>(incoming[iin]->p.user_data);
+            GridBlock* block_in = *(reinterpret_cast<GridBlock**>(incoming[iout]->p.user_data));
+            
             
             // get the correct child id: if 1 is going out, the children are the incoming
             int childid = p8est_quadrant_child_id((num_outgoing == 1) ? incoming[iin] : outgoing[iout]);
@@ -223,10 +227,9 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
         qdrt_t*    quad  = outgoing[id];
-        GridBlock* block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // delete the block, the fields are destroyed in the destructor
         delete(block);
-        quad->p.user_data = nullptr;
     }
     //-------------------------------------------------------------------------
     m_end;

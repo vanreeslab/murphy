@@ -251,7 +251,7 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
         p8est_quadrant_t* quad;
         quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
 
-        GridBlock* block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task
         op(&myid, block, field..., data);
     }

@@ -48,7 +48,8 @@ class GridBlock : public MemLayout {
 
     void AddField(Field* fid);
     void DeleteField(Field* fid);
-    void AddFields(map<string, Field*>* fields) ;
+    void AddFields(map<string, Field*>* fields);
+    void DeleteFields();
 };
 
 /**

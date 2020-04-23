@@ -307,7 +307,7 @@ void Grid::LoopOnGridBlock_(const bop_t op, Field* field) const {
 #pragma omp parallel for firstprivate(field)
         for (size_t bid = 0; bid < nqlocal; bid++) {
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
-            GridBlock*        block = reinterpret_cast<GridBlock*>(quad->p.user_data);
+            GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
             // apply
             (block->*op)(field);
         }
