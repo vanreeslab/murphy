@@ -22,6 +22,11 @@ To compile Murphy you have three different options. Each of them will give you a
 
 We recommend to use the last one as it provides the fastest hand-on approach. However, for advance debugging, the first option is usually the more reliable choice.
 
+
+To check the values that `make` will use, you can do a dry-run:
+```
+ARCH_FILE=make_arch/make.MyArchFile make info
+```
 To compile the library, given the `arch` file, use
 ```
 ARCH_FILE=make_arch/make.MyArchFile make -j

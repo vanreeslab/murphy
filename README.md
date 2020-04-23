@@ -6,4 +6,4 @@
 Please, refer to the following pages for detailed instructions
 - [Build murphy](doc/build.md)
 - [Implementation choices and Doxygen documentation](doc/implementation.md)
-- [How to contribute?](contribute.md)
+- [How to contribute?](doc/contribute.md)
