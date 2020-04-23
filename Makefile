@@ -107,12 +107,14 @@ $(TARGET): $(OBJ)
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
+.PHONY: clean
 clean:
 	@rm -rf $(OBJ_DIR)/*.o
 	@rm -rf $(TARGET)
 	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
 	@rm -rf $(TARGET)_test
 
+.PHONY: destroy
 destroy:
 	@rm -rf $(OBJ_DIR)/*.o
 	@rm -rf $(OBJ_DIR)/*.d
@@ -121,6 +123,7 @@ destroy:
 	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.d
 	@rm -rf $(TARGET)_test
 
+.PHONY: logo
 info: logo
 	$(info prefix = $(PREFIX)/lib )
 	$(info compiler = $(shell $(CXX) --version))
