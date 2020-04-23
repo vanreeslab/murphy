@@ -6,6 +6,7 @@
 #include "gridcallback.hpp"
 #include "operator.hpp"
 #include "wavelet.hpp"
+#include "partitioner.hpp"
 
 using std::string;
 /**
@@ -180,7 +181,9 @@ void Grid::Refine(const sid_t delta_level) {
         // balance the partition
         p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
         // partition the grid
-        // TODO
+        Partitioner partition(&fields_, this);
+        partition.Start(&fields_);
+        partition.End(&fields_);
         // create a new ghost and mesh
         SetupP4estGhostMesh();
         ghost_ = new Ghost(this);
@@ -216,7 +219,9 @@ void Grid::Coarsen(const sid_t delta_level) {
         // balance the partition
         p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
         // partition the grid
-        // TODO
+        Partitioner partition(&fields_, this);
+        partition.Start(&fields_);
+        partition.End(&fields_);
         // create a new ghost and mesh
         SetupP4estGhostMesh();
         ghost_ = new Ghost(this);
@@ -247,6 +252,7 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  */
 void Grid::Adapt(Field* field) {
     m_begin;
+    m_log("grid adaptation started...");
     //-------------------------------------------------------------------------
     // store the criterion field
     tmp_field_ = field;
@@ -259,14 +265,16 @@ void Grid::Adapt(Field* field) {
     ResetP4estGhostMesh();
     // set the grid in the forest for the callback
     forest_->user_pointer = (void*)this;
-    // refine the needed blocks
-    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Wavelet, nullptr, cback_Interpolate);
     // coarsen the needed block
     p8est_coarsen_ext(forest_, 0, 0, cback_Wavelet, nullptr, cback_Interpolate);
+    // refine the needed blocks
+    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Wavelet, nullptr, cback_Interpolate);
     // balance the partition
     p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
     // partition the grid
-    // TODO
+    Partitioner partition(&fields_, this);
+    partition.Start(&fields_);
+    partition.End(&fields_);
     // create a new ghost and mesh
     SetupP4estGhostMesh();
     ghost_ = new Ghost(this);
@@ -275,7 +283,7 @@ void Grid::Adapt(Field* field) {
         fid->second->ghost_status(false);
     }
     //-------------------------------------------------------------------------
-    m_log("adapted grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_log("...grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 

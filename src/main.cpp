@@ -27,9 +27,9 @@ int main(int argc, char** argv) {
         omp_set_num_threads(1);
 
         bool periodic[3] = {false, false, false};
-        int  l[3]        = {2, 2, 2};
+        int  l[3]        = {1, 1, 1};
         // create a grid
-        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
+        Grid* grid = new Grid(1, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
         Field* vort = new Field("vorticity", 3);
         // register the field to the grid
@@ -50,17 +50,20 @@ int main(int argc, char** argv) {
         //     vort->bctype(M_BC_EXTRAP,id,1);
         // }
 
+        //  // create a dumper and dump
+        // IOH5 mydump = IOH5("data");
+        // mydump(grid, vort,"vort");
+
         // get an refined and adapted grid
         grid->Adapt(vort);
 
         // create a dumper and dump
-        IOH5 mydump = IOH5("data");
-        mydump(grid, vort,"vort_fine");
+        // mydump(grid, vort,"vort_fine");
 
-        grid->GhostPull(vort);
+        // grid->GhostPull(vort);
 
-        mydump.dump_ghost(true);
-        mydump(grid, vort,"vort_fine");
+        // mydump.dump_ghost(true);
+        // mydump(grid, vort,"vort_fine");
 
         // destroy the grid and the field
         delete (vort);

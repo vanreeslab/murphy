@@ -89,6 +89,16 @@ void GridBlock::AddField(Field* fid) {
     //-------------------------------------------------------------------------
 }
 
+void GridBlock::AddFields(map<string, Field*>* fields) {
+    //-------------------------------------------------------------------------
+    // remember if I need to free the memory:
+    for (auto iter = fields->begin(); iter != fields->end(); iter++) {
+        Field* fid  = iter->second;
+        AddField(fid);
+    }
+    //-------------------------------------------------------------------------
+}
+
 void GridBlock::DeleteField(Field* fid) {
     //-------------------------------------------------------------------------
     string name = fid->name();

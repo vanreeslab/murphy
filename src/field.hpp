@@ -11,7 +11,6 @@ using std::string;
 class Field {
    protected:
     sid_t lda_;  //!< indicate how many dimension is in the field [0,lda_[
-    // sid_t  ida_;  //!< indicate the current working dimension, if any
     string name_;
     bool   ghost_status_;
 

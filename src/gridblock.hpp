@@ -2,13 +2,14 @@
 #define SRC_BLOCK_HPP_
 
 #include <limits>
+#include <map>
 
 #include "field.hpp"
 #include "memlayout.hpp"
 #include "murphy.hpp"
 #include "p8est.h"
 
-
+using std::map;
 using std::numeric_limits;
 
 class GridBlock : public MemLayout {
@@ -17,6 +18,7 @@ class GridBlock : public MemLayout {
     real_t xyz_[3];
     real_t hgrid_[3];
 
+    bool data_owned_ = false; //!< if yes, has to free the memory in data_map_
     datamap_t data_map_;
 
    public:
@@ -46,15 +48,12 @@ class GridBlock : public MemLayout {
 
     void AddField(Field* fid);
     void DeleteField(Field* fid);
+    void AddFields(map<string, Field*>* fields) ;
 };
-
 
 /**
  * @brief pointer to an member function of the class @ref GridBlock
  */
 using bop_t = void (GridBlock::*)(Field* fid);
-
-
-
 
 #endif  // SRC_BLOCK_HPP_

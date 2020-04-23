@@ -191,7 +191,7 @@ TEST_F(valid_Boundary, bc_odd_right) {
 }
 
 //==============================================================================================================================
-TEST_F(valid_Boundary, bc_extrap_left) {
+TEST_F(valid_Boundary, bc_extrap_4_left) {
     // fill the source
     for (int i2 = 0; i2 < M_N; i2++) {
         for (int i1 = -M_GS; i1 < M_N + M_GS; i1++) {
@@ -226,8 +226,7 @@ TEST_F(valid_Boundary, bc_extrap_left) {
 
     delete (phys_left);
 }
-//==============================================================================================================================
-TEST_F(valid_Boundary, bc_extrap_right) {
+TEST_F(valid_Boundary, bc_extrap_4_right) {
     // fill the source
     for (int i2 = 0; i2 < M_N; i2++) {
         for (int i1 = -M_GS; i1 < M_N + M_GS; i1++) {
@@ -257,6 +256,78 @@ TEST_F(valid_Boundary, bc_extrap_right) {
                 real_t z = ((real_t)i2 + 0.5) * hgrid_[2] - 1.0;
 
                 EXPECT_NEAR(data_[m_idx(i0, i1, i2)], M_PI * pow(z, 3) + M_PI_2 * pow(z, 2) - M_PI_4 * pow(z, 1) + M_SQRT2, DOUBLE_TOL) << "failed for " << i0 << " " << i1 << " " << i2;
+            }
+        }
+    }
+
+    delete (phys_right);
+}
+//==============================================================================================================================
+TEST_F(valid_Boundary, bc_extrap_3_left) {
+    // fill the source
+    for (int i2 = 0; i2 < M_N; i2++) {
+        for (int i1 = -M_GS; i1 < M_N + M_GS; i1++) {
+            for (int i0 = -M_GS; i0 < M_N + M_GS; i0++) {
+                real_t x = ((real_t)i0 + 0.5) * hgrid_[0];
+                real_t y = ((real_t)i1 + 0.5) * hgrid_[1];
+                real_t z = ((real_t)i2 + 0.5) * hgrid_[2];
+
+                data_[m_idx(i0, i1, i2)] = M_PI_2 * pow(z, 2) - M_PI_4 * pow(z, 1) + M_SQRT2;
+            }
+        }
+    }
+
+    // get the boundary on the x_left
+    PhysBlock*       phys_left = new PhysBlock(4, block_);
+    lid_t            fstart[3] = {0, 0, 0};
+    ExtrapBoundary_3 bc;
+    bc(phys_left->iface(), fstart, hgrid_, 0.0, phys_left, data_);
+
+    // check the result for LEFT
+    for (int i2 = -M_GS; i2 < M_N; i2++) {
+        for (int i1 = -M_GS; i1 < M_N + M_GS; i1++) {
+            for (int i0 = -M_GS; i0 < M_N + M_GS; i0++) {
+                real_t x = ((real_t)i0 + 0.5) * hgrid_[0];
+                real_t y = ((real_t)i1 + 0.5) * hgrid_[1];
+                real_t z = ((real_t)i2 + 0.5) * hgrid_[2];
+
+                EXPECT_NEAR(data_[m_idx(i0, i1, i2)], M_PI_2 * pow(z, 2) - M_PI_4 * pow(z, 1) + M_SQRT2, DOUBLE_TOL) << "failed for " << i0 << " " << i1 << " " << i2;
+            }
+        }
+    }
+
+    delete (phys_left);
+}
+TEST_F(valid_Boundary, bc_extrap_3_right) {
+    // fill the source
+    for (int i2 = 0; i2 < M_N; i2++) {
+        for (int i1 = -M_GS; i1 < M_N + M_GS; i1++) {
+            for (int i0 = -M_GS; i0 < M_N + M_GS; i0++) {
+                real_t x = ((real_t)i0 + 0.5) * hgrid_[0] - 1.0;
+                real_t y = ((real_t)i1 + 0.5) * hgrid_[1] - 1.0;
+                real_t z = ((real_t)i2 + 0.5) * hgrid_[2] - 1.0;
+
+                data_[m_idx(i0, i1, i2)] = M_PI_2 * pow(z, 2) - M_PI_4 * pow(z, 1) + M_SQRT2;
+            }
+        }
+    }
+
+    // get the boundary on the x_right
+    PhysBlock*       phys_right = new PhysBlock(5, block_);
+    lid_t            fstart[3]  = {0, 0, M_N - 1};
+    ExtrapBoundary_3 bc;
+    // the flux is 4 pi x^3 + pi x -> 5 pi at the interface
+    bc(phys_right->iface(), fstart, hgrid_, 0.0, phys_right, data_);
+
+    // check the result for RIGHT
+    for (int i2 = 0; i2 < M_N + M_GS; i2++) {
+        for (int i1 = -M_GS; i1 < M_N + M_GS; i1++) {
+            for (int i0 = -M_GS; i0 < M_N + M_GS; i0++) {
+                real_t x = ((real_t)i0 + 0.5) * hgrid_[0] - 1.0;
+                real_t y = ((real_t)i1 + 0.5) * hgrid_[1] - 1.0;
+                real_t z = ((real_t)i2 + 0.5) * hgrid_[2] - 1.0;
+
+                EXPECT_NEAR(data_[m_idx(i0, i1, i2)], M_PI_2 * pow(z, 2) - M_PI_4 * pow(z, 1) + M_SQRT2, DOUBLE_TOL) << "failed for " << i0 << " " << i1 << " " << i2;
             }
         }
     }

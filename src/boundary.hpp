@@ -77,8 +77,6 @@ class Boundary {
  *      f(5h/2) - flux * 5h/2 = a  625*h^4/16 + b 25*h^2/4 + c
  */
 class EvenBoundary_4 : public Boundary<3> {
-    real_t stencil_[3];
-
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t flux) override;
 };
@@ -97,20 +95,22 @@ class EvenBoundary_4 : public Boundary<3> {
  *      f(5h/2) - value = a  3125*h^4/32 + b 125*h^3/8 + c 5*h/2
  */
 class OddBoundary_4 : public Boundary<3> {
-    real_t stencil[3];
-
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
 };
 
 /**
- * @brief applies an UNBOUNDED bondary condition by extrapolation
+ * @brief applies an extrapolation boundary condition O(h^4) using a polynomial a x^3 + b x^2 + c x + d
  *
- * f(x) = a x^3 + b x^2 + c x + d = data;
  */
 class ExtrapBoundary_4 : public Boundary<4> {
-    real_t stencil[3];
-
+   protected:
+    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
+};
+/**
+ * @brief applies an extrapolation boundary condition O(h^3) using a polynomial a x^2 + b x + c
+ */
+class ExtrapBoundary_3 : public Boundary<3> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
 };
@@ -121,8 +121,6 @@ class ExtrapBoundary_4 : public Boundary<4> {
  * f(x) = a x^3 + b x^2 + c x + d = data;
  */
 class ZeroBoundary : public Boundary<0> {
-    real_t stencil[3];
-
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
 };

@@ -42,6 +42,16 @@ real_t ExtrapBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t 
     // return the polynomial + the flux slope
     return a * pow(x, 3) + b * pow(x, 2) + c * pow(x, 1) + d;
 }
+real_t ExtrapBoundary_3::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) {
+    m_assert(offset == (0.5 * h), "this function is only for cell-centered ghosts");  // compute the h coefficient, given the sign of the normal coefficients
+    const real_t hnorm = -h * normal;
+    // compute the stencil coefficients
+    const real_t a = (1.0 * f[0] - 2.0 * f[1] + 1.0 * f[2]) / (2.0 * pow(hnorm, 2));
+    const real_t b = (-2.0 * f[0] + 3.0 * f[1] - 1.0 * f[2]) / (hnorm);
+    const real_t c = (15.0 * f[0] - 10.0 * f[1] + 3.0 * f[2]) / (8.0);
+    // return the polynomial + the flux slope
+    return a * pow(x, 2) + b * pow(x, 1) + c;
+}
 
 real_t ZeroBoundary::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) {
     return 0.0;

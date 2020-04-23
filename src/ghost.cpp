@@ -50,7 +50,7 @@ Ghost::Ghost(ForestGrid* grid) {
         coarse_tmp_[it] = (real_t*)m_calloc(sizeof(real_t) * M_CLEN * M_CLEN * M_CLEN);
     }
     //-------------------------------------------------------------------------
-    m_log("ghost ready to exchange");
+    // m_log("ghost ready to exchange");
     m_end;
 }
 
@@ -112,6 +112,7 @@ Ghost::~Ghost() {
     // free the memory
     m_free(mirrors_);
     m_free(ghosts_);
+    m_free(mirrors_to_local_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -659,6 +660,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         }
     }
     delete (ghost_subblock);
+    delete (coarse_subblock);
 
     // m_log("dbg: tree %d, quad %d: finiiiish", qid->tid, qid->qid);
     //-------------------------------------------------------------------------

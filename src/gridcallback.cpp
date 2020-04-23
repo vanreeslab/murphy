@@ -136,7 +136,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         real_t     len   = m_quad_len(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        quad->p.user_data = block;
+        quad->p.user_data = (void*)block;
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
@@ -226,6 +226,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         GridBlock* block = reinterpret_cast<GridBlock*>(quad->p.user_data);
         // delete the block, the fields are destroyed in the destructor
         delete(block);
+        quad->p.user_data = nullptr;
     }
     //-------------------------------------------------------------------------
     m_end;
