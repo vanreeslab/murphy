@@ -161,7 +161,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         GridBlock* block_out = *(reinterpret_cast<GridBlock**>(outgoing[iout]->p.user_data));
 
         for (sid_t iin = 0; iin < num_incoming; iin++) {
-            GridBlock* block_in = *(reinterpret_cast<GridBlock**>(incoming[iout]->p.user_data));
+            GridBlock* block_in = *(reinterpret_cast<GridBlock**>(incoming[iin]->p.user_data));
             
             
             // get the correct child id: if 1 is going out, the children are the incoming

@@ -24,10 +24,8 @@ int main(int argc, char** argv) {
     p4est_init(NULL, SC_LP_SILENT);
     //-------------------------------------------------------------------------
     {
-        omp_set_num_threads(1);
-
         bool periodic[3] = {false, false, false};
-        int  l[3]        = {1, 1, 1};
+        int  l[3]        = {2, 1, 3};
         // create a grid
         Grid* grid = new Grid(1, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
