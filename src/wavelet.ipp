@@ -124,6 +124,16 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
                 m_assume_aligned(ltdata);
                 const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
+                // reset to 0.0
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = 0.0;
+                ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = 0.0;
+
                 for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
                     for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
                         for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {

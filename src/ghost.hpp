@@ -29,6 +29,7 @@ using gop_t = void (Ghost::*)(const qid_t* qid, GridBlock* block, Field* fid);
  * It is both a constant operator (see @ref OperatorF) when performing the ghost exchange
  * and a simple Operator (see @ref OperatorS) when performing the initialization.
  * 
+ * Ghosting relies on two objects, the blocks (local leafs) and the ghosts (other rank's leafs).
  * 
  */
 class Ghost : public OperatorF, public OperatorS {
