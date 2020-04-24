@@ -123,41 +123,114 @@ void Grid::DeleteField(Field* field) {
     m_end;
 }
 
-void Grid::GhostPull(Field* field) {
+void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_begin;
-    m_assert(interp_ != nullptr, "the inteprolator cannot be null");
+    m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
+    m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
     //-------------------------------------------------------------------------
-    // if already computed, return
-    if (field->ghost_status() || field->lda() < 1) {
-        m_log("field %s has already valid ghosts", field->name().c_str());
-        return;
-    } else {
-        // m_log("pulling ghosts for field %s", field->name().c_str());
-        // start the send of the first dimension
-        ghost_->PushToMirror(field, 0);
+    if (!field->ghost_status()) {
+        ghost_->PushToMirror(field, ida);
         ghost_->MirrorToGhostSend();
-
-        for (int ida = 1; ida < field->lda(); ida++) {
-            // receive the current communication, the mirrors are now free
-            ghost_->MirrorToGhostRecv();
-            // fill the mirror and initiate the next send
-            ghost_->PushToMirror(field, ida);
-            ghost_->MirrorToGhostSend();
-            // handle the last dimension just received
-            ghost_->PullFromGhost(field, ida - 1, interp_);
-        }
-        // receive and end the last dimension
-        ghost_->MirrorToGhostRecv();
-        ghost_->PullFromGhost(field, field->lda() - 1, interp_);
-
-        // set that everything is ready for the field
-        field->ghost_status(true);
-        // m_log("ghosts pulling is done for field %s", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;
 }
+
+void Grid::GhostPullRecv(Field* field, const sid_t ida) {
+    m_begin;
+    m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
+    m_assert(field != nullptr, "the source field cannot be null");
+    m_assert(IsAField(field), "the field does not belong to this grid");
+    //-------------------------------------------------------------------------
+    if (!field->ghost_status()) {
+        // receive the current communication, the mirrors are now free
+        ghost_->MirrorToGhostRecv();
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+void Grid::GhostPullFill(Field* field, const sid_t ida) {
+    m_begin;
+    m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
+    m_assert(field != nullptr, "the source field cannot be null");
+    m_assert(IsAField(field), "the field does not belong to this grid");
+    m_assert(interp_ != nullptr, "the inteprolator cannot be null");
+    //-------------------------------------------------------------------------
+    if (!field->ghost_status()) {
+        // receive the current communication, the mirrors are now free
+        ghost_->PullFromGhost(field, ida, interp_);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Grid::GhostPull(Field* field) {
+    m_begin;
+    m_assert(field != nullptr, "the source field cannot be null");
+    //-------------------------------------------------------------------------
+    // start the send in the first dimension
+    GhostPullSend(field, 0);
+    for (int ida = 1; ida < field->lda(); ida++) {
+        // receive the previous dimension
+        GhostPullRecv(field, ida - 1);
+        // start the send for the next dimension
+        GhostPullSend(field, ida);
+        // fill the ghost values of the just-received information
+        GhostPullFill(field, ida - 1);
+    }
+    GhostPullRecv(field, field->lda() - 1);
+    // set that everything is ready for the field
+    field->ghost_status(true);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+// void Grid::Deriv(Field* field_src, Field* field_trg, OperatorDeriv* operation) {
+//     m_begin;
+//     m_assert(interp_ != nullptr, "the inteprolator cannot be null");
+//     m_assert(field_src != nullptr, "the source field cannot be null");
+//     m_assert(IsAField(field_src), "the field does not belong to this grid");
+//     m_assert(IsAField(field_src), "the field does not belong to this grid");
+//     //-------------------------------------------------------------------------
+//     // if no up-to-date ghost, start the send in the first dimension
+//     if (!field_src->ghost_status()) {
+//         ghost_->PushToMirror(field_src, 0);
+//         ghost_->MirrorToGhostSend();
+//     }
+//     // start the inner operation on the first dimension
+//     if (field_trg != nullptr && operation != nullptr) {
+//         (*operation)(this, field_src, field_trg, 0, M_DERIV_INNER);
+//     }
+//     for (int ida = 1; ida < field_src->lda(); ida++) {
+        
+//             // fill the mirror for the next dimension and initiate the next send
+//             ghost_->PushToMirror(field_src, ida);
+//             ghost_->MirrorToGhostSend();
+//             // handle the last dimension just received
+//             ghost_->PullFromGhost(field_src, ida - 1, interp_);
+//         }
+//         if (field_trg != nullptr && operation != nullptr) {
+//             (*operation)(this, field_src, field_trg, ida - 1, M_DERIV_OUTER);
+//         }
+//     }
+//     // receive and end the last dimension
+//     if (!field_src->ghost_status()) {
+//         ghost_->MirrorToGhostRecv();
+//         ghost_->PullFromGhost(field_src, field_src->lda() - 1, interp_);
+//     }
+//     // start the inner operation on the first dimension
+//     if (field_trg != nullptr && operation != nullptr) {
+//         (*operation)(this, field_src, field_trg, field_src->lda() - 1, M_DERIV_OUTER);
+//     }
+//     // set that everything is ready for the field
+//     field_src->ghost_status(true);
+//     if (field_trg != nullptr) {
+//         field_trg->ghost_status(false);
+//     }
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 void Grid::Refine(const sid_t delta_level) {
     m_begin;
@@ -166,9 +239,6 @@ void Grid::Refine(const sid_t delta_level) {
     for (int id = 0; id < delta_level; id++) {
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-            // set the working field before entering the callback
-            // working_callback_field_ = fid->second;
-            // get the ghosts needed by the interpolation
             GhostPull(fid->second);
         }
         // delete the soon-to be outdated ghost and mesh

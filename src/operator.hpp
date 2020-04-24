@@ -129,7 +129,6 @@ void ConstCallOpF(const qid_t* qid, GridBlock* block, const Field* fid, ConstOpe
 //=================================================================================================
 /**
  * @brief a Field to Field operator, i.e. which uses the content of one Field to modify another Field
- * 
  */
 class OperatorF2F {
    public:
@@ -141,22 +140,44 @@ class OperatorF2F {
     * @param fid_src the source field
     * @param fid_trg the target field
     */
-    virtual void ApplyOperatorF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
-    /**
-     * @brief call OperatorF2F::apply() on each block and change the ghost status of the Field field_trg to `false`
-     */
+    virtual void ApplyOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
+    // defines the operator
     virtual void operator()(ForestGrid* grid, Field* field_src, Field* field_trg);
 };
-/**
- * @brief this function is called by DoOp_() function
- * 
- * @param qid the reference of the block, see qid_t
- * @param block the Block itself, which cannot be modified
- * @param fid_src the source field
- * @param fid_trg the target field
- * @param op the OperatorF2F object containing all the needed data
- */
 void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
+
+// //=================================================================================================
+// /**
+//  * @brief defines which mode is triggered in a OperatorDeriv
+//  */
+// typedef enum mode_deriv_t {
+//     M_DERIV_INNER,
+//     M_DERIV_OUTER
+// } mode_deriv_t;
+// /**
+//  * @brief a Derivation operator, i.e. which derivates one Field and store the result in a second one
+//  *
+//  * For this operator, we need to divide the operation into two steps: the inner step, which do not rely on the
+//  * ghost points and the outer step, which do rely on ghost points
+//  */
+// class OperatorDeriv {
+//     sid_t src_ida_;  //!< dimension available in the fid_src
+//    public:
+//     /**
+//     * @brief Implementation of this virtual function has to be provided by the user as a member function
+//     * 
+//     * @param qid the id of the quadrant which corresponds to the current block
+//     * @param block the current block itself
+//     * @param fid_src the source field
+//     * @param fid_trg the target field
+//     */
+//     virtual void ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
+//     virtual void ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
+//     // defines the operator
+//     virtual void operator()(ForestGrid* grid, Field* field_src, Field* field_trg, const sid_t src_ida, const mode_deriv_t mode);
+// };
+// void CallOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
+// void CallOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
 
 //=================================================================================================
 /**

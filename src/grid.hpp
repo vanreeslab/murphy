@@ -14,6 +14,7 @@
 #include "interpolator.hpp"
 #include "murphy.hpp"
 #include "prof.hpp"
+#include "operator.hpp"
 
 using std::list;
 using std::numeric_limits;
@@ -53,7 +54,6 @@ class Grid : public ForestGrid {
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
     void DeleteField(Field* field);
-
     /**@}*/
 
     /**
@@ -62,6 +62,9 @@ class Grid : public ForestGrid {
      * @{
      */
     void GhostPull(Field* field);
+    void GhostPullSend(Field* field, const sid_t ida);
+    void GhostPullRecv(Field* field, const sid_t ida);
+    void GhostPullFill(Field* field, const sid_t ida);
     /**@}*/
 
     /**

@@ -8,6 +8,7 @@
 #include "ioh5.hpp"
 #include "setvalues.hpp"
 #include "wavelet.hpp"
+#include "laplacian.hpp"
 
 int main(int argc, char** argv) {
     int provided;
@@ -30,8 +31,10 @@ int main(int argc, char** argv) {
         Grid* grid = new Grid(1, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
         Field* vort = new Field("vorticity", 3);
+        Field* diff = new Field("diffusion", 3);
         // register the field to the grid
         grid->AddField(vort);
+        grid->AddField(diff);
 
         // set a Gaussian
         real_t center[3] = {l[0] * 0.25, l[1] * 0.5, l[2] * 0.5};
@@ -42,21 +45,26 @@ int main(int argc, char** argv) {
         SetExpoCosinus expocos = SetExpoCosinus(center, sigma, length, freq);
         expocos(grid, vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        vort->bctype(M_BC_ODD);
-        // for(int id=0; id<3; id++){
-        //     vort->bctype(M_BC_EXTRAP,id,0);
-        //     vort->bctype(M_BC_EXTRAP,id,1);
-        // }
-
+        vort->bctype(M_BC_EVEN);
+        // set the extrapolation in the X direction [0,1]
+        for(int id=0; id<3; id++){
+            vort->bctype(M_BC_EXTRAP,id,0);
+            vort->bctype(M_BC_EXTRAP,id,1);
+        }
         //  // create a dumper and dump
-        // IOH5 mydump = IOH5("data");
+        IOH5 dump = IOH5("data");
         // mydump(grid, vort,"vort");
 
         // get an refined and adapted grid
         grid->Adapt(vort);
 
         // create a dumper and dump
-        // mydump(grid, vort,"vort_fine");
+        dump(grid, vort);
+
+        LaplacianCross<3> lapla = LaplacianCross<3>(grid);
+        lapla(vort,diff);
+
+        dump(grid,diff);
 
         // grid->GhostPull(vort);
 
