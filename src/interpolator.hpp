@@ -19,13 +19,11 @@ typedef struct interp_ctx_t {
     lid_t trgstr;       //!< the target stride
     lid_t trgstart[3];  //!< first index needed in the target memory
     lid_t trgend[3];    //!< last index needed in the target memory
-
 #ifndef NDEBUG
     // for debug only
     lid_t srcstart[3];  //!< first index available in the source memory
     lid_t srcend[3];    //!< last index available in the source memory
 #endif
-
     /**
      * @name position pointers
      * 
@@ -46,13 +44,36 @@ typedef struct interp_ctx_t {
  */
 class Interpolator {
    public:
+   /**
+    * @brief returns a positive, single value that represents a refinement/coarsening criterion
+    * 
+    * @param block the memory layout to use to compute that value
+    * @param data the memory adress refering to point (0,0,0)
+    * @return real_t the criterion value, always >= 0
+    */
     virtual real_t Criterion(MemLayout* block, real_p data) = 0;
 
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
 
    protected:
+   /**
+    * @brief coarsen the information for blocks having a jump in level
+    * 
+    * @param ctx the interpolation context, see @ref interp_ctx_t
+    * @param dlvl the number of level we have to coarsen
+    */
     virtual void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const = 0;
+    /**
+     * @brief refines by one level the information
+     * 
+     * @param ctx the interpolation context, see @ref interp_ctx_t
+     */
     virtual void Refine_(const interp_ctx_t* ctx) const                    = 0;
+    /**
+     * @brief copy the information for blocks at the same level
+     * 
+     * @param ctx the interpolation context, see @ref interp_ctx_t
+     */
     virtual void Copy_(const interp_ctx_t* ctx) const                      = 0;
 };
 

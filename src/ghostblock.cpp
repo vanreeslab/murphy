@@ -1,27 +1,18 @@
 #include "ghostblock.hpp"
 #include "p8est_bits.h"
 
-// GhostBlock::GhostBlock(GridBlock* me, const qdrt_t* ngh, const real_t ngh_tree_offset[3], real_p data) {
-//     m_assert(m_isaligned(data), "memory is not aligned, which is not good");
-//     //-------------------------------------------------------------------------
-//     data_src_ = data;
-//     // get the position of the current quad:
-//     real_t u_size     = (1.0 / P8EST_ROOT_LEN);
-//     real_t pos_ngh[3] = {ngh_tree_offset[0] + ngh->x * u_size,
-//                          ngh_tree_offset[1] + ngh->y * u_size,
-//                          ngh_tree_offset[2] + ngh->z * u_size};
 
-//     m_verb("is my quad a neighbor?? %d ",p8est_quadrant_is_extended(ngh));
-//     // setup the indexesd
-//     GhostBlock_(me, ngh, pos_ngh);
-//     //-------------------------------------------------------------------------
-// }
-
-
+/**
+ * @brief Construct a new Ghost Block. Computes the area that is at the intersection between a neighboring block and me.
+ * 
+ * @warning this computation assumes that the nieghbor is a full block of size M_N. In practise, this assumption should always be valid
+ * 
+ * @param me the current block
+ * @param ngh_level the neighbor level
+ * @param ngh_pos the origin position of my neighbor
+ */
 GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3]) {
     //-------------------------------------------------------------------------
-    // store my origin
-    // origin_ = me;
     // get the ghost size and the
     gs_     = me->gs();
     stride_ = me->stride();
@@ -44,13 +35,6 @@ GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_po
         end_[id]      = m_min(end_idx, me->end(id) + me->gs());
         // m_assert(((real_t)end_[id]) == end, "the end has to be an integer");
     }
-
-    m_verb("shift = %d %d %d",shift_[0],shift_[1],shift_[2]);
-
-    if (dlvl_ < 0) {
-        m_verb("dbg my pos = %f %f %f", me->xyz(0), me->xyz(1), me->xyz(2));
-        m_verb("dbg ngh pos = %f %f %f", ngh_pos[0], ngh_pos[1], ngh_pos[2]);
-    }
-
+    // m_verb("shift = %d %d %d",shift_[0],shift_[1],shift_[2]);
     //-------------------------------------------------------------------------
 }

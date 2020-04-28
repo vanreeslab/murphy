@@ -3,7 +3,7 @@
 //=================================================================================================
 void CallOpS(const qid_t* qid, GridBlock* block, Field* fid, OperatorS* op) {
     m_assert(fid == nullptr, "the field has to be NULL for an OperatorS object");
-    op->ApplyOperatorS(qid, block);
+    op->ApplyOpS(qid, block);
 }
 void OperatorS::operator()(ForestGrid* grid) {
     // execute the operator on the blocks, no 
@@ -12,7 +12,7 @@ void OperatorS::operator()(ForestGrid* grid) {
 
 //=================================================================================================
 void CallOpF(const qid_t* qid, GridBlock* block, Field* fid, OperatorF* op) {
-    op->ApplyOperatorF(qid, block, fid);
+    op->ApplyOpF(qid, block, fid);
 }
 void OperatorF::operator()(ForestGrid* grid, Field* field) {
     // execute the operator on the blocks
@@ -24,7 +24,7 @@ void OperatorF::operator()(ForestGrid* grid, Field* field) {
 
 //=================================================================================================
 void ConstCallOpF(const qid_t* qid, GridBlock* block, const Field* fid, ConstOperatorF* op) {
-    op->ApplyConstOperatorF(qid, block, fid);
+    op->ApplyConstOpF(qid, block, fid);
 }
 void ConstOperatorF::operator()(ForestGrid* grid, Field* field) {
     // execute the operation on the blocks
@@ -82,7 +82,7 @@ void OperatorF2F::operator()(ForestGrid* grid, Field* field_src, Field* field_tr
 
 //=================================================================================================
 void ConstCallOpFF(const qid_t* qid, GridBlock* block, const Field* fid_1, const Field* fid_2, ConstOperatorFF* op) {
-    op->ApplyConstOperatorFF(qid, block, fid_1, fid_2);
+    op->ApplyConstOpFF(qid, block, fid_1, fid_2);
 }
 void ConstOperatorFF::operator()(ForestGrid* grid, Field* fid_1, Field* fid_2) {
     // execute the operation on the blocks

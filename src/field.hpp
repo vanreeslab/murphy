@@ -17,8 +17,7 @@ class Field {
     sid_t     lda_;           //!< indicate how many dimension is in the field [0,lda_[
     bool      ghost_status_;  //!< indicate if the field has up-to-date ghosts or not
     string    name_;          //!< the name of the field, used throughout the field management, must be unique
-
-    bctype_t* bctype_ [6];     //!< the boundary conditions for every direction; [X- X+ Y- Y+ Z- Z+]
+    bctype_t* bctype_[6];     //!< the boundary conditions for every direction; [X- X+ Y- Y+ Z- Z+]
 
    public:
     Field(string name, sid_t lda);
@@ -40,7 +39,14 @@ class Field {
      * 
      * @{
      */
+    
+    /**
+     * @brief sets the ghost information
+     * 
+     * @param status the ghost information status to set
+     */
     void ghost_status(bool status) { ghost_status_ = status; }
+
     void bctype(bctype_t type, const sid_t ida, const sid_t loc);
     void bctype(bctype_t type, const sid_t ida);
     void bctype(bctype_t type);

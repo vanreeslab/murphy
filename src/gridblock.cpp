@@ -5,8 +5,8 @@ using std::string;
 /**
  * @brief constructs a new Block given a 3D length and a position
  * 
- * @param length the length of the current block (unique number)
- * @param xyz the position of the left,bottom corner (x,y,z)
+ * @param length the length of the current block
+ * @param xyz the position of the origin, i.e. the left,bottom corner, (x,y,z)
  * @param level the level of the block
  */
 GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level) {
@@ -25,6 +25,15 @@ GridBlock::~GridBlock() {
     DeleteFields();
 }
 
+/**
+ * @brief returns the (aligned!) pointer for write access that corresponds to the first point in the block, i.e. (0,0,0), for the first dimension.
+ * You must use either @ref m_sidx, @ref m_midx or @ref m_idx to access any point in the memory
+ * 
+ * @warning this is not the same pointer as the memory pointers, because the ghost blocks are considered as negative numbers, see @ref MemLayout
+ * 
+ * @param fid 
+ * @return real_p 
+ */
 real_p GridBlock::data(Field* fid) {
 #ifndef NDEBUG
     // check the field validity
@@ -39,11 +48,14 @@ real_p GridBlock::data(Field* fid) {
 #endif
 }
 /**
- * @brief return (0,0,0) memory position of a field in a given dimension
+ * @brief returns the (aligned!) pointer for write access that corresponds to the first point in the block, i.e. (0,0,0), for the given dimension.
+ * You must use either @ref m_sidx, @ref m_midx or @ref m_idx to access any point in the memory
+ * 
+ * @warning this is not the same pointer as the memory pointers, because the ghost blocks are considered as negative numbers, see @ref MemLayout
  * 
  * @param fid the field
  * @param ida the required dimension
- * @return real_p the memory adress of (0,0,0), hence m_idx(i0,i1,i2) MUST be used
+ * @return real_p the memory adress, we ensure its alignement
  */
 real_p GridBlock::data(const Field* fid, const sid_t ida) {
 #ifndef NDEBUG
@@ -59,6 +71,15 @@ real_p GridBlock::data(const Field* fid, const sid_t ida) {
 #endif
 }
 
+/**
+ * @brief  returns the constant (aligned!) pointer for read access that corresponds to the first point in the block, i.e. (0,0,0), for the given dimension.
+ * You must use either @ref m_sidx, @ref m_midx or @ref m_idx to access any point in the memory
+ * 
+ * @warning this is not the same pointer as the memory pointers, because the ghost blocks are considered as negative numbers, see @ref MemLayout
+ * 
+ * @param fid 
+ * @return const real_p the pointer is const
+ */
 const real_p GridBlock::data(const Field* fid) const {
 #ifndef NDEBUG
     datamap_t::const_iterator it = data_map_.find(fid->name());
@@ -71,6 +92,11 @@ const real_p GridBlock::data(const Field* fid) const {
 #endif
 }
 
+/**
+ * @brief adds a field to the block if it doesn't exist already
+ * 
+ * @param fid 
+ */
 void GridBlock::AddField(Field* fid) {
     //-------------------------------------------------------------------------
     string name = fid->name();
@@ -86,6 +112,11 @@ void GridBlock::AddField(Field* fid) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief add all the fields contained in the map to the current block, if they do not exist already
+ * 
+ * @param fields 
+ */
 void GridBlock::AddFields(map<string, Field*>* fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
@@ -96,6 +127,11 @@ void GridBlock::AddFields(map<string, Field*>* fields) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief remove the field from the current block if it exists
+ * 
+ * @param fid 
+ */
 void GridBlock::DeleteField(Field* fid) {
     //-------------------------------------------------------------------------
     string name = fid->name();
@@ -112,6 +148,9 @@ void GridBlock::DeleteField(Field* fid) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief deallocate all the remaining fields in the current block
+ */
 void GridBlock::DeleteFields() {
     // need to delete the fields not deleted yet
     for (datamap_t::iterator iter = data_map_.begin(); iter != data_map_.end(); iter++) {

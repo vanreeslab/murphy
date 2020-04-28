@@ -49,7 +49,7 @@ class IOH5 : public ConstOperatorF {
 
     void dump_ghost(const bool dump_ghost);
 
-    void ApplyConstOperatorF(const qid_t* qid, GridBlock* block, const Field* fid) override;
+    void ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) override;
 
     void operator()(ForestGrid* grid, Field* field, string name) ;
     void operator()(ForestGrid* grid, Field* field) override;

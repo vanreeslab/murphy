@@ -57,7 +57,7 @@ void IOH5::dump_ghost(const bool dump_ghost) {
     dump_ghost_ = dump_ghost;
 }
 
-void IOH5::ApplyConstOperatorF(const qid_t* qid, GridBlock* block, const Field* fid) {
+void IOH5::ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) {
     //-------------------------------------------------------------------------
     xmf_write_block_(qid, block, fid);
     hdf5_write_block_(qid, block, fid);

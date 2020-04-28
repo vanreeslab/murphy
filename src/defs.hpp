@@ -3,20 +3,38 @@
 
 #include <mpi.h>
 #include <omp.h>
-#include <cstdio>
 #include <p8est.h>
 
+#include <cstdio>
 #include <cstdlib>
 
-#define M_N 16
-#define M_GS 2
-#define M_ALIGNMENT 16  // the alignement in bytes
-#define M_MPI_REAL MPI_DOUBLE
+/**
+ * @name user changeable parameters 
+ * @{
+ */
+#define M_N 16          //!< size of one block (M_N x M_N x M_N)
+#define M_GS 2          //!< number of ghost points
+#define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
+/** @} */
 
-#define M_DN (2 * M_N)  // the double size of one block
-#define M_HN (M_N / 2)  // the half size of one block
+/**
+ * @name memory sizes shortcuts
+ * @{
+ */
+#define M_HN (M_N / 2)  //!< half size of a block
 #define M_STRIDE (2 * M_GS + M_N)
+/** @} */
 
+/**
+ * @name memory management
+ * @{
+ */
+#define M_MPI_REAL MPI_DOUBLE  //!< type used for the MPI communication (double by default)
+
+/**
+ * @brief returns true if the memory is aligned
+ * 
+ */
 #define m_isaligned(a)                      \
     ({                                      \
         const void* _a = (a);               \
@@ -41,13 +59,20 @@
     ({                  \
         _mm_free(data); \
     })
-#elif defined(__GNUC__)
+#else //defined(__GNUC__)
+/**
+ * @brief shortcuts the memory alignement assumption and check if it can be done
+ */
 #define m_assume_aligned(a)                                  \
     ({                                                       \
         __typeof__(a) a_ = (a);                              \
         m_assert(m_isaligned(a_), "data has to be aligned"); \
         __builtin_assume_aligned(a_, M_ALIGNMENT);           \
     })
+/**
+ * @brief allocate a given size (in Byte) and set to 0 the array.
+ * the return pointer is aligned to M_ALIGMEMENT
+ */
 #define m_calloc(size)                                    \
     ({                                                    \
         size_t size_ = (size_t)(size);                    \
@@ -55,12 +80,25 @@
         memset(data, 0, size_);                           \
         data;                                             \
     })
+/**
+ * @brief frees the pointer allocated using @ref m_calloc()
+ */
 #define m_free(data) \
     ({               \
         free(data);  \
     })
 #endif
+/** @} */
 
+
+/**
+ * @name min max macros
+ * 
+ */
+/**
+ * @brief returns the max of two expressions
+ * 
+ */
 #define m_max(a, b)             \
     ({                          \
         __typeof__(a) _a = (a); \
@@ -68,6 +106,10 @@
         _a > _b ? _a : _b;      \
     })
 
+/**
+ * @brief returns the min of two expressions
+ * 
+ */
 #define m_min(a, b)             \
     ({                          \
         __typeof__(a) _a = (a); \
@@ -75,6 +117,22 @@
         _a < _b ? _a : _b;      \
     })
 
+/** @} */
+
+/**
+ * @name Block related operations
+ * 
+ */
+/**
+ * @brief returns the position of a point (i0,i1,i2) in the computational domain
+ * 
+ * @param i0 the index in the x direction within a block
+ * @param i1 the index in the y direction within a block
+ * @param i2 the index in the z direction within a block
+ * @param hgrid the local grid spacing
+ * @param xyz the position of the origin of the block (!= the position of (0,0,0))
+ * 
+ */
 #define m_pos(pos, i0, i1, i2, hgrid, xyz)        \
     ({                                            \
         __typeof__(i0) _i0 = (i0);                \
@@ -86,17 +144,31 @@
         pos[2] = (_i2 + 0.5) * hgrid[2] + xyz[2]; \
     })
 
+/**
+ * @brief returns the position of a point (i0,i1,i2) wrt ot the origin of the block
+ * 
+ * @param i0 the index in the x direction within a block
+ * @param i1 the index in the y direction within a block
+ * @param i2 the index in the z direction within a block
+ * @param hgrid the local grid spacing
+ * @param xyz the position of the left corner of the block
+ * 
+ */
 #define m_pos_relative(offset, i0, i1, i2, hgrid) \
-    ({                                      \
-        __typeof__(i0) _i0 = (i0);          \
-        __typeof__(i1) _i1 = (i1);          \
-        __typeof__(i2) _i2 = (i2);          \
-                                            \
-        offset[0] = (_i0 + 0.5) * hgrid[0]; \
-        offset[1] = (_i1 + 0.5) * hgrid[1]; \
-        offset[2] = (_i2 + 0.5) * hgrid[2]; \
+    ({                                            \
+        __typeof__(i0) _i0 = (i0);                \
+        __typeof__(i1) _i1 = (i1);                \
+        __typeof__(i2) _i2 = (i2);                \
+                                                  \
+        offset[0] = (_i0 + 0.5) * hgrid[0];       \
+        offset[1] = (_i1 + 0.5) * hgrid[1];       \
+        offset[2] = (_i2 + 0.5) * hgrid[2];       \
     })
 
+/**
+ * @brief returns the size (in elements) of one block
+ * 
+ */
 #define m_blockmemsize(lda)                             \
     ({                                                  \
         __typeof__(lda) _lda = (lda);                   \
@@ -104,7 +176,7 @@
     })
 
 /**
- * @brief returns the memory position of (0,0,0)
+ * @brief returns the memory offset of the first block element: (0,0,0)
  * 
  */
 #define m_zeroidx(ida, mem)                                        \
@@ -116,12 +188,11 @@
     })
 
 /**
- * @brief return the shift in memory to reach a 3D position (i0,i1,i2) given a stride (str).
+ * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a stride (str).
  * 
  * This macro is to be used with the function GridBlock::data()
  * 
  * @note: we cast the stride to size_t to ensure a proper conversion while computing the adress
- * 
  */
 #define m_sidx(i0, i1, i2, ida, str)                               \
     ({                                                             \
@@ -134,7 +205,7 @@
     })
 
 /**
- * @brief return the shift in memory to reach a 3D position (i0,i1,i2) given a MemLayout mem
+ * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a @ref MemLayout
  * 
  * This macro is equivalent to @ref m_sidx with a stride given by MemLayout::stride()
  * 
@@ -145,7 +216,7 @@
     })
 
 /**
- * @brief return the memory index given 3D position and a dimension number
+ * @brief returns the memory index given 3D position, for a GridBlock object (only!)
  * 
  */
 #define m_idx(i0, i1, i2)                \
@@ -154,8 +225,8 @@
     })
 
 /**
- * @brief return the lenght of a quadrant at a given level
- * 
+ * @brief returns the lenght of a quadrant at a given level,
+ * assuming one octree is a cubic domain: (1 x 1 x 1)
  */
 #define m_quad_len(level)                                  \
     ({                                                     \
@@ -163,8 +234,15 @@
         1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(lvl_)); \
     })
 
+/** @} */
+
+
 /**
- * @brief m_log will be displayed as a log
+ * @name logs and verbosity 
+ * 
+ */
+/**
+ * @brief m_log will be displayed as a log, either by every rank or only by the master (given LOG_ALLRANKS)
  * 
  */
 #ifndef LOG_ALLRANKS
@@ -188,6 +266,7 @@
         fprintf(stdout, "[%d murphy] %s\n", rank, def_nhyipns); \
     })
 #endif
+
 /**
  * @brief m_verb will be displayed if VERBOSE is enabled
  * 
@@ -230,14 +309,16 @@
  * @brief entry and exit of functions, enabled if VERBOSE is enabled
  * 
  */
-#define m_begin                                                                            \
+#define m_begin                                                                             \
     m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
-    double def_idajfl_T0 = MPI_Wtime();                                                    \
+    double def_idajfl_T0 = MPI_Wtime();                                                     \
     m_verb("----- entering %s", __func__);
 
-#define m_end                                                                              \
+#define m_end                                                                               \
     m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
-    double def_idajfl_T1 = MPI_Wtime();                                                    \
+    double def_idajfl_T1 = MPI_Wtime();                                                     \
     m_verb("----- leaving %s after %lf [s]", __func__, (def_idajfl_T1) - (def_idajfl_T0));
+    
+/** @} */
 
 #endif  // SRC_DEFS_HPP_

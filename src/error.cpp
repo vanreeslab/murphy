@@ -2,13 +2,46 @@
 
 #include "gridblock.hpp"
 
+/**
+ * @brief returns the infinite norm of the error, see @ref ErrorCalculator::Norms()
+ * 
+ * @param grid the grid
+ * @param field the field
+ * @param sol the analytical solution field
+ * @param norm_i the infinite norm
+ */
 void ErrorCalculator::Normi(Grid* grid, Field* field, Field* sol, real_t* norm_i) {
     Norms(grid, field, sol, nullptr, norm_i);
 }
+
+/**
+ * @brief returns the 2norm of the error, see @ref ErrorCalculator::Norms()
+ * 
+ * @param grid the grid
+ * @param field the field
+ * @param sol the analytical solution
+ * @param norm_2 the 2-norm
+ */
 void ErrorCalculator::Norm2(Grid* grid, Field* field, Field* sol, real_t* norm_2) {
     Norms(grid, field, sol, norm_2, nullptr);
 }
 
+/**
+ * @brief computes both the 2-norm and the infinite norm
+ * 
+ * If one of the norm is not wanted, set the pointer to `nullptr`.
+ * 
+ * The error is computed on every dimension of the field, i.e. if `error[i]` is the error in the ith dimension and
+ * `local_volume` is the local cell volume, associated to the grid spacing on each block:
+ * the 2 norm is defined as `sqrt( (error[0]^2 + error[1]^2 + error[2]^2) * local_volume)` and
+ * the infinite norm is defined as `max(error[0], error[1], error[2])`
+ * 
+ * @param grid the grid
+ * @param field the field
+ * @param sol the analytical solution
+ * @param norm_2 the 2-norm, can be `nullptr`
+ * @param norm_i the infinite norm, can be `nullptr`
+ */
 void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2, real_t* norm_i) {
     m_begin;
     m_assert(field->lda() == sol->lda(), "the two fields must have the same dimension");
@@ -50,14 +83,16 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
 }
 
 /**
- * @brief compute the error 2 and the error inf 
+ * @brief computes the 2 norm and the infinite norm between two field for a given block.
  * 
- * @param qid 
- * @param block 
- * @param fid 
- * @param sol 
+ * The error is computed on every dimension of the field
+ * 
+ * @param qid the id of the block, see @ref qid_t
+ * @param block the block
+ * @param fid the field
+ * @param sol the analytical solution
  */
-void ErrorCalculator::ApplyConstOperatorFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
+void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
     const lid_t   ithread = omp_get_thread_num();
     const real_t* hgrid   = block->hgrid();

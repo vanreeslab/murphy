@@ -31,10 +31,10 @@ class ForestGrid {
     inline bool is_mesh_valid() const { return is_mesh_valid_; }
 
     /**
-    * @name p4est managmeent
-    * 
-    * @{
-    */
+     * @name p4est managmeent
+     * 
+     * @{
+     */
     inline int                   mpirank() const { return forest_->mpirank; }
     inline int                   mpisize() const { return forest_->mpisize; }
     inline MPI_Comm              mpicomm() const { return forest_->mpicomm; }

@@ -247,7 +247,7 @@ void Grid::GhostPull(Field* field) {
 }
 
 /**
- * @brief Refine the grid by @ref delta_level locally
+ * @brief Refine the grid by delta_level locally
  * 
  * @param delta_level the number of level every block will be refined
  */
@@ -287,7 +287,7 @@ void Grid::Refine(const sid_t delta_level) {
 }
 
 /**
- * @brief coarsen the grid by @ref delta_level locally
+ * @brief coarsen the grid by delta_level locally
  * 
  * @param delta_level 
  */
@@ -365,9 +365,9 @@ void Grid::Adapt(Field* field) {
     // set the grid in the forest for the callback
     forest_->user_pointer = reinterpret_cast<void*>(this);
     // coarsen the needed block
-    p8est_coarsen_ext(forest_, 0, 0, cback_Wavelet, nullptr, cback_Interpolate);
+    p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
     // refine the needed blocks
-    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Wavelet, nullptr, cback_Interpolate);
+    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
     // balance the partition
     p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
     // partition the grid

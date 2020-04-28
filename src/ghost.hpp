@@ -18,18 +18,25 @@ using std::list;
 #define M_CLEN (2 * M_GS + M_HN)
 
 class Ghost;
+
 /**
  * @brief pointer to an member function of the class @ref Ghost
  */
 using gop_t = void (Ghost::*)(const qid_t* qid, GridBlock* block, Field* fid);
 
 /**
- * @brief performs the ghost update of a given grid field
+ * @brief performs the ghost update of a given grid field, in one dimension
  * 
  * It is both a constant operator (see @ref OperatorF) when performing the ghost exchange
  * and a simple Operator (see @ref OperatorS) when performing the initialization.
  * 
- * Ghosting relies on two objects, the blocks (local leafs) and the ghosts (other rank's leafs).
+ * Ghosting relies on two structures, the blocks (local leafs) and the ghosts (other rank's leafs).
+ * Only the non-local ghosts will have to be received. In the origin tree, they are called mirrors.
+ * It means that a mirror is a ghost for one or multiple rank and a ghost is the block once received.
+ * Then we interpolate (or copy) the information to the correct spot.
+ * 
+ * For the moment, all the block is being send/received. One optimisation is to only send a layer of 2x4 points in each direction.
+ * Indeed, because we might have a coarser neighbor, we need to coarsen twice a block (worst case) and then need 4 points in every direction
  * 
  */
 class Ghost : public OperatorF, public OperatorS {
@@ -40,25 +47,25 @@ class Ghost : public OperatorF, public OperatorS {
     list<GhostBlock*>** ghost_parent_;   //!<  list of ghosts that are coarser
     list<PhysBlock*>**  phys_;           //!<  physical blocks
 
-    lid_t   n_mirror_to_send_ = 0;        //!< get how many mirrors have to be send
-    lid_t*  mirrors_to_local_ = nullptr;  //!< defines the relation between a mirror and it's local ID used to access p4est mirrors array
-    real_t* mirrors_          = nullptr;  //!< memory space for the mirror blocks
+    lid_t   n_mirror_to_send_ = 0;        //!< get how many mirrors we have to be send, as a sum of the mirrors send for each rank (one mirror can be send to multiple ranks!!)
+    lid_t*  mirrors_to_local_ = nullptr;  //!< defines the relation between a send-mirror and it's local ID used to access p4est mirrors array (one p4est mirrors quad can be send multiple times to different ranks)
+    real_t* mirrors_          = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
     real_t* ghosts_           = nullptr;  //!< memory space for the ghost blocks
 
     sid_t ida_ = -1;  //!< current ghosting dimension
 
-    lid_t        n_send_request_ = 0;
-    lid_t        n_recv_request_ = 0;
-    MPI_Request* mirror_send_    = nullptr;
-    MPI_Request* ghost_recv_     = nullptr;
+    lid_t        n_send_request_ = 0;        //!< the number of send requests
+    lid_t        n_recv_request_ = 0;        //!< the number of receive requests
+    MPI_Request* mirror_send_    = nullptr;  //!< the send requests for the mirrors
+    MPI_Request* ghost_recv_     = nullptr;  //!< the receive requests for the ghosts
 
-    ForestGrid*   grid_;
-    Interpolator* interp_;
+    ForestGrid*   grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
+    Interpolator* interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
 
     real_p* coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
 
    public:
-    Ghost(ForestGrid* grid);
+    explicit Ghost(ForestGrid* grid);
     ~Ghost();
 
     void PushToMirror(Field* field, sid_t ida);
@@ -70,7 +77,7 @@ class Ghost : public OperatorF, public OperatorS {
      *  @name OperatorS implementation
      *  @{
      */
-    void ApplyOperatorS(const qid_t* qid, GridBlock* block) override;
+    void ApplyOpS(const qid_t* qid, GridBlock* block) override;
     /** @} */
 
     /**
@@ -78,7 +85,7 @@ class Ghost : public OperatorF, public OperatorS {
      * 
      *  @{
      */
-    void ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
     /** @} */
 
    protected:
@@ -91,7 +98,13 @@ class Ghost : public OperatorF, public OperatorS {
     void LoopOnMirrorBlock_(const gop_t op, Field* field);
 };
 
-void static GhostGetSign(sid_t ibidule, real_t sign[3]) {
+/**
+ * @brief Given a face, edge or a corner returns the outgoing normal (sign)
+ * 
+ * @param ibidule for a face (`ibidule<6`), an edge (`6<= ibidule < 18`) or a corner (`18<= ibidule < 26`)
+ * @param sign the sign of the outgoing normal
+ */
+static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
     // we need to find the sign = the direction of the normal:
     sign[0] = 0;
     sign[1] = 0;
@@ -158,6 +171,6 @@ static inline lid_t CoarseFromBlock(const lid_t a) {
     const lid_t b = (a + M_N);
     const lid_t c = (b / M_N) % 2;
     return (a / M_N) * M_HN + (a % M_N) / (c + 1);
-};
+}
 
 #endif  // SRC_GHOST_HPP_

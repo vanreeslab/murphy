@@ -11,7 +11,7 @@ SetGaussian::SetGaussian(real_t sigma, real_t center[3]) {
     m_end;
 }
 
-void SetGaussian::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetGaussian::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     real_t        oo_eps2 = 1.0 / (sigma_ * sigma_);
@@ -51,7 +51,7 @@ SetAbs::SetAbs(real_t alpha[3], real_t center[3]) {
     m_end;
 }
 
-void SetAbs::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetAbs::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -89,7 +89,7 @@ SetJump::SetJump(real_t alpha[3], real_t center[3]) {
     m_end;
 }
 
-void SetJump::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetJump::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -127,7 +127,7 @@ SetSinus::SetSinus(real_t length[3], real_t freq[3]) {
     m_end;
 }
 
-void SetSinus::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetSinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -163,7 +163,7 @@ SetCosinus::SetCosinus(real_t length[3], real_t freq[3]) {
     m_end;
 }
 
-void SetCosinus::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetCosinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -202,7 +202,7 @@ SetExpoCosinus::SetExpoCosinus(real_t center[3], real_t sigma[3],real_t length[3
     m_end;
 }
 
-void SetExpoCosinus::ApplyOperatorF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetExpoCosinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
