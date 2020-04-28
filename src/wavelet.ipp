@@ -8,6 +8,14 @@
 
 using std::pow;
 
+/**
+ * @brief return the biggest detail coefficient as a refinement/coarsening criterion
+ * 
+ * @tparam order 
+ * @param block 
+ * @param data 
+ * @return real_t 
+ */
 template <int order>
 real_t Wavelet<order>::Criterion(MemLayout* block, real_p data) {
     //-------------------------------------------------------------------------
@@ -24,6 +32,14 @@ real_t Wavelet<order>::Criterion(MemLayout* block, real_p data) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief compute the detail coefficients of a given MemLayout
+ * 
+ * @tparam order the order of the wavelet
+ * @param block the block on which we computed
+ * @param data the memory pointer to the point (0,0,0) of that block
+ * @param details_max an array of size 8 that will contain the detail coefficients: dx, dy, dz, dxy, dyz, dxz, dxyz, mean
+ */
 template <int order>
 void Wavelet<order>::Details(MemLayout* block, real_p data, real_t* details_max) {
     //-------------------------------------------------------------------------
@@ -44,6 +60,12 @@ void Wavelet<order>::Details(MemLayout* block, real_p data, real_t* details_max)
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief copy the value of the source memory to the target memory
+ * 
+ * @tparam order 
+ * @param ctx 
+ */
 template <int order>
 void Wavelet<order>::Copy_(const interp_ctx_t* ctx) const {
     //-------------------------------------------------------------------------
@@ -66,6 +88,15 @@ void Wavelet<order>::Copy_(const interp_ctx_t* ctx) const {
     }
     //-------------------------------------------------------------------------
 }
+
+/**
+ * @brief coarsen the values of the source memory to gather them in the target memory.
+ * It can refine on up to 2 successive levels
+ * 
+ * @tparam order 
+ * @param ctx 
+ * @param dlvl the number of levels we have to refine
+ */
 template <int order>
 void Wavelet<order>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     //-------------------------------------------------------------------------
@@ -101,6 +132,13 @@ void Wavelet<order>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     }
     //-------------------------------------------------------------------------
 }
+
+/**
+ * @brief refine the source memory to get the associated target memory information
+ * 
+ * @tparam order 
+ * @param ctx 
+ */
 template <int order>
 void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
     //-------------------------------------------------------------------------
@@ -158,22 +196,19 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
     //-------------------------------------------------------------------------
 }
 
-
-
 /**
- * @brief gets the detail coefficients
+ * @brief gets the detail coefficients of the wavelet. This approximates the local slope of the data
  * 
  * @tparam order 
  * @param ctx 
- * @param details_inf_norm (d_x,d_y,d_z,d_xy,d_yz,d_xz,d_xyz,mean)
+ * @param details_inf_norm the maximum of the local detail coefficients: (d_x,d_y,d_z,d_xy,d_yz,d_xz,d_xyz,mean)
  */
 template <int order>
 void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const {
-    m_assert(!(order==5 && M_GS<4), "the detail computation requires at least 4 ghost points on the current block");
+    m_assert(!(order == 5 && M_GS < 4), "the detail computation requires at least 4 ghost points on the current block");
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
     m_assume_aligned(ctx->sdata);
-    
 
     const lid_t   hslen = order / 2;
     const real_t* ga    = ga_ + hslen;
@@ -182,10 +217,6 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
     real_t ha_tmp[order] = {0};
     ha_tmp[order / 2]    = 0.5;
     const real_t* ha     = ha_tmp + hslen;
-
-
-    // m_verb("order = %d start = %d %d %d, end = %d %d %d",order,ctx->srcstart[0],ctx->srcstart[1],ctx->srcstart[2],ctx->srcend[0],ctx->srcend[1],ctx->srcend[2]);
-    // m_verb("order = %d ga = %f %f %f, ha = %f %f %f, sign= %f %f %f",order,ga[-1],ga[0],ga[1],ha[-1],ha[0],ha[1],sign[-1],sign[0],sign[1]);
 
     // for each of the data for the considered children
     for (int ik2 = ctx->srcstart[2] / 2; ik2 < ctx->srcend[2] / 2; ik2++) {
@@ -233,7 +264,6 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
                     detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 0, 0, ctx->srcstr)] * fact;
                     detail[2] += lsdata[m_sidx(1, 0, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
                     detail[2] += lsdata[m_sidx(1, 1, 2 * dm0 + 1, 0, ctx->srcstr)] * fact * sign[dm0];
-
 
                     // m_verb("order = %d, dm0 = %d: fact = %f, sign = %f -> dx = %e, dy = %e, dz = %e",order,dm0,fact,sign[dm0],detail[0],detail[1],detail[2]);
                 }
@@ -297,17 +327,16 @@ void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
 
                 // get the mean value, the last missing ingredient
                 detail[7] = 0.0;
-                detail[7] += lsdata[m_sidx( 0,  0,  0, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 1,  0,  0, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 0,  1,  0, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 0,  0,  1, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 0,  1,  1, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 1,  1,  0, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 1,  0,  1, 0, ctx->srcstr)] * 0.125;
-                detail[7] += lsdata[m_sidx( 1,  1,  1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(1, 0, 0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(0, 1, 0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(0, 0, 1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(0, 1, 1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(1, 1, 0, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(1, 0, 1, 0, ctx->srcstr)] * 0.125;
+                detail[7] += lsdata[m_sidx(1, 1, 1, 0, ctx->srcstr)] * 0.125;
 
                 // m_verb("order = %d my details = %f %f %f %f %f %f %f %f",order,detail[0],detail[1],detail[2],detail[3],detail[4],detail[5],detail[6],detail[7]);
-
 
                 // store the max, relatively to the current value
                 for (int id = 0; id < 8; id++) {

@@ -8,18 +8,22 @@
 
 #include <iostream>
 
+#include "forestgrid.hpp"
 #include "hdf5.h"
 #include "murphy.hpp"
 #include "operator.hpp"
-#include "forestgrid.hpp"
-
-// define macros to strigyfy, both are required!
-#define STR(a) ZSTR(a)
-#define ZSTR(a) #a
 
 #define M_IOH5_LINE_LEN 128
 
 using std::string;
+
+/**
+ * @brief define the I/O opertion
+ *
+ * The current I/O relies on a common XMF file, written by everybody and a sequential hdf5 I/O, i.e. one file per proc.
+ * This is NOT a long term solution and it has to change, hence a restricted documentation is provided
+ * 
+ */
 class IOH5 : public ConstOperatorF {
    protected:
     int  mpirank_    = 0;
@@ -51,7 +55,7 @@ class IOH5 : public ConstOperatorF {
 
     void ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) override;
 
-    void operator()(ForestGrid* grid, Field* field, string name) ;
+    void operator()(ForestGrid* grid, Field* field, string name);
     void operator()(ForestGrid* grid, Field* field) override;
 };
 

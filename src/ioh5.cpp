@@ -4,6 +4,11 @@
 
 using std::to_string;
 
+/**
+ * @brief Construct a new IOH5 given a folder. Any successive operator()() calls will dump into this folder
+ * 
+ * @param folder 
+ */
 IOH5::IOH5(string folder) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -25,6 +30,12 @@ IOH5::~IOH5() {
     m_end;
 }
 
+/**
+ * @brief dump the field in the predefined folder, using the name fo the field for the filename
+ * 
+ * @param grid 
+ * @param field 
+ */
 void IOH5::operator()(ForestGrid* grid, Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -32,6 +43,14 @@ void IOH5::operator()(ForestGrid* grid, Field* field) {
     //-------------------------------------------------------------------------
     m_end;
 }
+
+/**
+ * @brief dump the field in the predefined folder, using the given name for the filename and reset the dump_ghost_ variable to false
+ * 
+ * @param grid the grid on which the field lives
+ * @param field the field to dump
+ * @param name the filename to use (`name.xmf`, `name/name_ranki.hdf5`)
+ */
 void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -53,6 +72,11 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     m_end;
 }
 
+/**
+ * @brief ask to dump the ghosts, this will be reset to false after the next dump
+ * 
+ * @param dump_ghost 
+ */
 void IOH5::dump_ghost(const bool dump_ghost) {
     dump_ghost_ = dump_ghost;
 }
