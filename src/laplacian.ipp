@@ -3,6 +3,15 @@
 
 #include "stencil.hpp"
 
+/**
+ * @brief computes the inner laplacian contribution of the dimension Stencil::ida_ of the source field on the traget field
+ * 
+ * @tparam length
+ * @param qid
+ * @param block 
+ * @param fid_src the source field
+ * @param fid_trg the target field
+ */
 template <sid_t length>
 void LaplacianCross<length>::ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
@@ -33,6 +42,15 @@ void LaplacianCross<length>::ApplyOpDerivInner(const qid_t* qid, GridBlock* bloc
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief computes the 6 different outer laplacian contribution of the dimension Stencil::ida_ of the source field's ghost values on the traget field
+ * 
+ * @tparam length 
+ * @param qid 
+ * @param block 
+ * @param fid_src 
+ * @param fid_trg 
+ */
 template <sid_t length>
 void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
