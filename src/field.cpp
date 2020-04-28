@@ -13,7 +13,7 @@ Field::Field(string name, sid_t lda) {
 
     // create an empty BC array
     for (sid_t id = 0; id < 6; id++) {
-        bctype_[id] = reinterpret<bctype_t*>(m_calloc(sizeof(bctype_t) * lda));
+        bctype_[id] = reinterpret_cast<bctype_t*>(m_calloc(sizeof(bctype_t) * lda));
     }
 }
 
@@ -66,6 +66,6 @@ void Field::bctype(bctype_t type) {
  * @param ida the dimension of the field that will get the boundary condition
  * @param loc the placement of the boundary condition (X- = 0, X+ = 1, Y- = 2, Y+ = 3, Z- = 4, Z+ = 5 )
  */
-void bctype(bctype_t type, const sid_t ida, const sid_t loc) {
+void Field::bctype(bctype_t type, const sid_t ida, const sid_t loc) {
     bctype_[loc][ida] = type;
 }
