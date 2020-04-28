@@ -7,13 +7,52 @@
 static real_t face_sign[6][3]  = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
 static lid_t  face_start[6][3] = {{0, 0, 0}, {M_N - 1, 0, 0}, {0, 0, 0}, {0, M_N - 1, 0}, {0, 0, 0}, {0, 0, M_N - 1}};
 
+/**
+ * @brief implements a boundary conditions that uses points inside the block to extrapolate a ghost value
+ * 
+ * @tparam npoint the number of points needed within the block to be used in @ref Stencil_()
+ */
 template <int npoint>
 class Boundary {
    public:
-    virtual real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t flux) = 0;
+   /**
+    * @brief has to be implemented by boundary condition classes
+    * 
+    * given the data values, builds a polynomial representation of the ghost points:
+    * 
+    * ```
+    *       GHOST   |                       BLOCK                      |    GHOST
+    * ------------------------------------------------------------------------------------
+    *   normal = -1 |                                                  | normal = +1
+    *               |                                                  |
+    *        x (<0) | offset                                           |   x (>0) 
+    *     <-------->|<->                                               |<-------->
+    * ---o------o---|---o------o------o---   ...  ---o------o------o---|---o------o------
+    *                  f[0]   f[1]   ...            ...   f[1]    f[0]
+    * ```
+    * 
+    * @param f the field values used to extrapolate (array of size @ref npoint, where f[0] is the closest point to the interface)
+    * @param x the position of the ghost point to compute, with respect ot the interface
+    * @param h the grid space separating the data values
+    * @param offset the offset used in the grid spacing, i.e. the position of the point (0,0,0) wrt to the block's corner (left bottom)
+    * @param normal the normal of the interface: +1 means the ghost point is on the + side, -1 means the ghost point is on the - side
+    * @param value the boundary condition value, evaluated at the interface
+    * @return real_t the value to set to the ghost point
+    */
+    virtual real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) = 0;
 
     /**
-     * note: unless other functions, we need to decouple the starting point (fstart) and the symmetry done on the left and on the right of it for the interpolation
+     * @brief Given a subblock and a boundary condition value, apply a physical BC on a face
+     * 
+     * note: unless other functions using SubBlocks, we need to decouple the starting point (fstart)
+     * and the symmetry done on the left and on the right of it for the interpolation, hence we need both arguments
+     * 
+     * @param iface the index of the face on which we apply it (x-=0, x+=1, y-=2, y+=3, z-=4, z-=5)
+     * @param fstart the starting index of the face, i.e. the index of the last point wich is adjacent to the face (see @ref face_start)
+     * @param hgrid the local grid spacing
+     * @param boundary_condition the boundary condition value
+     * @param block the sub-block on which we apply it
+     * @param data the data pointer that refers to the (0,0,0) location associated to the subblock.
      */
     virtual void operator()(const sid_t iface, const lid_t fstart[3], const real_t hgrid[3], const real_t boundary_condition, SubBlock* block, real_p data) {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
@@ -70,11 +109,15 @@ class Boundary {
  * This generalizes the traditional even symmetry condition (flux = 0).
  * 
  * Due to the even symmetry, every odd exponent is null in the polynomial:
+ * ```
  * f(x) = a x^4 + b x^2 + c = data - flux * x
+ * ```
  * whith   
+ * ```
  *      f(h/2)  - flux * h/2  = a  h^4/16 + b h^2/4 + c
  *      f(3h/2) - flux * 3h/2 = a  81*h^4/16 + b 9*h^2/4 + c
  *      f(5h/2) - flux * 5h/2 = a  625*h^4/16 + b 25*h^2/4 + c
+ * ```
  */
 class EvenBoundary_4 : public Boundary<3> {
    protected:
@@ -88,11 +131,15 @@ class EvenBoundary_4 : public Boundary<3> {
  * This generalizes the traditional odd symmetry condition (value = 0).
  *
  * Due to the odd symmetry, every even exponent is null in the polynomial:
+ * ```
  * f(x) = a x^5 + b x^3 + c x = data - value
+ * ```
  * whith
+ * ```
  *      f(h/2)  - value = a  h^5/32 + b h^3/8 + c h/2
  *      f(3h/2) - value = a  243*h^4/32 + b 27*h^3/8 + c 3*h/2
  *      f(5h/2) - value = a  3125*h^4/32 + b 125*h^3/8 + c 5*h/2
+ * ```
  */
 class OddBoundary_4 : public Boundary<3> {
    protected:
@@ -117,8 +164,9 @@ class ExtrapBoundary_3 : public Boundary<3> {
 
 /**
  * @brief applies an UNBOUNDED bondary condition by extrapolation
- *
+ * ```
  * f(x) = a x^3 + b x^2 + c x + d = data;
+ * ```
  */
 class ZeroBoundary : public Boundary<0> {
    protected:

@@ -1,7 +1,10 @@
 #include "boundary.hpp"
 
+/**
+ * @brief implements Boundary::Stencil_() for @ref EvenBoundary_4
+ */
 real_t EvenBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t flux) {
-    m_assert(offset == (0.5*h), "this function is only for cell-centered ghosts");
+    m_assert(offset == (0.5 * h), "this function is only for cell-centered ghosts");
     // remove the flux slope form the value
     // if x is positive, we need go in the negative and vice-versa
     real_t cor_f[3] = {f[0] - normal * flux * (0.0 + offset) * h,
@@ -16,21 +19,27 @@ real_t EvenBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t h,
     return a * pow(x, 4) + b * pow(x, 2) + c + flux * x;
 }
 
+/**
+ * @brief implements Boundary::Stencil_() for @ref OddBoundary_4
+ */
 real_t OddBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) {
-    m_assert(offset == (0.5*h), "this function is only for cell-centered ghosts");
+    m_assert(offset == (0.5 * h), "this function is only for cell-centered ghosts");
     // correct the data entry
     real_t cor_f[3] = {f[0] - value,
                        f[1] - value,
                        f[2] - value};
     // compute the h coefficient, given the sign of the normal coefficients
-    const real_t hnorm = - h * normal;
-    const real_t a = (10.0 * cor_f[0] - 5.0 * cor_f[1] + 1.0 * cor_f[2]) / (60.0 * pow(hnorm, 5));
-    const real_t b = (-34.0 * cor_f[0] + 13.0 * cor_f[1] - 1.0 * cor_f[2]) / (24.0 * pow(hnorm, 3));
-    const real_t c = (2250.0 * cor_f[0] - 125.0 * cor_f[1] + 9.0 * cor_f[2]) / (960.0 * pow(hnorm, 1));
+    const real_t hnorm = -h * normal;
+    const real_t a     = (10.0 * cor_f[0] - 5.0 * cor_f[1] + 1.0 * cor_f[2]) / (60.0 * pow(hnorm, 5));
+    const real_t b     = (-34.0 * cor_f[0] + 13.0 * cor_f[1] - 1.0 * cor_f[2]) / (24.0 * pow(hnorm, 3));
+    const real_t c     = (2250.0 * cor_f[0] - 125.0 * cor_f[1] + 9.0 * cor_f[2]) / (960.0 * pow(hnorm, 1));
     // return the polynomial + the value constant
     return a * pow(x, 5) + b * pow(x, 3) + c * pow(x, 1) + value;
 }
 
+/**
+ * @brief implements Boundary::Stencil_() for @ref ExtrapBoundary_4
+ */
 real_t ExtrapBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) {
     m_assert(offset == (0.5 * h), "this function is only for cell-centered ghosts");  // compute the h coefficient, given the sign of the normal coefficients
     const real_t hnorm = -h * normal;
@@ -42,6 +51,10 @@ real_t ExtrapBoundary_4::Stencil_(const real_t* f, const real_t x, const real_t 
     // return the polynomial + the flux slope
     return a * pow(x, 3) + b * pow(x, 2) + c * pow(x, 1) + d;
 }
+
+/**
+ * @brief implements Boundary::Stencil_() for @ref ExtrapBoundary_3
+ */
 real_t ExtrapBoundary_3::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) {
     m_assert(offset == (0.5 * h), "this function is only for cell-centered ghosts");  // compute the h coefficient, given the sign of the normal coefficients
     const real_t hnorm = -h * normal;
@@ -53,6 +66,9 @@ real_t ExtrapBoundary_3::Stencil_(const real_t* f, const real_t x, const real_t 
     return a * pow(x, 2) + b * pow(x, 1) + c;
 }
 
+/**
+ * @brief implements Boundary::Stencil_() for @ref ZeroBoundary
+ */
 real_t ZeroBoundary::Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) {
     return 0.0;
 }

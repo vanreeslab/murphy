@@ -5,21 +5,21 @@
 
 #include "gridcallback.hpp"
 #include "operator.hpp"
-#include "wavelet.hpp"
 #include "partitioner.hpp"
+#include "wavelet.hpp"
 
 using std::string;
 /**
- * @brief Construct a new grid_t: initialize the p8est objects
+ * @brief Construct a new Grid a a uniform grid, distributed among the cpus
  * 
- * The grid is initialized at @ref ilvl as a uniform grid.
- * It means that the number of blocks = (l[0]*l[1]*l[2]) * (2^ilvl)^3
+ * Initialize the ForestGrid, the interpolator, the profiler, the ghosts and the grid blocks.
+ * The grid is defined as a set of l[0]xl[1]xl[2] octrees, each of them refined up to level ilvl.
  * 
- * @param ilvl the initialization level, for every tree
- * @param isper isper[i] indicates that the ith direction is periodic (x:0 y:1 z:2)
- * @param L the number of trees in each direction, i.e. the aspect ratio of the domain
- * @param comm the communicator to use
- * @param prof an existing profiler for the programm
+ * @param ilvl the starting initialization level
+ * @param isper defines the periodicity of the dimension (cannot be changed afterwards)
+ * @param l the aspect ratio of the domain (integers), defining how many trees are used in each direction
+ * @param comm the MPI communicator used
+ * @param prof the profiler pointer if any (can be nullptr)
  */
 Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
@@ -42,7 +42,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
 }
 
 /**
- * @brief Destroy the grid_t object: destroy the p8est objects
+ * @brief Destroy the Grid, frees all the blocks and the fields contained (if not done)
  * 
  */
 Grid::~Grid() {
@@ -58,7 +58,7 @@ Grid::~Grid() {
 }
 
 /**
- * @brief returns the size of the memory (in bytes) taken by the grid
+ * @brief returns the local memory size (in Byte) of the grid, including every field contained in it
  * 
  * @return size_t 
  */
@@ -79,9 +79,20 @@ size_t Grid::LocalMemSize() const {
     return memsize;
 }
 
+/**
+ * @brief returns the number of local number of degree of freedom for one field containing one dimension
+ * 
+ * @return size_t 
+ */
 size_t Grid::LocalNumDof() const {
     return forest_->local_num_quadrants * (M_N * M_N * M_N);
 }
+
+/**
+ * @brief returns the number of global number of degree of freedom for one field containing one dimension
+ * 
+ * @return size_t 
+ */
 size_t Grid::GlobalNumDof() const {
     return forest_->global_num_quadrants * (M_N * M_N * M_N);
 }
@@ -92,6 +103,13 @@ bool Grid::IsAField(const Field* field) const {
     // return (std::find(fields_.begin(),fields_.end(),field) != fields_.end());
 }
 
+/**
+ * @brief register a field in the current grid
+ *
+ * It loops on the blocks to allocate the needed memory
+ * 
+ * @param field 
+ */
 void Grid::AddField(Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -108,6 +126,11 @@ void Grid::AddField(Field* field) {
     m_end;
 }
 
+/**
+ * @brief unregister a field in the current grid and free the associated memory on each block
+ * 
+ * @param field 
+ */
 void Grid::DeleteField(Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -123,6 +146,14 @@ void Grid::DeleteField(Field* field) {
     m_end;
 }
 
+/**
+ * @brief Pull ghost points (take the values from the neighbors): fill the mirror buffers and start the send MPI call
+ * 
+ * @warning this function is part of the advanced control feature
+ * 
+ * @param field the considered field
+ * @param ida the dimension of the field which has to be send
+ */
 void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
@@ -137,6 +168,15 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_end;
 }
 
+/**
+ * @brief Pull ghost points (take the values from the neighbors): receive the buffers.
+ * After this function, the receive buffers are full and the send buffers are available for another send
+ * 
+ * @warning this function is part of the advanced control feature
+ * 
+ * @param field the considered field
+ * @param ida the received dimension
+ */
 void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
@@ -150,6 +190,16 @@ void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     //-------------------------------------------------------------------------
     m_end;
 }
+
+/**
+ * @brief Pull ghost points (take the values from the neighbors): get the actual ghost points values from the received buffers
+ * After this function, the reception buffers are available for another reception
+ * 
+ * @warning this function is part of the advanced control feature
+ * 
+ * @param field the considered field
+ * @param ida the filled dimension
+ */
 void Grid::GhostPullFill(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
@@ -165,6 +215,16 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
     m_end;
 }
 
+/**
+ * @brief Pull the ghost points (take the values from the neighbors)
+ * 
+ * It implements the overlapping between the send and the reception of every dimension in order
+ * reduce the total computational time.
+ * 
+ * After this function, the ghost status of the field is set as up-to-date
+ * 
+ * @param field the field which requires the ghost
+ */
 void Grid::GhostPull(Field* field) {
     m_begin;
     m_assert(field != nullptr, "the source field cannot be null");
@@ -186,52 +246,11 @@ void Grid::GhostPull(Field* field) {
     m_end;
 }
 
-// void Grid::Deriv(Field* field_src, Field* field_trg, OperatorDeriv* operation) {
-//     m_begin;
-//     m_assert(interp_ != nullptr, "the inteprolator cannot be null");
-//     m_assert(field_src != nullptr, "the source field cannot be null");
-//     m_assert(IsAField(field_src), "the field does not belong to this grid");
-//     m_assert(IsAField(field_src), "the field does not belong to this grid");
-//     //-------------------------------------------------------------------------
-//     // if no up-to-date ghost, start the send in the first dimension
-//     if (!field_src->ghost_status()) {
-//         ghost_->PushToMirror(field_src, 0);
-//         ghost_->MirrorToGhostSend();
-//     }
-//     // start the inner operation on the first dimension
-//     if (field_trg != nullptr && operation != nullptr) {
-//         (*operation)(this, field_src, field_trg, 0, M_DERIV_INNER);
-//     }
-//     for (int ida = 1; ida < field_src->lda(); ida++) {
-        
-//             // fill the mirror for the next dimension and initiate the next send
-//             ghost_->PushToMirror(field_src, ida);
-//             ghost_->MirrorToGhostSend();
-//             // handle the last dimension just received
-//             ghost_->PullFromGhost(field_src, ida - 1, interp_);
-//         }
-//         if (field_trg != nullptr && operation != nullptr) {
-//             (*operation)(this, field_src, field_trg, ida - 1, M_DERIV_OUTER);
-//         }
-//     }
-//     // receive and end the last dimension
-//     if (!field_src->ghost_status()) {
-//         ghost_->MirrorToGhostRecv();
-//         ghost_->PullFromGhost(field_src, field_src->lda() - 1, interp_);
-//     }
-//     // start the inner operation on the first dimension
-//     if (field_trg != nullptr && operation != nullptr) {
-//         (*operation)(this, field_src, field_trg, field_src->lda() - 1, M_DERIV_OUTER);
-//     }
-//     // set that everything is ready for the field
-//     field_src->ghost_status(true);
-//     if (field_trg != nullptr) {
-//         field_trg->ghost_status(false);
-//     }
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
+/**
+ * @brief Refine the grid by @ref delta_level locally
+ * 
+ * @param delta_level the number of level every block will be refined
+ */
 void Grid::Refine(const sid_t delta_level) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -245,7 +264,7 @@ void Grid::Refine(const sid_t delta_level) {
         delete (ghost_);
         ResetP4estGhostMesh();
         // set the grid in the forest for the callback
-        forest_->user_pointer = (void*)this;
+        forest_->user_pointer = reinterpret_cast<void*>(this);
         // do the p4est interpolation by callback
         p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Yes, nullptr, cback_Interpolate);
         // balance the partition
@@ -267,6 +286,11 @@ void Grid::Refine(const sid_t delta_level) {
     m_end;
 }
 
+/**
+ * @brief coarsen the grid by @ref delta_level locally
+ * 
+ * @param delta_level 
+ */
 void Grid::Coarsen(const sid_t delta_level) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -283,7 +307,7 @@ void Grid::Coarsen(const sid_t delta_level) {
         delete (ghost_);
         ResetP4estGhostMesh();
         // set the grid in the forest for the callback
-        forest_->user_pointer = (void*)this;
+        forest_->user_pointer = reinterpret_cast<void*>(this);
         // do the p4est interpolation by callback
         p8est_coarsen_ext(forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
         // balance the partition
@@ -305,6 +329,12 @@ void Grid::Coarsen(const sid_t delta_level) {
     m_end;
 }
 
+/**
+ * @brief sets the refinement tolerance for grid adaptation (see @ref Adapt)
+ * 
+ * @param refine_tol we refine if criterion > refine_tol
+ * @param coarsen_tol we coarsen if criterion < coarsen_tol
+ */
 void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -315,10 +345,9 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
 }
 
 /**
- * @brief adapt = (refine or coarsen once) each block, based on the given field and the tolerance
+ * @brief adapt = (refine or coarsen once) each block by one level, based on the given field
  * 
- * @param field 
- * @param tol 
+ * @param field the field used for the criterion
  */
 void Grid::Adapt(Field* field) {
     m_begin;
@@ -334,7 +363,7 @@ void Grid::Adapt(Field* field) {
     delete (ghost_);
     ResetP4estGhostMesh();
     // set the grid in the forest for the callback
-    forest_->user_pointer = (void*)this;
+    forest_->user_pointer = reinterpret_cast<void*>(this);
     // coarsen the needed block
     p8est_coarsen_ext(forest_, 0, 0, cback_Wavelet, nullptr, cback_Interpolate);
     // refine the needed blocks
@@ -358,12 +387,11 @@ void Grid::Adapt(Field* field) {
 }
 
 /**
- * @brief iterates on the blocks and performs a simple @ref bop_t operation
+ * @brief iterates on the blocks and performs a simple @ref bop_t operation using the forest structure and not the mesh
  * 
- * @warning for allocation and block management only. Use Operators for computations
+ * @warning for allocation and block management only. Use Operators (see operator.hpp) for computations
  * 
  * @param op 
- * @param grid 
  * @param field 
  */
 void Grid::LoopOnGridBlock_(const bop_t op, Field* field) const {

@@ -2,6 +2,16 @@
 
 #include <cmath>
 
+/**
+ * @brief Construct a new Forest Grid, initialize the p4est structures.
+ * The forest is a uniform resolution forest, composed of l[0]xl[1]xl[2] octrees at refinement level ilvl
+ * 
+ * @param ilvl the constant refinement level in one tree
+ * @param isper the periodicity of the whole domain, per direction
+ * @param l the aspect ratio of the domain, in trees
+ * @param datasize the datasize to give to p4est
+ * @param comm the communicator to build the forest
+ */
 ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm) {
     m_begin;
     m_assert(ilvl >= 0, "the init level has to be >= 0");
@@ -28,6 +38,10 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
     m_end;
 }
 
+/**
+ * @brief Destroy the Forest Grid, reset the ghost and the mesh and clean everything from the p4est side
+ * 
+ */
 ForestGrid::~ForestGrid() {
     m_begin;
     //-------------------------------------------------------------------------
@@ -42,7 +56,9 @@ ForestGrid::~ForestGrid() {
 }
 
 /**
- * @brief destroys the mesh and the ghost p4est structure and unvalidate the mesh
+ * @brief destroys the mesh and the ghost p4est structure and unvalidate the mesh.
+ * 
+ * This is a mandatory step when changing the grid
  * 
  */
 void ForestGrid::ResetP4estGhostMesh() {
@@ -59,6 +75,8 @@ void ForestGrid::ResetP4estGhostMesh() {
 
 /**
  * @brief reinitializes the mesh and the ghost p4est structure and validate the mesh
+ * 
+ * This a mandatory step when changing the grid
  * 
  */
 void ForestGrid::SetupP4estGhostMesh() {
