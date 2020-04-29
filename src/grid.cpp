@@ -240,6 +240,8 @@ void Grid::GhostPull(Field* field) {
         GhostPullFill(field, ida - 1);
     }
     GhostPullRecv(field, field->lda() - 1);
+    // fill the ghost values of the just-received information
+    GhostPullFill(field, field->lda() - 1);
     // set that everything is ready for the field
     field->ghost_status(true);
     //-------------------------------------------------------------------------

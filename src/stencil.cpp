@@ -58,14 +58,20 @@ void Stencil::operator()(Field* field_src, Field* field_trg) {
         grid_->GhostPullSend(field_src, ida);
         // fill the ghost values of the just-received information
         grid_->GhostPullFill(field_src, ida - 1);
-        // do the outer operation if needed with the newly computed ghosts
+        // do the outer operation if needed with the newly computed ghosts and already do the inner operation for the next dimension
         if (field_trg != nullptr) {
+            // outer operation on the just received dim
             ida_   = ida - 1;
             inner_ = false;
+            OperatorF2F::operator()(grid_, field_src, field_trg);
+            // new operation on the not received dimension
+            ida_   = ida;
+            inner_ = true;
             OperatorF2F::operator()(grid_, field_src, field_trg);
         }
     }
     grid_->GhostPullRecv(field_src, field_src->lda() - 1);
+    grid_->GhostPullFill(field_src, field_src->lda() - 1);
     // start the inner operation on the first dimension
     if (field_trg != nullptr) {
         ida_   = field_src->lda() - 1;
