@@ -47,8 +47,8 @@ int main(int argc, char** argv) {
         vort->bctype(M_BC_EVEN);
         // set the extrapolation in the X direction [0,1]
         for(int id=0; id<3; id++){
-            vort->bctype(M_BC_EXTRAP,id,0);
-            vort->bctype(M_BC_EXTRAP,id,1);
+            vort->bctype(M_BC_EXTRAP_3,id,0);
+            vort->bctype(M_BC_EXTRAP_3,id,1);
         }
         //  // create a dumper and dump
         IOH5 dump = IOH5("data");

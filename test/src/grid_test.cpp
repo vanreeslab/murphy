@@ -65,7 +65,7 @@ TEST_F(test_Grid_Uniform, fields_num_dof) {
 
 TEST_F(test_Grid_Uniform, refine_coarsen_uniform_1_level) {
     // create a field
-    Field* vort = new Field("vorticity", 3);
+    Field* vort = new Field("vorticity", 1);
     grid_->AddField(vort);
     // set a Gaussian
     real_t      center[3] = {l_[0] * 0.5, l_[1] * 0.5, l_[2] * 0.5};
@@ -77,7 +77,7 @@ TEST_F(test_Grid_Uniform, refine_coarsen_uniform_1_level) {
     grid_->Coarsen(1);
     
     // compare
-    Field* sol = new Field("solution", 3);
+    Field* sol = new Field("solution", 1);
     grid_->AddField(sol);
     gaussian(grid_, sol);
 

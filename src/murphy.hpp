@@ -34,10 +34,12 @@ typedef struct qid_t {
  * 
  */
 typedef enum bctype_t {
-    M_BC_EVEN,   //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
-    M_BC_ODD,    //!< ODD condition: imposes a zero value wrt the interface
-    M_BC_ZERO,   //!< set 0 outside the computational domain
-    M_BC_EXTRAP  //!< extrapolate outside the computational domain
+    M_BC_EVEN,      //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
+    M_BC_ODD,       //!< ODD condition: imposes a zero value wrt the interface
+    M_BC_ZERO,      //!< set 0 outside the computational domain
+    M_BC_EXTRAP_3,  //!< extrapolate outside the computational domain with polynomial x^2
+    M_BC_EXTRAP_4,  //!< extrapolate outside the computational domain with polynomial x^3
+    M_BC_EXTRAP_5   //!< extrapolate outside the computational domain with polynomial x^4
 } bctype_t;
 
 #endif  // SRC_MURPHY_HPP_

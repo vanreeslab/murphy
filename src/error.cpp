@@ -46,38 +46,17 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
     m_begin;
     m_assert(field->lda() == sol->lda(), "the two fields must have the same dimension");
     //-------------------------------------------------------------------------
-    const sid_t lda      = field->lda();
-    const lid_t nthreads = omp_get_max_threads();
-    // init the errors to compute both of them
-    error_2_ = (real_t*)m_calloc(sizeof(real_t) * lda * nthreads);
-    error_i_ = (real_t*)m_calloc(sizeof(real_t) * lda * nthreads);
-
+    error_2_ = 0.0;
+    error_i_ = 0.0;
     // apply
     ConstOperatorFF::operator()(grid, field, sol);
-
     // do the gathering into
     if(norm_2 != nullptr){
-        (*norm_2) = 0.0;
-        for (sid_t ida = 0; ida < lda; ida++) {
-            for (lid_t it = 0; it < nthreads; it++) {
-                (*norm_2) += error_2_[it * lda + ida];
-            }
-        }
-        (*norm_2) = std::sqrt((*norm_2));
+        (*norm_2) = std::sqrt(error_2_);
     }
     if(norm_i != nullptr){
-        (*norm_i) = 0.0;
-        for (sid_t ida = 0; ida < lda; ida++) {
-            for (lid_t it = 0; it < nthreads; it++) {
-                (*norm_i) = m_max(error_i_[it * lda + ida], (*norm_i));
-            }
-        }
+        (*norm_i) = error_i_;
     }
-
-    // free the memory
-    m_free(error_2_);
-    m_free(error_i_);
-    
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -96,30 +75,34 @@ void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const F
     //-------------------------------------------------------------------------
     const lid_t   ithread = omp_get_thread_num();
     const real_t* hgrid   = block->hgrid();
-    const real_t  vol     = hgrid[0] * hgrid[1] * hgrid[2];
-    
+
+    real_t e2 = 0.0;
+    real_t ei = 0.0;
+
     for (sid_t ida = 0; ida < fid->lda(); ida++) {
         // get the data pointers
         real_p data_field = block->data(fid, ida);
         real_p data_sol   = block->data(sol, ida);
+        m_assume_aligned(data_field);
+        m_assume_aligned(data_sol);
         // get the correct place given the current thread and the dimension
-        real_t* e2 = error_2_ + ithread * fid->lda() + ida;
-        real_t* ei = error_i_ + ithread * fid->lda() + ida;
-        // set the errors to 0
-        (*e2) = 0.0;
-        (*ei) = 0.0;
-
         for (lid_t i2 = 0; i2 < M_N; i2++) {
             for (lid_t i1 = 0; i1 < M_N; i1++) {
                 for (lid_t i0 = 0; i0 < M_N; i0++) {
                     real_t error = data_field[m_idx(i0, i1, i2)] - data_sol[m_idx(i0, i1, i2)];
-
-                    (*e2) += error * error;
-                    (*ei) = m_max(std::fabs(error), (*ei));
+                    e2 += error * error;
+                    ei = m_max(std::fabs(error), ei);
                 }
             }
         }
-        (*e2) = (*e2) * vol;
+    }
+    // add the result
+#pragma omp atomic update
+    error_2_ += e2 * (hgrid[0] * hgrid[1] * hgrid[2]);
+
+#pragma omp critical
+    { // no max atomic in OpenMP
+        error_i_ = m_max(error_i_, ei);
     }
     //-------------------------------------------------------------------------
 }

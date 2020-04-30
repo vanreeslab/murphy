@@ -6,8 +6,8 @@
 #include "grid.hpp"
 
 class ErrorCalculator : public ConstOperatorFF {
-    real_t* error_2_;
-    real_t* error_i_;
+    real_t error_2_;
+    real_t error_i_;
 
    public:
     void Normi(Grid* grid, Field* field, Field* sol, real_t* norm_i);

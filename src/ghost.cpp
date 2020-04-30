@@ -664,8 +664,14 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             } else if (bctype == M_BC_ODD) {
                 OddBoundary_4 bc = OddBoundary_4();
                 bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
-            } else if (bctype == M_BC_EXTRAP) {
+            } else if (bctype == M_BC_EXTRAP_3) {
+                ExtrapBoundary_3 bc = ExtrapBoundary_3();
+                bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
+            } else if (bctype == M_BC_EXTRAP_4) {
                 ExtrapBoundary_4 bc = ExtrapBoundary_4();
+                bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
+            } else if (bctype == M_BC_EXTRAP_5) {
+                ExtrapBoundary_5 bc = ExtrapBoundary_5();
                 bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
             } else if (bctype == M_BC_ZERO) {
                 ZeroBoundary bc = ZeroBoundary();
@@ -718,9 +724,15 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         } else if (bctype == M_BC_ODD) {
             OddBoundary_4 bc = OddBoundary_4();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-        } else if (bctype == M_BC_EXTRAP) {
+        } else if (bctype == M_BC_EXTRAP_3) {
+            ExtrapBoundary_3 bc = ExtrapBoundary_3();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
+        } else if (bctype == M_BC_EXTRAP_4) {
             ExtrapBoundary_4 bc = ExtrapBoundary_4();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
+        } else if (bctype == M_BC_EXTRAP_5) {
+            ExtrapBoundary_5 bc = ExtrapBoundary_5();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));    
         } else if (bctype == M_BC_ZERO) {
             ZeroBoundary bc = ZeroBoundary();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));

@@ -1,7 +1,7 @@
 #ifndef SRC_LAPLACIAN_IPP_
 #define SRC_LAPLACIAN_IPP_
 
-#include "stencil.hpp"
+#include "laplacian.hpp"
 
 /**
  * @brief computes the inner laplacian contribution of the dimension Stencil::ida_ of the source field on the traget field

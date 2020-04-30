@@ -161,6 +161,13 @@ class ExtrapBoundary_3 : public Boundary<3> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
 };
+/**
+ * @brief applies an extrapolation boundary condition O(h^5) using a polynomial a x^4 + b x^3 + c x^2 + d x + e
+ */
+class ExtrapBoundary_5 : public Boundary<5> {
+   protected:
+    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t offset, const real_t normal, const real_t value) override;
+};
 
 /**
  * @brief applies an UNBOUNDED bondary condition by extrapolation
