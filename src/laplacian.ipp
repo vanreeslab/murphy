@@ -23,6 +23,8 @@ void LaplacianCross<length>::ApplyOpDerivInner(const qid_t* qid, GridBlock* bloc
     m_assume_aligned(data_trg);
     m_assume_aligned(data_src);
 
+    // m_log("the coefs are %f %f %f %f %f",coef[-2],coef[-1],coef[0],coef[1],coef[2]);
+
     for (lid_t i2 = M_GS; i2 < M_N - M_GS; i2++) {
         for (lid_t i1 = M_GS; i1 < M_N - M_GS; i1++) {
             for (lid_t i0 = M_GS; i0 < M_N - M_GS; i0++) {

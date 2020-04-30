@@ -21,6 +21,12 @@ class LaplacianCross : public Stencil {
             coef_[0] = +1.0;
             coef_[1] = -2.0;
             coef_[2] = +1.0;
+        } else if (length == 5) {
+            coef_[0] = -1.0 / 12.0;
+            coef_[1] = +4.0 / 3.0;
+            coef_[2] = -5.0 / 2.0;
+            coef_[3] = +4.0 / 3.0;
+            coef_[4] = -1.0 / 12.0;
         } else {
             m_assert(false, "not coded yet");
         }

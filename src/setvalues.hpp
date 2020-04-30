@@ -80,19 +80,33 @@ class SetCosinus : public OperatorF {
 };
 
 /**
- * @brief sets a cosinus multiplied by an exponential in every dimension of a field
+ * @brief sets a polynomial in every dimension of a field
  */
-class SetExpoCosinus : public OperatorF {
+class SetPolynom : public OperatorF {
    protected:
-    real_t center_[3] = {0, 0, 0};
-    real_t sigma_[3]  = {0, 0, 0};
-    real_t freq_[3]   = {0, 0, 0};
-    real_t length_[3] = {0.0, 0.0, 0.0};
+    lid_t  deg_[3] = {0, 0, 0};        //!< the degree of the polynomial
+    real_t dir_[3] = {0.0, 0.0, 0.0};  //!< the direction concerned: 1.0 means involved, 0.0 means not involved
 
     void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetExpoCosinus(real_t center[3], real_t sigma[3], real_t length[3], real_t freq[3]);
+    SetPolynom(lid_t degree[3], real_t direction[3]);
 };
+
+// /**
+//  * @brief sets a cosinus multiplied by an exponential in every dimension of a field
+//  */
+// class SetExpoCosinus : public OperatorF {
+//    protected:
+//     real_t center_[3] = {0, 0, 0};
+//     real_t sigma_[3]  = {0, 0, 0};
+//     real_t freq_[3]   = {0, 0, 0};
+//     real_t length_[3] = {0.0, 0.0, 0.0};
+
+//     void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+//    public:
+//     SetExpoCosinus(real_t center[3], real_t sigma[3], real_t length[3], real_t freq[3]);
+// };
 
 #endif  // SRC_SETVALUES_HPP_

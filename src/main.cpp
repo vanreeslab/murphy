@@ -9,6 +9,7 @@
 #include "setvalues.hpp"
 #include "wavelet.hpp"
 #include "laplacian.hpp"
+#include "prof.hpp"
 
 int main(int argc, char** argv) {
     int provided;
@@ -28,7 +29,9 @@ int main(int argc, char** argv) {
         bool periodic[3] = {false, false, false};
         int  l[3]        = {3, 2, 1};
         // create a grid
-        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
+
+        Prof* prof = new Prof("MURPHY");
+        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, prof);
         // create a field
         Field* vort = new Field("vorticity", 3);
         Field* diff = new Field("diffusion", 3);
@@ -36,18 +39,10 @@ int main(int argc, char** argv) {
         grid->AddField(vort);
         grid->AddField(diff);
 
-        // set a Gaussian
-        // real_t center[3] = {l[0] * 0.25, l[1] * 0.5, l[2] * 0.5};
-        // real_t sigma[3]  = {l[0] * 0.1, l[1] * 0.0, l[2] * 0.0};
-        // real_t freq[3]   = {0.0, 0.5, 0.5};
-        // real_t length[3] = {(real_t)l[0], (real_t)l[1], (real_t)l[2]};
-        // SetExpoCosinus expocos = SetExpoCosinus(center, sigma, length, freq);
-        // expocos(grid, vort);
-
-        real_t     freq[3]   = {1.0, 1.0, 1.0};
-        real_t     length[3] = {(real_t)l[0], (real_t)l[1], (real_t)l[2]};
-        SetCosinus cosinus   = SetCosinus(length, freq);
-        cosinus(grid,vort);
+        real_t     dir[3]  = {1.0, 1.0, 1.0};
+        lid_t      deg[3]  = {2, 2, 2};
+        SetPolynom polynom = SetPolynom(deg, dir);
+        polynom(grid, vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         vort->bctype(M_BC_EVEN);
         // set the extrapolation in the X direction [0,1]
@@ -72,7 +67,7 @@ int main(int argc, char** argv) {
         // dump.dump_ghost(true);
         // dump(grid, vort,);
 
-        LaplacianCross<3> lapla = LaplacianCross<3>(grid);
+        LaplacianCross<5> lapla = LaplacianCross<5>(grid);
         lapla(vort,diff);
 
         dump(grid,diff);
@@ -82,9 +77,12 @@ int main(int argc, char** argv) {
         // mydump.dump_ghost(true);
         // mydump(grid, vort,"vort_fine");
 
+        prof->Disp();
+
         // destroy the grid and the field
         delete (vort);
         delete (grid);
+        delete (prof);
     }
 
     m_log("leaving, bye bye murphy\n");

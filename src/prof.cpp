@@ -188,12 +188,21 @@ void TimerAgent::Disp(FILE* file, const int level, const real_t total_time) {
     // check if any proc has called the agent
     int total_count;
     MPI_Allreduce(&count_, &total_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    // get the size and usefull stuffs
+    int comm_size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // setup the displayed name
+    string myname = name_;
+    if (level > 1) {
+        myname = " " + myname;
+    }
+    for (int l = 1; l < level; l++) {
+        myname = "--" + myname;
+    }
     // if someone has every call the agent, display it
     if (total_count > 0) {
-        // get the size and usefull stuffs
-        int comm_size, rank;
-        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         real_t scale = 1.0 / comm_size;
 
         // compute the counters (mean, max, min)
@@ -250,20 +259,19 @@ void TimerAgent::Disp(FILE* file, const int level, const real_t total_time) {
         MPI_Allreduce(&local_band_memsize, &band_memsize, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         mean_bandwidth = (band_memsize / band_time) / std::pow(10.0, 6.0);
 
-        // setup the displayed name
-        string myname = name_;
-        if (level > 1) {
-            myname = " " + myname;
-        }
-        for (int l = 1; l < level; l++) {
-            myname = "--" + myname;
-        }
-
         // printf the important information
         if (rank == 0) {
             printf("%-25.25s|  %9.4f\t%9.4f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%09.1f\t%9.2f\n", myname.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
             if (file != nullptr) {
                 fprintf(file, "%s;%09.6f;%09.6f;%09.6f;%09.6f;%09.6f;%09.6f;%09.6f;%09.0f;%09.2f\n", name_.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
+            }
+        }
+    } else if (name_ != "root") {
+        // printf the important information
+        if (rank == 0) {
+            printf("%-25.25s|\n", myname.c_str());
+            if (file != nullptr) {
+                fprintf(file, "%s\n", name_.c_str());
             }
         }
     }
