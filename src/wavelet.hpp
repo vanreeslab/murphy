@@ -95,6 +95,9 @@ class Wavelet : public Interpolator {
     real_t Criterion(MemLayout* block, real_p data) override;
     void   Details(MemLayout* block, real_p data, real_t* criterion);
 
+    string Identity() override { return "Averaging wavelet order " + std::to_string(order); }
+    lid_t  NGhostCoarse() override { return (order / 2); }
+
    protected:
     void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const override;
     void Refine_(const interp_ctx_t* ctx) const override;

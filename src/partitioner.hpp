@@ -22,12 +22,12 @@ class Partitioner {
     real_p send_buf_ = nullptr;  //<! the send buffer, since the memory is not continuous accross the blocks
     real_p recv_buf_ = nullptr;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
 
-    lid_t*      q_send_start_block_ = nullptr;  //!< remember at which local block we started for the request[i]
+    lid_t*      q_send_cum_block_ = nullptr;  //!< remember at which local block we started for the request[i]
     lid_t*      q_send_cum_request_ = nullptr;  //!< cummulative count on the moving blocks for the request[i]
     GridBlock** old_blocks_         = nullptr;
 
     // note: since every block owns his own memory, I have to copy it to the buffer for the receive as well
-    lid_t*      q_recv_start_block_ = nullptr;  //!< remember at which local block we started for the request[i]
+    lid_t*      q_recv_cum_block_ = nullptr;  //!< remember at which local block we started for the request[i]
     lid_t*      q_recv_cum_request_ = nullptr;  //!< cummulative count on the moving blocks for the request[i]
     GridBlock** new_blocks_         = nullptr;
 

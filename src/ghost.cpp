@@ -8,18 +8,41 @@
 #include "wavelet.hpp"
 
 /**
- * @brief Construct a new Ghost given a ForestGrid, allocate the ghost lists and initiates the communications
+ * @brief returns the number of ghost points for the coarse block
+ * 
+ * The ghost are padded so that the array is aligned
+ */
+static lid_t cgs(Interpolator* interp) {
+    lid_t nghost    = (interp->NGhostCoarse() + 1);
+    lid_t n_in_line = (M_ALIGNMENT / sizeof(real_t));
+    nghost          = nghost + n_in_line - (nghost % n_in_line);
+    return nghost;
+}
+/**
+ * @brief returns the stride of the coarse block
+ * it needs NGhostCoarse()+1 ghost points to perform the refinement in the fine's ghost points
+ */
+static size_t cstride(Interpolator* interp) {
+    return 2 * cgs(interp) + M_HN;
+}
+
+/**
+ * @brief Construct a new Ghost given a ForestGrid and an interpolator, allocate the ghost lists and initiates the communications
  * 
  * Once created, the ghost is fixed for a given grid. if the grid changes, a new Ghost objects has to be created.
  * 
- * @param grid 
+ * @note: The Interpolator has to be given beforehands because the output of Interpolator::NGhostCoarse() drives the coarse block allocation
+ * 
+ * @param grid
+ * @param interp the interpolator used to interpolate the ghost values
  */
-Ghost::Ghost(ForestGrid* grid) {
+Ghost::Ghost(ForestGrid* grid, Interpolator* interp) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // get the important pointers
     grid_              = grid;
+    interp_            = interp;
     p8est_mesh_t* mesh = grid->mesh();
 
     // allocate the lists
@@ -49,9 +72,11 @@ Ghost::Ghost(ForestGrid* grid) {
     int nthreads = omp_get_max_threads();
     coarse_tmp_  = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * nthreads));
     for (int it = 0; it < nthreads; it++) {
-        coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * M_CLEN * M_CLEN * M_CLEN));
+        coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * cstride(interp_) * cstride(interp_) * cstride(interp_)));
     }
     //-------------------------------------------------------------------------
+    // m_log("ghost initialized with interpolator: %s -> %f percent of ghost comm not needed",interp_->Identity().c_str(),100.0*pow((M_N-2*cgs(interp_))/((real_t)M_N),3));
+    m_log("ghost initialized with %s", interp_->Identity().c_str());
     m_end;
 }
 
@@ -183,13 +208,12 @@ void Ghost::MirrorToGhostRecv() {
  * @param ida 
  * @param interp 
  */
-void Ghost::PullFromGhost(Field* field, sid_t ida, Interpolator* interp) {
+void Ghost::PullFromGhost(Field* field, sid_t ida) {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current interpolator and dimension
-    interp_ = interp;
-    ida_    = ida;
+    ida_ = ida;
     // interpolate
     OperatorF::operator()(grid_, field);
     //-------------------------------------------------------------------------
@@ -486,13 +510,13 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
 
     lid_t     coarse_start[3] = {0, 0, 0};
     lid_t     coarse_end[3]   = {M_HN, M_HN, M_HN};
-    SubBlock* coarse_subblock = new SubBlock(M_GS, M_CLEN, coarse_start, coarse_end);
+    SubBlock* coarse_subblock = new SubBlock(cgs(interp_), cstride(interp_) , coarse_start, coarse_end);
 
     // determine if we have to use the coarse representationun
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
     // if so, reset the coarse info
     if (do_coarse) {
-        memset(tmp, 0, M_CLEN * M_CLEN * M_CLEN * sizeof(real_t));
+        memset(tmp, 0, cstride(interp_) * cstride(interp_) * cstride(interp_) * sizeof(real_t));
     }
 
     //-------------------------------------------------------------------------
@@ -515,7 +539,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
                 coarse_start[id] = CoarseFromBlock(gblock->start(id));
                 coarse_end[id]   = CoarseFromBlock(gblock->end(id));
             }
-            coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+            coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
             // memory details
             MemLayout* block_src = ngh_block;
             real_p     data_src  = ngh_block->data(fid, ida_);
@@ -544,7 +568,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
                 coarse_start[id] = CoarseFromBlock(gblock->start(id));
                 coarse_end[id]   = CoarseFromBlock(gblock->end(id));
             }
-            coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+            coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
             // memory details
             MemLayout* block_src = ghost_subblock;
             real_p     data_src  = gblock->data_src();
@@ -565,7 +589,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             coarse_start[id] = CoarseFromBlock(gblock->start(id));
             coarse_end[id]   = CoarseFromBlock(gblock->end(id));
         }
-        coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+        coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = ngh_block;
         real_p     data_src  = ngh_block->data(fid, ida_);
@@ -583,7 +607,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             coarse_start[id] = CoarseFromBlock(gblock->start(id));
             coarse_end[id]   = CoarseFromBlock(gblock->end(id));
         }
-        coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+        coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = ghost_subblock;
         real_p     data_src  = gblock->data_src();
@@ -603,7 +627,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             coarse_start[id] = 0;
             coarse_end[id]   = M_HN;
         }
-        coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+        coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
         // get memory details
         lid_t      shift[3]  = {0, 0, 0};
         MemLayout* block_src = cur_block;
@@ -631,7 +655,7 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
                 fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3]);
             }
             // reset the coarse block and get the correct memory location
-            coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+            coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
             real_p data_trg = tmp + m_zeroidx(0, coarse_subblock);
             // get the correct face_start
             if (bctype == M_BC_EVEN) {
@@ -653,10 +677,10 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
 
         // reset the coarse sublock to the full position
         for (int id = 0; id < 3; id++) {
-            coarse_start[id] = -M_GS;
-            coarse_end[id]   = M_HN + M_GS;
+            coarse_start[id] = -cgs(interp_);
+            coarse_end[id]   = cstride(interp_)-cgs(interp_);
         }
-        coarse_subblock->Reset(M_GS, M_CLEN, coarse_start, coarse_end);
+        coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
     }
     //-------------------------------------------------------------------------
     // interpolate the ghost representation on myself

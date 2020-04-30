@@ -56,6 +56,9 @@ void Wavelet<order>::Details(MemLayout* block, real_p data, real_t* details_max)
     ctx.trgstr = -1;
     ctx.tdata  = nullptr;
     // get the details
+    m_assert((block->gs()+block->start(0)) >= (2*NGhostCoarse()), "the detail computation requires at least %d ghost points",2*NGhostCoarse());
+    m_assert((block->gs()+block->start(1)) >= (2*NGhostCoarse()), "the detail computation requires at least %d ghost points",2*NGhostCoarse());
+    m_assert((block->gs()+block->start(2)) >= (2*NGhostCoarse()), "the detail computation requires at least %d ghost points",2*NGhostCoarse());
     Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
@@ -103,7 +106,6 @@ void Wavelet<order>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     // assure alignment for both target and source
     m_assume_aligned(ctx->tdata);
     m_assume_aligned(ctx->sdata);
-
     // get the factor = 0.125^(#d level)
     const real_t fact = pow(0.125, dlvl);
     // for each of the data for the considered children
@@ -205,7 +207,6 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
  */
 template <int order>
 void Wavelet<order>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const {
-    m_assert(!(order == 5 && M_GS < 4), "the detail computation requires at least 4 ghost points on the current block");
     //-------------------------------------------------------------------------
     // assure alignment for both target and source
     m_assume_aligned(ctx->sdata);

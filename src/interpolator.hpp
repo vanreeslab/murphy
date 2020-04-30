@@ -2,6 +2,8 @@
 #ifndef SRC_INTERPOLATE_HPP_
 #define SRC_INTERPOLATE_HPP_
 
+#include <string>
+
 #include "field.hpp"
 #include "ghostblock.hpp"
 #include "memlayout.hpp"
@@ -35,6 +37,7 @@ typedef struct interp_ctx_t {
     /** @} */
 } interp_ctx_t;
 
+using std::string;
 
 /**
  * @brief defines a set of function used to interpolate
@@ -54,6 +57,15 @@ class Interpolator {
     virtual real_t Criterion(MemLayout* block, real_p data) = 0;
 
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+
+    /**
+    * @brief returns a string identifying the operator
+    */
+    virtual string Identity() = 0;
+    /**
+    * @brief returns how many ghost points on the coarse level must be present when refinement
+    */
+    virtual lid_t NGhostCoarse() = 0;
 
    protected:
    /**

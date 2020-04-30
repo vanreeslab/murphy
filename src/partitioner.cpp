@@ -76,7 +76,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, 0, nullptr);
 
-    m_log("total %ld blocks are moving: going from %d to now %d in here", nqshipped, n_loc_block, forest->local_num_quadrants);
+    // m_log("total %ld blocks are moving: going from %d to now %d in here", nqshipped, n_loc_block, forest->local_num_quadrants);
 
     if (nqshipped > 0) {
         // get the NEW number of quads
@@ -91,7 +91,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
         const lid_t opart_n = m_max(0, opart_end - opart_begin - q_nself);
         const lid_t cpart_n = m_max(0, cpart_end - cpart_begin - q_nself);
 
-        m_log("except the self, I lose %d blocks and gain %d blocks", opart_n, cpart_n);
+        m_verb("except the self, I lose %d blocks and gain %d blocks", opart_n, cpart_n);
 
         // init the send
         if (opart_n > 0) {
@@ -108,7 +108,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
             send_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_send_request_ * sizeof(MPI_Request)));
             // allocate the cummulative list, to know which block I have to copy to the buffer
             // note: we cannot use a cummulative since we may not have continuous set (if some blocks are not moving)
-            q_send_start_block_ = reinterpret_cast<lid_t *>(m_calloc(n_send_request_ * sizeof(lid_t)));
+            q_send_cum_block_ = reinterpret_cast<lid_t *>(m_calloc(n_send_request_ * sizeof(lid_t)));
             q_send_cum_request_ = reinterpret_cast<lid_t *>(m_calloc((n_send_request_ + 1) * sizeof(lid_t)));
 
             // for each receiver, allocate the send request
@@ -128,8 +128,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
                     continue;
                 }
                 // remember the begin and end point
-                q_send_start_block_[rcount] = tqcount;
-                q_send_cum_request_[rcount] = qcount + n_q2send;
+                q_send_cum_block_[rcount] = tqcount;
+                q_send_cum_request_[rcount] = qcount;
 
                 // create the send request
                 real_t *buf = send_buf_ + qcount * m_blockmemsize(n_lda_);
@@ -144,7 +144,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
             q_send_cum_request_[n_send_request_] = qcount;
             m_assert(qcount == opart_n, "counters are not matching");
 
-            m_log("done with %d send requests", n_send_request_);
+            m_verb("done with %d send requests", n_send_request_);
         }
 
         // init the reception
@@ -187,19 +187,19 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
             recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * m_blockmemsize(n_lda_) * sizeof(real_t)));
 
             // senders = from cpart_begin to cpart_end-1 in the new partition
-            m_log("looking for the senders of %ld -> %ld", cpart_begin, cpart_end);
+            m_verb("looking for the senders of %ld -> %ld", cpart_begin, cpart_end);
             const int first_sender = bsearch_comm(oldpart, cpart_begin, commsize, 0);
             const int last_sender  = bsearch_comm(oldpart, cpart_end - 1, commsize, 0);
-            m_log("found sender %d to %d", first_sender, last_sender);
+            m_verb("found sender %d to %d", first_sender, last_sender);
             const int n_sender = last_sender - first_sender + 1;  // note:add one because 4-2=2 but we have 3 ranks...
             // if I am among the list, remove myself from the request point of view
             n_recv_request_ = (first_sender <= rank && rank <= last_sender) ? n_sender - 1 : n_sender;
-            m_log("I will do %d recv reqests our of %d senders", n_recv_request_, n_sender);
+            m_verb("I will do %d recv reqests our of %d senders", n_recv_request_, n_sender);
             // allocate the requests
             recv_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_recv_request_ * sizeof(MPI_Request)));
             // allocate the cummulative list, to know which block I have to copy to the buffer
             // note: we cannot use a cummulative since we may not have continuous set (if some blocks are not moving)
-            q_recv_start_block_ = reinterpret_cast<lid_t *>(m_calloc(n_recv_request_ * sizeof(lid_t)));
+            q_recv_cum_block_ = reinterpret_cast<lid_t *>(m_calloc(n_recv_request_ * sizeof(lid_t)));
             q_recv_cum_request_ = reinterpret_cast<lid_t *>(m_calloc((n_recv_request_ + 1) * sizeof(lid_t)));
 
             // for each receiver, allocate the send request
@@ -220,8 +220,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
                     continue;
                 }
                 // store the memory accesses
-                q_recv_start_block_[scount] = tqcount;
-                q_recv_cum_request_[scount] = qcount + n_q2recv;
+                q_recv_cum_block_[scount] = tqcount;
+                q_recv_cum_request_[scount] = qcount;
                 // create the send request
                 real_p buf = recv_buf_ + qcount * m_blockmemsize(n_lda_);
                 MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(recv_request_[scount]));
@@ -236,7 +236,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
     }
     m_free(oldpart);
 
-    m_log("grid partitioned: moving %ld blocks (%f percent of the grid): %d sends and %d recvs", nqshipped, ((real_t)nqshipped) / ((real_t)forest->global_num_quadrants), n_send_request_, n_recv_request_);
+    m_log("grid partitioned: moving %ld blocks (%f percent of the grid)", nqshipped,100.0* ((real_t)nqshipped) / ((real_t)forest->global_num_quadrants));
 
     //-------------------------------------------------------------------------
     m_end;
@@ -262,9 +262,9 @@ Partitioner::~Partitioner() {
     m_free(recv_request_);
     m_free(send_buf_);
     m_free(recv_buf_);
-    m_free(q_send_start_block_);
+    m_free(q_send_cum_block_);
     m_free(q_send_cum_request_);
-    m_free(q_recv_start_block_);
+    m_free(q_recv_cum_block_);
     m_free(q_recv_cum_request_);
 }
 
@@ -284,14 +284,14 @@ void Partitioner::Start(map<string, Field *> *fields) {
     for (int is = 0; is < n_send_request_; is++) {
         lid_t n_q2send = q_send_cum_request_[is + 1] - q_send_cum_request_[is];
         for (lid_t iq = 0; iq < n_q2send; iq++) {
-            GridBlock *block = old_blocks_[q_send_start_block_[is] + iq];
+            GridBlock *block = old_blocks_[q_send_cum_block_[is] + iq];
             real_p     buf   = send_buf_ + (q_send_cum_request_[is] + iq) * m_blockmemsize(n_lda_);
-
             lid_t idacount = 0;
-            for (auto iter = fields->begin(); iter != fields->end(); fields++) {
+            for (auto iter = fields->begin(); iter != fields->end(); iter++) {
                 const Field *fid  = iter->second;
                 string       name = fid->name();
                 // the memory returnded by block->data is shifted, so we unshift it :-)
+                // m_log("doing field %s shift by %ld",m_zeroidx(0, block));
                 real_p data = block->data(fid) - m_zeroidx(0, block);
                 real_p lbuf = buf + m_blockmemsize(idacount);
                 // copy the whole memory at once on the dim
@@ -319,12 +319,12 @@ void Partitioner::End(map<string, Field *> *fields) {
         lid_t n_q2recv = q_recv_cum_request_[idx + 1] - q_recv_cum_request_[idx];
 
         for (lid_t iq = 0; iq < n_q2recv; iq++) {
-            GridBlock *block = new_blocks_[q_recv_start_block_[idx] + iq];
+            GridBlock *block = new_blocks_[q_recv_cum_block_[idx] + iq];
             real_p     buf   = recv_buf_ + (q_recv_cum_request_[idx] + iq) * m_blockmemsize(n_lda_);
             m_assert(block != nullptr, "this block shouldn't be accessed here");
 
             lid_t idacount = 0;
-            for (auto iter = fields->begin(); iter != fields->end(); fields++) {
+            for (auto iter = fields->begin(); iter != fields->end(); iter++) {
                 const Field *fid  = iter->second;
                 string       name = fid->name();
                 // the memory returnded by block->data is shifted, so we unshift it :-)
@@ -353,7 +353,7 @@ void Partitioner::DeallocOldies_() {
     for (int is = 0; is < n_send_request_; is++) {
         // delete all the blocks that have been transfered, not the remaining ones..
         lid_t n_q2send = q_send_cum_request_[is + 1] - q_send_cum_request_[is];
-        for (lid_t iq = q_send_start_block_[is]; iq < (q_send_start_block_[is] + n_q2send); iq++) {
+        for (lid_t iq = q_send_cum_block_[is]; iq < (q_send_cum_block_[is] + n_q2send); iq++) {
             if (old_blocks_[iq] != nullptr) {
                 delete (old_blocks_[iq]);
             }

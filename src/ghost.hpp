@@ -15,7 +15,6 @@ using std::list;
 
 #define M_NGHOST (M_N * M_N * M_N)
 #define M_NNEIGHBOR 26
-#define M_CLEN (2 * M_GS + M_HN)
 
 class Ghost;
 
@@ -65,13 +64,13 @@ class Ghost : public OperatorF, public OperatorS {
     real_p* coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
 
    public:
-    explicit Ghost(ForestGrid* grid);
+    Ghost(ForestGrid* grid, Interpolator* interp);
     ~Ghost();
 
     void PushToMirror(Field* field, sid_t ida);
     void MirrorToGhostSend();
     void MirrorToGhostRecv();
-    void PullFromGhost(Field* field, sid_t ida, Interpolator* interp);
+    void PullFromGhost(Field* field, sid_t ida);
 
     /**
      *  @name OperatorS implementation

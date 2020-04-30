@@ -75,16 +75,16 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
-    Interpolator* interp = grid->interp();
+    Interpolator* interp = grid->detail();
     // get the field and check each dimension
     bool   refine = false;
     Field* fid    = grid->tmp_field();
     for (int ida = 0; ida < fid->lda(); ida++) {
-        m_verb("analysing the details on block for field %s, dim = %d", fid->name().c_str(), ida);
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
+        m_verb("refine? %e vs %e",norm,grid->rtol());
         // refine the whole grid if one dimension needs to be refined
         if (refine) {
             break;
@@ -108,7 +108,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
-    Interpolator* interp = grid->interp();
+    Interpolator* interp = grid->detail();
     // for each of the children
     bool   coarsen = false;
     Field* fid     = grid->tmp_field();

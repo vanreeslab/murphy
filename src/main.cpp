@@ -26,9 +26,9 @@ int main(int argc, char** argv) {
     //-------------------------------------------------------------------------
     {
         bool periodic[3] = {false, false, false};
-        int  l[3]        = {2, 1, 3};
+        int  l[3]        = {3, 2, 1};
         // create a grid
-        Grid* grid = new Grid(1, periodic, l, MPI_COMM_WORLD, NULL);
+        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, NULL);
         // create a field
         Field* vort = new Field("vorticity", 3);
         Field* diff = new Field("diffusion", 3);
@@ -37,13 +37,17 @@ int main(int argc, char** argv) {
         grid->AddField(diff);
 
         // set a Gaussian
-        real_t center[3] = {l[0] * 0.25, l[1] * 0.5, l[2] * 0.5};
-        real_t sigma[3]  = {l[0] * 0.1, l[1] * 0.0, l[2] * 0.0};
-        real_t freq[3]   = {0.0, 0.5, 0.5};
-        real_t length[3] = {(real_t)l[0], (real_t)l[1], (real_t)l[2]};
+        // real_t center[3] = {l[0] * 0.25, l[1] * 0.5, l[2] * 0.5};
+        // real_t sigma[3]  = {l[0] * 0.1, l[1] * 0.0, l[2] * 0.0};
+        // real_t freq[3]   = {0.0, 0.5, 0.5};
+        // real_t length[3] = {(real_t)l[0], (real_t)l[1], (real_t)l[2]};
+        // SetExpoCosinus expocos = SetExpoCosinus(center, sigma, length, freq);
+        // expocos(grid, vort);
 
-        SetExpoCosinus expocos = SetExpoCosinus(center, sigma, length, freq);
-        expocos(grid, vort);
+        real_t     freq[3]   = {1.0, 1.0, 1.0};
+        real_t     length[3] = {(real_t)l[0], (real_t)l[1], (real_t)l[2]};
+        SetCosinus cosinus   = SetCosinus(length, freq);
+        cosinus(grid,vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         vort->bctype(M_BC_EVEN);
         // set the extrapolation in the X direction [0,1]
@@ -54,12 +58,19 @@ int main(int argc, char** argv) {
         //  // create a dumper and dump
         IOH5 dump = IOH5("data");
         // mydump(grid, vort,"vort");
+        
 
         // get an refined and adapted grid
         grid->Adapt(vort);
+        grid->Adapt(vort);
+
+        dump(grid, vort);
+
+        // grid->GhostPull(vort);
 
         // create a dumper and dump
-        dump(grid, vort);
+        // dump.dump_ghost(true);
+        // dump(grid, vort,);
 
         LaplacianCross<3> lapla = LaplacianCross<3>(grid);
         lapla(vort,diff);

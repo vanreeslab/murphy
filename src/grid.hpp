@@ -30,6 +30,7 @@ class Grid : public ForestGrid {
     Prof*         prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*        ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     Interpolator* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
+    Interpolator* detail_ = nullptr;  //!< the interpolator to use for the detail computation
 
     real_t rtol_      = 1.0e-2;   //!< refinement tolerance, see @ref SetTol()
     real_t ctol_      = 1.0e-4;   //!< coarsening tolerance, see @ref SetTol()
@@ -44,6 +45,7 @@ class Grid : public ForestGrid {
     size_t GlobalNumDof() const;
 
     Interpolator* interp() { return interp_; }
+    Interpolator* detail() { return detail_; }
 
     /**
      * @name Fields management

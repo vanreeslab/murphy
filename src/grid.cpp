@@ -26,7 +26,8 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     m_begin;
     //-------------------------------------------------------------------------
     // create a default interpolator
-    interp_ = new Wavelet<3>();
+    interp_ = new Wavelet<5>();
+    detail_ = new Wavelet<3>();
 
     // profiler
     prof_ = prof;
@@ -35,7 +36,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
 
     // create the ghosts structure
-    ghost_ = new Ghost(this);
+    ghost_ = new Ghost(this,interp_);
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
@@ -50,6 +51,7 @@ Grid::~Grid() {
     //-------------------------------------------------------------------------
     // destroy the interpolator
     delete (interp_);
+    delete (detail_);
     delete (ghost_);
     // destroy the remaining blocks
     p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
@@ -209,7 +211,7 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
-        ghost_->PullFromGhost(field, ida, interp_);
+        ghost_->PullFromGhost(field, ida);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -277,7 +279,7 @@ void Grid::Refine(const sid_t delta_level) {
         partition.End(&fields_);
         // create a new ghost and mesh
         SetupP4estGhostMesh();
-        ghost_ = new Ghost(this);
+        ghost_ = new Ghost(this,interp_);
         // set the ghosting fields as non-valid
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             fid->second->ghost_status(false);
@@ -320,7 +322,7 @@ void Grid::Coarsen(const sid_t delta_level) {
         partition.End(&fields_);
         // create a new ghost and mesh
         SetupP4estGhostMesh();
-        ghost_ = new Ghost(this);
+        ghost_ = new Ghost(this,interp_);
         // set the ghosting fields as non-valid
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             fid->second->ghost_status(false);
@@ -353,7 +355,7 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  */
 void Grid::Adapt(Field* field) {
     m_begin;
-    m_log("grid adaptation started...");
+    m_log("--> grid adaptation started... (interpolator: %s)",detail_->Identity().c_str());
     //-------------------------------------------------------------------------
     // store the criterion field
     tmp_field_ = field;
@@ -378,13 +380,13 @@ void Grid::Adapt(Field* field) {
     partition.End(&fields_);
     // create a new ghost and mesh
     SetupP4estGhostMesh();
-    ghost_ = new Ghost(this);
+    ghost_ = new Ghost(this,interp_);
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
     }
     //-------------------------------------------------------------------------
-    m_log("...grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 

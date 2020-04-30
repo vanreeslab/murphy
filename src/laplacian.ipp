@@ -164,7 +164,7 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
             }
         }
     }
-    //-------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 }
 
 #endif  // SRC_LAPLACIAN_IPP_
