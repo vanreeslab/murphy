@@ -20,10 +20,25 @@ To compile Murphy you have three different options. Each of them will give you a
     - get the DockerHub image (run `docker pull immc/murphy-ci:v1.1`),
     - open the murphy folder in VSCode and accept to open in a container. For more information about compiling in a remote
 
+#### Docker exemple
 We recommend to use the last one as it provides the fastest hand-on approach. However, for advance debugging, the first option is usually the more reliable choice.
+To download the image, simply use
+```
+docker pull immc/murphy-ci:v1.1
+```
+To build the container and sync your murphy folder, `MY_MURPHY`, run
+```
+docker run --name murphy -it -v MY_MURPHY:/murphy immc/murphy-ci:v1.0
+```
+You are now within the container and you can access the folder in `/murphy`, which is synced with your local machine.
+To exit, simply type `exit` and to relaunch it, enter `docker start -i murphy`.
 
-
-To check the values that `make` will use, you can do a dry-run:
+#### The first build
+The first time you compiler, you need to create the `build` directory:
+```
+mkdir build
+```
+To check the values (libs, paths,...) that `make` will use, you can do a dry-run:
 ```
 ARCH_FILE=make_arch/make.MyArchFile make info
 ```
