@@ -43,8 +43,10 @@ class valid_Wavelet : public ::testing::Test {
         hfine_   = 1.0 / (M_N);
     };
     void TearDown() override {
-        m_free(data_fine_ - m_zeroidx(0, block_fine_));
-        m_free(data_coarse_ - m_zeroidx(0, block_coarse_));
+        real_p data_fine   = data_fine_ - m_zeroidx(0, block_fine_);
+        real_p data_coarse = data_coarse_ - m_zeroidx(0, block_coarse_);
+        m_free(data_fine);
+        m_free(data_coarse);
 
         delete (block_coarse_);
         delete (block_fine_);

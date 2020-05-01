@@ -35,7 +35,8 @@ class valid_Boundary : public ::testing::Test {
         data_  = data_ + m_zeroidx(0, block_);
     };
     void TearDown() override {
-        m_free(data_ - m_zeroidx(0, block_));
+        real_p data = data_ - m_zeroidx(0, block_);
+        m_free(data);
         delete (block_);
     };
 };
