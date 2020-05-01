@@ -80,7 +80,7 @@ real_p GridBlock::data(const Field* fid, const sid_t ida) {
  * @param fid 
  * @return const real_p the pointer is const
  */
-const real_p GridBlock::data(const Field* fid) const {
+real_p GridBlock::data(const Field* fid) const {
 #ifndef NDEBUG
     datamap_t::const_iterator it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());

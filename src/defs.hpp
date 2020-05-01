@@ -57,7 +57,7 @@
     })
 #define m_free(data)    \
     ({                  \
-        _mm_free(data); \
+        _mm_free((void*)data); \
     })
 #else //defined(__GNUC__)
 /**
@@ -85,7 +85,7 @@
  */
 #define m_free(data) \
     ({               \
-        free(data);  \
+        free((void*)data);  \
     })
 #endif
 /** @} */

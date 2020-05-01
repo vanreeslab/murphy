@@ -51,9 +51,9 @@ class GridBlock : public MemLayout {
      * 
      * @{
      */
-    real_p       data(Field* fid);
-    real_p       data(const Field* fid, const sid_t ida);
-    const real_p data(const Field* fid) const;
+    real_p data(Field* fid);
+    real_p data(const Field* fid, const sid_t ida);
+    real_p data(const Field* fid) const;
     /** @} */
 
     /**

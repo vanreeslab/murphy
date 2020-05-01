@@ -10,28 +10,17 @@
 #include "wavelet.hpp"
 #include "laplacian.hpp"
 #include "prof.hpp"
+#include "parser.hpp"
 
 int main(int argc, char** argv) {
-    int provided;
-    // set MPI_THREAD_FUNNELED or MPI_THREAD_SERIALIZED
-    int requested = MPI_THREAD_FUNNELED;
-    MPI_Init_thread(&argc, &argv, requested, &provided);
-    if (provided != requested) {
-        printf("The MPI-provided thread behavior does not match\n");
-        MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-
-    MPI_Comm comm = MPI_COMM_WORLD;
-    sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
-    p4est_init(NULL, SC_LP_SILENT);
+    murphy_init(argc,argv);
     //-------------------------------------------------------------------------
     {
-        bool periodic[3] = {false, false, false};
-        int  l[3]        = {3, 2, 1};
+        parse_arg_t argument;
+        ParseArgument(argc, argv, &argument);
         // create a grid
-
         Prof* prof = new Prof("MURPHY");
-        Grid* grid = new Grid(0, periodic, l, MPI_COMM_WORLD, prof);
+        Grid* grid = new Grid(0, argument.period,argument.length, MPI_COMM_WORLD, prof);
         // create a field
         Field* vort = new Field("vorticity", 3);
         Field* diff = new Field("diffusion", 3);
@@ -52,20 +41,10 @@ int main(int argc, char** argv) {
         }
         //  // create a dumper and dump
         IOH5 dump = IOH5("data");
-        // mydump(grid, vort,"vort");
-        
 
         // get an refined and adapted grid
         grid->Adapt(vort);
-        grid->Adapt(vort);
-
         dump(grid, vort);
-
-        // grid->GhostPull(vort);
-
-        // create a dumper and dump
-        // dump.dump_ghost(true);
-        // dump(grid, vort,);
 
         LaplacianCross<5> lapla = LaplacianCross<5>(grid);
         lapla(vort,diff);
@@ -87,6 +66,5 @@ int main(int argc, char** argv) {
 
     m_log("leaving, bye bye murphy\n");
     //-------------------------------------------------------------------------
-    sc_finalize();
-    MPI_Finalize();
+    murphy_finalize();
 }

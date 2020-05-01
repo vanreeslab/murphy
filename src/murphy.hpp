@@ -42,4 +42,9 @@ typedef enum bctype_t {
     M_BC_EXTRAP_5   //!< extrapolate outside the computational domain with polynomial x^4
 } bctype_t;
 
+
+
+void murphy_init(int argc, char* argv[]);
+void murphy_finalize();
+
 #endif  // SRC_MURPHY_HPP_
