@@ -393,10 +393,91 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  */
 void Grid::Adapt(Field* field) {
     m_begin;
-    m_log("--> grid adaptation started... (interpolator: %s)",detail_->Identity().c_str());
+    m_log("--> grid adaptation started... (interpolator: %s)", detail_->Identity().c_str());
     //-------------------------------------------------------------------------
     // store the criterion field
-    tmp_field_ = field;
+    tmp_ptr_ = reinterpret_cast<void*>(field);
+    if (prof_ != nullptr) {
+        prof_->Start("adapt");
+        prof_->Start("get_ghost");
+    }
+    // compute the ghost needed by the interpolation of everyblock
+    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+        GhostPull(fid->second);
+    }
+    if (prof_ != nullptr) {
+        prof_->Stop("get_ghost");
+    }
+    // delete the soon-to be outdated ghost and mesh
+    delete (ghost_);
+    ResetP4estGhostMesh();
+    // set the grid in the forest for the callback
+    forest_->user_pointer = reinterpret_cast<void*>(this);
+    // coarsen the needed block
+    if (prof_ != nullptr) {
+        prof_->Start("coarsen");
+    }
+    p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
+    if (prof_ != nullptr) {
+        prof_->Stop("coarsen");
+        prof_->Start("refine");
+    }
+    // refine the needed blocks
+    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
+    // balance the partition
+    if (prof_ != nullptr) {
+        prof_->Stop("refine");
+        prof_->Start("balance");
+    }
+    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_Interpolate);
+    if (prof_ != nullptr) {
+        prof_->Stop("balance");
+        prof_->Start("partition");
+    }
+    // partition the grid
+    Partitioner partition(&fields_, this);
+    partition.Start(&fields_);
+    partition.End(&fields_);
+    if (prof_ != nullptr) {
+        prof_->Stop("partition");
+        prof_->Start("re-setup");
+    }
+    // create a new ghost and mesh
+    SetupP4estGhostMesh();
+    ghost_ = new Ghost(this,interp_);
+    if(prof_ != nullptr){
+        prof_->Stop("re-setup");
+        prof_->Stop("adapt");
+    }
+    // set the ghosting fields as non-valid
+    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+        fid->second->ghost_status(false);
+    }
+    // reset the forest pointer
+    forest_->user_pointer = nullptr;
+    //-------------------------------------------------------------------------
+    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_end;
+}
+
+/**
+ * @brief adapt = (refine or coarsen once) each block recursivelly to reach the criterion imposed in the patch list
+ * 
+ * A block is refined/coarsened if one part of it belongs to the patch. Simply touching the patch does not count as belonging (i.e.
+ * the comparison is done using strict operators `<` and `>` ), see @ref cback_Patch().
+ * 
+ * @param patches the list of patch to match
+ */
+void Grid::Adapt(list<Patch>* patches) {
+    m_begin;
+    m_log("--> grid adaptation started... (using patches)");
+    //-------------------------------------------------------------------------
+    if(patches->size() == 0){
+        return;
+    }
+    // store the criterion patch list
+    tmp_ptr_ = reinterpret_cast<void*>(patches);
+    // store the criterion field
     if(prof_ != nullptr){
         prof_->Start("adapt");
         prof_->Start("get_ghost");
@@ -417,19 +498,22 @@ void Grid::Adapt(Field* field) {
     if(prof_ != nullptr){
         prof_->Start("coarsen");
     }
-    p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
+    // we coarsen recursivelly
+    m_log("starting coarsening");
+    p8est_coarsen_ext(forest_, 1, 0, cback_Patch, nullptr, cback_Interpolate);
     if(prof_ != nullptr){
         prof_->Stop("coarsen");
         prof_->Start("refine");
     }
-    // refine the needed blocks
-    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
+    // refine the needed blocks recursivelly
+    m_log("starting refinement");
+    p8est_refine_ext(forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_Interpolate);
     // balance the partition
     if(prof_ != nullptr){
         prof_->Stop("refine");
         prof_->Start("balance");
     }
-    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_Interpolate);
     if(prof_ != nullptr){
         prof_->Stop("balance");
         prof_->Start("partition");
@@ -453,6 +537,8 @@ void Grid::Adapt(Field* field) {
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
     }
+    // reset the forest pointer
+    forest_->user_pointer = nullptr;
     //-------------------------------------------------------------------------
     m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
     m_end;

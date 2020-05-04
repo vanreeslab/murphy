@@ -2,8 +2,11 @@
 
 #include <p8est_bits.h>
 
+#include <list>
+
 #include "grid.hpp"
 #include "gridblock.hpp"
+#include "patch.hpp"
 
 /**
  * @brief initiate a new block and store its adress in the p4est quad
@@ -63,6 +66,92 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
 }
 
 /**
+ * @brief replies yes if we do not match one of the patch criterion
+ */
+int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
+    //-------------------------------------------------------------------------
+    // retreive the patch list and the current block
+    Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
+    GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
+    m_assert(block->level() == quadrant->level, "the two levels must match");
+
+    m_log("kikou for refinement");
+
+    // get the origin, the length and check if we are inside the patch
+    const real_t* xyz = block->xyz();
+    real_t len = m_quad_len(block->level());
+
+    for(auto iter=patches->begin(); iter!= patches->end(); iter++){
+        Patch* patch = &(*iter);
+        
+        // if we already have the correct level or a higher one, we skip the patch
+        if(block->level() >= patch->level()){
+            continue;
+        }
+        // if not, we have a coarser block and we might want to refine if the location matches
+        bool refine = true;
+        for (int id = 0; id < 3; id++) {
+            // we have to satisfy both the our max > min and the min < our max
+            refine = refine &&
+                     (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+                     (patch->origin(id) < (block->xyz(id) + len));
+            m_log("direction %d: %f <? %f and %f < %f", block->xyz(id), (patch->origin(id) + patch->length(id)), patch->origin(id), block->xyz(id) + len);
+        }
+        m_log("should be refined? %d: levels %d vs %d",refine,block->level(),patch->level());
+        if(refine){
+            return true;
+        }
+    }
+    return false;
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief replies yes if we do not match one of the patch criterion
+ */
+int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
+    //-------------------------------------------------------------------------
+
+    m_log("kikou for coarsening");
+    // retreive the patch list and the current block
+    Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
+
+    // check every block, if one child needs to be coarsen, we return true for everybody
+    for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[ib]->p.user_data));
+        m_assert(block->level() == quadrant[ib]->level, "the two levels must match");
+
+        // get the origin, the length and check if we are inside the patch
+        const real_t* xyz = block->xyz();
+        real_t        len = m_quad_len(block->level());
+
+        for (auto iter = patches->begin(); iter != patches->end(); iter++) {
+            Patch* patch = &(*iter);
+            // if we already have the correct level or a lower one, we skip the patch
+            if (block->level() <= patch->level()) {
+                continue;
+            }
+            // if not, we have a finer block and we might want to coarsen if the location matches
+            bool coarsen = false;
+            for (sid_t id = 0; id < 3; id++) {
+                // we have to satisfy both the our max > min and the min < our max
+                coarsen = coarsen &&
+                         (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+                         (patch->origin(id) < (block->xyz(id) + len));
+            }
+            m_log("should be refined? %d",coarsen);
+            if (coarsen) {
+                return true;
+            }
+        }
+    }
+    return false;
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief reply that we should refine the block if the output of @ref Interpolator::Criterion() is bigger than the tolerance (we use the interpolator from the @ref Grid)
  * 
  * @param forest 
@@ -78,13 +167,13 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Interpolator* interp = grid->detail();
     // get the field and check each dimension
     bool   refine = false;
-    Field* fid    = grid->tmp_field();
+    Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
-        m_verb("refine? %e vs %e",norm,grid->rtol());
+        m_verb("refine? %e vs %e", norm, grid->rtol());
         // refine the whole grid if one dimension needs to be refined
         if (refine) {
             break;
@@ -111,7 +200,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Interpolator* interp = grid->detail();
     // for each of the children
     bool   coarsen = false;
-    Field* fid     = grid->tmp_field();
+    Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
     for (int id = 0; id < P8EST_CHILDREN; id++) {
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
         for (int ida = 0; ida < fid->lda(); ida++) {

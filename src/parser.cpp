@@ -9,8 +9,9 @@
 static char doc[] = "MUPHY - a multiresolution multiphysics framework.";
 
 static struct argp_option options[] = {
-    {"periodic", 'p', "0/1,0/1,0/1", 0, "gives the periodicity in x,y,z (1 = periodic, 0 = not periodic) "},
-    {"domain", 'd', "int,int,in", 0, "gives the dimension of the domain x,y,z (integers)"},
+    {"periodic", 10001, "p_x,p_y,p_z", 0, "gives the periodicity (boolean: p_x,p_y,p_z)"},
+    {"domain", 'd', "d_x,d_y,d_z", 0, "gives the dimension of the domain (integers: d_x,d_y,d_z)"},
+    {"patch", 10002, "o_x,o_y,o_z,l_x,l_y,l_z,lvl", 0, "indicate a patch of origin (floats: o_x,o_y,o_z), of length (floats: l_x,l_y,l_z) at level (integer: lvl)"},
     {0}};
 
 static int count_list(const char* arg) {
@@ -55,7 +56,7 @@ static error_t atob_list(const int length, char* arg, bool* list) {
     return 0;
 }
 
-static error_t atof_list(const int length, char* arg, bool* list) {
+static error_t atof_list(const int length, char* arg, real_t* list) {
     const int count = count_list(arg);
     if (count != length) {
         return ARGP_ERR_UNKNOWN;
@@ -73,16 +74,24 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     parse_arg_t* arguments = reinterpret_cast<parse_arg_t*>(state->input);
 
     switch (key) {
-        case 'p': {
-            bool*   period = arguments->period;
+        case 'd': {
+            int*    length = arguments->length_;
+            error_t err    = atoi_list(3, arg, length);
+            m_log("domain length: %d %d %d\n", length[0], length[1], length[2]);
+            return err;
+        }
+        case 10001: {
+            bool*   period = arguments->period_;
             error_t err    = atob_list(3, arg, period);
             m_log("periodicity: %d %d %d\n", period[0], period[1], period[2]);
             return err;
         }
-        case 'd': {
-            int*    length = arguments->length;
-            error_t err    = atoi_list(3, arg, length);
-            m_log("domain length: %d %d %d\n", length[0], length[1], length[2]);
+        case 10002: {
+            real_t  data[7];
+            error_t err   = atof_list(7, arg, data);
+            lid_t   level = (lid_t)(data[6]);
+            arguments->patch_.push_back(Patch(data, data + 3, level));
+            m_log("patch: level %d starting (%f %f %f) of length (%f %f %f)\n", level, data[0], data[1], data[2], data[3], data[4], data[5]);
             return err;
         }
         default:

@@ -75,6 +75,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
 
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, 0, nullptr);
+    m_log("warning, using a non-coarsening compatible partitioning");
 
     // m_log("total %ld blocks are moving: going from %d to now %d in here", nqshipped, n_loc_block, forest->local_num_quadrants);
 

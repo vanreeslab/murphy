@@ -5,9 +5,9 @@
 
 int main(int argc, char** argv) {
     // we should first init Google Test and then MPI.
-    for (int ia = 0; ia < argc; ia++) {
-        printf("command = %s\n", argv[ia]);
-    }
+    // for (int ia = 0; ia < argc; ia++) {
+    //     printf("command = %s\n", argv[ia]);
+    // }
     // but I need the rank to init google test, so I do the opposite
     // init MPI and pe4st
     MPI_Init(&argc, &argv);

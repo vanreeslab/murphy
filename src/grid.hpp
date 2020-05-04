@@ -14,6 +14,7 @@
 #include "interpolator.hpp"
 #include "murphy.hpp"
 #include "operator.hpp"
+#include "patch.hpp"
 #include "prof.hpp"
 
 using std::list;
@@ -32,9 +33,10 @@ class Grid : public ForestGrid {
     Interpolator* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
     Interpolator* detail_ = nullptr;  //!< the interpolator to use for the detail computation
 
-    real_t rtol_      = 1.0e-2;   //!< refinement tolerance, see @ref SetTol()
-    real_t ctol_      = 1.0e-4;   //!< coarsening tolerance, see @ref SetTol()
-    Field* tmp_field_ = nullptr;  //!< working field, needed by the adaptation of the grid
+    real_t rtol_ = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
+    real_t ctol_ = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+
+    void* tmp_ptr_ = nullptr;  //!< temporary pointer, needed by the adaptation of the grid
 
    public:
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
@@ -80,12 +82,13 @@ class Grid : public ForestGrid {
      */
     real_t rtol() const { return rtol_; }
     real_t ctol() const { return ctol_; }
-    Field* tmp_field() const { return tmp_field_; }
+    void* tmp_ptr() const { return tmp_ptr_; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void Refine(const sid_t delta_level);
     void Coarsen(const sid_t delta_level);
     void Adapt(Field* field);
+    void Adapt(list<Patch>* patches);
     /**@}*/
 
    private:

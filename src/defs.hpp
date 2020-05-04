@@ -55,9 +55,10 @@
         memset(data, 0, size_);                        \
         data;                                          \
     })
-#define m_free(data)    \
-    ({                  \
-        _mm_free((void*)data); \
+#define m_free(data)          \
+    ({                        \
+        void* data_ = (data); \
+        _mm_free(data_);      \
     })
 #else //defined(__GNUC__)
 /**
@@ -83,13 +84,13 @@
 /**
  * @brief frees the pointer allocated using @ref m_calloc()
  */
-#define m_free(data) \
-    ({               \
-        free((void*)data);  \
+#define m_free(data)                     \
+    ({                                   \
+        __typeof__(data) data_ = (data); \
+        free((void*)data_);              \
     })
 #endif
 /** @} */
-
 
 /**
  * @name min max macros

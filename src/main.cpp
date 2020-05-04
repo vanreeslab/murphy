@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
         ParseArgument(argc, argv, &argument);
         // create a grid
         Prof* prof = new Prof("MURPHY");
-        Grid* grid = new Grid(0, argument.period,argument.length, MPI_COMM_WORLD, prof);
+        Grid* grid = new Grid(1, argument.period_,argument.length_, MPI_COMM_WORLD, prof);
         // create a field
         Field* vort = new Field("vorticity", 3);
         Field* diff = new Field("diffusion", 3);
@@ -40,16 +40,18 @@ int main(int argc, char** argv) {
             vort->bctype(M_BC_EXTRAP_3,id,1);
         }
         //  // create a dumper and dump
-        IOH5 dump = IOH5("data");
+        // IOH5 dump = IOH5("data");
 
         // get an refined and adapted grid
-        grid->Adapt(vort);
-        dump(grid, vort);
+        // grid->Adapt(vort);
+        grid->Adapt(&argument.patch_);
+
+        // dump(grid, vort);
 
         LaplacianCross<5> lapla = LaplacianCross<5>(grid);
         lapla(vort,diff);
 
-        dump(grid,diff);
+        // dump(grid,diff);
 
         // grid->GhostPull(vort);
 
