@@ -76,8 +76,6 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     m_assert(block->level() == quadrant->level, "the two levels must match");
 
-    m_log("kikou for refinement");
-
     // get the origin, the length and check if we are inside the patch
     const real_t* xyz = block->xyz();
     real_t len = m_quad_len(block->level());
@@ -96,9 +94,8 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
             refine = refine &&
                      (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
                      (patch->origin(id) < (block->xyz(id) + len));
-            m_log("direction %d: %f <? %f and %f < %f", block->xyz(id), (patch->origin(id) + patch->length(id)), patch->origin(id), block->xyz(id) + len);
         }
-        m_log("should be refined? %d: levels %d vs %d",refine,block->level(),patch->level());
+        // m_log("should be refined? %d: levels %d vs %d",refine,block->level(),patch->level());
         if(refine){
             return true;
         }
@@ -112,8 +109,6 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
  */
 int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     //-------------------------------------------------------------------------
-
-    m_log("kikou for coarsening");
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
     list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
@@ -141,7 +136,6 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
                          (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
                          (patch->origin(id) < (block->xyz(id) + len));
             }
-            m_log("should be refined? %d",coarsen);
             if (coarsen) {
                 return true;
             }

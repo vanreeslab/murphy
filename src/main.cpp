@@ -40,13 +40,13 @@ int main(int argc, char** argv) {
             vort->bctype(M_BC_EXTRAP_3,id,1);
         }
         //  // create a dumper and dump
-        // IOH5 dump = IOH5("data");
+        IOH5 dump = IOH5("data");
 
         // get an refined and adapted grid
         // grid->Adapt(vort);
         grid->Adapt(&argument.patch_);
 
-        // dump(grid, vort);
+        dump(grid, vort);
 
         LaplacianCross<5> lapla = LaplacianCross<5>(grid);
         lapla(vort,diff);

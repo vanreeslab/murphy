@@ -77,13 +77,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 'd': {
             int*    length = arguments->length_;
             error_t err    = atoi_list(3, arg, length);
-            m_log("domain length: %d %d %d\n", length[0], length[1], length[2]);
+            m_log("domain length: %d %d %d", length[0], length[1], length[2]);
             return err;
         }
         case 10001: {
             bool*   period = arguments->period_;
             error_t err    = atob_list(3, arg, period);
-            m_log("periodicity: %d %d %d\n", period[0], period[1], period[2]);
+            m_log("periodicity: %d %d %d", period[0], period[1], period[2]);
             return err;
         }
         case 10002: {
@@ -91,7 +91,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err   = atof_list(7, arg, data);
             lid_t   level = (lid_t)(data[6]);
             arguments->patch_.push_back(Patch(data, data + 3, level));
-            m_log("patch: level %d starting (%f %f %f) of length (%f %f %f)\n", level, data[0], data[1], data[2], data[3], data[4], data[5]);
+            m_log("patch: level %d starting (%f %f %f) of length (%f %f %f)", level, data[0], data[1], data[2], data[3], data[4], data[5]);
             return err;
         }
         default:
