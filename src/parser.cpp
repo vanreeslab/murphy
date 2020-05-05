@@ -18,6 +18,7 @@ static char doc[] = "MUPHY - a multiresolution multiphysics framework.";
 static struct argp_option options[] = {
     {"periodic", 10001, "p_x,p_y,p_z", 0, "gives the periodicity (boolean: p_x,p_y,p_z)"},
     {"domain", 'd', "d_x,d_y,d_z", 0, "gives the dimension of the domain (integers: d_x,d_y,d_z)"},
+    {"repeat", 'r', "num", 0, "repeat the test num times (integer: num)"},
     {"patch", 10002, "o_x,o_y,o_z,l_x,l_y,l_z,lvl", 0, "indicate a patch of origin (floats: o_x,o_y,o_z), of length (floats: l_x,l_y,l_z) at level (integer: lvl)"},
     {0}};
 
@@ -81,6 +82,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     parse_arg_t* arguments = reinterpret_cast<parse_arg_t*>(state->input);
 
     switch (key) {
+        case 'r': {
+            int*    repeat = &arguments->n_repeat_;
+            error_t err    = atoi_list(1, arg, repeat);
+            m_log("repeat: %d", repeat[0]);
+            return err;
+        }
         case 'd': {
             int*    length = arguments->length_;
             error_t err    = atoi_list(3, arg, length);

@@ -272,9 +272,10 @@ Prof::~Prof() {
 void Prof::CreateSingle_(string name) {
     map<string, TimerAgent*>::iterator it = time_map_.find(name);
     // if it does not already exist
-    if (it != time_map_.end()) {
-        time_map_[name]->Reset();
-    } else if (it == time_map_.end()) {
+    // if (it != time_map_.end()) {
+    //     // time_map_[name]->Reset();
+    // } else 
+    if (it == time_map_.end()) {
         time_map_[name] = new TimerAgent(name);
         time_map_[name]->Reset();
     }

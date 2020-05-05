@@ -1,8 +1,10 @@
 CXX = mpic++
 CC = mpicc
 
-#CXXFLAGS := -O3 -g --debug -DVERBOSE -Wno-format-security -fopenmp
-CXXFLAGS := -O3 -g -Wno-format-security -fopenmp
+#CXXFLAGS := -O3 -g --debug -Wno-format-security -fopenmp
+CXXFLAGS := -g -O3 -Wno-format-security -fopenmp
+# -DLOG_ALLRANKS
+# -DVERBOSE 
 LDFLAGS += -fopenmp -lstdc++ -lm
 
 FFTW_LIB := /usr/lib/x86_64-linux-gnu
