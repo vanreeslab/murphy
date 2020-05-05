@@ -43,15 +43,8 @@ void Stencil::operator()(Field* field_src, Field* field_trg) {
     m_begin;
     m_assert(field_src != nullptr, "the source field cannot be null");
     //-------------------------------------------------------------------------
-    if(grid_->profiler()!=nullptr){
-        grid_->profiler()->Start("stencil");
-        grid_->profiler()->Start("stencil_send");
-    }
     // start the send in the first dimension
     grid_->GhostPullSend(field_src, 0);
-    if(grid_->profiler()!=nullptr){
-        grid_->profiler()->Stop("stencil_send");
-    }
     // start the inner operation on the first dimension
     if (field_trg != nullptr) {
         if (grid_->profiler() != nullptr) {
@@ -68,26 +61,12 @@ void Stencil::operator()(Field* field_src, Field* field_trg) {
     for (int ida = 1; ida < field_src->lda(); ida++) {
         
         // receive the previous dimension
-        if (grid_->profiler() != nullptr) {
-            grid_->profiler()->Start("stencil_recv");
-        }
         grid_->GhostPullRecv(field_src, ida - 1);
         // start the send for the next dimension
-        if (grid_->profiler() != nullptr) {
-            grid_->profiler()->Stop("stencil_recv");
-            grid_->profiler()->Start("stencil_send");
-        }
         grid_->GhostPullSend(field_src, ida);
         // fill the ghost values of the just-received information
-        if (grid_->profiler() != nullptr) {
-            grid_->profiler()->Stop("stencil_send");
-            grid_->profiler()->Start("stencil_fill");
-        }
         grid_->GhostPullFill(field_src, ida - 1);
         // do the outer operation if needed with the newly computed ghosts and already do the inner operation for the next dimension
-        if (grid_->profiler() != nullptr) {
-            grid_->profiler()->Stop("stencil_fill");
-        }
         if (field_trg != nullptr) {
             if (grid_->profiler() != nullptr) {
                 grid_->profiler()->Start("stencil_outer");
@@ -109,18 +88,8 @@ void Stencil::operator()(Field* field_src, Field* field_trg) {
             }
         }
     }
-    if (grid_->profiler() != nullptr) {
-        grid_->profiler()->Start("stencil_recv");
-    }
     grid_->GhostPullRecv(field_src, field_src->lda() - 1);
-    if (grid_->profiler() != nullptr) {
-        grid_->profiler()->Stop("stencil_recv");
-        grid_->profiler()->Start("stencil_fill");
-    }
     grid_->GhostPullFill(field_src, field_src->lda() - 1);
-    if (grid_->profiler() != nullptr) {
-        grid_->profiler()->Stop("stencil_fill");
-    }
     // start the inner operation on the first dimension
     if (field_trg != nullptr) {
         if (grid_->profiler() != nullptr) {
@@ -137,9 +106,6 @@ void Stencil::operator()(Field* field_src, Field* field_trg) {
     field_src->ghost_status(true);
     if (field_trg != nullptr) {
         field_trg->ghost_status(false);
-    }
-    if(grid_->profiler()!=nullptr){
-        grid_->profiler()->Stop("stencil");
     }
     //-------------------------------------------------------------------------
     m_end;

@@ -25,39 +25,38 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
     //-------------------------------------------------------------------------
+    // profiler
+    prof_ = prof;
+    // init the profiler tracking
+    if (prof_ != nullptr) {
+        // ghost
+        prof->Create("ghost_init");
+        prof->Create("ghost_comm");
+        prof->Create("ghost_cmpt");
+        // p4est calls
+        prof->Create("p4est_refcoarse");
+        prof->Create("p4est_balance");
+        prof->Create("p4est_partition_init");
+        prof->Create("p4est_partition_comm");
+        prof->Create("cback_interpolate","p4est_refcoarse");
+        // stencils
+        prof->Create("stencil_inner");
+        prof->Create("stencil_outer");
+    }
     // create a default interpolator
     interp_ = new Wavelet<5>();
     detail_ = new Wavelet<3>();
-
-    // profiler
-    prof_ = prof;
 
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
 
     // create the ghosts structure
-    ghost_ = new Ghost(this,interp_);
-
-    // init the profiler tracking
-    if(prof_ != nullptr){
-        prof->Create("ghost");
-        prof->Create("mirror","ghost");
-        prof->Create("send","ghost");
-        prof->Create("recv","ghost");
-        prof->Create("fill","ghost");
-        prof->Create("adapt");
-        prof->Create("get_ghost","adapt");
-        prof->Create("coarsen","adapt");
-        prof->Create("refine","adapt");
-        prof->Create("balance","adapt");
-        prof->Create("partition","adapt");
-        prof->Create("re-setup","adapt");
-        prof->Create("stencil");
-        prof->Create("stencil_recv","stencil");
-        prof->Create("stencil_send","stencil");
-        prof->Create("stencil_fill","stencil");
-        prof->Create("stencil_inner","stencil");
-        prof->Create("stencil_outer","stencil");
+    if (prof_ != nullptr) {
+        prof_->Start("ghost_init");
+    }
+    ghost_ = new Ghost(this, interp_);
+    if (prof_ != nullptr) {
+        prof_->Stop("ghost_init");
     }
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
@@ -153,7 +152,7 @@ void Grid::AddField(Field* field) {
 /**
  * @brief unregister a field in the current grid and free the associated memory on each block
  * 
- * @param field 
+ * @param field
  */
 void Grid::DeleteField(Field* field) {
     m_begin;
@@ -185,17 +184,19 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_assert(IsAField(field), "the field does not belong to this grid");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        if(prof_!=nullptr){
-            prof_->Start("mirror");
+        if (prof_ != nullptr) {
+            prof_->Start("ghost");
+            prof_->Start("ghost_cmpt");
         }
         ghost_->PushToMirror(field, ida);
-        if(prof_!=nullptr){
-            prof_->Stop("mirror");
-            prof_->Start("send");
+        if (prof_ != nullptr) {
+            prof_->Stop("ghost_cmpt");
+            prof_->Start("ghost_comm");
         }
         ghost_->MirrorToGhostSend();
-        if(prof_!=nullptr){
-            prof_->Stop("send");
+        if (prof_ != nullptr) {
+            prof_->Stop("ghost_comm");
+            prof_->Stop("ghost");
         }
     }
     //-------------------------------------------------------------------------
@@ -219,12 +220,14 @@ void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
-        if(prof_!=nullptr){
-            prof_->Start("recv");
+        if (prof_ != nullptr) {
+            prof_->Start("ghost");
+            prof_->Start("ghost_comm");
         }
         ghost_->MirrorToGhostRecv();
-        if(prof_!=nullptr){
-            prof_->Stop("recv");
+        if (prof_ != nullptr) {
+            prof_->Stop("ghost_comm");
+            prof_->Stop("ghost");
         }
     }
     //-------------------------------------------------------------------------
@@ -250,11 +253,13 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
         if(prof_!=nullptr){
-            prof_->Start("fill");
+            prof_->Start("ghost");
+            prof_->Start("ghost_cmpt");
         }
         ghost_->PullFromGhost(field, ida);
         if(prof_!=nullptr){
-            prof_->Stop("fill");
+            prof_->Stop("ghost_cmpt");
+            prof_->Stop("ghost");
         }
     }
     //-------------------------------------------------------------------------
@@ -314,16 +319,38 @@ void Grid::Refine(const sid_t delta_level) {
         // set the grid in the forest for the callback
         forest_->user_pointer = reinterpret_cast<void*>(this);
         // do the p4est interpolation by callback
+        if (prof_ != nullptr) {
+            prof_->Start("p4est_refcoarse");
+        }
         p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Yes, nullptr, cback_Interpolate);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_refcoarse");
+            prof_->Start("p4est_balance");
+        }
         // balance the partition
         p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_balance");
+            prof_->Start("p4est_partition_init");
+        }
         // partition the grid
         Partitioner partition(&fields_, this);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_partition_init");
+            prof_->Start("p4est_partition_comm");
+        }
         partition.Start(&fields_);
         partition.End(&fields_);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_partition_comm");
+            prof_->Start("ghost_init");
+        }
         // create a new ghost and mesh
         SetupP4estGhostMesh();
-        ghost_ = new Ghost(this,interp_);
+        ghost_ = new Ghost(this, interp_);
+        if (prof_ != nullptr) {
+            prof_->Stop("ghost_init");
+        }
         // set the ghosting fields as non-valid
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             fid->second->ghost_status(false);
@@ -357,16 +384,38 @@ void Grid::Coarsen(const sid_t delta_level) {
         // set the grid in the forest for the callback
         forest_->user_pointer = reinterpret_cast<void*>(this);
         // do the p4est interpolation by callback
+        if (prof_ != nullptr) {
+            prof_->Start("p4est_refcoarse");
+        }
         p8est_coarsen_ext(forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_refcoarse");
+            prof_->Start("p4est_balance");
+        }
         // balance the partition
         p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_balance");
+            prof_->Start("p4est_partition_init");
+        }
         // partition the grid
         Partitioner partition(&fields_, this);
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_partition_init");
+            prof_->Start("p4est_partition_comm");
+        }
         partition.Start(&fields_);
         partition.End(&fields_);
         // create a new ghost and mesh
+        if (prof_ != nullptr) {
+            prof_->Stop("p4est_partition_comm");
+            prof_->Start("ghost_init");
+        }
         SetupP4estGhostMesh();
-        ghost_ = new Ghost(this,interp_);
+        ghost_ = new Ghost(this, interp_);
+        if (prof_ != nullptr) {
+            prof_->Stop("ghost_init");
+        }
         // set the ghosting fields as non-valid
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             fid->second->ghost_status(false);
@@ -403,57 +452,49 @@ void Grid::Adapt(Field* field) {
     //-------------------------------------------------------------------------
     // store the criterion field
     tmp_ptr_ = reinterpret_cast<void*>(field);
-    if (prof_ != nullptr) {
-        prof_->Start("adapt");
-        prof_->Start("get_ghost");
-    }
     // compute the ghost needed by the interpolation of everyblock
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         GhostPull(fid->second);
     }
-    if (prof_ != nullptr) {
-        prof_->Stop("get_ghost");
-    }
     // delete the soon-to be outdated ghost and mesh
     delete (ghost_);
     ResetP4estGhostMesh();
-    // set the grid in the forest for the callback
-    forest_->user_pointer = reinterpret_cast<void*>(this);
     // coarsen the needed block
     if (prof_ != nullptr) {
-        prof_->Start("coarsen");
+        prof_->Start("p4est_refcoarse");
     }
+    // set the grid in the forest for the callback
+    forest_->user_pointer = reinterpret_cast<void*>(this);
     p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
-    if (prof_ != nullptr) {
-        prof_->Stop("coarsen");
-        prof_->Start("refine");
-    }
     // refine the needed blocks
     p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
     // balance the partition
     if (prof_ != nullptr) {
-        prof_->Stop("refine");
-        prof_->Start("balance");
+        prof_->Stop("p4est_refcoarse");
+        prof_->Start("p4est_balance");
     }
     p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_Interpolate);
     if (prof_ != nullptr) {
-        prof_->Stop("balance");
-        prof_->Start("partition");
+        prof_->Stop("p4est_balance");
+        prof_->Start("p4est_partition_init");
     }
     // partition the grid
     Partitioner partition(&fields_, this);
+    if (prof_ != nullptr) {
+        prof_->Stop("p4est_partition_init");
+        prof_->Start("p4est_partition_comm");
+    }
     partition.Start(&fields_);
     partition.End(&fields_);
     if (prof_ != nullptr) {
-        prof_->Stop("partition");
-        prof_->Start("re-setup");
+        prof_->Stop("p4est_partition_comm");
+        prof_->Start("ghost_init");
     }
     // create a new ghost and mesh
     SetupP4estGhostMesh();
-    ghost_ = new Ghost(this,interp_);
-    if(prof_ != nullptr){
-        prof_->Stop("re-setup");
-        prof_->Stop("adapt");
+    ghost_ = new Ghost(this, interp_);
+    if (prof_ != nullptr) {
+        prof_->Stop("ghost_init");
     }
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
@@ -467,7 +508,9 @@ void Grid::Adapt(Field* field) {
 }
 
 /**
- * @brief adapt = (refine or coarsen once) each block recursivelly to reach the criterion imposed in the patch list
+ * @brief adapt = (refine or coarsen once) each block recursivelly to reach the criterion imposed in the patch list.
+ * 
+ * @warning every existing field will be reset to 0 during its execution
  * 
  * A block is refined/coarsened if one part of it belongs to the patch. Simply touching the patch does not count as belonging (i.e.
  * the comparison is done using strict operators `<` and `>` ), see @ref cback_Patch().
@@ -478,66 +521,52 @@ void Grid::Adapt(list<Patch>* patches) {
     m_begin;
     m_log("--> grid adaptation started... (using patches)");
     //-------------------------------------------------------------------------
-    if(patches->size() == 0){
+    if (patches->size() == 0) {
         return;
     }
     // store the criterion patch list
     tmp_ptr_ = reinterpret_cast<void*>(patches);
-    // store the criterion field
-    if(prof_ != nullptr){
-        prof_->Start("adapt");
-        prof_->Start("get_ghost");
-    }
-    // compute the ghost needed by the interpolation of everyblock
-    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        GhostPull(fid->second);
-    }
-    if(prof_ != nullptr){
-        prof_->Stop("get_ghost");
-    }
+    // no ghost is computed as no interpolation will be done
     // delete the soon-to be outdated ghost and mesh
     delete (ghost_);
     ResetP4estGhostMesh();
     // set the grid in the forest for the callback
     forest_->user_pointer = reinterpret_cast<void*>(this);
-    // coarsen the needed block
-    if(prof_ != nullptr){
-        prof_->Start("coarsen");
-    }
     // we coarsen recursivelly
     m_verb("starting coarsening");
-    p8est_coarsen_ext(forest_, 1, 0, cback_Patch, nullptr, cback_Interpolate);
-    if(prof_ != nullptr){
-        prof_->Stop("coarsen");
-        prof_->Start("refine");
+    if (prof_ != nullptr) {
+        prof_->Start("p4est_refcoarse");
     }
+    p8est_coarsen_ext(forest_, 1, 0, cback_Patch, nullptr, cback_AllocateOnly);
     // refine the needed blocks recursivelly
-    m_verb("starting refinement");
-    p8est_refine_ext(forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_Interpolate);
+    p8est_refine_ext(forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
     // balance the partition
-    if(prof_ != nullptr){
-        prof_->Stop("refine");
-        prof_->Start("balance");
+    if (prof_ != nullptr) {
+        prof_->Stop("p4est_refcoarse");
+        prof_->Start("p4est_balance");
     }
-    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_Interpolate);
-    if(prof_ != nullptr){
-        prof_->Stop("balance");
-        prof_->Start("partition");
+    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_AllocateOnly);
+    if (prof_ != nullptr) {
+        prof_->Stop("p4est_balance");
+        prof_->Start("p4est_partition_init");
     }
     // partition the grid
     Partitioner partition(&fields_, this);
+    if (prof_ != nullptr) {
+        prof_->Stop("p4est_partition_init");
+        prof_->Start("p4est_partition_comm");
+    }
     partition.Start(&fields_);
     partition.End(&fields_);
-    if(prof_ != nullptr){
-        prof_->Stop("partition");
-        prof_->Start("re-setup");
+    if (prof_ != nullptr) {
+        prof_->Stop("p4est_partition_comm");
+        prof_->Start("ghost_init");
     }
     // create a new ghost and mesh
     SetupP4estGhostMesh();
-    ghost_ = new Ghost(this,interp_);
-    if(prof_ != nullptr){
-        prof_->Stop("re-setup");
-        prof_->Stop("adapt");
+    ghost_ = new Ghost(this, interp_);
+    if (prof_ != nullptr) {
+        prof_->Stop("ghost_init");
     }
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {

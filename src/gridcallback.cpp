@@ -244,6 +244,8 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     Interpolator*         interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
+    grid->profiler()->Start("cback_interpolate");
+
     // get the working field
     // Field* field = grid->working_callback_field();
 
@@ -337,6 +339,63 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     }
 
     delete (mem_block);
+
+    // deallocate the leaving blocks
+    for (int id = 0; id < num_outgoing; id++) {
+        qdrt_t*    quad  = outgoing[id];
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // delete the block, the fields are destroyed in the destructor
+        delete (block);
+    }
+    
+    grid->profiler()->Stop("cback_interpolate");
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief allocate the entering children or allocate the entering parent, no interpolation is performed
+ * 
+ * @warning the existing fields are reset to 0.0
+ * 
+ * @param forest 
+ * @param which_tree 
+ * @param num_outgoing 
+ * @param outgoing 
+ * @param num_incoming 
+ * @param incoming 
+ */
+void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    m_begin;
+    m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
+    m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
+    m_assert(forest->user_pointer != nullptr, "we need the grid in this function");
+    //-------------------------------------------------------------------------
+    // retrieve the grid from the forest user-data pointer
+    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+
+    // get needed grid info
+    auto                  f_start = grid->FieldBegin();
+    auto                  f_end   = grid->FieldEnd();
+    p8est_connectivity_t* connect = forest->connectivity;
+
+    // allocate the incomming blocks
+    for (int id = 0; id < num_incoming; id++) {
+        qdrt_t* quad = incoming[id];
+        // get block informations and create it
+        real_t xyz[3];
+        p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        real_t     len   = m_quad_len(quad->level);
+        GridBlock* block = new GridBlock(len, xyz, quad->level);
+        // store the block
+        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        // for every field, we allocate the memory
+        for (auto fid = f_start; fid != f_end; fid++) {
+            // allocate the new field
+            block->AddField(fid->second);
+        }
+    }
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {

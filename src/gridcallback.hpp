@@ -21,13 +21,16 @@ void cback_DestroyBlock(p8est_iter_volume_info_t *info, void *user_data);
  * 
  * @{
  */
+// refinement or coarsening criterion
 int  cback_Yes(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
 int  cback_Yes(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
 int  cback_Patch(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
 int  cback_Patch(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
 int  cback_Interpolator(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
 int  cback_Interpolator(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
-void cback_Interpolate(p8est_t *grid, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+// interpolation
+void cback_Interpolate(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]);
 /**@}*/
 
 #endif  // SRC_GRIDCALLBACK_HPP_
