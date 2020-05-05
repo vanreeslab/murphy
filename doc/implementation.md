@@ -55,3 +55,19 @@ All operators overload the function `operator()` which triggers the executation 
 Given the operator type, the arguments of the `Apply` function changes. In any case, the `Apply` function, as a member function, has access to the content of the current object.
 
 :warning: The `Apply` function is automatically processed in a multi-threaded section (using OpenMP). This means that the threads will execute the functions on a different blocks __at the same time__, each of them with a copy of the adress of the current object (`this` pointer). Hence, any operation performed in this function has to be __thread-safe__! (use `#pragma omp critical`, `#pragma omp single`, `#pragma omp atomic`,... if needed).
+
+
+
+### 7. Stencils
+The computation of a stencil is done using the `Stencil` class. This class implements the overlap between the stencil computation and the required ghost exchange.
+To improve the computation/communication overlap, the ghost exchange is done dimension by dimension. This means that we follow the following approach, for each dimension:
+
+1. we start the ghost exchange in the dimension `ida_` of the source field
+2. we compute the inner part of the stencil that depends on the dimension `ida_` of the source field
+3. we receive the ghost for the dimension `ida_` of the source field
+4. we compute the outer part of the stencil, that depends on the ghost just recevied.
+
+Additionnaly to this routine, we also intertwine the other dimension's send/receive MPI calls.
+
+Hence, the innner and outer application of the stencil **must** we written with respect to the current available dimension of the source field.
+It is possible to write any stencil like that, even the cross-products, where the other dimensions can be accessed with `(ida_+1)%3` and `(ida_+2)%3`.
