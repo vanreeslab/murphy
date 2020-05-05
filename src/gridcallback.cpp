@@ -244,7 +244,9 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     Interpolator*         interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    grid->profiler()->Start("cback_interpolate");
+    if (grid->HasProfiler()) {
+        grid->profiler()->Start("cback_interpolate");
+    }
 
     // get the working field
     // Field* field = grid->working_callback_field();
@@ -347,8 +349,9 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    
-    grid->profiler()->Stop("cback_interpolate");
+    if (grid->HasProfiler()) {
+        grid->profiler()->Stop("cback_interpolate");
+    }
     //-------------------------------------------------------------------------
     m_end;
 }

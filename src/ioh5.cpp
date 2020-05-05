@@ -233,7 +233,7 @@ void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
 void IOH5::xmf_write_header_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
-    sc_MPI_Comm comm = grid->mpicomm();
+    MPI_Comm comm = grid->mpicomm();
     string      fname;
     if (dump_ghost_) {
         fname = folder_ + "/g_" + filename_ + ".xmf";

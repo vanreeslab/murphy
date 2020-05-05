@@ -49,7 +49,8 @@ class Grid : public ForestGrid {
     Interpolator* interp() { return interp_; }
     Interpolator* detail() { return detail_; }
 
-    Prof* profiler(){return prof_;}
+    Prof* profiler() { return prof_; }
+    bool  HasProfiler() { return prof_ != nullptr; }
 
     /**
      * @name Fields management

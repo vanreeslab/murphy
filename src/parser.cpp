@@ -3,8 +3,15 @@
 #include <argp.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <string>
 
 #include "murphy.hpp"
+
+using std::string;
 
 static char doc[] = "MUPHY - a multiresolution multiphysics framework.";
 
@@ -104,4 +111,19 @@ static struct argp argp = {options, parse_opt, 0, doc};
 
 void ParseArgument(int argc, char** argv, parse_arg_t* arguments) {
     argp_parse(&argp, argc, argv, 0, 0, arguments);
+
+    // string fname = "arguments.args";
+    // int    rank;
+    // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // // rank 0 creates the folder if it doesn't exist
+    // if (rank == 0) {
+    //     struct stat st = {0};
+    //     if (stat(fname.c_str(), &st) == -1) {
+    //         mkdir(fname.c_str(), 0770);
+    //     }
+    // }
+    // FILE* file =fopen(fname.c_str(),"w+");
+    // if(file!= nullptr){
+    //     fprintf()
+    // }
 }
