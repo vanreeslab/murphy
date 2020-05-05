@@ -71,3 +71,6 @@ Additionnaly to this routine, we also intertwine the other dimension's send/rece
 
 Hence, the innner and outer application of the stencil **must** we written with respect to the current available dimension of the source field.
 It is possible to write any stencil like that, even the cross-products, where the other dimensions can be accessed with `(ida_+1)%3` and `(ida_+2)%3`.
+
+:warning: As the `Stencil` class is an operator, the inner and outer functions are automatically processed in a multi-threaded section (using OpenMP).
+
