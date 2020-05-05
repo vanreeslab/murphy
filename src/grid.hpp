@@ -49,6 +49,8 @@ class Grid : public ForestGrid {
     Interpolator* interp() { return interp_; }
     Interpolator* detail() { return detail_; }
 
+    Prof* profiler(){return prof_;}
+
     /**
      * @name Fields management
      * 

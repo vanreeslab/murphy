@@ -1,0 +1,21 @@
+CXX = mpiicpc
+CC = mpiicc
+
+#CXXFLAGS := -O3 -g --debug -Wno-format-security -fopenmp
+CXXFLAGS := -O3 -g -qopenmp 
+# -DLOG_ALLRANKS
+# -DVERBOSE 
+LDFLAGS += -qopenmp -lmkl_rt
+
+
+FFTW_DIR := /soft/fftw-3.3.8-intel_2019.5
+FFTW_LIB := ${FFTW_DIR}/lib
+FFTW_INC := ${FFTW_DIR}/include
+
+HDF5_DIR := /soft/hdf5-1.10.5-intel_2019.5
+HDF5_LIB := ${HDF5_DIR}/lib
+HDF5_INC := ${HDF5_DIR}/include
+
+P4EST_DIR := /soft/p4est-intel2020.1
+P4EST_INC := ${P4EST_DIR}/include
+P4EST_LIB := ${P4EST_DIR}/lib

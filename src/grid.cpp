@@ -52,6 +52,12 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
         prof->Create("balance","adapt");
         prof->Create("partition","adapt");
         prof->Create("re-setup","adapt");
+        prof->Create("stencil");
+        prof->Create("stencil_recv","stencil");
+        prof->Create("stencil_send","stencil");
+        prof->Create("stencil_fill","stencil");
+        prof->Create("stencil_inner","stencil");
+        prof->Create("stencil_outer","stencil");
     }
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());

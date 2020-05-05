@@ -55,12 +55,12 @@
         memset(data, 0, size_);                        \
         data;                                          \
     })
-#define m_free(data)          \
-    ({                        \
-        void* data_ = (data); \
-        _mm_free(data_);      \
+#define m_free(data)                     \
+    ({                                   \
+        __typeof__(data) data_ = (data); \
+        _mm_free((void*)data_);          \
     })
-#else //defined(__GNUC__)
+#else  //defined(__GNUC__)
 /**
  * @brief shortcuts the memory alignement assumption and check if it can be done
  */

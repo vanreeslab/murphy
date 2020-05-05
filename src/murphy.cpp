@@ -5,7 +5,6 @@
 #include "p8est.h"
 
 void murphy_init(int argc, char** argv) {
-    m_begin;
     //-------------------------------------------------------------------------
     int provided;
     // set MPI_THREAD_FUNNELED or MPI_THREAD_SERIALIZED
@@ -21,7 +20,6 @@ void murphy_init(int argc, char** argv) {
     // so dome checks for the aligment, the constants etc
     m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
     //-------------------------------------------------------------------------
-    m_end;
 }
 
 void murphy_finalize() {
