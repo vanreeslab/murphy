@@ -70,7 +70,6 @@ TEST_F(valid_Stencil, laplacian_o2) {
     ASSERT_NEAR(normi, 0.0, DOUBLE_TOL);
 }
 
-
 TEST_F(valid_Stencil, laplacian_o4) {
     vort_->bctype(M_BC_EXTRAP_5);
 
@@ -96,4 +95,176 @@ TEST_F(valid_Stencil, laplacian_o4) {
     // ASSERT_LE(norm2, normi);
     ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL);
     ASSERT_NEAR(normi, 0.0, DOUBLE_TOL);
+}
+
+#define N_CONV 2
+
+TEST_F(valid_Stencil, convergence_laplacian_o2_boundary3) {
+    vort_->bctype(M_BC_EXTRAP_3);
+
+    real_t erri[N_CONV] = {0.0};
+    real_t origin[3]    = {0.0, 0.0, 0.0};
+    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+
+    real_t normi[N_CONV];
+
+    for (int il = lvl_; il < lvl_ + N_CONV; il++) {
+        list<Patch> patches;
+        patches.push_back(Patch(origin, length, il));
+        grid_->Adapt(&patches);
+
+        // x^3 + y^4 + z^3
+        real_t     dir[3]  = {1.0, 1.0, 1.0};
+        lid_t      deg[3]  = {3, 4, 3};
+        SetPolynom polynom = SetPolynom(deg, dir);
+        polynom(grid_, vort_);
+
+        // 2 + 2 + 2
+        real_t     dir2[3]  = {6.0, 12.0, 6.0};
+        lid_t      deg2[3]  = {1, 2, 1};
+        SetPolynom polynom2 = SetPolynom(deg2, dir2);
+        polynom2(grid_, sol_);
+
+        LaplacianCross<3> lapla(grid_);
+        lapla(vort_, diff_);
+
+        real_t          norm2;
+        ErrorCalculator myerr;
+        myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
+        if (grid_->mpirank() == 0) {
+            printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
+        }
+    }
+    if (grid_->mpirank() == 0) {
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 1.95);
+    }
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 1.95);
+}
+
+
+TEST_F(valid_Stencil, convergence_laplacian_o2_boundary4) {
+    vort_->bctype(M_BC_EXTRAP_4);
+
+    real_t erri[N_CONV] = {0.0};
+    real_t origin[3]    = {0.0, 0.0, 0.0};
+    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+
+    real_t normi[N_CONV];
+
+    for (int il = lvl_; il < lvl_ + N_CONV; il++) {
+        list<Patch> patches;
+        patches.push_back(Patch(origin, length, il));
+        grid_->Adapt(&patches);
+
+        // x^3 + y^4 + z^3
+        real_t     dir[3]  = {1.0, 1.0, 1.0};
+        lid_t      deg[3]  = {3, 4, 3};
+        SetPolynom polynom = SetPolynom(deg, dir);
+        polynom(grid_, vort_);
+
+        // 2 + 2 + 2
+        real_t     dir2[3]  = {6.0, 12.0, 6.0};
+        lid_t      deg2[3]  = {1, 2, 1};
+        SetPolynom polynom2 = SetPolynom(deg2, dir2);
+        polynom2(grid_, sol_);
+
+        LaplacianCross<3> lapla(grid_);
+        lapla(vort_, diff_);
+
+        real_t          norm2;
+        ErrorCalculator myerr;
+        myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
+        if (grid_->mpirank() == 0) {
+            printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
+        }
+    }
+    if (grid_->mpirank() == 0) {
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.95);
+    }
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.95);
+}
+
+
+TEST_F(valid_Stencil, convergence_laplacian_o4_boundary4) {
+    vort_->bctype(M_BC_EXTRAP_4);
+
+    real_t erri[N_CONV] = {0.0};
+    real_t origin[3]    = {0.0, 0.0, 0.0};
+    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+
+    real_t normi[N_CONV];
+
+    for (int il = lvl_; il < lvl_ + N_CONV; il++) {
+        list<Patch> patches;
+        patches.push_back(Patch(origin, length, il));
+        grid_->Adapt(&patches);
+
+        // x^6 + y^5 + z^7
+        real_t     dir[3]  = {1.0, 1.0, 1.0};
+        lid_t      deg[3]  = {6, 5, 7};
+        SetPolynom polynom = SetPolynom(deg, dir);
+        polynom(grid_, vort_);
+
+        // solution
+        real_t     dir2[3]  = {30.0, 20.0, 42.0};
+        lid_t      deg2[3]  = {4, 3, 5};
+        SetPolynom polynom2 = SetPolynom(deg2, dir2);
+        polynom2(grid_, sol_);
+
+        LaplacianCross<5> lapla(grid_);
+        lapla(vort_, diff_);
+
+        real_t          norm2;
+        ErrorCalculator myerr;
+        myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
+        if (grid_->mpirank() == 0) {
+            printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
+        }
+    }
+    if (grid_->mpirank() == 0) {
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.89);
+    }
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.89);
+}
+
+TEST_F(valid_Stencil, convergence_laplacian_o4_boundary5) {
+    vort_->bctype(M_BC_EXTRAP_5);
+
+    real_t erri[N_CONV] = {0.0};
+    real_t origin[3]    = {0.0, 0.0, 0.0};
+    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+
+    real_t normi[N_CONV];
+
+    for (int il = lvl_; il < lvl_ + N_CONV; il++) {
+        list<Patch> patches;
+        patches.push_back(Patch(origin, length, il));
+        grid_->Adapt(&patches);
+
+        // x^6 + y^5 + z^7
+        real_t     dir[3]  = {1.0, 1.0, 1.0};
+        lid_t      deg[3]  = {6, 5, 7};
+        SetPolynom polynom = SetPolynom(deg, dir);
+        polynom(grid_, vort_);
+
+        // solution
+        real_t     dir2[3]  = {30.0, 20.0, 42.0};
+        lid_t      deg2[3]  = {4, 3, 5};
+        SetPolynom polynom2 = SetPolynom(deg2, dir2);
+        polynom2(grid_, sol_);
+
+        LaplacianCross<5> lapla(grid_);
+        lapla(vort_, diff_);
+
+        real_t          norm2;
+        ErrorCalculator myerr;
+        myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
+        if (grid_->mpirank() == 0) {
+            printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
+        }
+    }
+    if (grid_->mpirank() == 0) {
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 7.8);
+    }
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 7.8);
 }

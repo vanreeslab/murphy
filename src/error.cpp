@@ -52,10 +52,11 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
     ConstOperatorFF::operator()(grid, field, sol);
     // do the gathering into
     if(norm_2 != nullptr){
-        (*norm_2) = std::sqrt(error_2_);
+        error_2_ = std::sqrt(error_2_);
+        MPI_Allreduce(&error_2_,norm_2,1,M_MPI_REAL,MPI_SUM,MPI_COMM_WORLD);
     }
     if(norm_i != nullptr){
-        (*norm_i) = error_i_;
+        MPI_Allreduce(&error_i_,norm_i,1,M_MPI_REAL,MPI_MAX,MPI_COMM_WORLD);
     }
     //-------------------------------------------------------------------------
     m_end;

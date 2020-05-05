@@ -246,6 +246,7 @@
  * @brief m_log will be displayed as a log, either by every rank or only by the master (given LOG_ALLRANKS)
  * 
  */
+#ifndef LOG_MUTE
 #ifndef LOG_ALLRANKS
 #define m_log(format, ...)                                 \
     ({                                                     \
@@ -266,6 +267,10 @@
         sprintf(def_nhyipns, format, ##__VA_ARGS__);            \
         fprintf(stdout, "[%d murphy] %s\n", rank, def_nhyipns); \
     })
+#endif
+#else
+#define m_log(format, ...) \
+    { ((void)0); }
 #endif
 
 /**

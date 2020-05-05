@@ -11,7 +11,7 @@ You can also use Google Test library to run the tests (optional).
 
 ---------------------
 ### Compilation
-#### Get the dependencies and the `arch` file
+#### Get the dependencies and the `ARCH` file
 To compile Murphy you have three different options. Each of them will give you a different `ARCH` file that is used to compile the library.
 1. **Local libraries**: install the depencies yourself (you should use a `make_arch/make.YourArchitecture` to indicate the library paths, see `make.docker_gcc` as an example). Then, use the your created file for the `ARCH` file: `ARCH_FILE=make_arch/make.YourArchitecture`.
 2. **Docker**: use the `Dockerfile` in the folder `docker/` or you can also download the image from DockerHub (run `docker pull immc/murphy-ci:v1.1`). Then, the default `ARCH` file (`make_arch/make.docker_gcc`) is valid, no need to change.
@@ -77,6 +77,7 @@ You can modify the login level by adding the following compilations flags in you
 - ```-DLOG_ALLRANKS``` will enable log on every processor. By default, only the master logs
 - ```-DVERBOSE``` enable extended logs
 - ```-DNDEBUG``` disable the assertion checks and the debug comments
+- ```-DLOG_MUTE``` disable every logs
 
 ---------------------
 ### Testing

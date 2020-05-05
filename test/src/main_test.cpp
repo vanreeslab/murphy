@@ -4,16 +4,7 @@
 #include "murphy.hpp"
 
 int main(int argc, char** argv) {
-    // we should first init Google Test and then MPI.
-    // for (int ia = 0; ia < argc; ia++) {
-    //     printf("command = %s\n", argv[ia]);
-    // }
-    // but I need the rank to init google test, so I do the opposite
-    // init MPI and pe4st
-    MPI_Init(&argc, &argv);
-    MPI_Comm comm = MPI_COMM_WORLD;
-    sc_init(comm, 1, 1, NULL, SC_LP_ESSENTIAL);
-    p4est_init(NULL, SC_LP_PRODUCTION);
+    murphy_init(argc,argv);
     //-------------------------------------------------------------------------
     int err;
     {
@@ -37,8 +28,6 @@ int main(int argc, char** argv) {
         err = RUN_ALL_TESTS();
     }
     //-------------------------------------------------------------------------
-    sc_finalize();
-    MPI_Finalize();
-
+    murphy_finalize();
     return err;
 }

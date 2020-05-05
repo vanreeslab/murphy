@@ -499,14 +499,14 @@ void Grid::Adapt(list<Patch>* patches) {
         prof_->Start("coarsen");
     }
     // we coarsen recursivelly
-    m_log("starting coarsening");
+    m_verb("starting coarsening");
     p8est_coarsen_ext(forest_, 1, 0, cback_Patch, nullptr, cback_Interpolate);
     if(prof_ != nullptr){
         prof_->Stop("coarsen");
         prof_->Start("refine");
     }
     // refine the needed blocks recursivelly
-    m_log("starting refinement");
+    m_verb("starting refinement");
     p8est_refine_ext(forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_Interpolate);
     // balance the partition
     if(prof_ != nullptr){
