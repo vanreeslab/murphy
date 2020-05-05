@@ -8,6 +8,11 @@
 /**
  * @brief defines a stencil application, a particular type of OperatorF2F that needs the ghost values to execute
  * 
+ * @warning Because of the overlap with the stencil computation and the ghost exchange for the source field, the application of the stencil
+ * is done one dimension of the source field at a time!
+ * As an example, if a cross product is needed, we use the current source field dimension, given by @ref ida_, to fill the two other dimensions
+ * (given by `(ida_ + 1)%3` and `(ida_ + 2)%3`
+ * 
  */
 class Stencil : public OperatorF2F {
    protected:
