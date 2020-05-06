@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     for(int i=0; i<argument.n_repeat_; i++)
     {
         // create a grid
-        Grid* grid = new Grid(0, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
+        Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
         // get an refined and adapted grid given the patch
         grid->Adapt(&argument.patch_);
         // create a field
