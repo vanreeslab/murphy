@@ -171,11 +171,17 @@ void Ghost::PushToMirror(Field* field, sid_t ida) {
  * @warning we do not start the reception requests because we are not sure the buffers are available
  * 
  */
-void Ghost::MirrorToGhostSend() {
+void Ghost::MirrorToGhostSend(Prof* prof) {
     m_begin;
     //-------------------------------------------------------------------------
     if (n_send_request_ > 0) {
+        if(prof != nullptr){
+            prof->Start("ghost_comm_start");
+        }
         MPI_Startall(n_send_request_, mirror_send_);
+        if(prof != nullptr){
+            prof->Stop("ghost_comm_start");
+        }
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -185,17 +191,35 @@ void Ghost::MirrorToGhostSend() {
  * @brief starts the reception requests, end the sending request and end the reception requests
  * 
  */
-void Ghost::MirrorToGhostRecv() {
+void Ghost::MirrorToGhostRecv(Prof* prof) {
     m_begin;
     //-------------------------------------------------------------------------
     if (n_recv_request_ > 0) {
+        if(prof != nullptr){
+            prof->Start("ghost_comm_start");
+        }
         MPI_Startall(n_recv_request_, ghost_recv_);
+        if(prof != nullptr){
+            prof->Stop("ghost_comm_start");
+        }
     }
     if (n_send_request_ > 0) {
+        if(prof != nullptr){
+            prof->Start("ghost_comm_wait");
+        }
         MPI_Waitall(n_send_request_, mirror_send_, MPI_STATUSES_IGNORE);
+        if(prof != nullptr){
+            prof->Stop("ghost_comm_wait");
+        }
     }
     if (n_recv_request_ > 0) {
+        if(prof != nullptr){
+            prof->Start("ghost_comm_wait");
+        }
         MPI_Waitall(n_recv_request_, ghost_recv_, MPI_STATUSES_IGNORE);
+        if(prof != nullptr){
+            prof->Stop("ghost_comm_wait");
+        }
     }
     //-------------------------------------------------------------------------
     m_end;

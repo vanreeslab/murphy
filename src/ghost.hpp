@@ -10,6 +10,7 @@
 #include "murphy.hpp"
 #include "operator.hpp"
 #include "physblock.hpp"
+#include "prof.hpp"
 
 using std::list;
 
@@ -68,8 +69,8 @@ class Ghost : public OperatorF, public OperatorS {
     ~Ghost();
 
     void PushToMirror(Field* field, sid_t ida);
-    void MirrorToGhostSend();
-    void MirrorToGhostRecv();
+    void MirrorToGhostSend(Prof* prof);
+    void MirrorToGhostRecv(Prof* prof);
     void PullFromGhost(Field* field, sid_t ida);
 
     /**

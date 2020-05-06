@@ -33,6 +33,8 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
         prof->Create("ghost_init");
         prof->Create("ghost_comm");
         prof->Create("ghost_cmpt");
+        prof->Create("ghost_comm_start", "ghost_comm");
+        prof->Create("ghost_comm_wait", "ghost_comm");
         // p4est calls
         prof->Create("p4est_refcoarse");
         prof->Create("p4est_balance");
@@ -185,7 +187,6 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         if (prof_ != nullptr) {
-            prof_->Start("ghost");
             prof_->Start("ghost_cmpt");
         }
         ghost_->PushToMirror(field, ida);
@@ -193,10 +194,9 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
             prof_->Stop("ghost_cmpt");
             prof_->Start("ghost_comm");
         }
-        ghost_->MirrorToGhostSend();
+        ghost_->MirrorToGhostSend(prof_);
         if (prof_ != nullptr) {
             prof_->Stop("ghost_comm");
-            prof_->Stop("ghost");
         }
     }
     //-------------------------------------------------------------------------
@@ -221,13 +221,11 @@ void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
         if (prof_ != nullptr) {
-            prof_->Start("ghost");
             prof_->Start("ghost_comm");
         }
-        ghost_->MirrorToGhostRecv();
+        ghost_->MirrorToGhostRecv(prof_);
         if (prof_ != nullptr) {
             prof_->Stop("ghost_comm");
-            prof_->Stop("ghost");
         }
     }
     //-------------------------------------------------------------------------
@@ -253,13 +251,11 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
         if(prof_!=nullptr){
-            prof_->Start("ghost");
             prof_->Start("ghost_cmpt");
         }
         ghost_->PullFromGhost(field, ida);
         if(prof_!=nullptr){
             prof_->Stop("ghost_cmpt");
-            prof_->Stop("ghost");
         }
     }
     //-------------------------------------------------------------------------
