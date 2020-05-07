@@ -44,7 +44,7 @@ real_p GridBlock::data(Field* fid) {
     m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
     return data;
 #else
-    return data_map_[fid->name()] + m_zeroidx(0, this);
+    return data_map_.at(fid->name()) + m_zeroidx(0, this);
 #endif
 }
 /**
@@ -67,7 +67,7 @@ real_p GridBlock::data(const Field* fid, const sid_t ida) {
     m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
     return data;
 #else
-    return data_map_[fid->name()] + m_zeroidx(ida, this);
+    return data_map_.at(fid->name()) + m_zeroidx(ida, this);
 #endif
 }
 
@@ -88,7 +88,7 @@ real_p GridBlock::data(const Field* fid) const {
     m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
     return data;
 #else
-    return data_map_[fid->name()] + m_zeroidx(0, this);
+    return data_map_.at(fid->name()) + m_zeroidx(0, this);
 #endif
 }
 

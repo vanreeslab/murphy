@@ -314,7 +314,7 @@ void Prof::Create(string child, string parent) {
  */
 void Prof::Start(string name) {
 #ifdef NDEBUG
-    time_map_[name]->start();
+    time_map_[name]->Start();
 #else
     map<string, TimerAgent*>::iterator it = time_map_.find(name);
     if (it != time_map_.end()) {
@@ -332,7 +332,7 @@ void Prof::Start(string name) {
  */
 void Prof::Stop(string name) {
 #ifdef NDEBUG
-    time_map_[name]->stop();
+    time_map_[name]->Stop();
 #else
     map<string, TimerAgent*>::iterator it = time_map_.find(name);
     if (it != time_map_.end()) {
@@ -345,7 +345,7 @@ void Prof::Stop(string name) {
 
 void Prof::AddMem(string name, size_t mem) {
 #ifdef NDEBUG
-    time_map_[name]->addMem(mem);
+    time_map_[name]->AddMem(mem);
 #else
     map<string, TimerAgent*>::iterator it = time_map_.find(name);
     if (it != time_map_.end()) {
