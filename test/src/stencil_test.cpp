@@ -10,6 +10,8 @@
 #include "subblock.hpp"
 #include "wavelet.hpp"
 
+#include "ioh5.hpp"
+
 #define DOUBLE_TOL 1e-9
 
 class valid_Stencil : public ::testing::Test {
@@ -18,7 +20,7 @@ class valid_Stencil : public ::testing::Test {
 
     int  lvl_         = 1;
     bool periodic_[3] = {false, false, false};
-    int  l_[3]        = {1, 2, 3};
+    int  l_[3]        = {1, 1, 1};
 
     Field* vort_;
     Field* diff_;
@@ -103,14 +105,17 @@ TEST_F(valid_Stencil, convergence_laplacian_o2_boundary3) {
     vort_->bctype(M_BC_EXTRAP_3);
 
     real_t erri[N_CONV] = {0.0};
-    real_t origin[3]    = {0.0, 0.0, 0.0};
-    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+    real_t origin1[3]   = {0.0, 0.0, 0.0};
+    real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
+    real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
+    real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
 
     real_t normi[N_CONV];
 
     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
         list<Patch> patches;
-        patches.push_back(Patch(origin, length, il));
+        patches.push_back(Patch(origin1, length1, il));
+        patches.push_back(Patch(origin2, length2, il + 1));
         grid_->Adapt(&patches);
 
         // x^3 + y^4 + z^3
@@ -146,14 +151,17 @@ TEST_F(valid_Stencil, convergence_laplacian_o2_boundary4) {
     vort_->bctype(M_BC_EXTRAP_4);
 
     real_t erri[N_CONV] = {0.0};
-    real_t origin[3]    = {0.0, 0.0, 0.0};
-    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+    real_t origin1[3]   = {0.0, 0.0, 0.0};
+    real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
+    real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
+    real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
 
     real_t normi[N_CONV];
 
     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
         list<Patch> patches;
-        patches.push_back(Patch(origin, length, il));
+        patches.push_back(Patch(origin1, length1, il));
+        patches.push_back(Patch(origin2, length2, il + 1));
         grid_->Adapt(&patches);
 
         // x^3 + y^4 + z^3
@@ -179,9 +187,9 @@ TEST_F(valid_Stencil, convergence_laplacian_o2_boundary4) {
         }
     }
     if (grid_->mpirank() == 0) {
-        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.95);
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.99);
     }
-    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.95);
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.99);
 }
 
 
@@ -189,14 +197,17 @@ TEST_F(valid_Stencil, convergence_laplacian_o4_boundary4) {
     vort_->bctype(M_BC_EXTRAP_4);
 
     real_t erri[N_CONV] = {0.0};
-    real_t origin[3]    = {0.0, 0.0, 0.0};
-    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+    real_t origin1[3]   = {0.0, 0.0, 0.0};
+    real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
+    real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
+    real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
 
     real_t normi[N_CONV];
 
     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
         list<Patch> patches;
-        patches.push_back(Patch(origin, length, il));
+        patches.push_back(Patch(origin1, length1, il));
+        patches.push_back(Patch(origin2, length2, il + 1));
         grid_->Adapt(&patches);
 
         // x^6 + y^5 + z^7
@@ -222,23 +233,26 @@ TEST_F(valid_Stencil, convergence_laplacian_o4_boundary4) {
         }
     }
     if (grid_->mpirank() == 0) {
-        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.89);
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.82);
     }
-    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.89);
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.82);
 }
 
 TEST_F(valid_Stencil, convergence_laplacian_o4_boundary5) {
     vort_->bctype(M_BC_EXTRAP_5);
 
     real_t erri[N_CONV] = {0.0};
-    real_t origin[3]    = {0.0, 0.0, 0.0};
-    real_t length[3]    = {1.0 * l_[0], 1.0 * l_[1], 1.0 * l_[2]};
+    real_t origin1[3]   = {0.0, 0.0, 0.0};
+    real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
+    real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
+    real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
 
     real_t normi[N_CONV];
 
     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
         list<Patch> patches;
-        patches.push_back(Patch(origin, length, il));
+        patches.push_back(Patch(origin1, length1, il));
+        patches.push_back(Patch(origin2, length2, il + 1));
         grid_->Adapt(&patches);
 
         // x^6 + y^5 + z^7
@@ -264,7 +278,7 @@ TEST_F(valid_Stencil, convergence_laplacian_o4_boundary5) {
         }
     }
     if (grid_->mpirank() == 0) {
-        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 7.8);
+        printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 7.77);
     }
-    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 7.8);
+    ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 7.77);
 }
