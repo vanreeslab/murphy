@@ -560,8 +560,8 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         if (do_coarse) {
             // set the coarse block to the correct position
             for (int id = 0; id < 3; id++) {
-                coarse_start[id] = CoarseFromBlock(gblock->start(id));
-                coarse_end[id]   = CoarseFromBlock(gblock->end(id));
+                coarse_start[id] = CoarseFromBlock(gblock->start(id),cgs(interp_));
+                coarse_end[id]   = CoarseFromBlock(gblock->end(id),cgs(interp_));
             }
             coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
             // memory details
@@ -589,8 +589,8 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         if (do_coarse) {
             // set the coarse block to the correct position
             for (int id = 0; id < 3; id++) {
-                coarse_start[id] = CoarseFromBlock(gblock->start(id));
-                coarse_end[id]   = CoarseFromBlock(gblock->end(id));
+                coarse_start[id] = CoarseFromBlock(gblock->start(id),cgs(interp_));
+                coarse_end[id]   = CoarseFromBlock(gblock->end(id),cgs(interp_));
             }
             coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
             // memory details
@@ -610,8 +610,8 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         GridBlock*  ngh_block = gblock->block_src();
         // setup the coarse sublock to the position
         for (int id = 0; id < 3; id++) {
-            coarse_start[id] = CoarseFromBlock(gblock->start(id));
-            coarse_end[id]   = CoarseFromBlock(gblock->end(id));
+            coarse_start[id] = CoarseFromBlock(gblock->start(id),cgs(interp_));
+            coarse_end[id]   = CoarseFromBlock(gblock->end(id),cgs(interp_));
         }
         coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
         // memory details
@@ -628,8 +628,8 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
         GhostBlock* gblock = (*biter);
         // update the coarse subblock
         for (int id = 0; id < 3; id++) {
-            coarse_start[id] = CoarseFromBlock(gblock->start(id));
-            coarse_end[id]   = CoarseFromBlock(gblock->end(id));
+            coarse_start[id] = CoarseFromBlock(gblock->start(id),cgs(interp_));
+            coarse_end[id]   = CoarseFromBlock(gblock->end(id),cgs(interp_));
         }
         coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
         // memory details
@@ -671,12 +671,12 @@ void Ghost::PullFromGhost_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
             lid_t fstart[3];
             coarse_start[dir] = gblock->start(dir);
             coarse_end[dir]   = gblock->end(dir);
-            fstart[dir]       = CoarseFromBlock(face_start[gblock->iface()][dir]);
+            fstart[dir]       = CoarseFromBlock(face_start[gblock->iface()][dir],cgs(interp_));
             // in the other direction, we need to rescale the dimensions
             for (int id = 1; id < 3; id++) {
-                coarse_start[(dir + id) % 3] = CoarseFromBlock(gblock->start((dir + id) % 3));
-                coarse_end[(dir + id) % 3]   = CoarseFromBlock(gblock->end((dir + id) % 3));
-                fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3]);
+                coarse_start[(dir + id) % 3] = CoarseFromBlock(gblock->start((dir + id) % 3),cgs(interp_));
+                coarse_end[(dir + id) % 3]   = CoarseFromBlock(gblock->end((dir + id) % 3),cgs(interp_));
+                fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3],cgs(interp_));
             }
             // reset the coarse block and get the correct memory location
             coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);

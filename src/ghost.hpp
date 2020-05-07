@@ -141,7 +141,7 @@ static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
 }
 
 /**
- * @brief given a starting id in a block, returns the corresponding starting id for the coarse representation of it
+ * @brief given a starting id in a block and a number of coarse ghost points, returns the corresponding starting id for the coarse representation of it
  * 
  * @note this is magic...
  * 
@@ -153,24 +153,36 @@ static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
  * 
  * c is binary: 0 if a is in the ghost points and 1 if a is in the center points
  * 
+ * d is the number of points taken into the ghost points or the number of points interior to the block
+ * 
+ * e is the scaled d to the coarse block:
+ *  if d is interior: c=1, and we divide by 2 the id
+ *  if d is the number in the ghost points:  c=0 and
+ *      if d contains all the ghost points, we scale it to contain all the coarse gp
+ *      if d contains a part of the ghost points, we abort
+ * 
  * we return a sum of:
  * (a / M_N) * M_HN = the rescaled length of a to the new length (M_HN):
  *      if a < M_N, it will be 0
  *      if a >= M_N, it will be 1
- * (a % M_N) / (c + 1) = the rest of the lentgh, divided by 2 if a is in the center.
+ * (a % M_N) / (c + 1) = the rest of the lentgh, divided by c+1=2 if a is in the center or =1 if a is on the side
  * 
  * As a summary:
  *      if a is in the ghost points, a > 0, c = 0 =>  returns 0 + a/1
  *      if a is in the center points, 0 <= a < M_N => returns 0 + a/2
  *      if a is in the ghost points, a >= M_N => returns M_HN + (a%M_N)/1 
  * 
- * @param a 
+ * @param a the id in the block
+ * @param cgs the number of ghost points in the coarse level
  * @return lid_t 
  */
-static inline lid_t CoarseFromBlock(const lid_t a) {
+static inline lid_t CoarseFromBlock(const lid_t a, const lid_t cgs) {
     const lid_t b = (a + M_N);
     const lid_t c = (b / M_N) % 2;
-    return (a / M_N) * M_HN + (a % M_N) / (c + 1);
+    const lid_t d = (a % M_N);
+    const lid_t e = c * (d / 2) + (1 - c) * ((d / M_GS) * cgs);
+    m_assert(((1 - c) * (d % M_GS)) == 0, "this should NOT happen");
+    return (a / M_N) * M_HN + e;
 }
 
 #endif  // SRC_GHOST_HPP_
