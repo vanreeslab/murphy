@@ -1,0 +1,18 @@
+CXX = mpic++
+CC = mpicc
+
+#CXXFLAGS := -O3 -g --debug -Wno-format-security -fopenmp
+CXXFLAGS := -g -O3 -Wno-format-security -fopenmp
+# -DLOG_ALLRANKS
+# -DVERBOSE 
+LDFLAGS += -fopenmp -lstdc++ -lm
+
+FFTW_LIB := /usr/lib/x86_64-linux-gnu
+HDF5_INC := /usr/include/hdf5/openmpi
+HDF5_LIB := /usr/lib/x86_64-linux-gnu
+HDF5_LIBNAME := -lhdf5_openmpi
+
+# P4EST_INC := /soft/p4est-2.2-gcc7/include
+# P4EST_LIB := /soft/p4est-2.2-gcc7/lib
+P4EST_INC := /soft/p4est-github/include
+P4EST_LIB := /soft/p4est-github/lib

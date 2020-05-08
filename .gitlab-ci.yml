@@ -1,0 +1,82 @@
+
+# do this in front of every test
+default :
+  image : immc/murphy-ci:v1.1
+  # before_script:
+  #   - "export OMP_NUM_THREADS=1"
+
+# list of the stages
+stages:
+  - build
+  - test
+  - validation
+
+# =============================================================================
+build gcc :
+  stage: build
+  script:
+    - "mkdir -p build"
+    - "mkdir -p test/build"
+    - "make destroy"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
+
+# =============================================================================
+build test :
+  stage: build
+  artifacts: 
+    paths: 
+      - ./murphy_test
+      - ./build/*.gcda
+      - ./build/*.gcno
+    when: on_success
+  script:
+    - "mkdir -p build"
+    - "mkdir -p test/build"
+    - "make destroy"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
+
+# =============================================================================
+test pure mpi:
+  stage: test
+  dependencies:
+    - build test
+  script:
+    - "OMP_NUM_THREADS=1 mpirun --tag-output -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "gcovr -r . -e test "
+  artifacts:
+    reports:
+      junit: report_test_*.xml
+
+test threads:
+  stage: test
+  dependencies:
+    - build test
+  script:
+    - "OMP_NUM_THREADS=4 mpirun --tag-output -n 1 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "gcovr -r . -e test "
+  artifacts:
+    reports:
+      junit: report_test_*.xml
+
+test hybrid:
+  stage: test
+  dependencies:
+    - build test
+  script:
+    - "OMP_NUM_THREADS=4 mpirun --tag-output -n 3 ./murphy_test --gtest_filter=test_* --gtest_output=\"xml:report_test.xml\" "
+    - "gcovr -r . -e test "
+  artifacts:
+    reports:
+      junit: report_test_*.xml
+
+# =============================================================================
+validation :
+  stage: validation
+  dependencies:
+    - build test
+  script:
+    - "OMP_NUM_THREADS=4 mpirun --tag-output -n 3 ./murphy_test --gtest_filter=valid_* --gtest_output=\"xml:report_valid.xml\" "
+    - "gcovr -r . -e test "
+  artifacts:
+    reports:
+      junit: report_valid_*.xml
