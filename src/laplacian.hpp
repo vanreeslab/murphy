@@ -14,9 +14,11 @@
  */
 template <sid_t length>
 class LaplacianCross : public Stencil {
+   protected:
     real_t coef_[length];  //!< coefficients of the laplacian to apply
    public:
-    LaplacianCross(Grid* grid) : Stencil(grid) {
+    explicit LaplacianCross() {
+        // get the stencil
         if (length == 3) {
             coef_[0] = +1.0;
             coef_[1] = -2.0;
@@ -33,8 +35,8 @@ class LaplacianCross : public Stencil {
     }
 
    protected:
-    void ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
-    void ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
+    virtual void ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
+    virtual void ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
 };
 
 #endif  // SRC_LAPLACIAN_HPP_

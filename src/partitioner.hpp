@@ -13,11 +13,12 @@
  */
 class Partitioner {
    protected:
-    lid_t        n_lda_          = 0;        //!< the total number of dimension accross all the fields
-    lid_t        n_send_request_ = 0;        //!< the number of send requests
-    lid_t        n_recv_request_ = 0;        //!< the number of receive requests
-    MPI_Request* send_request_   = nullptr;  //!< the send requests
-    MPI_Request* recv_request_   = nullptr;  //!< the receive requests
+    bool         dangling_oldies_ = false;    //!< false if the oldblocks belongs to an existing grid
+    lid_t        n_lda_           = 0;        //!< the total number of dimension accross all the fields
+    lid_t        n_send_request_  = 0;        //!< the number of send requests
+    lid_t        n_recv_request_  = 0;        //!< the number of receive requests
+    MPI_Request* send_request_    = nullptr;  //!< the send requests
+    MPI_Request* recv_request_    = nullptr;  //!< the receive requests
 
     real_p send_buf_ = nullptr;  //<! the send buffer, since the memory is not continuous accross the blocks
     real_p recv_buf_ = nullptr;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
@@ -32,7 +33,7 @@ class Partitioner {
     GridBlock** new_blocks_         = nullptr;
 
    public:
-    Partitioner(map<string, Field*>* fields, ForestGrid* grid);
+    Partitioner(map<string, Field*>* fields, ForestGrid* grid,bool dangling);
     ~Partitioner();
 
     void Start(map<string, Field*>* fields);

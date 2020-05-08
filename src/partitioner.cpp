@@ -38,15 +38,19 @@ using std::memcpy;
  * @warning after the execution of it: the grid follows the new parition, new, yet empty, GridBlock have been allocated on the new partition and
  * the information is still on the old GridBlock on the old partition. Hence a significant memory overhead can be observed.
  * 
- * @param fields the list of fields to partition
+ * @param fields the list of fields to partition, we reallocate the exact same list of the fields
  * @param grid the grid on which the partitionning is done
+ * @param dangling is false if the old partition corresponds to a grid, is true if the old partition is not used after the partitioning
  */
-Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
+Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dangling) {
     m_begin;
     //-------------------------------------------------------------------------
     const int commsize = grid->mpisize();
     p8est_t * forest   = grid->forest();
     const int rank     = forest->mpirank;
+
+    // store the dangling state
+    dangling_oldies_ = dangling;
 
     // count how many ldas in total we have
     for (auto fid = fields->begin(); fid != fields->end(); fid++) {
@@ -244,7 +248,9 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid) {
 }
 
 Partitioner::~Partitioner() {
-    DeallocOldies_();
+    if (dangling_oldies_) {
+        DeallocOldies_();
+    }
     if (old_blocks_ != nullptr) {
         m_free(old_blocks_);
     }
@@ -272,7 +278,7 @@ Partitioner::~Partitioner() {
 /**
  * @brief starts the send communication from the old paritioning to the new one: copy the GridBlock to the buffer and start the send and recv
  * 
- * @param fields 
+ * @param fields the fields that will be transfered, may not correspond to the map used to initialize the partitioning
  */
 void Partitioner::Start(map<string, Field *> *fields) {
     m_begin;
@@ -311,7 +317,7 @@ void Partitioner::Start(map<string, Field *> *fields) {
 /**
  * @brief terminates the partitioning: end the reception, the send and copy the buffer content to the new blocks
  * 
- * @param fields 
+ * @param fields the fields that will be transfered, may not correspond to the map used to initialize the partitioning
  */
 void Partitioner::End(map<string, Field *> *fields) {
     for (int ir = 0; ir < n_recv_request_; ir++) {

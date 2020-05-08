@@ -50,6 +50,25 @@ void OperatorF2F::operator()(ForestGrid* grid, Field* field_src, Field* field_tr
     field_trg->ghost_status(false);
 }
 
+//=================================================================================================
+void CallOpFF2F(const qid_t* qid, GridBlock* block, const Field* fid_x, const Field* fid_y, Field* fid_z, OperatorFF2F* op) {
+    op->ApplyOpFF2F(qid, block, fid_x, fid_y, fid_z);
+}
+/**
+ * @brief starts the call on every block, i.e. call DoOp_F_ that in turns will call ApplyOpF2F on each block
+ * 
+ * @param grid the grid on which we iterate
+ * @param field_src the source field for the computation, its ghost status is NOT changed
+ * @param field_trg the target field for the computation, its ghost status IS changed
+ */
+void OperatorFF2F::operator()(ForestGrid* grid, Field* field_x, Field* field_y, Field* field_z) {
+    // execute the operation on the blocks
+    DoOp_F_<op_t<OperatorFF2F*, const Field*,const Field*, Field*>, OperatorFF2F*, const Field*,const Field*, Field*>(CallOpFF2F, grid, field_x, field_y, field_z, this);
+    // set the field_trg ghosts as changed
+    m_verb("setting the ghosts of %s to false", field_z->name().c_str());
+    field_z->ghost_status(false);
+}
+
 // //=================================================================================================
 // void CallOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorDeriv* op) {
 //     op->ApplyOpDerivInner(qid, block, fid_src, fid_trg);

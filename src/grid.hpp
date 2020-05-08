@@ -39,6 +39,7 @@ class Grid : public ForestGrid {
     void* tmp_ptr_ = nullptr;  //!< temporary pointer, needed by the adaptation of the grid
 
    public:
+    explicit Grid(Grid* grid);
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
 
@@ -95,7 +96,7 @@ class Grid : public ForestGrid {
     /**@}*/
 
    private:
-    void LoopOnGridBlock_(const bop_t op, Field* field) const;
+    void LoopOnGridBlock_(const gbop_t op, Field* field) const;
 };
 
 #endif  // SRC_GRID_HPP_

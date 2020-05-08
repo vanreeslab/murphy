@@ -19,10 +19,8 @@ class Stencil : public OperatorF2F {
     sid_t ida_   = 0;     //!< current source dimension
     bool  inner_ = true;  //!< application mode: true = inner, false = outer
 
-    Grid* grid_;
-
    public:
-    explicit Stencil(Grid* grid);
+    // explicit Stencil(Grid* grid);
 
     //
     /**
@@ -32,8 +30,10 @@ class Stencil : public OperatorF2F {
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
      * between the ghost exchange and the stencil computation.
+     * 
+     * @note the grid is the last argument to differentiate from the operator() from the @OperatorF2F class
      */
-    void operator()(Field* field_src, Field* field_trg);
+    void operator()(Field* field_src, Field* field_trg,Grid* grid);
 
    protected:
     /**

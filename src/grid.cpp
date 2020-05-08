@@ -66,6 +66,23 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
 }
 
 /**
+ * @brief Construct a new Grid object based on a copy of the given grid
+ * 
+ * @warning only a copy of the forest is done (including a copy of the pointers to the existing GridBlock) and the interpolators are created
+ * 
+ * @param grid 
+ */
+Grid::Grid(Grid* grid) : ForestGrid(grid) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // create a default interpolator
+    interp_ = new Wavelet<5>();
+    detail_ = new Wavelet<3>();
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
  * @brief Destroy the Grid, frees all the blocks and the fields contained (if not done)
  * 
  */
@@ -73,9 +90,15 @@ Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
     // destroy the interpolator
-    delete (interp_);
-    delete (detail_);
-    delete (ghost_);
+    if (interp_ != nullptr) {
+        delete (interp_);
+    }
+    if (detail_ != nullptr) {
+        delete (detail_);
+    }
+    if (ghost_ != nullptr) {
+        delete (ghost_);
+    }
     // destroy the remaining blocks
     p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
     //-------------------------------------------------------------------------
@@ -330,7 +353,7 @@ void Grid::Refine(const sid_t delta_level) {
             prof_->Start("p4est_partition_init");
         }
         // partition the grid
-        Partitioner partition(&fields_, this);
+        Partitioner partition(&fields_, this, true);
         if (prof_ != nullptr) {
             prof_->Stop("p4est_partition_init");
             prof_->Start("p4est_partition_comm");
@@ -395,7 +418,7 @@ void Grid::Coarsen(const sid_t delta_level) {
             prof_->Start("p4est_partition_init");
         }
         // partition the grid
-        Partitioner partition(&fields_, this);
+        Partitioner partition(&fields_, this, true);
         if (prof_ != nullptr) {
             prof_->Stop("p4est_partition_init");
             prof_->Start("p4est_partition_comm");
@@ -475,7 +498,7 @@ void Grid::Adapt(Field* field) {
         prof_->Start("p4est_partition_init");
     }
     // partition the grid
-    Partitioner partition(&fields_, this);
+    Partitioner partition(&fields_, this, true);
     if (prof_ != nullptr) {
         prof_->Stop("p4est_partition_init");
         prof_->Start("p4est_partition_comm");
@@ -547,7 +570,7 @@ void Grid::Adapt(list<Patch>* patches) {
         prof_->Start("p4est_partition_init");
     }
     // partition the grid
-    Partitioner partition(&fields_, this);
+    Partitioner partition(&fields_, this, true);
     if (prof_ != nullptr) {
         prof_->Stop("p4est_partition_init");
         prof_->Start("p4est_partition_comm");
@@ -576,14 +599,14 @@ void Grid::Adapt(list<Patch>* patches) {
 }
 
 /**
- * @brief iterates on the blocks and performs a simple @ref bop_t operation using the forest structure and not the mesh
+ * @brief iterates on the blocks and performs a simple @ref gbop_t operation using the forest structure and not the mesh
  * 
  * @warning for allocation and block management only. Use Operators (see operator.hpp) for computations
  * 
  * @param op 
  * @param field 
  */
-void Grid::LoopOnGridBlock_(const bop_t op, Field* field) const {
+void Grid::LoopOnGridBlock_(const gbop_t op, Field* field) const {
     m_begin;
     //-------------------------------------------------------------------------
     // get the grid info

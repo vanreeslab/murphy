@@ -74,7 +74,6 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
  */
 void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
-    const lid_t   ithread = omp_get_thread_num();
     const real_t* hgrid   = block->hgrid();
 
     real_t e2 = 0.0;

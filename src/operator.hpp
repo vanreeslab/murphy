@@ -139,6 +139,41 @@ class OperatorF2F {
  */
 void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
 
+//=================================================================================================
+/**
+ * @brief a Field + Field to Field operator, i.e. which uses the content of two Fields to modify another Field
+ */
+class OperatorFF2F {
+   public:
+    /**
+    * @brief Implementation of this virtual function has to be provided by the user as a member function
+    * 
+    * @warning this function is processed with a multi-thread environment
+    * 
+    * @param qid the id of the quadrant which corresponds to the current block
+    * @param block the current block itself
+    * @param fid_x the source field #1
+    * @param fid_y the source field #2
+    * @param fid_z the target field
+    */
+    virtual void ApplyOpFF2F(const qid_t* qid, GridBlock* block, const Field* fid_x,const Field* fid_y, Field* fid_z) = 0;
+    /**
+     * @brief call OperatorF2F::ApplyOpF2F() on each block
+     */
+    virtual void operator()(ForestGrid* grid, Field* field_x,Field* field_y, Field* field_z);
+};
+/**
+ * @brief this function is called by DoOp_() function (through OperatorF2F::operator()()) to apply the operation to a considered Block
+ * 
+ * @param qid the reference of the block, see qid_t
+ * @param block the Block itself, which cannot be modified
+ * @param fid_x the source field #1
+ * @param fid_y the source field #2
+ * @param fid_z the target field
+ * @param op the OperatorF2F object containing all the needed data
+ */
+void CallOpFF2F(const qid_t* qid, GridBlock* block, const Field* fid_x, const Field* fid_y, Field* fid_z, OperatorF2F* op);
+
 // //=================================================================================================
 // /**
 //  * @brief defines which mode is triggered in a OperatorDeriv

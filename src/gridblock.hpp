@@ -14,7 +14,7 @@ using std::map;
 using std::numeric_limits;
 
 /**
- * @brief implements a @ref MemLayout that is used as a leaf for the tree
+ * @brief implements a @ref Block that is used as a leaf for the tree
  * 
  */
 class GridBlock : public MemLayout {
@@ -31,14 +31,12 @@ class GridBlock : public MemLayout {
     /**
      * @name Memory Layout Implementation
      * 
-     * the region of interest spans from (0,0,0) to (M_N,M_N,M_N)
-     * 
      * @{ */
     inline lid_t gs() const override { return M_GS; }
     inline lid_t stride() const override { return M_STRIDE; }
     inline lid_t start(const int id) const override { return 0; }
     inline lid_t end(const int id) const override { return M_N; }
-    /** @}*/
+    /** @} */
 
     inline sid_t  level() const { return level_; }
     inline real_t xyz(const int id) const { return xyz_[id]; }
@@ -71,6 +69,6 @@ class GridBlock : public MemLayout {
 /**
  * @brief pointer to an member function of the class @ref GridBlock
  */
-using bop_t = void (GridBlock::*)(Field* fid);
+using gbop_t = void (GridBlock::*)(Field* fid);
 
 #endif  // SRC_GRIDBLOCK_HPP_

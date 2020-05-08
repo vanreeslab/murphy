@@ -23,11 +23,12 @@ class ForestGrid {
     bool is_mesh_valid_ = false; /**<indicate that the mesh and the ghost structures are up-to-date */
 
    public:
+    ForestGrid(const ForestGrid* grid);
     ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm);
     ~ForestGrid();
 
-    real_t      domain_length(const sid_t id) { return domain_length_[id]; }
-    bool        domain_periodic(const sid_t id) { return domain_periodic_[id]; }
+    real_t      domain_length(const sid_t id) const { return domain_length_[id]; }
+    bool        domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
     inline bool is_mesh_valid() const { return is_mesh_valid_; }
 
     /**

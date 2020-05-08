@@ -39,6 +39,32 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
 }
 
 /**
+ * @brief Construct a new Forest Grid from another ForestGrid
+ * 
+ * @warning only the p4est forest is initialize, you need to call SetupP4estGhostMesh() to init the ghost and the mesh
+ * @warning the connectivity is not duplicated!
+ * 
+ * @param grid the other forestGrid to copy
+ */
+ForestGrid::ForestGrid(const ForestGrid* grid) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // copy the existing forest, including the memory adress to the GridBlock
+    forest_ = p8est_copy(grid->forest(), 1);
+    // set the pointer to null
+    forest_->user_pointer = nullptr;
+    // store the domain periodicity and domain size
+    domain_length_[0]   = grid->domain_length(0);
+    domain_length_[1]   = grid->domain_length(1);
+    domain_length_[2]   = grid->domain_length(2);
+    domain_periodic_[0] = grid->domain_periodic(0);
+    domain_periodic_[1] = grid->domain_periodic(1);
+    domain_periodic_[2] = grid->domain_periodic(2);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
  * @brief Destroy the Forest Grid, reset the ghost and the mesh and clean everything from the p4est side
  * 
  */

@@ -47,8 +47,8 @@ int main(int argc, char** argv) {
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         vort->bctype(M_BC_EXTRAP_5);
         // take the derivtive and store it into the diff field
-        LaplacianCross<5> lapla = LaplacianCross<5>(grid);
-        lapla(vort, diff);
+        LaplacianCross<5> lapla = LaplacianCross<5>();
+        lapla(vort, diff, grid);
 
         // and destroy the grid and the field
         delete (vort);
