@@ -7,30 +7,32 @@ MGFamily::MGFamily(const lid_t num_children) {
     //-------------------------------------------------------------------------
     parent_count_ = 0;
     m_assert(num_children % P8EST_CHILDREN == 0, "the number of children = %d must be a multiple of %d", num_children, P8EST_CHILDREN);
-    parents_  = reinterpret_cast<GridBlock**>(m_calloc(sizeof(GridBlock*) * num_children / P8EST_CHILDREN));
-    children_ = reinterpret_cast<GridBlock**>(m_calloc(sizeof(GridBlock*) * num_children / P8EST_CHILDREN));
-
+    parents_  = reinterpret_cast<GridBlock**>(m_calloc(sizeof(GridBlock*) * (num_children / P8EST_CHILDREN)));
+    children_ = reinterpret_cast<GridBlock**>(m_calloc(sizeof(GridBlock*) * num_children));
     //-------------------------------------------------------------------------
     m_end;
 }
 
-MGFamily::~MGFamily(){
+MGFamily::~MGFamily() {
     m_free(parents_);
     m_free(children_);
 }
 
-void MGFamily::AddMembers(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]){
+void MGFamily::AddMembers(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]) {
     //-------------------------------------------------------------------------
     parents_[parent_count_] = parent;
-    for(sid_t ic=0; ic<P8EST_CHILDREN; ic++){
-        children_[parent_count_*P8EST_CHILDREN+ic] = children[ic];
+    for (sid_t ic = 0; ic < P8EST_CHILDREN; ic++) {
+        children_[parent_count_ * P8EST_CHILDREN + ic] = children[ic];
     }
-    parent_count_ ++;
+    m_log("incrementing");
+    parent_count_++;
+    m_log("Now %d parents", parent_count_);
     //-------------------------------------------------------------------------
 }
 
-void MGFamily::ToChildren(const Field* field, Interpolator* interp) {
+void MGFamily::ToChildren(const Field* field_src, const Field* field_trg, Interpolator* interp) {
     m_begin;
+    m_assert(field_src->lda() == field_trg->lda(), "the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
     // create an empty SubBlock representing the valid GP
     lid_t     parent_start[3] = {0, 0, 0};
@@ -57,9 +59,9 @@ void MGFamily::ToChildren(const Field* field, Interpolator* interp) {
             // for every field, we interpolate it
 
             // interpolate for every dimension
-            for (sid_t ida = 0; ida < field->lda(); ida++) {
+            for (sid_t ida = 0; ida < field_src->lda(); ida++) {
                 // get the pointers
-                interp->Interpolate(-1, shift, mem_block, parent->data(field, ida), child, child->data(field, ida));
+                interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida));
             }
         }
     }
@@ -67,8 +69,9 @@ void MGFamily::ToChildren(const Field* field, Interpolator* interp) {
     m_end;
 }
 
-void MGFamily::ToParents(const Field* field, Interpolator* interp) {
+void MGFamily::ToParents(const Field* field_src, const Field* field_trg, Interpolator* interp) {
     m_begin;
+    m_assert(field_src->lda() == field_trg->lda(),"the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
     // create an empty SubBlock representing the valid GP
     lid_t     parent_start[3] = {0, 0, 0};
@@ -97,9 +100,9 @@ void MGFamily::ToParents(const Field* field, Interpolator* interp) {
             // for every field, we interpolate it
 
             // interpolate for every dimension
-            for (sid_t ida = 0; ida < field->lda(); ida++) {
+            for (sid_t ida = 0; ida < field_src->lda(); ida++) {
                 // get the pointers
-                interp->Interpolate(+1, shift, child, child->data(field, ida), mem_block, parent->data(field, ida));
+                interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida));
             }
         }
     }

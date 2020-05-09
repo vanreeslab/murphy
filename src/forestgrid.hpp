@@ -20,16 +20,26 @@ class ForestGrid {
     p8est_mesh_t*  mesh_   = nullptr;  //!< the p8est_mesh_t structure
     p8est_ghost_t* ghost_  = nullptr;  //!< the p8est_ghost_t structure
 
+    bool is_connect_owned_ = false; /**<indicate if we have to free the connectivity */
     bool is_mesh_valid_ = false; /**<indicate that the mesh and the ghost structures are up-to-date */
 
    public:
-    ForestGrid(const ForestGrid* grid);
+    /**
+     * @name constructors and destructor
+     * 
+     * @{
+     */
+    explicit ForestGrid();
     ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm);
     ~ForestGrid();
+    /** @} */
+
+    void CopyFrom(const ForestGrid* grid);
 
     real_t      domain_length(const sid_t id) const { return domain_length_[id]; }
     bool        domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
     inline bool is_mesh_valid() const { return is_mesh_valid_; }
+
 
     /**
      * @name p4est managmeent

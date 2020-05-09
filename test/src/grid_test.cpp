@@ -71,6 +71,7 @@ TEST_F(test_Grid_Uniform, refine_coarsen_uniform_1_level) {
     real_t      center[3] = {l_[0] * 0.5, l_[1] * 0.5, l_[2] * 0.5};
     SetGaussian gaussian  = SetGaussian(0.1, center);
     gaussian(grid_, vort);
+    vort->bctype(M_BC_EXTRAP_5);
     // refine the grid
     grid_->Refine(1);
     // coarsen the grid
@@ -105,6 +106,7 @@ TEST_F(test_Grid_Uniform, ref_coars_ref_coarse_uniform) {
     real_t      center[3] = {l_[0] * 0.5, l_[1] * 0.5, l_[2] * 0.5};
     SetGaussian gaussian  = SetGaussian(0.1, center);
     gaussian(grid_, vort);
+    vort->bctype(M_BC_EXTRAP_5);
     // refine the grid
     grid_->Refine(2);
     // coarsen the grid

@@ -24,6 +24,7 @@ class Multigrid {
     Grid**        grids_;
     Partitioner** parts_;
 
+    map<string, string> fields_nickname_; //!< map containing the real field_name used as a key for @ref map_fields_ (the key is the nickname)
     map<string, Field*> map_fields_;
 
     lid_t*     n_family_member_;
@@ -32,7 +33,7 @@ class Multigrid {
     sid_t tmp_ilevel_ = 0;
 
    public:
-    Multigrid(Grid* grid, sid_t fft_level, Field* src, Field* trg, Field* res);
+    Multigrid(Grid* grid, sid_t fft_level, Field* rhs, Field* trg, Field* res);
     ~Multigrid();
 
     void Solve();

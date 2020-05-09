@@ -20,9 +20,8 @@ class MGFamily {
 
     inline lid_t parent_count() const { return parent_count_; }
 
-
-    void ToParents(const Field* field,Interpolator* interp);
-    void ToChildren(const Field* field,Interpolator* interp);
+    void ToParents(const Field* field_src, const Field* field_trg, Interpolator* interp);
+    void ToChildren(const Field* field_src, const Field* field_trg, Interpolator* interp);
 
     // MGFamily(GridBlock* me, GridBlock* sibling);
     // MGFamily(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]);

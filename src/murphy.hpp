@@ -34,6 +34,7 @@ typedef struct qid_t {
  * 
  */
 typedef enum bctype_t {
+    M_BC_NONE,      //!< no boundary condition is given
     M_BC_EVEN,      //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
     M_BC_ODD,       //!< ODD condition: imposes a zero value wrt the interface
     M_BC_ZERO,      //!< set 0 outside the computational domain
@@ -42,7 +43,10 @@ typedef enum bctype_t {
     M_BC_EXTRAP_5   //!< extrapolate outside the computational domain with polynomial x^4
 } bctype_t;
 
-
+typedef enum m_direction_t {
+    M_FORWARD,
+    M_BACKWARD
+} m_direction_t;
 
 void murphy_init(int argc, char* argv[]);
 void murphy_finalize();

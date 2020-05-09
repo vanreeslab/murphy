@@ -425,11 +425,11 @@ void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_o
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
     real_t     len      = m_quad_len(quad->level);
-    GridBlock* block_in = new GridBlock(len, xyz, quad->level);
+    GridBlock* parent = new GridBlock(len, xyz, quad->level);
     // allocate the correct fields
-    block_in->AddFields(grid->map_fields());
+    parent->AddFields(grid->map_fields());
     // store the new block
-    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block_in;
+    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = parent;
 
     // get the leaving blocks
     GridBlock* children[P8EST_CHILDREN];
@@ -438,23 +438,25 @@ void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_o
     }
     
     // bind the family together
+    m_log("gluing a familly");
     MGFamily* family = grid->curr_family();
+    family->AddMembers(parent,children);
     //-------------------------------------------------------------------------
     m_end;
 }
 
-/**
- * @brief always reply yes if p4est ask if we should refine the block
- */
-int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
-    sid_t target_level = grid->curr_level();
-    return (quadrant->level > target_level);
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// /**
+//  * @brief always reply yes if p4est ask if we should refine the block
+//  */
+// int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+//     sid_t target_level = grid->curr_level();
+//     return (quadrant->level < target_level);
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 /**
  * @brief always reply yes if p4est ask if we should coarsen the block
@@ -462,8 +464,10 @@ int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
 int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     m_begin;
     //-------------------------------------------------------------------------
-    sid_t* target_level = reinterpret_cast<sid_t*>(forest->user_pointer);
-    return (quadrant[0]->level > target_level[0]);
+    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+    sid_t target_level = grid->curr_level();
+    m_log("check if we have to coarsen? %d >? %d",quadrant[0]->level , target_level);
+    return (quadrant[0]->level > target_level);
     //-------------------------------------------------------------------------
     m_end;
 }

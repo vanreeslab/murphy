@@ -38,23 +38,33 @@ using std::memcpy;
  * @warning after the execution of it: the grid follows the new parition, new, yet empty, GridBlock have been allocated on the new partition and
  * the information is still on the old GridBlock on the old partition. Hence a significant memory overhead can be observed.
  * 
- * @param fields the list of fields to partition, we reallocate the exact same list of the fields
+ * @param fields the list of fields to partition, we reallocate the only that list of the fields
  * @param grid the grid on which the partitionning is done
- * @param dangling is false if the old partition corresponds to a grid, is true if the old partition is not used after the partitioning
+ * @param destructive dictate if the partitioning is used to permanently change the grid or to go from one grid to another.
  */
-Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dangling) {
+Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructive) {
     m_begin;
     //-------------------------------------------------------------------------
     const int commsize = grid->mpisize();
     p8est_t * forest   = grid->forest();
     const int rank     = forest->mpirank;
 
-    // store the dangling state
-    dangling_oldies_ = dangling;
+    // store the destructive state
+    destructive_ = destructive;
 
-    // count how many ldas in total we have
-    for (auto fid = fields->begin(); fid != fields->end(); fid++) {
-        n_lda_ += fid->second->lda();
+    // count how many ldas we have to forecast for the exchange, depend on the destructive mode
+    if (destructive_) {
+        m_assert(fields->size() == grid->NField(),"the number of fields must match so we don't loose information during the partitioning");
+        for (auto fid = fields->begin(); fid != fields->end(); fid++) {
+            // add the total count
+            n_lda_ += fid->second->lda();
+            m_assert(grid->IsAField(fid->second),"the field MUST be present in the grid");
+        }
+    } else {
+        for (auto fid = fields->begin(); fid != fields->end(); fid++) {
+            n_lda_ = m_max(n_lda_, fid->second->lda());
+            // m_assert(grid->IsAField(fid->second),"the field MUST be present in the grid");
+        }
     }
 
     // store the lcoation in the old partition
@@ -110,7 +120,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dan
             // if I am among the list, remove myself from the request point of view
             n_send_request_ = (first_recver <= rank && rank <= last_recver) ? n_recver - 1 : n_recver;
             // allocate the requests
-            send_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_send_request_ * sizeof(MPI_Request)));
+            for_send_request_  = reinterpret_cast<MPI_Request *>(m_calloc(n_send_request_ * sizeof(MPI_Request)));
+            back_recv_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_send_request_ * sizeof(MPI_Request)));
             // allocate the cummulative list, to know which block I have to copy to the buffer
             // note: we cannot use a cummulative since we may not have continuous set (if some blocks are not moving)
             q_send_cum_block_ = reinterpret_cast<lid_t *>(m_calloc(n_send_request_ * sizeof(lid_t)));
@@ -138,7 +149,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dan
 
                 // create the send request
                 real_t *buf = send_buf_ + qcount * m_blockmemsize(n_lda_);
-                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(send_request_[rcount]));
+                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(for_send_request_[rcount]));
+                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(back_recv_request_[rcount]));
 
                 // update the counters
                 qcount += n_q2send;
@@ -201,7 +213,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dan
             n_recv_request_ = (first_sender <= rank && rank <= last_sender) ? n_sender - 1 : n_sender;
             m_verb("I will do %d recv reqests our of %d senders", n_recv_request_, n_sender);
             // allocate the requests
-            recv_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_recv_request_ * sizeof(MPI_Request)));
+            for_recv_request_  = reinterpret_cast<MPI_Request *>(m_calloc(n_recv_request_ * sizeof(MPI_Request)));
+            back_send_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_recv_request_ * sizeof(MPI_Request)));
             // allocate the cummulative list, to know which block I have to copy to the buffer
             // note: we cannot use a cummulative since we may not have continuous set (if some blocks are not moving)
             q_recv_cum_block_ = reinterpret_cast<lid_t *>(m_calloc(n_recv_request_ * sizeof(lid_t)));
@@ -229,7 +242,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dan
                 q_recv_cum_request_[scount] = qcount;
                 // create the send request
                 real_p buf = recv_buf_ + qcount * m_blockmemsize(n_lda_);
-                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(recv_request_[scount]));
+                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(for_recv_request_[scount]));
+                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(back_send_request_[scount]));
                 // update the counters
                 qcount += n_q2recv;
                 tqcount += n_q2recv;
@@ -241,6 +255,11 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dan
     }
     m_free(oldpart);
 
+    // reset the field list in the grid if we didn't conserve everything
+    if (!destructive_) {
+        grid->ResetFields(fields);
+    }
+
     m_log("grid partitioned: moving %ld blocks (%f percent of the grid)", nqshipped,100.0* ((real_t)nqshipped) / ((real_t)forest->global_num_quadrants));
 
     //-------------------------------------------------------------------------
@@ -248,7 +267,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, ForestGrid *grid,bool dan
 }
 
 Partitioner::~Partitioner() {
-    if (dangling_oldies_) {
+    if (destructive_) {
         DeallocOldies_();
     }
     if (old_blocks_ != nullptr) {
@@ -259,14 +278,18 @@ Partitioner::~Partitioner() {
     }
 
     for (int i = 0; i < n_send_request_; i++) {
-        MPI_Request_free(send_request_ + i);
+        MPI_Request_free(for_send_request_ + i);
+        MPI_Request_free(back_recv_request_ + i);
     }
     for (int i = 0; i < n_recv_request_; i++) {
-        MPI_Request_free(recv_request_ + i);
+        MPI_Request_free(for_recv_request_ + i);
+        MPI_Request_free(back_send_request_ + i);
     }
 
-    m_free(send_request_);
-    m_free(recv_request_);
+    m_free(for_send_request_);
+    m_free(for_recv_request_);
+    m_free(back_send_request_);
+    m_free(back_recv_request_);
     m_free(send_buf_);
     m_free(recv_buf_);
     m_free(q_send_cum_block_);
@@ -278,25 +301,60 @@ Partitioner::~Partitioner() {
 /**
  * @brief starts the send communication from the old paritioning to the new one: copy the GridBlock to the buffer and start the send and recv
  * 
- * @param fields the fields that will be transfered, may not correspond to the map used to initialize the partitioning
+ * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
+ * @param dir the direction, forward or backward
  */
-void Partitioner::Start(map<string, Field *> *fields) {
+void Partitioner::Start(map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
+    m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
+    m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
     //-------------------------------------------------------------------------
+    lid_t  n_recv_request;
+    lid_t  n_send_request;
+    lid_t *q_send_cum_request;
+    lid_t *q_send_cum_block;
+    real_p send_buf;
+
+    MPI_Request *recv_request;
+    MPI_Request *send_request;
+    GridBlock ** old_blocks;
+    
+    if (dir == M_FORWARD) {
+        n_recv_request     = n_recv_request_;
+        n_send_request     = n_send_request_;
+        recv_request       = for_recv_request_;
+        send_request       = for_send_request_;
+        send_buf           = send_buf_;
+        old_blocks         = old_blocks_;
+        q_send_cum_block   = q_send_cum_block_;
+        q_send_cum_request = q_send_cum_request_;
+    } else if (dir == M_BACKWARD) {
+        n_recv_request     = n_send_request_;
+        n_send_request     = n_recv_request_;
+        recv_request       = back_recv_request_;
+        send_request       = back_send_request_;
+        send_buf           = recv_buf_;
+        old_blocks         = new_blocks_;
+        q_send_cum_block   = q_recv_cum_block_;
+        q_send_cum_request = q_recv_cum_request_;
+    }
+
     // start the reception of the memory
-    if (n_recv_request_ > 0) {
-        MPI_Startall(n_recv_request_, recv_request_);
+    if (n_recv_request > 0) {
+        MPI_Startall(n_recv_request, recv_request);
     }
     // copy all the data of the old blocks into the send_buffer and send when ready
-    for (int is = 0; is < n_send_request_; is++) {
-        lid_t n_q2send = q_send_cum_request_[is + 1] - q_send_cum_request_[is];
+    for (int is = 0; is < n_send_request; is++) {
+        lid_t n_q2send = q_send_cum_request[is + 1] - q_send_cum_request[is];
         for (lid_t iq = 0; iq < n_q2send; iq++) {
-            GridBlock *block = old_blocks_[q_send_cum_block_[is] + iq];
-            real_p     buf   = send_buf_ + (q_send_cum_request_[is] + iq) * m_blockmemsize(n_lda_);
+            GridBlock *block = old_blocks[q_send_cum_block[is] + iq];
+            real_p     buf   = send_buf + (q_send_cum_request[is] + iq) * m_blockmemsize(n_lda_);
             lid_t idacount = 0;
             for (auto iter = fields->begin(); iter != fields->end(); iter++) {
                 const Field *fid  = iter->second;
                 string       name = fid->name();
+                // security check
+                m_assert(fid->lda() <= n_lda_,"unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
                 // m_log("doing field %s shift by %ld",m_zeroidx(0, block));
                 real_p data = block->data(fid) - m_zeroidx(0, block);
@@ -308,7 +366,7 @@ void Partitioner::Start(map<string, Field *> *fields) {
             }
         }
         // start the send
-        MPI_Start(send_request_ + is);
+        MPI_Start(send_request + is);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -317,23 +375,62 @@ void Partitioner::Start(map<string, Field *> *fields) {
 /**
  * @brief terminates the partitioning: end the reception, the send and copy the buffer content to the new blocks
  * 
- * @param fields the fields that will be transfered, may not correspond to the map used to initialize the partitioning
+ * @param fields the fields that will be transfered (may not correspond to the initialization one but HAS to match the one used in the Start())
+ * @param dir the direction, forward or backward
+ * @param do_copy do we need to copy the non-traveling blocks or not
  */
-void Partitioner::End(map<string, Field *> *fields) {
-    for (int ir = 0; ir < n_recv_request_; ir++) {
+void Partitioner::End(map<string, Field *> *fields, const m_direction_t dir) {
+    m_begin;
+    m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
+    m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
+    //-------------------------------------------------------------------------
+    lid_t  n_recv_request;
+    lid_t  n_send_request;
+    lid_t *q_recv_cum_request;
+    lid_t *q_recv_cum_block;
+    real_p recv_buf;
+
+    MPI_Request *recv_request;
+    MPI_Request *send_request;
+    GridBlock ** new_blocks;
+
+    if (dir == M_FORWARD) {
+        n_recv_request     = n_recv_request_;
+        n_send_request     = n_send_request_;
+        q_recv_cum_request = q_recv_cum_request_;
+        q_recv_cum_block   = q_recv_cum_block_;
+        recv_buf           = recv_buf_;
+        recv_request       = for_recv_request_;
+        send_request       = for_send_request_;
+        new_blocks         = new_blocks_;
+    } else if (dir == M_BACKWARD) {
+        n_recv_request     = n_send_request_;
+        n_send_request     = n_recv_request_;
+        q_recv_cum_request = q_send_cum_request_;
+        q_recv_cum_block   = q_send_cum_block_;
+        recv_buf           = send_buf_;
+        recv_request       = back_recv_request_;
+        send_request       = back_send_request_;
+        new_blocks         = old_blocks_;
+    }
+
+    // handle the moving ones
+    for (int ir = 0; ir < n_recv_request; ir++) {
         int idx;
-        MPI_Waitany(n_recv_request_, recv_request_, &idx, MPI_STATUS_IGNORE);
-        lid_t n_q2recv = q_recv_cum_request_[idx + 1] - q_recv_cum_request_[idx];
+        MPI_Waitany(n_recv_request, recv_request, &idx, MPI_STATUS_IGNORE);
+        lid_t n_q2recv = q_recv_cum_request[idx + 1] - q_recv_cum_request[idx];
 
         for (lid_t iq = 0; iq < n_q2recv; iq++) {
-            GridBlock *block = new_blocks_[q_recv_cum_block_[idx] + iq];
-            real_p     buf   = recv_buf_ + (q_recv_cum_request_[idx] + iq) * m_blockmemsize(n_lda_);
+            GridBlock *block = new_blocks[q_recv_cum_block[idx] + iq];
+            real_p     buf   = recv_buf + (q_recv_cum_request[idx] + iq) * m_blockmemsize(n_lda_);
             m_assert(block != nullptr, "this block shouldn't be accessed here");
 
             lid_t idacount = 0;
             for (auto iter = fields->begin(); iter != fields->end(); iter++) {
                 const Field *fid  = iter->second;
                 string       name = fid->name();
+                // security check
+                m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
                 real_p data = block->data(fid) - m_zeroidx(0, block);
                 real_p lbuf = buf + m_blockmemsize(idacount);
@@ -346,8 +443,10 @@ void Partitioner::End(map<string, Field *> *fields) {
     }
     // receive the new memory in the new blocks
     if (n_send_request_ > 0) {
-        MPI_Waitall(n_send_request_, send_request_, MPI_STATUS_IGNORE);
+        MPI_Waitall(n_send_request, send_request, MPI_STATUS_IGNORE);
     }
+    //-------------------------------------------------------------------------
+    m_end;
 }
 
 /**

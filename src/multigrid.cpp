@@ -1,27 +1,34 @@
 #include "multigrid.hpp"
 
 #include <mpi.h>
+#include <limits>
 
 #include "defs.hpp"
 #include "gridcallback.hpp"
 #include "laplacian.hpp"
 #include "daxpy.hpp"
 #include "gaussseidel.hpp"
+#include "error.hpp"
 
-Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* src, Field* sol,Field* res) {
+using std::numeric_limits;
+
+Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* res) {
     m_begin;
     //-------------------------------------------------------------------------
     // store the desired fft level and which field will be used as what
-    fft_level_        = fft_level;
-    m_assert(grid->IsAField(src),"the source field MUST exist in the grid");
-    map_fields_["src"] = src;
-     m_assert(grid->IsAField(sol),"the solution field MUST exist in the grid");
-    map_fields_["sol"] = sol;
-    m_assert(grid->IsAField(res),"the residual field MUST exist in the grid");
-    map_fields_["res"] = res;
-    m_assert(src->lda() == sol->lda(),"the dimension between the source and the solution MUST match");
-    m_assert(src->lda() == res->lda(),"the dimension between the source and the residual MUST match");
-    
+    fft_level_ = fft_level;
+    m_assert(grid->IsAField(rhs), "the source field MUST exist in the grid");
+    fields_nickname_["rhs"]  = rhs->name();
+    map_fields_[rhs->name()] = rhs;
+    m_assert(grid->IsAField(sol), "the solution field MUST exist in the grid");
+    map_fields_[sol->name()] = sol;
+    fields_nickname_["sol"]  = sol->name();
+    m_assert(grid->IsAField(res), "the residual field MUST exist in the grid");
+    map_fields_[res->name()] = res;
+    fields_nickname_["res"]  = res->name();
+    m_assert(rhs->lda() == sol->lda(), "the dimension between the source and the solution MUST match");
+    m_assert(rhs->lda() == res->lda(), "the dimension between the source and the residual MUST match");
+
     // get by how many level I have to do
     p8est_t* forest      = grid->forest();
     sid_t    l_max_level = 0;
@@ -53,24 +60,30 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* src, Field* sol,Field* r
 
     // coarsen the grid
     for (sid_t il = (n_level_ - 1); il >= 0; il--) {
-        // create a new grid with the link to the previous blocks
-        grids_[il] = new Grid(grids_[il + 1]);
+        // create a new grid and get the old information
+        grids_[il] = new Grid();
+        grids_[il]->CopyFrom(grids_[il + 1]);
+
         // regester myself in the user_pointer
         tmp_ilevel_               = il;
         p8est_t* curr_forest      = grids_[il]->forest();
         curr_forest->user_pointer = this;
-        // create a new family knowing the number of CHILDREN on the fine level
-        sc_array_t quadarray = grid->mesh()->quad_level[fft_level + il + 1];
+
+        // get the number of CHILDREN on the fine level, i.e. the number of children entering the family
+        sc_array_t quadarray = grids_[il+1]->mesh()->quad_level[fft_level + il + 1];
+        m_assert(quadarray.elem_count < numeric_limits<lid_t>::max(), "the number of quad is too big");
+        // create the new family
         families_[il] = new MGFamily(quadarray.elem_count);
+
         // coarsen by one level the quads on the highest level and only allocate the fields in the MG map
-        p8est_coarsen_ext(curr_forest,0,0,cback_Level,nullptr,cback_MGCreateFamilly);
-        m_assert(families_[il]->parent_count() == quadarray.elem_count,"those two numbers must match");
+        p8est_coarsen_ext(curr_forest, 0, 0, cback_Level, nullptr, cback_MGCreateFamilly);
+        m_assert(families_[il]->parent_count() == (quadarray.elem_count / P8EST_CHILDREN), "those two numbers must match: %d vs %ld", families_[il]->parent_count(), (quadarray.elem_count / P8EST_CHILDREN));
+
         // partition the grid and remember it, only the fields in the multigrid map exist now!
-        parts_[il] = new Partitioner(&map_fields_,grids_[il],false);
+        parts_[il] = new Partitioner(&map_fields_, grids_[il], false);
         // create a consistent Ghost layout
-
-
-        // the grid is now partitioned on a coarser level!
+        grids_[il]->SetupGhost();
+        // the grid is now partitioned on a coarser level with new ghosts
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -97,61 +110,78 @@ void Multigrid::Solve() {
     m_begin;
     //-------------------------------------------------------------------------
     // get the fields
-    Field* sol = map_fields_.at("sol");
-    Field* res = map_fields_.at("res");
-    Field* src = map_fields_.at("src");
+    Field* sol = map_fields_.at(fields_nickname_.at("sol"));
+    Field* res = map_fields_.at(fields_nickname_.at("res"));
+    Field* rhs = map_fields_.at(fields_nickname_.at("rhs"));
     // get which field will be send from one level to another
-    map<string,Field*> part_fields;
-    part_fields["res"] = res;
+    map<string, Field*> map_sol_field;
+    map_sol_field[fields_nickname_.at("sol")] = sol;
+    map<string, Field*> map_rhs_field;
+    map_rhs_field[fields_nickname_.at("rhs")] = rhs;
 
     Daxpy             daxpy = Daxpy(-1.0);
     LaplacianCross<5> lapla = LaplacianCross<5>();
-    GaussSeidel<5> gs = GaussSeidel<5>(1.95);
-
-    // get the initial residual
-
-    lapla(sol,res,grids_[n_level_]);
-    daxpy(grids_[n_level_],sol,src,res);
+    GaussSeidel<5> gs = GaussSeidel<5>(1.0);
 
     // downward pass
-    for (sid_t il = (n_level_ - 1); il >= 0; il--) {
+    for (sid_t il = n_level_; il > 0; il--) {
         Grid* grid = grids_[il];
-        
-        // compute some GS on the solution
-        for(sid_t ie = 0; ie< eta_1_; ie++){
-            gs(res,sol,grid);
-        }
 
-        // compute the residual as b - A x
-        lapla(sol,res,grid);
-        daxpy(grid,sol,src,res);
+        // Gauss-Seidel - laplacian(sol) = rhs
+        for (sid_t ie = 0; ie < eta_1_; ie++) {
+            ErrorCalculator error = ErrorCalculator();
+            real_t          norm2;
+            error.Norm2(grid, sol, rhs, &norm2);
+            m_log("error at level %d before is %e", il, norm2);
+            gs(rhs, sol, grid);
+            // compute the error:
+            lapla(sol, res, grid);  // laplacian(sol) = res
+            // ErrorCalculator error = ErrorCalculator();
+            // real_t          norm2;
+            error.Norm2(grid, sol, rhs, &norm2);
+            m_log("error at level %d after is %e", il, norm2);
+        }
+        // compute the residual as rhs - A x
+        lapla(sol, res, grid);       // laplacian(sol) = res
+        daxpy(grid, res, rhs, res);  // res = - 1.0 * res + rhs
 
         // do the interpolation
-        families_[il]->ToParents(res, grid->interp());
-        // do the partitioning
-        parts_[il]->Start(&part_fields);
-        parts_[il]->End(&part_fields);
+        families_[il - 1]->ToParents(res, rhs, grid->interp());
+
+        // do the partitioning, send the new rhs
+        parts_[il - 1]->Start(&map_rhs_field, M_FORWARD);
+        parts_[il - 1]->End(&map_rhs_field, M_FORWARD);
     }
     // do the direct solve
 
-    // upward pass
-    for (sid_t il = 0; il < n_level_; il--) {
+
+    // downward pass
+    for (sid_t il = 1; il <= n_level_; il--) {
         Grid* grid = grids_[il];
-        
-        // compute some GS on the solution
-        for(sid_t ie = 0; ie< eta_1_; ie++){
-            gs(res,sol,grid);
-        }
+         // do the partitioning, send the new rhs
+        parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
+        parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
 
-        // compute the residual as b - A x
-        lapla(sol,res,grid);
-        daxpy(grid,sol,src,res);
+         // do the interpolation
+        families_[il - 1]->ToChildren(res, rhs, grid->interp());
 
-        // do the interpolation
-        families_[il]->ToParents(res, grid->interp());
-        // do the partitioning
-        parts_[il]->Start(&part_fields);
-        parts_[il]->End(&part_fields);
+        // // Gauss-Seidel - laplacian(sol) = rhs
+        // for (sid_t ie = 0; ie < eta_1_; ie++) {
+        //     ErrorCalculator error = ErrorCalculator();
+        //     real_t          norm2;
+        //     error.Norm2(grid, sol, rhs, &norm2);
+        //     m_log("error at level %d before is %e", il, norm2);
+        //     gs(rhs, sol, grid);
+        //     // compute the error:
+        //     lapla(sol, res, grid);  // laplacian(sol) = res
+        //     // ErrorCalculator error = ErrorCalculator();
+        //     // real_t          norm2;
+        //     error.Norm2(grid, sol, rhs, &norm2);
+        //     m_log("error at level %d after is %e", il, norm2);
+        // }
+        // // compute the residual as rhs - A x
+        // lapla(sol, res, grid);       // laplacian(sol) = res
+        // daxpy(grid, res, rhs, res);  // res = - 1.0 * res + rhs  
     }
     //-------------------------------------------------------------------------
     m_end;

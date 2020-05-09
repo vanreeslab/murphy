@@ -10,7 +10,7 @@
 #include "laplacian.hpp"
 #include "prof.hpp"
 #include "parser.hpp"
-
+#include "multigrid.hpp"
 
 using std::string;
 using std::to_string;
@@ -27,18 +27,19 @@ int main(int argc, char** argv) {
     Prof*  prof      = new Prof(prof_name);
 
     //-------------------------------------------------------------------------
-    for(int i=0; i<argument.n_repeat_; i++)
-    {
+    for (int i = 0; i < argument.n_repeat_; i++) {
         // create a grid
         Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
         // get an refined and adapted grid given the patch
         grid->Adapt(&argument.patch_);
         // create a field
         Field* vort = new Field("vorticity", 3);
-        Field* diff = new Field("diffusion", 3);
+        Field* psi  = new Field("psi", 3);
+        Field* res  = new Field("residual", 3);
         // register the field to the grid
         grid->AddField(vort);
-        grid->AddField(diff);
+        grid->AddField(psi);
+        grid->AddField(res);
         // get some values for the polynomial
         real_t     dir[3]  = {1.0, 1.0, 1.0};
         lid_t      deg[3]  = {2, 2, 2};
@@ -46,15 +47,20 @@ int main(int argc, char** argv) {
         polynom(grid, vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         vort->bctype(M_BC_EXTRAP_5);
-        // take the derivtive and store it into the diff field
-        LaplacianCross<5> lapla = LaplacianCross<5>();
-        lapla(vort, diff, grid);
+        psi->bctype(M_BC_EXTRAP_5);
+
+        // init the MG solver
+        Multigrid* poisson = new Multigrid(grid, 0, vort, psi, res);
+
+
+        poisson->Solve();
 
         // and destroy the grid and the field
         delete (vort);
-        delete (diff);
+        delete (psi);
+        delete (res);
+        delete (poisson);
         delete (grid);
-        
     }
     // display the profiler
     prof->Disp();
