@@ -2,6 +2,7 @@
 
 #include <mpi.h>
 #include <limits>
+#include <iostream>
 
 #include "defs.hpp"
 #include "gridcallback.hpp"
@@ -9,6 +10,8 @@
 #include "daxpy.hpp"
 #include "gaussseidel.hpp"
 #include "error.hpp"
+
+#include "ioh5.hpp"
 
 using std::numeric_limits;
 
@@ -120,25 +123,35 @@ void Multigrid::Solve() {
     map_rhs_field[fields_nickname_.at("rhs")] = rhs;
 
     Daxpy             daxpy = Daxpy(-1.0);
-    LaplacianCross<5> lapla = LaplacianCross<5>();
-    GaussSeidel<5> gs = GaussSeidel<5>(1.0);
+    LaplacianCross<3> lapla = LaplacianCross<3>();
+    GaussSeidel<3> gs = GaussSeidel<3>(1.0);
 
     // downward pass
     for (sid_t il = n_level_; il > 0; il--) {
         Grid* grid = grids_[il];
 
+
+        // IOH5 dump = IOH5("data");
+        // string fname = "gs_" + std::to_string(il);
+        // dump(grid,rhs,fname);
+
         // Gauss-Seidel - laplacian(sol) = rhs
-        for (sid_t ie = 0; ie < eta_1_; ie++) {
+        for (sid_t ie = 0; ie < 100; ie++) {
             ErrorCalculator error = ErrorCalculator();
             real_t          norm2;
-            error.Norm2(grid, sol, rhs, &norm2);
+            lapla(sol, res, grid);
+            error.Norm2(grid, res, rhs, &norm2);
             m_log("error at level %d before is %e", il, norm2);
-            gs(rhs, sol, grid);
+
+            gs(sol, rhs, grid);
+            // IOH5   dump  = IOH5("data");
+            // string fname = "sol_gs_" + std::to_string(il) + "_" + std::to_string(ie);
+            // dump(grid, sol, fname);
             // compute the error:
             lapla(sol, res, grid);  // laplacian(sol) = res
             // ErrorCalculator error = ErrorCalculator();
             // real_t          norm2;
-            error.Norm2(grid, sol, rhs, &norm2);
+            error.Norm2(grid, res, rhs, &norm2);
             m_log("error at level %d after is %e", il, norm2);
         }
         // compute the residual as rhs - A x
@@ -159,11 +172,11 @@ void Multigrid::Solve() {
     for (sid_t il = 1; il <= n_level_; il--) {
         Grid* grid = grids_[il];
          // do the partitioning, send the new rhs
-        parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
-        parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
+        // parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
+        // parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
 
          // do the interpolation
-        families_[il - 1]->ToChildren(res, rhs, grid->interp());
+        // families_[il - 1]->ToChildren(res, rhs, grid->interp());
 
         // // Gauss-Seidel - laplacian(sol) = rhs
         // for (sid_t ie = 0; ie < eta_1_; ie++) {

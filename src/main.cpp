@@ -44,10 +44,18 @@ int main(int argc, char** argv) {
         real_t     dir[3]  = {1.0, 1.0, 1.0};
         lid_t      deg[3]  = {2, 2, 2};
         SetPolynom polynom = SetPolynom(deg, dir);
-        polynom(grid, vort);
+        // polynom(grid, vort);
+        real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
+        real_t freq[3] = {1.0,1.0,1.0};
+        SetCosinus sinus = SetCosinus(length,freq);
+        sinus(grid,vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         vort->bctype(M_BC_EXTRAP_5);
         psi->bctype(M_BC_EXTRAP_5);
+
+
+        IOH5 dump = IOH5("data");
+        dump(grid,vort);
 
         // init the MG solver
         Multigrid* poisson = new Multigrid(grid, 0, vort, psi, res);
