@@ -124,8 +124,8 @@ void Multigrid::Solve() {
 
     Daxpy             daxpy_minus = Daxpy(-1.0);
     Daxpy             daxpy_plus  = Daxpy(+1.0);
-    LaplacianCross<5> lapla       = LaplacianCross<5>();
-    GaussSeidel<5>    gs          = GaussSeidel<5>(alpha_);
+    LaplacianCross<3> lapla       = LaplacianCross<3>();
+    GaussSeidel<3>    gs          = GaussSeidel<3>(alpha_);
 
     IOH5 dump = IOH5("data");
 
@@ -146,9 +146,7 @@ void Multigrid::Solve() {
 
         // Gauss-Seidel - laplacian(sol) = rhs
         for (sid_t ie = 0; ie < eta_1_; ie++) {
-            sol->ghost_status(false);
-            gs(sol, rhs, grid);
-            sol->ghost_status(false);
+            gs(sol, rhs, nullptr, grid);
             // compute the error:
             lapla(sol, res, grid);  // laplacian(sol) = res
             error.Norm2(grid, res, rhs, &norm2);
@@ -189,9 +187,7 @@ void Multigrid::Solve() {
         // lapla(sol, res, grids_[0]);
         // error.Norm2(grid_fft, res, rhs, &norm2);
         // m_log("error at level %d before is %e", 0, norm2);
-        sol->ghost_status(false);
-        gs(sol, rhs, grid_fft);
-        sol->ghost_status(false);
+        gs(sol, rhs,nullptr, grid_fft);
         // IOH5   dump  = IOH5("data");
         // string fname = "sol_gs_" + std::to_string(il) + "_" + std::to_string(ie);
         // dump(grid, sol, fname);
@@ -242,9 +238,7 @@ void Multigrid::Solve() {
 
         // Gauss-Seidel - laplacian(sol) = rhs
         for (sid_t ie = 0; ie < eta_2_; ie++) {
-            sol->ghost_status(false);
-            gs(sol, rhs, grid);
-            sol->ghost_status(false);
+            gs(sol, rhs,nullptr, grid);
             // compute the error:
             lapla(sol, res, grid);  // laplacian(sol) = res
             error.Norm2(grid, res, rhs, &norm2);

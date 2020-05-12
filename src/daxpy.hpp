@@ -10,7 +10,7 @@ class Daxpy : public OperatorFF2F {
 
    public:
     explicit Daxpy(real_t alpha);
-    void ApplyOpFF2F(const qid_t* qid, GridBlock* block, const Field* fid_x, const Field* fid_y, Field* fid_z) override;
+    void ApplyOpFF2F(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z) override;
 };
 
 #endif  // SRC_DAXPY_HPP_
