@@ -18,9 +18,9 @@ class IterativeSolver{
      */
     void operator()(Field* field_sol, Field* field_rhs, Field* field_tmp, Grid* grid);
 
-   
-    virtual void IterativeSolverInner(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* field_tmp) = 0;
-    virtual void IterativeSolverOuter(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* field_tmp) = 0;
+    virtual void IterativeSolverPrep(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* field_tmp) = 0;
+    virtual void IterativeSolverInner(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* field_tmp)  = 0;
+    virtual void IterativeSolverOuter(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* field_tmp)  = 0;
 };
 
 #endif  // SRC_ITERATIVESOLVER_HPP_

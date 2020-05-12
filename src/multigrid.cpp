@@ -9,11 +9,15 @@
 #include "laplacian.hpp"
 #include "daxpy.hpp"
 #include "gaussseidel.hpp"
+#include "jacobi.hpp"
 #include "error.hpp"
 
 #include "ioh5.hpp"
 
 using std::numeric_limits;
+
+
+// #define MG_GAUSSSEIDEL
 
 Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* res) {
     m_begin;
@@ -122,129 +126,114 @@ void Multigrid::Solve() {
     map<string, Field*> map_rhs_field;
     map_rhs_field[fields_nickname_.at("rhs")] = rhs;
 
+    // needed tools
     Daxpy             daxpy_minus = Daxpy(-1.0);
     Daxpy             daxpy_plus  = Daxpy(+1.0);
     LaplacianCross<3> lapla       = LaplacianCross<3>();
-    GaussSeidel<3>    gs          = GaussSeidel<3>(alpha_);
+#ifndef MG_GAUSSSEIDEL
+    Jacobi<3> jacobi = Jacobi<3>(alpha_);
+#else
+    GaussSeidel<3> gs = GaussSeidel<3>(1.0);
+#endif
+#ifndef NDEBUG
+    // needed to track the error
+    real_t          norm2;
+    ErrorCalculator error2 = ErrorCalculator();
+#endif
+
 
     IOH5 dump = IOH5("data");
 
-    //---------------------------------------------------------------------------------------
-    // downward pass
+    //---------------------
+    // GOING DOWN
     for (sid_t il = n_level_; il > 0; il--) {
+        // this is the current grid
         Grid* grid = grids_[il];
-
-        // IOH5 dump = IOH5("data");
-        // string fname = "gs_" + std::to_string(il);
-        // dump(grid,rhs,fname);
-
-        ErrorCalculator error = ErrorCalculator();
-        real_t          norm2;
-        lapla(sol, res, grid);
-        error.Norm2(grid, res, rhs, &norm2);
-        m_log("entering level %d: error is %e", il, norm2);
-
-        // Gauss-Seidel - laplacian(sol) = rhs
+        // Smooth that stuff
         for (sid_t ie = 0; ie < eta_1_; ie++) {
+#ifndef MG_GAUSSSEIDEL
+            jacobi(sol, rhs, res, grid);
+#else
             gs(sol, rhs, nullptr, grid);
-            // compute the error:
-            lapla(sol, res, grid);  // laplacian(sol) = res
-            error.Norm2(grid, res, rhs, &norm2);
-            m_log("----> %e", norm2);
+#endif
+#ifndef NDEBUG
+        lapla(sol, res, grid);
+        error2.Norm2(grid, res, rhs, &norm2);
+        m_log("down: leaving level %d, ||error||_2 = %e", il, norm2);
+#endif
         }
-        // compute the residual as rhs - A x
-        lapla(sol, res, grid);             // laplacian(sol) = res
-        dump(grid,res,"level1_down_lapla");
-        daxpy_minus(grid, res, rhs, res);  // res = - 1.0 * res + rhs
-        dump(grid,rhs,"level1_down_rhs");
-        dump(grid,res,"level1_down_error");
-        dump(grid,sol,"level1_down_sol");
-        
+        dump(grid,sol,"down_sol");
+        // compute the residual as rhs - A x to send to the coarser level
+        lapla(sol, res, grid);
+#ifndef NDEBUG
+        error2.Norm2(grid, res, rhs, &norm2);
+        m_log("down: leaving level %d, ||error||_2 = %e", il, norm2);
+#endif
+        daxpy_minus(grid, res, rhs, res);
 
-        // do the interpolation
+        // do the interpolation from the residual to the rhs of the next level
         families_[il - 1]->ToParents(res, rhs, grid->interp());
-
         // do the partitioning, send the new rhs
         parts_[il - 1]->Start(&map_rhs_field, M_FORWARD);
         parts_[il - 1]->End(&map_rhs_field, M_FORWARD);
     }
-    //---------------------------------------------------------------------------------------
+    //---------------------
     // do the direct solve
     Grid*           grid_fft = grids_[0];
-    ErrorCalculator error2   = ErrorCalculator();
-    real_t          norm22;
-    lapla(sol, res, grid_fft);
-    error2.Norm2(grid_fft, res, rhs, &norm22);
-    m_log("entering level %d: error is %e", 0, norm22);
-
-    dump(grid_fft,sol,"fft_before_sol");
-    dump(grid_fft,res,"fft_before_lapla");
-    dump(grid_fft,rhs,"fft_before_rhs");
-    // Gauss-Seidel - laplacian(sol) = rhs
-    for (sid_t ie = 0; ie < 5; ie++) {
-        ErrorCalculator error = ErrorCalculator();
-        real_t          norm2;
-        // lapla(sol, res, grids_[0]);
-        // error.Norm2(grid_fft, res, rhs, &norm2);
-        // m_log("error at level %d before is %e", 0, norm2);
-        gs(sol, rhs,nullptr, grid_fft);
-        // IOH5   dump  = IOH5("data");
-        // string fname = "sol_gs_" + std::to_string(il) + "_" + std::to_string(ie);
-        // dump(grid, sol, fname);
-        // compute the error:
-        lapla(sol, res, grid_fft);  // laplacian(sol) = res
-        // ErrorCalculator error = ErrorCalculator();
-        // real_t          norm2;
-        error.Norm2(grid_fft, res, rhs, &norm2);
+    dump(grid_fft,rhs,"direct_rhs");
+    // do the jacobi becuse I don't have anything else for the moment
+    for (lid_t ie = 0; ie < 45; ie++) {
+#ifndef MG_GAUSSSEIDEL
+        jacobi(sol, rhs, res, grid_fft);
+#else
+        gs(sol, rhs, nullptr, grid_fft);
+#endif
+ // compute the residual as rhs - A x to send to the coarser level
         
-        m_log("------> %e", norm2);
+#ifndef NDEBUG
+        lapla(sol, res, grid_fft);
+        error2.Norm2(grid_fft, res, rhs, &norm2);
+        m_log("direct: iter = %d -> ||error||_2 = %e",ie, norm2);
+#endif
     }
-    dump(grid_fft,sol,"fft_sol");
-    dump(grid_fft,res,"fft_lapla");
-    dump(grid_fft,rhs,"fft_rhs");
-
-    //---------------------------------------------------------------------------------------
-    // downward pass
+    dump(grid_fft,sol,"direct_sol");
+    //---------------------
+    // GOING UP
     for (sid_t il = 1; il <= n_level_; il++) {
-        // get the ghost for the solution as we need them to interpolate!!
-        grids_[il-1]->GhostPull(sol);
-         // do the partitioning, send the solution + ghost
+        // get the ghost for the solution as we need them to refine
+        grids_[il - 1]->GhostPull(sol);
+        // do the partitioning, send the solution + ghost
         parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
         parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
-
-        // do the interpolation
+        // do the interpolation using the same interpolation as the one used to go down
+        families_[il - 1]->ToChildren(sol, res, grids_[il]->interp());
+        // we are now on the new grid!!
         Grid* grid = grids_[il];
-        families_[il - 1]->ToChildren(sol, res, grid->interp());
-
-        dump(grid,res,"solinterp");
-
-        ErrorCalculator error = ErrorCalculator();
-        real_t          norm2;
-        // lapla(sol, res, grid);
-        // error.Norm2(grid, res, rhs, &norm2);
-        // m_log("entering level %d: error is %e", il, norm2);
-
         // update the solution with it's coarsegrid version
         daxpy_plus(grid, res, sol, sol);  // sol = res + sol
-
-        dump(grid,sol,"level1_up_sol");
-        dump(grid,res,"level1_up_solinterp");
-
+#ifndef NDEBUG
         lapla(sol, res, grid);
-        error.Norm2(grid, res, rhs, &norm2);
-        dump(grid, res, "level1_up_error_lapla");
-        dump(grid, rhs, "level1_up_error_rhs");
-        m_log("after correction error is %e", norm2);
-
+        error2.Norm2(grid, res, rhs, &norm2);
+        m_log("up: entering level %d, ||error||_2 = %e", il, norm2);
+#endif
         // Gauss-Seidel - laplacian(sol) = rhs
         for (sid_t ie = 0; ie < eta_2_; ie++) {
-            gs(sol, rhs,nullptr, grid);
-            // compute the error:
-            lapla(sol, res, grid);  // laplacian(sol) = res
-            error.Norm2(grid, res, rhs, &norm2);
-            // m_log("error at level %d after is %e", il, norm2);
-            m_log("------> %e", norm2);
+#ifndef MG_GAUSSSEIDEL
+            jacobi(sol, rhs, res, grid);
+#else
+            gs(sol, rhs, nullptr, grid);
+#endif
+#ifndef NDEBUG
+            lapla(sol, res, grid);
+            error2.Norm2(grid, res, rhs, &norm2);
+            m_log("up: leaving level %d, ||error||_2 = %e", il, norm2);
+#endif
         }
+#ifndef NDEBUG
+        lapla(sol, res, grid);
+        error2.Norm2(grid, res, rhs, &norm2);
+        m_log("up: leaving level %d, ||error||_2 = %e", il, norm2);
+#endif
     }
     //-------------------------------------------------------------------------
     m_end;

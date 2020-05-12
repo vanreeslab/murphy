@@ -28,8 +28,9 @@ class GaussSeidel : public IterativeSolver {
             m_assert(false, "not coded yet");
         }
     }
-
-   protected:
+    void IterativeSolverPrep(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* fid_tmp) override {
+        m_assert(false, "you shouldn't end here, not tmp field has to be used when using GS, change it by nullptr");
+    }
     void IterativeSolverInner(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* fid_tmp) override;
     void IterativeSolverOuter(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* fid_tmp) override;
 };

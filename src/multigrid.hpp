@@ -8,14 +8,13 @@
 #include "grid.hpp"
 #include "mgfamily.hpp"
 #include "murphy.hpp"
-#include "p8est.h"
 #include "partitioner.hpp"
 
 class Multigrid {
    protected:
-    sid_t  eta_1_ = 5;
-    sid_t  eta_2_ = 5;
-    real_t alpha_ = 1.5;
+    sid_t  eta_1_ = 10;
+    sid_t  eta_2_ = 10;
+    real_t alpha_ = 1.0;
 
     sid_t fft_level_ = 0;
     sid_t max_level_ = 0;

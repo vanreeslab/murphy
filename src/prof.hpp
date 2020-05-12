@@ -79,4 +79,15 @@ class Prof {
     void Disp(const std::string ref);
 };
 
+#define m_profStart(prof, name) ({ \
+    if ((prof) != nullptr) {       \
+        (prof)->Start(name);       \
+    }                              \
+})
+
+#define m_profStop(prof, name) ({ \
+    if ((prof) != nullptr) {     \
+        (prof)->Stop(name);       \
+    }                            \
+})
 #endif  // SRC_PROF_HPP_

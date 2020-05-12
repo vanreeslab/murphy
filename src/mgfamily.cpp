@@ -30,7 +30,7 @@ void MGFamily::AddMembers(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]
     //-------------------------------------------------------------------------
 }
 
-void MGFamily::ToChildren(const Field* field_src, const Field* field_trg, Interpolator* interp) {
+void MGFamily::ToChildren(Field* field_src, Field* field_trg, Interpolator* interp) {
     m_begin;
     m_assert(field_src->lda() == field_trg->lda(), "the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
@@ -65,11 +65,13 @@ void MGFamily::ToChildren(const Field* field_src, const Field* field_trg, Interp
             }
         }
     }
+    // un-validate the ghost status
+    field_trg->ghost_status(false);
     //-------------------------------------------------------------------------
     m_end;
 }
 
-void MGFamily::ToParents(const Field* field_src, const Field* field_trg, Interpolator* interp) {
+void MGFamily::ToParents(Field* field_src, Field* field_trg, Interpolator* interp) {
     m_begin;
     m_assert(field_src->lda() == field_trg->lda(),"the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
@@ -106,6 +108,8 @@ void MGFamily::ToParents(const Field* field_src, const Field* field_trg, Interpo
             }
         }
     }
+    // un-validate the ghost status
+    field_trg->ghost_status(false);
     //-------------------------------------------------------------------------
     m_end;
 }

@@ -46,12 +46,13 @@ int main(int argc, char** argv) {
         SetPolynom polynom = SetPolynom(deg, dir);
         // polynom(grid, vort);
         real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
-        real_t freq[3] = {1.0,1.0,1.0};
-        SetCosinus sinus = SetCosinus(length,freq);
+        real_t freq[3] = {2.0,2.0,2.0};
+        SetSinus sinus = SetSinus(length,freq);
         sinus(grid,vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        vort->bctype(M_BC_EXTRAP_5);
-        psi->bctype(M_BC_EXTRAP_5);
+        vort->bctype(M_BC_ODD);
+        psi->bctype(M_BC_ODD);
+        res->bctype(M_BC_ODD);
 
 
         IOH5 dump = IOH5("data");

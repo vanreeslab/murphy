@@ -2,6 +2,9 @@
 
 #include "operator.hpp"
 
+void CallIterativeSolverPrep(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* fid_tmp, IterativeSolver* solver) {
+    solver->IterativeSolverPrep(qid, block, fid_sol, fid_rhs, fid_tmp);
+}
 void CallIterativeSolverInner(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* fid_tmp, IterativeSolver* solver) {
     solver->IterativeSolverInner(qid, block, fid_sol, fid_rhs, fid_tmp);
 }
@@ -13,45 +16,61 @@ void IterativeSolver::operator()(Field* fid_sol, Field* fid_rhs, Field* fid_tmp,
     m_begin;
     m_assert(fid_sol != nullptr, "the source field cannot be null");
     m_assert(fid_rhs != nullptr, "the source field cannot be null");
+    m_assert(fid_sol->lda() == fid_rhs->lda(),"the solution and the rhs must have the same lda");
+#ifndef NDEBUG
+    if (fid_tmp != nullptr) {
+        m_assert(fid_sol->lda() == fid_tmp->lda(), "the solution and the tmpp must have the same lda");
+    }
+#endif
     //-------------------------------------------------------------------------
+    // determine which field will be used to contain the value
+    // if a fid_tmp is given, we copy the current state to him and use it for the ghosts (ex Jacobi), if not, we use the sol field (ex: Gauss Seidel)
+    Field* field_to_ghost;
+    if(fid_tmp != nullptr){
+        field_to_ghost = fid_tmp;
+        ida_ = 0;
+        DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverPrep, grid, fid_sol, fid_rhs, fid_tmp, this);
+    }
+    else{
+        field_to_ghost = fid_sol;
+    }
+    // m_log("doing the ghosts on %s",field_to_ghost->name().c_str());
+    
     // start the send in the first dimension
-    grid->GhostPullSend(fid_sol, 0);
-    if (grid->profiler() != nullptr) {
-        grid->profiler()->Start("stencil_inner");
-    }
-    ida_   = 0;
+    grid->GhostPullSend(field_to_ghost, 0);
+
     // start the inner operation on the first dimension
+    m_profStart(grid->profiler(),"stencil_inner");
+    ida_   = 0;
     DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverInner, grid, fid_sol, fid_rhs, fid_tmp, this);
-    if (grid->profiler() != nullptr) {
-        grid->profiler()->Stop("stencil_inner");
-    }
-    for (int ida = 1; ida < fid_sol->lda(); ida++) {
-                // receive the previous dimension
-        grid->GhostPullRecv(fid_sol, ida - 1);
-        // start the send for the next dimension
-        grid->GhostPullSend(fid_sol, ida);
-        // fill the ghost values of the just-received information
-        grid->GhostPullFill(fid_sol, ida - 1);
-        // do the outer operation if needed with the newly computed ghosts and already do the inner operation for the next dimension
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Start("stencil_outer");
+    m_profStop(grid->profiler(),"stencil_inner");
+
+    for (int ida = 1; ida < field_to_ghost->lda(); ida++) {
+        // prepare the work for the next dimension, to get the send ready
+        if (fid_tmp != nullptr) {
+            ida_ = ida;
+            DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverPrep, grid, fid_sol, fid_rhs, fid_tmp, this);
         }
-        // outer operation on the just received dim
-        ida_   = ida - 1;
-        DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverOuter ,grid, fid_sol, fid_rhs, fid_tmp, this);
-        // new operation on the now received dimension
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Stop("stencil_outer");
-            grid->profiler()->Start("stencil_inner");
-        }
-        ida_   = ida;
+        // receive the previous dimension
+        grid->GhostPullRecv(field_to_ghost, ida - 1);
+        // start the send for the next dimension, already prepared
+        grid->GhostPullSend(field_to_ghost, ida);
+        // fill the ghost values of the just-received information for the previous dimension
+        grid->GhostPullFill(field_to_ghost, ida - 1);
+        // do the outer operation on the previous dimension
+        m_profStart(grid->profiler(), "stencil_outer");
+        ida_ = ida - 1;
+        DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverOuter, grid, fid_sol, fid_rhs, fid_tmp, this);
+        m_profStop(grid->profiler(), "stencil_outer");
+        // the previous dimension is now over, we can start the new dimension
+        // do the inner operation on the new dimension
+        m_profStart(grid->profiler(), "stencil_inner");
+        ida_ = ida;
         DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverInner, grid, fid_sol, fid_rhs, fid_tmp, this);
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Stop("stencil_inner");
-        }
+        m_profStop(grid->profiler(), "stencil_inner");
     }
-    grid->GhostPullRecv(fid_sol, fid_sol->lda() - 1);
-    grid->GhostPullFill(fid_sol, fid_sol->lda() - 1);
+    grid->GhostPullRecv(field_to_ghost, field_to_ghost->lda() - 1);
+    grid->GhostPullFill(field_to_ghost, field_to_ghost->lda() - 1);
     // start the inner operation on the first dimension
 
     if (grid->profiler() != nullptr) {
@@ -62,8 +81,11 @@ void IterativeSolver::operator()(Field* fid_sol, Field* fid_rhs, Field* fid_tmp,
     if (grid->profiler() != nullptr) {
         grid->profiler()->Stop("stencil_outer");
     }
-    // set that everything is ready for the field
+    // we changed the solution field
     fid_sol->ghost_status(false);
+    if (fid_tmp != nullptr) {
+        fid_tmp->ghost_status(false);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
