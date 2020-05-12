@@ -26,7 +26,7 @@ class Stencil : public OperatorF2F {
     /**
      * @brief execute the function ApplyOpDerivInner() or ApplyOpDerivOuter() depending on the inner_ value
      */
-    void ApplyOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
+    void ApplyOpF2F(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
      * between the ghost exchange and the stencil computation.

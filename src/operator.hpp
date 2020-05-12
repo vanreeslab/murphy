@@ -122,7 +122,7 @@ class OperatorF2F {
     * @param fid_src the source field
     * @param fid_trg the target field
     */
-    virtual void ApplyOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
+    virtual void ApplyOpF2F(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
     /**
      * @brief call OperatorF2F::ApplyOpF2F() on each block
      */

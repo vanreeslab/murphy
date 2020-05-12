@@ -33,9 +33,9 @@ int main(int argc, char** argv) {
         // get an refined and adapted grid given the patch
         grid->Adapt(&argument.patch_);
         // create a field
-        Field* vort = new Field("vorticity", 3);
-        Field* psi  = new Field("psi", 3);
-        Field* res  = new Field("residual", 3);
+        Field* vort = new Field("vorticity", 1);
+        Field* psi  = new Field("psi", 1);
+        Field* res  = new Field("residual", 1);
         // register the field to the grid
         grid->AddField(vort);
         grid->AddField(psi);

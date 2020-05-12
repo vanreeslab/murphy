@@ -19,7 +19,7 @@
  * @param fid_src 
  * @param fid_trg 
  */
-void Stencil::ApplyOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) {
+void Stencil::ApplyOpF2F(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
     if (inner_) {
         ApplyOpDerivInner(qid, block, fid_src, fid_trg);

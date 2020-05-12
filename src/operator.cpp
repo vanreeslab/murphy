@@ -32,7 +32,7 @@ void ConstOperatorF::operator()(ForestGrid* grid, Field* field) {
 }
 
 //=================================================================================================
-void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op) {
+void CallOpF2F(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, OperatorF2F* op) {
     op->ApplyOpF2F(qid, block, fid_src, fid_trg);
 }
 /**
@@ -44,7 +44,7 @@ void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* 
  */
 void OperatorF2F::operator()(ForestGrid* grid, Field* field_src, Field* field_trg) {
     // execute the operation on the blocks
-    DoOp_F_<op_t<OperatorF2F*, const Field*, Field*>, OperatorF2F*, const Field*, Field*>(CallOpF2F, grid, field_src, field_trg, this);
+    DoOp_F_<op_t<OperatorF2F*, Field*, Field*>, OperatorF2F*, Field*, Field*>(CallOpF2F, grid, field_src, field_trg, this);
     // set the field_trg ghosts as changed
     m_verb("setting the ghosts of %s to false", field_trg->name().c_str());
     field_trg->ghost_status(false);

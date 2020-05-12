@@ -13,9 +13,9 @@
 
 class Multigrid {
    protected:
-    sid_t eta_1_ = 3;
-    sid_t eta_2_ = 3;
-    real_t alpha_ = 1.95;
+    sid_t  eta_1_ = 5;
+    sid_t  eta_2_ = 5;
+    real_t alpha_ = 1.0;
 
     sid_t fft_level_ = 0;
     sid_t max_level_ = 0;
@@ -24,7 +24,7 @@ class Multigrid {
     Grid**        grids_;
     Partitioner** parts_;
 
-    map<string, string> fields_nickname_; //!< map containing the real field_name used as a key for @ref map_fields_ (the key is the nickname)
+    map<string, string> fields_nickname_;  //!< map containing the real field_name used as a key for @ref map_fields_ (the key is the nickname)
     map<string, Field*> map_fields_;
 
     lid_t*     n_family_member_;
