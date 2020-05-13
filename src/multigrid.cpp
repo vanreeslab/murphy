@@ -18,6 +18,7 @@ using std::numeric_limits;
 
 
 // #define MG_GAUSSSEIDEL
+#define MG_JACOBI_ORDER 5
 
 Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* res) {
     m_begin;
@@ -129,11 +130,13 @@ void Multigrid::Solve() {
     // needed tools
     Daxpy             daxpy_minus = Daxpy(-1.0);
     Daxpy             daxpy_plus  = Daxpy(+1.0);
-    LaplacianCross<3> lapla       = LaplacianCross<3>();
+
 #ifndef MG_GAUSSSEIDEL
-    Jacobi<5> jacobi = Jacobi<5>();
+    Jacobi<MG_JACOBI_ORDER>         jacobi = Jacobi<MG_JACOBI_ORDER>();
+    LaplacianCross<MG_JACOBI_ORDER> lapla  = LaplacianCross<MG_JACOBI_ORDER>();
 #else
-    GaussSeidel<3> gs = GaussSeidel<3>(1.0);
+    LaplacianCross<3> lapla = LaplacianCross<3>();
+    GaussSeidel<3>    gs    = GaussSeidel<3>(1.0);
 #endif
 #ifndef NDEBUG
     // needed to track the error
@@ -144,8 +147,9 @@ void Multigrid::Solve() {
     // initial error
 #ifndef NDEBUG
     lapla(sol, res, grids_[n_level_]);
-    error2.Norm2(grids_[n_level_], res, rhs, &norm2);
-    m_log("initial error = %e", norm2);
+    real_t normi;
+    error2.Norms(grids_[n_level_], res, rhs, &norm2,&normi);
+    m_log("initial error = %e and %e", norm2,normi);
 #endif
     //---------------------
     // GOING DOWN
