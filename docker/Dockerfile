@@ -1,5 +1,7 @@
 FROM ubuntu:latest
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 #RUN echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 #RUN apt update
 #RUN apt upgrade -y
