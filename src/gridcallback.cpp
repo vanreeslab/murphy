@@ -438,25 +438,11 @@ void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_o
     }
     
     // bind the family together
-    m_log("gluing a familly");
     MGFamily* family = grid->curr_family();
     family->AddMembers(parent,children);
     //-------------------------------------------------------------------------
     m_end;
 }
-
-// /**
-//  * @brief always reply yes if p4est ask if we should refine the block
-//  */
-// int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
-//     m_begin;
-//     //-------------------------------------------------------------------------
-//     Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
-//     sid_t target_level = grid->curr_level();
-//     return (quadrant->level < target_level);
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
 
 /**
  * @brief always reply yes if p4est ask if we should coarsen the block
@@ -466,7 +452,6 @@ int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
     //-------------------------------------------------------------------------
     Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
     sid_t target_level = grid->curr_level();
-    m_log("check if we have to coarsen? %d >? %d",quadrant[0]->level , target_level);
     return (quadrant[0]->level > target_level);
     //-------------------------------------------------------------------------
     m_end;

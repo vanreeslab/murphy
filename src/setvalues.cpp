@@ -144,9 +144,9 @@ void SetSinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
 
-                    data[m_idx(i0, i1, i2)] = (-cos((pos[0] + hgrid[0] * 0.5) * fact[0]) + cos((pos[0] - hgrid[0] * 0.5) * fact[0])) * vol[0] / fact[0] +
-                                              (-cos((pos[1] + hgrid[1] * 0.5) * fact[1]) + cos((pos[1] - hgrid[1] * 0.5) * fact[1])) * vol[1] / fact[1] +
-                                              (-cos((pos[2] + hgrid[2] * 0.5) * fact[2]) + cos((pos[2] - hgrid[2] * 0.5) * fact[2])) * vol[2] / fact[2];
+                    data[m_idx(i0, i1, i2)] = (-cos((pos[0] + hgrid[0] * 0.5) * fact[0]) + cos((pos[0] - hgrid[0] * 0.5) * fact[0])) /(hgrid[0] *fact[0]) *
+                                              (-cos((pos[1] + hgrid[1] * 0.5) * fact[1]) + cos((pos[1] - hgrid[1] * 0.5) * fact[1])) /(hgrid[1] *fact[1]) *
+                                              (-cos((pos[2] + hgrid[2] * 0.5) * fact[2]) + cos((pos[2] - hgrid[2] * 0.5) * fact[2])) /(hgrid[2] *fact[2]);
                 }
             }
         }

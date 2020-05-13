@@ -3,22 +3,25 @@
 
 #include "murphy.hpp"
 
-
 template <sid_t length>
 class Jacobi : public IterativeSolver {
    protected:
-    real_t alpha_ = 1.0;
+    real_t alpha_ = 1.0;         //!< relaxation factor, chosen to best kill the high-frequencies
     real_t coef_lapla_[length];  //!< coefficients of the laplacian to apply
    public:
-    Jacobi(real_t alpha) {
-        // store the relaxation param
-        alpha_ = alpha;
+    Jacobi() {
         // get the stencil
         if (length == 3) {
+            // optimal alpha
+            alpha_ = 2.0/3.0;
+            // coefficients order 2
             coef_lapla_[0] = +1.0;
             coef_lapla_[1] = -2.0;
             coef_lapla_[2] = +1.0;
         } else if (length == 5) {
+            // optimal alpha
+            alpha_ = 12.0/23.0;
+            // coefficients order 4
             coef_lapla_[0] = -1.0 / 12.0;
             coef_lapla_[1] = +4.0 / 3.0;
             coef_lapla_[2] = -5.0 / 2.0;

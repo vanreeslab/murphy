@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
         SetPolynom polynom = SetPolynom(deg, dir);
         // polynom(grid, vort);
         real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
-        real_t freq[3] = {2.0,2.0,2.0};
+        real_t freq[3] = {2.0,9.0,1.0};
         SetSinus sinus = SetSinus(length,freq);
         sinus(grid,vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)

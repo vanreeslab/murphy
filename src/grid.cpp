@@ -67,6 +67,11 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     detail_ = new Wavelet<3>();
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
+    // partition the grid to have compatible grid
+    Partitioner part = Partitioner(&fields_,this,true);
+    //echange should be straightforward as completely empty
+    part.Start(&fields_,M_FORWARD);
+    part.End(&fields_,M_FORWARD);
     // setup the ghost stuctures as the mesh will not change anymore
     SetupGhost();
     //-------------------------------------------------------------------------

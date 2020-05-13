@@ -131,7 +131,7 @@ void Multigrid::Solve() {
     Daxpy             daxpy_plus  = Daxpy(+1.0);
     LaplacianCross<3> lapla       = LaplacianCross<3>();
 #ifndef MG_GAUSSSEIDEL
-    Jacobi<3> jacobi = Jacobi<3>(alpha_);
+    Jacobi<5> jacobi = Jacobi<5>();
 #else
     GaussSeidel<3> gs = GaussSeidel<3>(1.0);
 #endif
@@ -141,9 +141,12 @@ void Multigrid::Solve() {
     ErrorCalculator error2 = ErrorCalculator();
 #endif
 
-
-    IOH5 dump = IOH5("data");
-
+    // initial error
+#ifndef NDEBUG
+    lapla(sol, res, grids_[n_level_]);
+    error2.Norm2(grids_[n_level_], res, rhs, &norm2);
+    m_log("initial error = %e", norm2);
+#endif
     //---------------------
     // GOING DOWN
     for (sid_t il = n_level_; il > 0; il--) {
@@ -156,18 +159,12 @@ void Multigrid::Solve() {
 #else
             gs(sol, rhs, nullptr, grid);
 #endif
-#ifndef NDEBUG
-        lapla(sol, res, grid);
-        error2.Norm2(grid, res, rhs, &norm2);
-        m_log("down: leaving level %d, ||error||_2 = %e", il, norm2);
-#endif
         }
-        dump(grid,sol,"down_sol");
         // compute the residual as rhs - A x to send to the coarser level
         lapla(sol, res, grid);
 #ifndef NDEBUG
         error2.Norm2(grid, res, rhs, &norm2);
-        m_log("down: leaving level %d, ||error||_2 = %e", il, norm2);
+        m_log("down: leaving level %d, error = %e", il, norm2);
 #endif
         daxpy_minus(grid, res, rhs, res);
 
@@ -180,7 +177,6 @@ void Multigrid::Solve() {
     //---------------------
     // do the direct solve
     Grid*           grid_fft = grids_[0];
-    dump(grid_fft,rhs,"direct_rhs");
     // do the jacobi becuse I don't have anything else for the moment
     for (lid_t ie = 0; ie < 45; ie++) {
 #ifndef MG_GAUSSSEIDEL
@@ -189,14 +185,7 @@ void Multigrid::Solve() {
         gs(sol, rhs, nullptr, grid_fft);
 #endif
  // compute the residual as rhs - A x to send to the coarser level
-        
-#ifndef NDEBUG
-        lapla(sol, res, grid_fft);
-        error2.Norm2(grid_fft, res, rhs, &norm2);
-        m_log("direct: iter = %d -> ||error||_2 = %e",ie, norm2);
-#endif
     }
-    dump(grid_fft,sol,"direct_sol");
     //---------------------
     // GOING UP
     for (sid_t il = 1; il <= n_level_; il++) {
@@ -214,7 +203,7 @@ void Multigrid::Solve() {
 #ifndef NDEBUG
         lapla(sol, res, grid);
         error2.Norm2(grid, res, rhs, &norm2);
-        m_log("up: entering level %d, ||error||_2 = %e", il, norm2);
+        m_log("up: entering level %d, error = %e", il, norm2);
 #endif
         // Gauss-Seidel - laplacian(sol) = rhs
         for (sid_t ie = 0; ie < eta_2_; ie++) {
@@ -223,16 +212,11 @@ void Multigrid::Solve() {
 #else
             gs(sol, rhs, nullptr, grid);
 #endif
-#ifndef NDEBUG
-            lapla(sol, res, grid);
-            error2.Norm2(grid, res, rhs, &norm2);
-            m_log("up: leaving level %d, ||error||_2 = %e", il, norm2);
-#endif
         }
 #ifndef NDEBUG
         lapla(sol, res, grid);
         error2.Norm2(grid, res, rhs, &norm2);
-        m_log("up: leaving level %d, ||error||_2 = %e", il, norm2);
+        m_log("up: leaving level %d, error = %e", il, norm2);
 #endif
     }
     //-------------------------------------------------------------------------

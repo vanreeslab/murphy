@@ -24,9 +24,7 @@ void MGFamily::AddMembers(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]
     for (sid_t ic = 0; ic < P8EST_CHILDREN; ic++) {
         children_[parent_count_ * P8EST_CHILDREN + ic] = children[ic];
     }
-    m_log("incrementing");
     parent_count_++;
-    m_log("Now %d parents", parent_count_);
     //-------------------------------------------------------------------------
 }
 
