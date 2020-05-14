@@ -21,6 +21,13 @@ RUN cd /p4est &&\
     make install -j
 RUN rm -rf /p4est
 
+#flups
+# RUN git clone https://git.immc.ucl.ac.be/examples/flups.git
+COPY flups /flups
+RUN cd /flups &&\
+    ARCH_FILE=make_arch/make.docker_valid_opt PREFIX=/soft/flups make install -j
+RUN rm -rf /googletest
+
 #Google test
 RUN git clone https://github.com/google/googletest.git
 RUN cd /googletest &&\

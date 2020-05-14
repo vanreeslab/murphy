@@ -18,7 +18,7 @@ build gcc :
     - "mkdir -p build"
     - "mkdir -p test/build"
     - "make destroy"
-    - "ARCH_FILE=make_arch/make.docker_gcc_test make -j"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test_ci make -j"
 
 # =============================================================================
 build test :
@@ -33,7 +33,7 @@ build test :
     - "mkdir -p build"
     - "mkdir -p test/build"
     - "make destroy"
-    - "ARCH_FILE=make_arch/make.docker_gcc_test make test -j"
+    - "ARCH_FILE=make_arch/make.docker_gcc_test_ci make test -j"
 
 # =============================================================================
 test pure mpi:
