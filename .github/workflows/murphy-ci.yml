@@ -1,0 +1,54 @@
+name: murphy - CI
+
+on: [push]
+
+jobs:
+	#Build job to compile
+	build debug:
+		#indicate to run on the beast using the correct docker
+		runs-on: beast-tower
+		container:
+			image: vanreeslab/murphy:v1.3
+		# several steps in the same jobs (run sequentially)
+		steps:
+			#checkout the repo
+			- uses: actions/checkout@v2
+			# do the build
+			- name: build
+				run: ARCH_FILE=make_arch/make.docker_gcc_test_ci make -j
+			# save the exe created
+			- uses: actions/upload-artifact@v2
+        with:
+          path: murphy
+	#Build job to compile
+	build test:
+		#indicate to run on the beast using the correct docker
+		runs-on: beast-tower
+		container:
+			image: vanreeslab/murphy:v1.3
+		# several steps in the same jobs (run sequentially)
+		steps:
+			#checkout the repo
+			- uses: actions/checkout@v2
+			# do the build
+			- name: build
+				run: ARCH_FILE=make_arch/make.docker_gcc_test_ci make test -j
+			# save the exe created
+			- uses: actions/upload-artifact@v2
+        with:
+          path: murphy_test
+	#Build job to compile
+	run test:
+		needs: build test
+		#indicate to run on the beast using the correct docker
+		runs-on: beast-tower
+		container:
+			image: vanreeslab/murphy:v1.3
+		# several steps in the same jobs (run sequentially)
+		steps:
+			- uses: actions/download-artifact@v2
+				with:
+					name: murphy_test
+			# do the build
+			- name: build
+				run: ./murphy_test
