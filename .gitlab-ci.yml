@@ -1,7 +1,7 @@
 
 # do this in front of every test
 default :
-  image : immc/murphy-ci:v1.1
+  image : immc/murphy-ci:v1.2
   # before_script:
   #   - "export OMP_NUM_THREADS=1"
 
