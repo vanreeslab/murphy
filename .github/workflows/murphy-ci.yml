@@ -3,13 +3,13 @@ name: murphy - CI
 on: [push]
 
 jobs:
-  #Build job to compile
+  #----------------------------------------------------------------------------
   build-debug:
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
     container:
       image: vanreeslab/murphy:v1.3
-    # several steps in the same jobs (run sequentially)
+    # define the steps
     steps:
       #checkout the repo
       - uses: actions/checkout@v2
@@ -22,13 +22,14 @@ jobs:
         with:
           name: murphy
           path: murphy
-  #Build job to compile
+
+  #----------------------------------------------------------------------------
   build-test:
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
     container:
       image: vanreeslab/murphy:v1.3
-    # several steps in the same jobs (run sequentially)
+    # define the steps
     steps:
       #checkout the repo
       - uses: actions/checkout@v2
@@ -42,14 +43,15 @@ jobs:
         with:
           name: murphy_test
           path: murphy_test
-  #Build job to compile
-  run-test:
+
+  #----------------------------------------------------------------------------
+  run-test-sequential:
     needs: build-test
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
     container:
       image: vanreeslab/murphy:v1.3
-    # several steps in the same jobs (run sequentially)
+    # define the steps
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -58,4 +60,58 @@ jobs:
         run: chmod +x murphy_test
       # do the build
       - name: build
-        run: ./murphy_test
+        run: OMP_NUM_THREADS=1 mpirun -n 1 ./murphy_test
+
+  #----------------------------------------------------------------------------
+  run-test-OpenMP:
+    needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    container:
+      image: vanreeslab/murphy:v1.3
+    # define the steps
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: murphy_test
+      - name: fix permission
+        run: chmod +x murphy_test
+      # do the build
+      - name: build
+        run: OMP_NUM_THREADS=5 mpirun -n 1 ./murphy_test
+  
+  #----------------------------------------------------------------------------
+  run-test-MPI:
+    needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    container:
+      image: vanreeslab/murphy:v1.3
+    # define the steps
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: murphy_test
+      - name: fix permission
+        run: chmod +x murphy_test
+      # do the build
+      - name: build
+        run: OMP_NUM_THREADS=1 mpirun -n 5 ./murphy_test
+  
+  #----------------------------------------------------------------------------
+  run-test-Hybrid:
+    needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    container:
+      image: vanreeslab/murphy:v1.3
+    # define the steps
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: murphy_test
+      - name: fix permission
+        run: chmod +x murphy_test
+      # do the build
+      - name: build
+        run: OMP_NUM_THREADS=5 mpirun -n 5 ./murphy_test
