@@ -16,9 +16,8 @@
 
 using std::numeric_limits;
 
-
 // #define MG_GAUSSSEIDEL
-#define MG_JACOBI_ORDER 5
+#define MG_JACOBI_ORDER 3
 
 Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* res) {
     m_begin;
@@ -42,14 +41,14 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
     sid_t    l_max_level = 0;
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
         // get the current tree
-        p8est_tree_t* ctree = p8est_tree_array_index(forest->trees, it + forest->first_local_tree);
+        p8est_tree_t* ctree = p8est_tree_array_index(forest->trees,it);
         // get the max delta level over the current tree
         l_max_level = m_max(ctree->maxlevel, l_max_level);  // max level is given by the tree
 #ifndef NDEBUG
         // check that no quadrant is beneath the fft_level
         for (lid_t qid = 0; qid < ctree->quadrants.elem_count; qid++) {
             qdrt_t* quad = p8est_quadrant_array_index(&ctree->quadrants, qid);
-            m_assert(fft_level_ <= quad->level, "the quad %d is beneath the level of FFT, not implemented yet", qid);
+            m_assert(fft_level_ <= quad->level, "the quad %d is beneath the level of FFT, not implemented yet: fftlevel = %d vs quad = %d", qid,fft_level_,quad->level);
         }
 #endif
     }
@@ -93,11 +92,15 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
         grids_[il]->SetupGhost();
         // the grid is now partitioned on a coarser level with new ghosts
     }
+
+   direct_solver_ = new FFTSolver(grids_[0],sol,fft_level_);
+
     //-------------------------------------------------------------------------
     m_end;
 }
 
-Multigrid::~Multigrid() {
+Multigrid::~Multigrid()
+{
     m_begin;
     //-------------------------------------------------------------------------
 
@@ -110,6 +113,9 @@ Multigrid::~Multigrid() {
     m_free(parts_);
     m_free(families_);
     m_free(grids_);
+
+    delete direct_solver_;
+
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -180,16 +186,32 @@ void Multigrid::Solve() {
     }
     //---------------------
     // do the direct solve
-    Grid*           grid_fft = grids_[0];
-    // do the jacobi becuse I don't have anything else for the moment
-    for (lid_t ie = 0; ie < 45; ie++) {
-#ifndef MG_GAUSSSEIDEL
-        jacobi(sol, rhs, res, grid_fft);
-#else
-        gs(sol, rhs, nullptr, grid_fft);
+    Grid* grid_fft = grids_[0];
+//     // do the jacobi becuse I don't have anything else for the moment
+//     for (lid_t ie = 0; ie < 45; ie++) {
+// #ifndef MG_GAUSSSEIDEL
+//         jacobi(sol, rhs, res, grid_fft);
+// #else
+//         gs(sol, rhs, nullptr, grid_fft);
+// #endif
+//         // compute the residual as rhs - A x to send to the coarser level
+//     }
+//     IOH5 dump = IOH5("data");
+//     dump(grid_fft, sol, "jacob_sol");
+//     dump(grid_fft, rhs, "jacob_rhs");
+
+    // // do the FFT instead
+    (*direct_solver_)(grid_fft, rhs, sol);
+    IOH5 dump = IOH5("data");
+    dump(grid_fft, sol, "fft_sol");
+    dump(grid_fft, rhs, "fft_rhs");
+
+#ifndef NDEBUG
+    lapla(sol, res, grid_fft);
+    error2.Norm2(grid_fft, res, rhs, &norm2);
+    m_log("after the direct: error = %e", norm2);
 #endif
- // compute the residual as rhs - A x to send to the coarser level
-    }
+
     //---------------------
     // GOING UP
     for (sid_t il = 1; il <= n_level_; il++) {

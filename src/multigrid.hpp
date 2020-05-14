@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 
+#include "fftsolver.hpp"
 #include "field.hpp"
 #include "grid.hpp"
 #include "mgfamily.hpp"
@@ -12,8 +13,8 @@
 
 class Multigrid {
    protected:
-    sid_t  eta_1_ = 10;
-    sid_t  eta_2_ = 10;
+    sid_t  eta_1_ = 5;
+    sid_t  eta_2_ = 3;
     real_t alpha_ = 1.0;
 
     sid_t fft_level_ = 0;
@@ -30,6 +31,8 @@ class Multigrid {
     MGFamily** families_;
 
     sid_t tmp_ilevel_ = 0;
+
+    FFTSolver* direct_solver_ = nullptr;
 
    public:
     Multigrid(Grid* grid, sid_t fft_level, Field* rhs, Field* trg, Field* res);

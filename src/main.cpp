@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     //-------------------------------------------------------------------------
     for (int i = 0; i < argument.n_repeat_; i++) {
         // create a grid
+        m_log("periodic? %d %d %d",argument.period_[0],argument.period_[1],argument.period_[2]);
         Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
         // get an refined and adapted grid given the patch
         grid->Adapt(&argument.patch_);
@@ -46,7 +47,7 @@ int main(int argc, char** argv) {
         SetPolynom polynom = SetPolynom(deg, dir);
         // polynom(grid, vort);
         real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
-        real_t freq[3] = {2.0,9.0,1.0};
+        real_t freq[3] = {2.0,4.0,1.0};
         SetSinus sinus = SetSinus(length,freq);
         sinus(grid,vort);
         // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
