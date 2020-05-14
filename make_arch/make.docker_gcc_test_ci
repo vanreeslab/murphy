@@ -13,8 +13,10 @@ HDF5_LIBNAME := -lhdf5_openmpi
 
 # P4EST_INC := /soft/p4est-2.2-gcc7/include
 # P4EST_LIB := /soft/p4est-2.2-gcc7/lib
-P4EST_INC := /soft/p4est-github-gcc9.3/include
-P4EST_LIB := /soft/p4est-github-gcc9.3/lib
+P4EST_INC := /soft/p4est-github/include
+P4EST_LIB := /soft/p4est-github/lib
+FLUPS_INC := /soft/flups/include
+FLUPS_LIB := /soft/flups/lib
 
 GTEST_INC := /soft/googletest-gcc7/include
 GTEST_LIB := /soft/googletest-gcc7/lib

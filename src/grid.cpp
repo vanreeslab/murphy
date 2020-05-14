@@ -9,6 +9,23 @@
 #include "wavelet.hpp"
 
 using std::string;
+
+/**
+ * @brief Construct a new Grid which is empty, only the interpolators have been associated
+ * 
+ */
+Grid::Grid() : ForestGrid() {
+    //-------------------------------------------------------------------------
+    prof_           = nullptr;
+    ghost_          = nullptr;
+    interp_         = nullptr;
+    detail_         = nullptr;
+    // create a default interpolator
+    interp_ = new Wavelet<5>();
+    detail_ = new Wavelet<3>();
+    //-------------------------------------------------------------------------
+};
+
 /**
  * @brief Construct a new Grid a a uniform grid, distributed among the cpus
  * 
@@ -48,20 +65,38 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     // create a default interpolator
     interp_ = new Wavelet<5>();
     detail_ = new Wavelet<3>();
-
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
-
-    // create the ghosts structure
-    if (prof_ != nullptr) {
-        prof_->Start("ghost_init");
-    }
-    ghost_ = new Ghost(this, interp_);
-    if (prof_ != nullptr) {
-        prof_->Stop("ghost_init");
-    }
+    // partition the grid to have compatible grid
+    Partitioner part = Partitioner(&fields_,this,true);
+    //echange should be straightforward as completely empty
+    part.Start(&fields_,M_FORWARD);
+    part.End(&fields_,M_FORWARD);
+    // setup the ghost stuctures as the mesh will not change anymore
+    SetupGhost();
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_end;
+}
+
+/**
+ * @brief Copy the ForestGrid part from a grid
+ * 
+ * @param grid the source grid
+ */
+void Grid::CopyFrom(Grid* grid){
+    m_begin;
+    //-------------------------------------------------------------------------
+    this->ForestGrid::CopyFrom(grid);
+    // copy the field mapping
+    for(auto iter = grid->FieldBegin(); iter!= grid->FieldEnd(); iter++){
+        string name = iter->first;
+        Field* fid = iter->second;
+        fields_[name] = fid;
+    }
+    // copy the profiler
+    prof_ = grid->profiler();
+    //-------------------------------------------------------------------------
     m_end;
 }
 
@@ -73,11 +108,56 @@ Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
     // destroy the interpolator
-    delete (interp_);
-    delete (detail_);
-    delete (ghost_);
+    if (interp_ != nullptr) {
+        delete (interp_);
+    }
+    if (detail_ != nullptr) {
+        delete (detail_);
+    }
+    // destroy the ghosts
+    DestroyGhost();
     // destroy the remaining blocks
     p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief setup the Ghost structure when the mesh is not going to change anymore
+ * 
+ * @warning this function cannot be called on on existing structure
+ * 
+ */
+void Grid::SetupGhost(){
+    m_begin;
+    m_assert(ghost_ == nullptr,"cannot create something that already exists");
+    //-------------------------------------------------------------------------
+    // create the forestGrid part
+    this->SetupP4estGhostMesh();
+     // create the ghosts structure
+    if (prof_ != nullptr) {
+        prof_->Start("ghost_init");
+    }
+    ghost_ = new Ghost(this, interp_);
+    if (prof_ != nullptr) {
+        prof_->Stop("ghost_init");
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief destroys the Ghost structure of both the ForestGrid and the grid
+ * 
+ */
+void Grid::DestroyGhost() {
+    m_begin;
+    //-------------------------------------------------------------------------
+    if (ghost_ != nullptr) {
+        delete (ghost_);
+        ghost_ = nullptr;
+    }
+    this->ResetP4estGhostMesh();
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -172,6 +252,28 @@ void Grid::DeleteField(Field* field) {
 }
 
 /**
+ * @brief reset the fields_ list to the given list of new fields
+ * 
+ * @warning if mis-used, this function will break the whole run...
+ * 
+ * @param fields 
+ */
+void Grid::ResetFields(const map<string, Field*>* fields) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // clear the current map
+    fields_.clear();
+    // copy the new one
+    for (auto iter = fields->begin(); iter != fields->end(); iter++) {
+        fields_[iter->first] = iter->second;
+        // check if we satisfy the requirements on the key
+        m_assert(iter->first == iter->second->name(),"the key of the map must be the name of the field");
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
  * @brief Pull ghost points (take the values from the neighbors): fill the mirror buffers and start the send MPI call
  * 
  * @warning this function is part of the advanced control feature
@@ -184,6 +286,7 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
+    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         if (prof_ != nullptr) {
@@ -217,6 +320,7 @@ void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
+    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
@@ -247,6 +351,7 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(interp_ != nullptr, "the inteprolator cannot be null");
+    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
@@ -275,6 +380,7 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
 void Grid::GhostPull(Field* field) {
     m_begin;
     m_assert(field != nullptr, "the source field cannot be null");
+    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     // start the send in the first dimension
     GhostPullSend(field, 0);
@@ -310,8 +416,7 @@ void Grid::Refine(const sid_t delta_level) {
             GhostPull(fid->second);
         }
         // delete the soon-to be outdated ghost and mesh
-        delete (ghost_);
-        ResetP4estGhostMesh();
+        DestroyGhost();
         // set the grid in the forest for the callback
         forest_->user_pointer = reinterpret_cast<void*>(this);
         // do the p4est interpolation by callback
@@ -330,23 +435,18 @@ void Grid::Refine(const sid_t delta_level) {
             prof_->Start("p4est_partition_init");
         }
         // partition the grid
-        Partitioner partition(&fields_, this);
+        Partitioner partition(&fields_, this, true);
         if (prof_ != nullptr) {
             prof_->Stop("p4est_partition_init");
             prof_->Start("p4est_partition_comm");
         }
-        partition.Start(&fields_);
-        partition.End(&fields_);
+        partition.Start(&fields_,M_FORWARD);
+        partition.End(&fields_,M_FORWARD);
         if (prof_ != nullptr) {
             prof_->Stop("p4est_partition_comm");
-            prof_->Start("ghost_init");
         }
         // create a new ghost and mesh
-        SetupP4estGhostMesh();
-        ghost_ = new Ghost(this, interp_);
-        if (prof_ != nullptr) {
-            prof_->Stop("ghost_init");
-        }
+        SetupGhost();
         // set the ghosting fields as non-valid
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             fid->second->ghost_status(false);
@@ -375,8 +475,7 @@ void Grid::Coarsen(const sid_t delta_level) {
             GhostPull(fid->second);
         }
         // delete the soon-to be outdated ghost and mesh
-        delete (ghost_);
-        ResetP4estGhostMesh();
+        DestroyGhost();
         // set the grid in the forest for the callback
         forest_->user_pointer = reinterpret_cast<void*>(this);
         // do the p4est interpolation by callback
@@ -395,23 +494,18 @@ void Grid::Coarsen(const sid_t delta_level) {
             prof_->Start("p4est_partition_init");
         }
         // partition the grid
-        Partitioner partition(&fields_, this);
+        Partitioner partition(&fields_, this, true);
         if (prof_ != nullptr) {
             prof_->Stop("p4est_partition_init");
             prof_->Start("p4est_partition_comm");
         }
-        partition.Start(&fields_);
-        partition.End(&fields_);
+        partition.Start(&fields_,M_FORWARD);
+        partition.End(&fields_,M_FORWARD);
         // create a new ghost and mesh
         if (prof_ != nullptr) {
             prof_->Stop("p4est_partition_comm");
-            prof_->Start("ghost_init");
         }
-        SetupP4estGhostMesh();
-        ghost_ = new Ghost(this, interp_);
-        if (prof_ != nullptr) {
-            prof_->Stop("ghost_init");
-        }
+        SetupGhost();
         // set the ghosting fields as non-valid
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             fid->second->ghost_status(false);
@@ -453,8 +547,7 @@ void Grid::Adapt(Field* field) {
         GhostPull(fid->second);
     }
     // delete the soon-to be outdated ghost and mesh
-    delete (ghost_);
-    ResetP4estGhostMesh();
+    DestroyGhost();
     // coarsen the needed block
     if (prof_ != nullptr) {
         prof_->Start("p4est_refcoarse");
@@ -475,23 +568,18 @@ void Grid::Adapt(Field* field) {
         prof_->Start("p4est_partition_init");
     }
     // partition the grid
-    Partitioner partition(&fields_, this);
+    Partitioner partition(&fields_, this, true);
     if (prof_ != nullptr) {
         prof_->Stop("p4est_partition_init");
         prof_->Start("p4est_partition_comm");
     }
-    partition.Start(&fields_);
-    partition.End(&fields_);
+    partition.Start(&fields_,M_FORWARD);
+    partition.End(&fields_,M_FORWARD);
     if (prof_ != nullptr) {
         prof_->Stop("p4est_partition_comm");
-        prof_->Start("ghost_init");
     }
     // create a new ghost and mesh
-    SetupP4estGhostMesh();
-    ghost_ = new Ghost(this, interp_);
-    if (prof_ != nullptr) {
-        prof_->Stop("ghost_init");
-    }
+    SetupGhost();
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
@@ -524,8 +612,7 @@ void Grid::Adapt(list<Patch>* patches) {
     tmp_ptr_ = reinterpret_cast<void*>(patches);
     // no ghost is computed as no interpolation will be done
     // delete the soon-to be outdated ghost and mesh
-    delete (ghost_);
-    ResetP4estGhostMesh();
+    DestroyGhost();
     // set the grid in the forest for the callback
     forest_->user_pointer = reinterpret_cast<void*>(this);
     // we coarsen recursivelly
@@ -547,23 +634,18 @@ void Grid::Adapt(list<Patch>* patches) {
         prof_->Start("p4est_partition_init");
     }
     // partition the grid
-    Partitioner partition(&fields_, this);
+    Partitioner partition(&fields_, this, true);
     if (prof_ != nullptr) {
         prof_->Stop("p4est_partition_init");
         prof_->Start("p4est_partition_comm");
     }
-    partition.Start(&fields_);
-    partition.End(&fields_);
+    partition.Start(&fields_,M_FORWARD);
+    partition.End(&fields_,M_FORWARD);
     if (prof_ != nullptr) {
         prof_->Stop("p4est_partition_comm");
-        prof_->Start("ghost_init");
     }
     // create a new ghost and mesh
-    SetupP4estGhostMesh();
-    ghost_ = new Ghost(this, interp_);
-    if (prof_ != nullptr) {
-        prof_->Stop("ghost_init");
-    }
+    SetupGhost();
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
@@ -576,14 +658,14 @@ void Grid::Adapt(list<Patch>* patches) {
 }
 
 /**
- * @brief iterates on the blocks and performs a simple @ref bop_t operation using the forest structure and not the mesh
+ * @brief iterates on the blocks and performs a simple @ref gbop_t operation using the forest structure and not the mesh
  * 
  * @warning for allocation and block management only. Use Operators (see operator.hpp) for computations
  * 
  * @param op 
  * @param field 
  */
-void Grid::LoopOnGridBlock_(const bop_t op, Field* field) const {
+void Grid::LoopOnGridBlock_(const gbop_t op, Field* field) const {
     m_begin;
     //-------------------------------------------------------------------------
     // get the grid info

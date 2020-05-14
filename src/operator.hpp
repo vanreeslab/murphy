@@ -8,8 +8,8 @@
 #include "gridblock.hpp"
 #include "murphy.hpp"
 
-using std::numeric_limits;
 using std::nullptr_t;
+using std::numeric_limits;
 
 //=================================================================================================
 /**
@@ -122,7 +122,7 @@ class OperatorF2F {
     * @param fid_src the source field
     * @param fid_trg the target field
     */
-    virtual void ApplyOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) = 0;
+    virtual void ApplyOpF2F(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
     /**
      * @brief call OperatorF2F::ApplyOpF2F() on each block
      */
@@ -138,6 +138,41 @@ class OperatorF2F {
  * @param op the OperatorF2F object containing all the needed data
  */
 void CallOpF2F(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg, OperatorF2F* op);
+
+//=================================================================================================
+/**
+ * @brief a Field + Field to Field operator, i.e. which uses the content of two Fields to modify another Field
+ */
+class OperatorFF2F {
+   public:
+    /**
+    * @brief Implementation of this virtual function has to be provided by the user as a member function
+    * 
+    * @warning this function is processed with a multi-thread environment
+    * 
+    * @param qid the id of the quadrant which corresponds to the current block
+    * @param block the current block itself
+    * @param fid_x the source field #1
+    * @param fid_y the source field #2
+    * @param fid_z the target field
+    */
+    virtual void ApplyOpFF2F(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z) = 0;
+    /**
+     * @brief call OperatorF2F::ApplyOpF2F() on each block
+     */
+    virtual void operator()(ForestGrid* grid, Field* field_x, Field* field_y, Field* field_z);
+};
+/**
+ * @brief this function is called by DoOp_() function (through OperatorF2F::operator()()) to apply the operation to a considered Block
+ * 
+ * @param qid the reference of the block, see qid_t
+ * @param block the Block itself, which cannot be modified
+ * @param fid_x the source field #1
+ * @param fid_y the source field #2
+ * @param fid_z the target field
+ * @param op the OperatorF2F object containing all the needed data
+ */
+void CallOpFF2F(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z, OperatorF2F* op);
 
 // //=================================================================================================
 // /**
@@ -278,9 +313,9 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
 // //=================================================================================================
 // /**
 //  * @brief wraps the function DoOp_F_() for an operator (`op_t<T, Field*>`, see @ref op_t), which performs the actual implementation
-//  * 
+//  *
 //  * We first call the operation on the blocks, then set the ghosts as changed
-//  * 
+//  *
 //  * @tparam T the type of data which is given as context to the operator
 //  * @param op the operator itself, see definition of op_t
 //  * @param grid the grid on which one want to iterate
@@ -298,8 +333,8 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
 
 // /**
 //  * @brief wraps the function DoOp_F_() for a constant operator (`const op_t<T, const Field*>`, see @ref op_t), which performs the actual implementation
-//  * 
-//  * 
+//  *
+//  *
 //  * @tparam T the type of data which is given as context to the operator
 //  * @param op the operator itself, see definition of op_t
 //  * @param grid the grid on which one want to iterate
@@ -315,9 +350,9 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
 
 // /**
 //  * @brief wraps the function DoOp_F_() for a field to field operator (`op_t<T, const Field*, Field*>`, see @ref op_t), which performs the actual implementation
-//  * 
+//  *
 //  * We first call the operation on the blocks, then set the ghosts as changed
-//  * 
+//  *
 //  * @tparam T the type of data which is given as context to the operator
 //  * @param op the operator itself, see definition of op_t
 //  * @param grid the grid on which one want to iterate

@@ -14,6 +14,9 @@ Field::Field(string name, sid_t lda) {
     // create an empty BC array
     for (sid_t id = 0; id < 6; id++) {
         bctype_[id] = reinterpret_cast<bctype_t*>(m_calloc(sizeof(bctype_t) * lda));
+        for(sid_t ida=0; ida<lda; ida++){
+            bctype_[id][ida] = M_BC_NONE;
+        }
     }
 }
 

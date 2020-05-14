@@ -8,6 +8,8 @@
 #include "gridblock.hpp"
 #include "patch.hpp"
 
+#include "multigrid.hpp"
+
 /**
  * @brief initiate a new block and store its adress in the p4est quad
  */
@@ -24,6 +26,7 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
 
     real_t len = m_quad_len(quad->level);
     // the user data points to the data defined by the grid = GridBlock*
+    m_assert(sizeof(GridBlock*) == forest->data_size,"cannot cast the pointer, this is baaaad");
     *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = new GridBlock(len, xyz, quad->level);
     //-------------------------------------------------------------------------
     m_end;
@@ -248,9 +251,6 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         grid->profiler()->Start("cback_interpolate");
     }
 
-    // get the working field
-    // Field* field = grid->working_callback_field();
-
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -407,6 +407,52 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    m_begin;
+    m_assert(num_outgoing == P8EST_CHILDREN, "this function is only called when doing the refinement");
+    m_assert(num_incoming == 1, "this function is only called when doing the refinement");
+    //-------------------------------------------------------------------------
+    p8est_connectivity_t* connect = forest->connectivity;
+    // retrieve the multigrid
+    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+
+    // get the new block informations and create it
+    qdrt_t* quad = incoming[0];
+    real_t xyz[3];
+    p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+    real_t     len      = m_quad_len(quad->level);
+    GridBlock* parent = new GridBlock(len, xyz, quad->level);
+    // allocate the correct fields
+    parent->AddFields(grid->map_fields());
+    // store the new block
+    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = parent;
+
+    // get the leaving blocks
+    GridBlock* children[P8EST_CHILDREN];
+    for(sid_t ic=0; ic<P8EST_CHILDREN; ic++){
+        children[ic] = *(reinterpret_cast<GridBlock**>(outgoing[ic]->p.user_data));
+    }
+    
+    // bind the family together
+    MGFamily* family = grid->curr_family();
+    family->AddMembers(parent,children);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief always reply yes if p4est ask if we should coarsen the block
+ */
+int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+    sid_t target_level = grid->curr_level();
+    return (quadrant[0]->level > target_level);
     //-------------------------------------------------------------------------
     m_end;
 }

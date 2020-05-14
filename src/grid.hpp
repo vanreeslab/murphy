@@ -26,7 +26,7 @@ using std::numeric_limits;
  */
 class Grid : public ForestGrid {
    protected:
-    map<string, Field*> fields_;  //!< map of every field registered to this grid. The key is the field name
+    map<string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
     Prof*         prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*        ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -39,6 +39,8 @@ class Grid : public ForestGrid {
     void* tmp_ptr_ = nullptr;  //!< temporary pointer, needed by the adaptation of the grid
 
    public:
+   
+    explicit Grid();
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
 
@@ -51,6 +53,10 @@ class Grid : public ForestGrid {
 
     Prof* profiler() { return prof_; }
     bool  HasProfiler() { return prof_ != nullptr; }
+
+    void CopyFrom(Grid* grid);
+    void SetupGhost();
+    void DestroyGhost();
 
     /**
      * @name Fields management
@@ -65,6 +71,7 @@ class Grid : public ForestGrid {
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
     void DeleteField(Field* field);
+    void ResetFields(const map<string, Field*>* fields);
     /**@}*/
 
     /**
@@ -95,7 +102,7 @@ class Grid : public ForestGrid {
     /**@}*/
 
    private:
-    void LoopOnGridBlock_(const bop_t op, Field* field) const;
+    void LoopOnGridBlock_(const gbop_t op, Field* field) const;
 };
 
 #endif  // SRC_GRID_HPP_

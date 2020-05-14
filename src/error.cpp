@@ -51,12 +51,12 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
     // apply
     ConstOperatorFF::operator()(grid, field, sol);
     // do the gathering into
-    if(norm_2 != nullptr){
-        error_2_ = std::sqrt(error_2_);
-        MPI_Allreduce(&error_2_,norm_2,1,M_MPI_REAL,MPI_SUM,MPI_COMM_WORLD);
+    if (norm_2 != nullptr) {
+        MPI_Allreduce(&error_2_, norm_2, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+        *norm_2 = std::sqrt(norm_2[0]);
     }
-    if(norm_i != nullptr){
-        MPI_Allreduce(&error_i_,norm_i,1,M_MPI_REAL,MPI_MAX,MPI_COMM_WORLD);
+    if (norm_i != nullptr) {
+        MPI_Allreduce(&error_i_, norm_i, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -74,7 +74,6 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
  */
 void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
-    const lid_t   ithread = omp_get_thread_num();
     const real_t* hgrid   = block->hgrid();
 
     real_t e2 = 0.0;

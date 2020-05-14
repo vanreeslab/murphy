@@ -76,8 +76,9 @@ You can specify the following variables:
 You can modify the login level by adding the following compilations flags in your `ARCH` file:
 - ```-DLOG_ALLRANKS``` will enable log on every processor. By default, only the master logs
 - ```-DVERBOSE``` enable extended logs
-- ```-DNDEBUG``` disable the assertion checks and the debug comments
+- ```-DNDEBUG``` disable the assertion checks and the other debuging actions
 - ```-DLOG_MUTE``` disable every logs
+- ```-DMG_GAUSSSEIDEL``` uses the gauss-seidel smoother instead of the Jacobi one
 
 ---------------------
 ### Testing

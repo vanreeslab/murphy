@@ -16,7 +16,7 @@
 using std::map;
 using std::string;
 
-class TimerAgent {
+class TimerBlock {
    protected:
     bool   is_root_ = true;
     lid_t  count_   = 0;
@@ -30,11 +30,11 @@ class TimerAgent {
 
     string name_ = "noname";
 
-    TimerAgent*              parent_ = nullptr;
-    map<string, TimerAgent*> children_;
+    TimerBlock*              parent_ = nullptr;
+    map<string, TimerBlock*> children_;
 
    public:
-    explicit TimerAgent(string name);
+    explicit TimerBlock(string name);
 
     void Start();
     void Stop();
@@ -49,14 +49,14 @@ class TimerAgent {
     real_t time_min() const;
     real_t time_max() const;
 
-    void AddChild(TimerAgent* child);
-    void SetParent(TimerAgent* parent);
+    void AddChild(TimerBlock* child);
+    void SetParent(TimerBlock* parent);
     void DumpParentality(FILE* file, const int level);
 };
 
 class Prof {
    protected:
-    map<string, TimerAgent*> time_map_;
+    map<string, TimerBlock*> time_map_;
 
     const string name_;
     void         CreateSingle_(string name);
@@ -79,4 +79,15 @@ class Prof {
     void Disp(const std::string ref);
 };
 
+#define m_profStart(prof, name) ({ \
+    if ((prof) != nullptr) {       \
+        (prof)->Start(name);       \
+    }                              \
+})
+
+#define m_profStop(prof, name) ({ \
+    if ((prof) != nullptr) {     \
+        (prof)->Stop(name);       \
+    }                            \
+})
 #endif  // SRC_PROF_HPP_

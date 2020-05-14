@@ -44,6 +44,13 @@ OBJ_DIR := build
 INC := -I$(SRC_DIR)
 
 #-----------------------------------------------------------------------------
+#---- FLUPS
+FLUPS_INC ?= /flups/include
+FLUPS_LIB ?= /flups/lib
+FLUPS_LIBNAME ?= -lflups_a2a
+INC += -I$(FLUPS_INC)
+LIB += -L$(FLUPS_LIB) $(FLUPS_LIBNAME) -Wl,-rpath,$(FLUPS_LIB)
+
 #---- FFTW
 FFTW_INC ?= /usr/include
 FFTW_LIB ?= /usr/lib

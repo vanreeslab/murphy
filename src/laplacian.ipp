@@ -16,7 +16,7 @@ template <sid_t length>
 void LaplacianCross<length>::ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
     real_t* coef     = coef_ + (length / 2);
-    real_t  scale[3] = {pow(block->hgrid(0), 2), pow(block->hgrid(1), 2), pow(block->hgrid(2), 2)};
+    real_t  scale[3] = {1.0/pow(block->hgrid(0), 2), 1.0/pow(block->hgrid(1), 2),1.0/ pow(block->hgrid(2), 2)};
 
     real_p data_src = block->data(fid_src, ida_);
     real_p data_trg = block->data(fid_trg, ida_);
@@ -34,9 +34,9 @@ void LaplacianCross<length>::ApplyOpDerivInner(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }
@@ -57,7 +57,7 @@ template <sid_t length>
 void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
     real_t* coef     = coef_ + (length / 2);
-    real_t  scale[3] = {pow(block->hgrid(0), 2), pow(block->hgrid(1), 2), pow(block->hgrid(2), 2)};
+    real_t  scale[3] = {1.0/pow(block->hgrid(0), 2), 1.0/pow(block->hgrid(1), 2),1.0/ pow(block->hgrid(2), 2)};
 
     real_p data_src = block->data(fid_src, ida_);
     real_p data_trg = block->data(fid_trg, ida_);
@@ -74,9 +74,9 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }
@@ -91,9 +91,9 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }
@@ -108,9 +108,9 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }
@@ -125,9 +125,9 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }
@@ -142,9 +142,9 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }
@@ -159,9 +159,9 @@ void LaplacianCross<length>::ApplyOpDerivOuter(const qid_t* qid, GridBlock* bloc
                 // loop on the stencil block
                 trg[0] = 0.0;
                 for (int is = -(length / 2); is <= (length / 2); is++) {
-                    trg[0] += coef[is] / scale[0] * src[m_idx(is, 0, 0)];
-                    trg[0] += coef[is] / scale[1] * src[m_idx(0, is, 0)];
-                    trg[0] += coef[is] / scale[2] * src[m_idx(0, 0, is)];
+                    trg[0] += coef[is] * scale[0] * src[m_idx(is, 0, 0)];
+                    trg[0] += coef[is] * scale[1] * src[m_idx(0, is, 0)];
+                    trg[0] += coef[is] * scale[2] * src[m_idx(0, 0, is)];
                 }
             }
         }

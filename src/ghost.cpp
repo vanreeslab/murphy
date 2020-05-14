@@ -235,6 +235,12 @@ void Ghost::MirrorToGhostRecv(Prof* prof) {
 void Ghost::PullFromGhost(Field* field, sid_t ida) {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
+    m_assert(field->bctype(ida, 0) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set", field->name().c_str());
+    m_assert(field->bctype(ida, 1) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set", field->name().c_str());
+    m_assert(field->bctype(ida, 2) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set", field->name().c_str());
+    m_assert(field->bctype(ida, 3) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set", field->name().c_str());
+    m_assert(field->bctype(ida, 4) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set", field->name().c_str());
+    m_assert(field->bctype(ida, 5) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set", field->name().c_str());
     //-------------------------------------------------------------------------
     // store the current interpolator and dimension
     ida_ = ida;

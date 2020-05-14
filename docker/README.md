@@ -1,18 +1,31 @@
-### Gitlab
+### GitLab
 ```
-docker build -f Dockerfile_gitlab -t immc/murphy-ci:v1.1 .
+# download flups locally
+git clone git@git.immc.ucl.ac.be:examples/flups.git 
+# build the container
+docker build -t immc/murphy-ci:v1.2 .
+# push it
 docker login
-docker push immc/murphy-ci:v1.0
+docker push immc/murphy-ci:v1.2
+rm -rf flups
 ```
 to test the image locally:
 ```
-docker run -it --rm immc/murphy-ci:v1.0
+docker run -it --rm immc/murphy-ci:v1.2
 ```
 
 
 ### GitHub
 ```
-docker build -t immc/murphy:v1.1 .
+#download flups locally
+git clone git@git.immc.ucl.ac.be:exmaples/flups.git
+# build the container
+docker build -t vanreeslab/murphy:v1.3 .
+#push it
 docker login
-docker push immc/murphy:v1.1
+docker push vanreeslab/murphy:v1.3
+```
+to test the container locally:
+```
+docker run --rm -it vanreeslab/murphy:v1.3
 ```

@@ -33,4 +33,15 @@ void cback_Interpolate(p8est_t *forest, p4est_topidx_t which_tree, int num_outgo
 void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]);
 /**@}*/
 
+/**
+ * @name MultiGrid
+ * 
+ * @{
+ */
+// int  cback_Level(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
+int  cback_Level(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
+// void cback_ReplaceByMultiGridBlock(p8est_iter_volume_info_t *info, void *user_data);
+void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]);
+/**@}*/
+
 #endif  // SRC_GRIDCALLBACK_HPP_
