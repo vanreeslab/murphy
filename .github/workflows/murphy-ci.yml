@@ -14,8 +14,8 @@ jobs:
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
+      - run: mkdir build
       - name: build
-        run: mkdir build
         run: ARCH_FILE=make_arch/make.docker_gcc_test_ci make -j
       # save the exe created
       - uses: actions/upload-artifact@v2
@@ -32,9 +32,9 @@ jobs:
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
+      - run: mkdir build
+      - run: mkdir test/build
       - name: build
-        run: mkdir build
-        run: mkdir test/build
         run: ARCH_FILE=make_arch/make.docker_gcc_test_ci make test -j
       # save the exe created
       - uses: actions/upload-artifact@v2
