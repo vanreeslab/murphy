@@ -26,7 +26,7 @@ RUN rm -rf /p4est
 COPY flups /flups
 RUN cd /flups &&\
     ARCH_FILE=make_arch/make.docker_valid_opt PREFIX=/soft/flups make install -j
-RUN rm -rf /googletest
+RUN rm -rf /flups
 
 #Google test
 RUN git clone https://github.com/google/googletest.git
