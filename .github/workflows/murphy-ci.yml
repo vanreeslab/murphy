@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   #Build job to compile
-  build debug:
+  build-debug:
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
     container:
@@ -21,7 +21,7 @@ jobs:
         with:
           path: murphy
   #Build job to compile
-  build test:
+  build-test:
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
     container:
@@ -38,8 +38,8 @@ jobs:
         with:
           path: murphy_test
   #Build job to compile
-  run test:
-    needs: build test
+  run-test:
+    needs: build-test
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
     container:
