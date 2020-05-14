@@ -54,6 +54,8 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: murphy_test
+      - name: fix permission
+        run: chmod +x murphy_test
       # do the build
       - name: build
         run: ./murphy_test
