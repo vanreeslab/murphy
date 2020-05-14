@@ -44,10 +44,9 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
     domain_length_[0]   = (real_t)l[0];
     domain_length_[1]   = (real_t)l[1];
     domain_length_[2]   = (real_t)l[2];
-    domain_periodic_[0] = isper;
-    domain_periodic_[1] = isper;
-    domain_periodic_[2] = isper;
-
+    domain_periodic_[0] = isper[0];
+    domain_periodic_[1] = isper[1];
+    domain_periodic_[2] = isper[2];
     //-------------------------------------------------------------------------
     m_end;
 }
