@@ -20,6 +20,7 @@ jobs:
       # save the exe created
       - uses: actions/upload-artifact@v2
         with:
+          name: murphy
           path: murphy
   #Build job to compile
   build-test:
@@ -39,6 +40,7 @@ jobs:
       # save the exe created
       - uses: actions/upload-artifact@v2
         with:
+          name: murphy_test
           path: murphy_test
   #Build job to compile
   run-test:
