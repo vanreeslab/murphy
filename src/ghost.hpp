@@ -59,48 +59,47 @@ class Ghost {
     lid_t        n_send_request_   = 0;  //!< the number of send requests by level
     lid_t        n_recv_request_   = 0;  //!< the number of receive requests by level
     MPI_Request* mirror_send_      = nullptr;  //!< the send requests for the mirrors
-    MPI_Request* ghost_recv_       = nullptr;  //!< the receive requests for the ghosts
+    MPI_Request *ghost_recv_       = nullptr;  //!< the receive requests for the ghosts
 
-    real_t*    mirrors_          = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
-    real_t*    ghosts_           = nullptr;  //!< memory space for the ghost blocks
+    real_t *mirrors_ = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
+    real_t *ghosts_  = nullptr;  //!< memory space for the ghost blocks
 
-    ForestGrid*   grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
-    Interpolator* interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
+    ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
+    Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
 
-    real_p* coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
+    real_p *coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
 
-    list<GhostBlock*>** block_sibling_;  //!<  list of blocks that are finer or same resolution
-    list<GhostBlock*>** block_parent_;   //!<  list of blocks that are coarser
-    list<GhostBlock*>** ghost_sibling_;  //!<  list of ghosts that are finer or same resolution
-    list<GhostBlock*>** ghost_parent_;   //!<  list of ghosts that are coarser
-    list<PhysBlock*>**  phys_;           //!<  physical blocks
+    list<GhostBlock *> **block_sibling_;  //!<  list of blocks that are finer or same resolution
+    list<GhostBlock *> **block_parent_;   //!<  list of blocks that are coarser
+    list<GhostBlock *> **ghost_sibling_;  //!<  list of ghosts that are finer or same resolution
+    list<GhostBlock *> **ghost_parent_;   //!<  list of ghosts that are coarser
+    list<PhysBlock *> ** phys_;           //!<  physical blocks
 
    public:
-   Ghost(ForestGrid* grid, Interpolator* interp);
-    Ghost(ForestGrid* grid, Interpolator* interp, const level_t min_level, const level_t max_level);
+    Ghost(ForestGrid *grid, Interpolator *interp, const level_t min_level, const level_t max_level);
+    Ghost(ForestGrid *grid, Interpolator *interp) : Ghost(grid, interp, -1, P8EST_MAXLEVEL + 1){};
     ~Ghost();
 
-    // level_t max_local_level() const { return n_local_level_; }
-
-    void PushToMirror(Field* field, const sid_t ida);
-    void MirrorToGhostSend(Prof* prof);
-    void MirrorToGhostRecv(Prof* prof);
-    void PullFromGhost(Field* field, const sid_t ida);
+    void PushToMirror(Field *field, const sid_t ida);
+    void MirrorToGhostSend(Prof *prof);
+    void MirrorToGhostRecv(Prof *prof);
+    void PullFromGhost(Field *field, const sid_t ida);
 
     /**
      *  @name Execute on each block
      * 
      *  @{
      */
-    void InitList4Block(const qid_t* qid, GridBlock* block);
-    void PushToMirror4Block(const qid_t* qid, GridBlock* block, Field* fid);
-    void PullFromGhost4Block(const qid_t* qid, GridBlock* block, Field* fid);
+    void InitList4Block(const qid_t *qid, GridBlock *block);
+    void PushToMirror4Block(const qid_t *qid, GridBlock *block, Field *fid);
+    void PullFromGhost4Block(const qid_t *qid, GridBlock *block, Field *fid);
     /** @} */
 
    protected:
     void InitComm_();
-    void LoopOnMirrorBlock_(const gop_t op, Field* field);
-    void LoopOnGhostBlock_(const gop_t op, Field* field);
+    void LoopOnMirrorBlock_(const gop_t op, Field *field);
+    void LoopOnGhostBlock_(const gop_t op, Field *field);
+    // void CreateOnLevels_(ForestGrid *grid, Interpolator *interp, const level_t min_level, const level_t max_level);
 };
 
 #endif  // SRC_GHOST_HPP_

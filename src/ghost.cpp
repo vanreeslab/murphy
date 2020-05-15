@@ -140,10 +140,6 @@ void CallGhostPullFromGhost(const qid_t* qid, GridBlock* block, Field* fid, Ghos
  * @param grid
  * @param interp the interpolator used to interpolate the ghost values
  */
-Ghost::Ghost(ForestGrid* grid, Interpolator* interp) {
-    Ghost(grid, interp, -1, P8EST_MAXLEVEL + 1);
-}
-
 Ghost::Ghost(ForestGrid* grid, Interpolator* interp, const level_t min_level, const level_t max_level) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
@@ -154,8 +150,8 @@ Ghost::Ghost(ForestGrid* grid, Interpolator* interp, const level_t min_level, co
     p8est_mesh_t* mesh = grid->mesh();
 
     // store the level information
-    min_level_ = min_level;
-    max_level_ = max_level;
+    min_level_ = m_max(min_level, 0);
+    max_level_ = m_min(max_level, P8EST_QMAXLEVEL);
 
     // initialize the communications and the mirrors, ghosts arrays
     InitComm_();
