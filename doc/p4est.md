@@ -1,6 +1,7 @@
 ## Notes on P4EST library
 
-
+### Miscellaneous notes
+- the quadrants are indexed using the type `p4est_locidx_t`
 
 ### ghosts and mirrors
 #### Definitions

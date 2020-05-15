@@ -45,10 +45,10 @@ using gop_t = void (Ghost::*)(const qid_t* qid, GridBlock* block, Field* fid);
  */
 class Ghost {
    protected:
-    sid_t   ida_       = -1;                  //!< current ghosting dimension
-    level_t min_level_ = -1;                  //!< minimum active level
-    level_t max_level_ = P8EST_MAXLEVEL + 1;  //!< maximum active level
-    level_t n_level_   = 0;                   //!< the number of levels, used to store information
+    sid_t    ida_          = -1;                  //!< current ghosting dimension
+    level_t  min_level_    = -1;                  //!< minimum active level, min_level included
+    level_t  max_level_    = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
+    iblock_t n_active_quad_ = 0;                   //!< the number of quadrant that needs to have ghost informations
 
     // information that tracks which block is involved
     iblock_t  n_mirror_to_send_ = 0;        //!< get how many mirrors to send

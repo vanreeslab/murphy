@@ -156,21 +156,23 @@ Ghost::Ghost(ForestGrid* grid, Interpolator* interp, const level_t min_level, co
     // store the level information
     min_level_ = min_level;
     max_level_ = max_level;
-    n_level_ = max_level_-min_level_+1;
 
     // initialize the communications and the mirrors, ghosts arrays
     InitComm_();
 
-    // TODO, be coherent with the chosen level!!
-    // allocate the lists
-    block_sibling_ = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    ghost_sibling_ = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    block_parent_  = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    ghost_parent_  = (list<GhostBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<GhostBlock*>*));
-    phys_          = (list<PhysBlock*>**)m_calloc(mesh->local_num_quadrants * sizeof(list<PhysBlock*>*));
-
+    // get how many active quads should be considered
+    n_active_quad_ = 0;
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
+    }
+    // allocate the lists for the corresponding quads
+    block_sibling_ = (list<GhostBlock*>**)m_calloc(n_active_quad_ * sizeof(list<GhostBlock*>*));
+    ghost_sibling_ = (list<GhostBlock*>**)m_calloc(n_active_quad_ * sizeof(list<GhostBlock*>*));
+    block_parent_  = (list<GhostBlock*>**)m_calloc(n_active_quad_ * sizeof(list<GhostBlock*>*));
+    ghost_parent_  = (list<GhostBlock*>**)m_calloc(n_active_quad_ * sizeof(list<GhostBlock*>*));
+    phys_          = (list<PhysBlock*>**)m_calloc(n_active_quad_ * sizeof(list<PhysBlock*>*));
     // init the lists
-    for (int ib = 0; ib < mesh->local_num_quadrants; ib++) {
+    for (int ib = 0; ib < n_active_quad_; ib++) {
         // purge everything
         block_sibling_[ib] = new list<GhostBlock*>();
         ghost_sibling_[ib] = new list<GhostBlock*>();
@@ -178,9 +180,10 @@ Ghost::Ghost(ForestGrid* grid, Interpolator* interp, const level_t min_level, co
         ghost_parent_[ib]  = new list<GhostBlock*>();
         phys_[ib]          = new list<PhysBlock*>();
     }
-
-    // init the list on every block
-    DoOp_F_<op_t<Ghost*, nullptr_t>, Ghost*, nullptr_t>(CallGhostInitList, grid, nullptr, this);
+    // init the list on every active block
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOp_F_<op_t<Ghost*, nullptr_t>, Ghost*, nullptr_t>(CallGhostInitList, grid, il, nullptr, this);
+    }
 
     // initialize the working coarse memory
     int nthreads = omp_get_max_threads();
@@ -204,7 +207,7 @@ Ghost::~Ghost() {
     //-------------------------------------------------------------------------
     p8est_mesh_t* mesh = grid_->mesh();
     // clear the lists
-    for (lid_t ib = 0; ib < mesh->local_num_quadrants; ib++) {
+    for (lid_t ib = 0; ib < n_active_quad_; ib++) {
         // free the blocks
         for (auto biter = block_sibling_[ib]->begin(); biter != block_sibling_[ib]->end(); biter++) {
             delete (*biter);
