@@ -37,21 +37,7 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
     m_assert(rhs->lda() == res->lda(), "the dimension between the source and the residual MUST match");
 
     // get by how many level I have to do
-    p8est_t* forest      = grid->forest();
-    sid_t    l_max_level = 0;
-    for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
-        // get the current tree
-        p8est_tree_t* ctree = p8est_tree_array_index(forest->trees,it);
-        // get the max delta level over the current tree
-        l_max_level = m_max(ctree->maxlevel, l_max_level);  // max level is given by the tree
-#ifndef NDEBUG
-        // check that no quadrant is beneath the fft_level
-        for (lid_t qid = 0; qid < ctree->quadrants.elem_count; qid++) {
-            qdrt_t* quad = p8est_quadrant_array_index(&ctree->quadrants, qid);
-            m_assert(fft_level_ <= quad->level, "the quad %d is beneath the level of FFT, not implemented yet: fftlevel = %d vs quad = %d", qid,fft_level_,quad->level);
-        }
-#endif
-    }
+    sid_t    l_max_level = p4est_MaxLocalLevel(grid->forest());
     // upate the counters on every rank
     m_assert(sizeof(l_max_level) == 1, "change the MPI datatype bellow");
     MPI_Allreduce(&l_max_level, &max_level_, 1, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);

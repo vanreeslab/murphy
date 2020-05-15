@@ -7,6 +7,7 @@
 #include "forestgrid.hpp"
 #include "gridblock.hpp"
 #include "murphy.hpp"
+#include "toolsp4est.hpp"
 
 using std::nullptr_t;
 using std::numeric_limits;
@@ -302,6 +303,53 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
         p8est_quadrant_t* quad;
         quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
 
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // send the task
+        op(&myid, block, field..., data);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+/**
+ * @brief The actual implementation of the Block iteration, performed ONLY on the given level
+ * 
+ * @warning We use a omp directive to loop over the blocks, hence the data is set as firstprivate!
+ * 
+ * @tparam O the type of operator that is used, see the definition of op_t
+ * @tparam T the type of data given as user-defined data.
+ * @tparam F the parameter pack containing the list of the fields which is taken as input/output, see the definition of opt_t
+ * @param op the operator to be called on the blocks
+ * @param grid the grid which contains the blocks
+ * @param lvl the level on which we need to call the operator
+ * @param field the field on which we have to work
+ * @param data the user-defined data forwared to the operator
+ */
+template <typename O, typename T, typename... F>
+void DoOp_F_(const O op, ForestGrid* grid, const level_t lvl, F... field, T data) {
+    m_begin;
+    m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
+    //-------------------------------------------------------------------------
+    // get the grid info
+    p8est_t*      forest    = grid->forest();
+    p8est_mesh_t* mesh      = grid->mesh();
+    const iblock_t   nqlocal   = p4est_NumQuadOnLevel(mesh,lvl);
+
+#pragma omp parallel for firstprivate(data)
+    for (iblock_t lid = 0; lid < nqlocal; lid++) {
+        // get the corresponding id of the quadrant
+        const iblock_t bid = p4est_GetQuadIdOnLevel(mesh,lvl,lid);
+        // get the tree
+        p8est_tree_t* tree;
+        tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
+        // get the id
+        qid_t myid;
+        myid.cid = bid;
+        myid.qid = bid - tree->quadrants_offset;
+        myid.tid = mesh->quad_to_tree[bid];
+        // the quadrants can be from differents trees -> get the correct one
+        p8est_quadrant_t* quad;
+        quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+        
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task
         op(&myid, block, field..., data);
