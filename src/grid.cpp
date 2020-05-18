@@ -4,7 +4,6 @@
 #include <p8est_extended.h>
 
 #include "gridcallback.hpp"
-#include "operator.hpp"
 #include "partitioner.hpp"
 #include "wavelet.hpp"
 

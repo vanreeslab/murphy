@@ -1,25 +1,25 @@
 #include "multigrid.hpp"
 
 #include <mpi.h>
-#include <limits>
+
 #include <iostream>
+#include <limits>
 
-#include "defs.hpp"
-#include "gridcallback.hpp"
-#include "laplacian.hpp"
 #include "daxpy.hpp"
-#include "gaussseidel.hpp"
-#include "jacobi.hpp"
+#include "defs.hpp"
 #include "error.hpp"
-
+#include "gaussseidel.hpp"
+#include "gridcallback.hpp"
 #include "ioh5.hpp"
+#include "jacobi.hpp"
+#include "laplacian.hpp"
 
 using std::numeric_limits;
 
 // #define MG_GAUSSSEIDEL
 #define MG_JACOBI_ORDER 3
 
-Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* res) {
+Multigrid::Multigrid(Grid* grid, sid_t fft_level, Field* rhs, Field* sol, Field* res) {
     m_begin;
     //-------------------------------------------------------------------------
     // store the desired fft level and which field will be used as what
@@ -37,7 +37,7 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
     m_assert(rhs->lda() == res->lda(), "the dimension between the source and the residual MUST match");
 
     // get by how many level I have to do
-    sid_t    l_max_level = p4est_MaxLocalLevel(grid->forest());
+    sid_t l_max_level = p4est_MaxLocalLevel(grid->forest());
     // upate the counters on every rank
     m_assert(sizeof(l_max_level) == 1, "change the MPI datatype bellow");
     MPI_Allreduce(&l_max_level, &max_level_, 1, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);
@@ -46,7 +46,7 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
     // allocate the grids and the partitionner
     grids_    = reinterpret_cast<Grid**>(m_calloc(sizeof(Grid*) * (n_level_ + 1)));
     families_ = reinterpret_cast<MGFamily**>(m_calloc(sizeof(MGFamily*) * n_level_));
-    parts_    = reinterpret_cast<Partitioner**>(m_calloc(sizeof(Partitioner*) * n_level_));    
+    parts_    = reinterpret_cast<Partitioner**>(m_calloc(sizeof(Partitioner*) * n_level_));
 
     // remember the original grid
     grids_[n_level_] = grid;
@@ -63,7 +63,7 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
         curr_forest->user_pointer = this;
 
         // get the number of CHILDREN on the fine level, i.e. the number of children entering the family
-        sc_array_t quadarray = grids_[il+1]->mesh()->quad_level[fft_level + il + 1];
+        sc_array_t quadarray = grids_[il + 1]->mesh()->quad_level[fft_level + il + 1];
         m_assert(quadarray.elem_count < numeric_limits<lid_t>::max(), "the number of quad is too big");
         // create the new family
         families_[il] = new MGFamily(quadarray.elem_count);
@@ -79,14 +79,13 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level,Field* rhs, Field* sol,Field* r
         // the grid is now partitioned on a coarser level with new ghosts
     }
 
-   direct_solver_ = new FFTSolver(grids_[0],sol,fft_level_);
+    direct_solver_ = new FFTSolver(grids_[0], sol, fft_level_);
 
     //-------------------------------------------------------------------------
     m_end;
 }
 
-Multigrid::~Multigrid()
-{
+Multigrid::~Multigrid() {
     m_begin;
     //-------------------------------------------------------------------------
 
@@ -120,8 +119,8 @@ void Multigrid::Solve() {
     map_rhs_field[fields_nickname_.at("rhs")] = rhs;
 
     // needed tools
-    Daxpy             daxpy_minus = Daxpy(-1.0);
-    Daxpy             daxpy_plus  = Daxpy(+1.0);
+    Daxpy daxpy_minus = Daxpy(-1.0);
+    Daxpy daxpy_plus  = Daxpy(+1.0);
 
 #ifndef MG_GAUSSSEIDEL
     Jacobi<MG_JACOBI_ORDER>         jacobi = Jacobi<MG_JACOBI_ORDER>();
@@ -138,10 +137,10 @@ void Multigrid::Solve() {
 
     // initial error
 #ifndef NDEBUG
-    lapla(sol, res, grids_[n_level_]);
+    lapla(grids_[n_level_], sol, res);
     real_t normi;
-    error2.Norms(grids_[n_level_], res, rhs, &norm2,&normi);
-    m_log("initial error = %e and %e", norm2,normi);
+    error2.Norms(grids_[n_level_], res, rhs, &norm2, &normi);
+    m_log("initial error = %e and %e", norm2, normi);
 #endif
     //---------------------
     // GOING DOWN
@@ -157,7 +156,7 @@ void Multigrid::Solve() {
 #endif
         }
         // compute the residual as rhs - A x to send to the coarser level
-        lapla(sol, res, grid);
+        lapla(grid, sol, res);
 #ifndef NDEBUG
         error2.Norm2(grid, res, rhs, &norm2);
         m_log("down: leaving level %d, error = %e", il, norm2);
@@ -173,18 +172,18 @@ void Multigrid::Solve() {
     //---------------------
     // do the direct solve
     Grid* grid_fft = grids_[0];
-//     // do the jacobi becuse I don't have anything else for the moment
-//     for (lid_t ie = 0; ie < 45; ie++) {
-// #ifndef MG_GAUSSSEIDEL
-//         jacobi(sol, rhs, res, grid_fft);
-// #else
-//         gs(sol, rhs, nullptr, grid_fft);
-// #endif
-//         // compute the residual as rhs - A x to send to the coarser level
-//     }
-//     IOH5 dump = IOH5("data");
-//     dump(grid_fft, sol, "jacob_sol");
-//     dump(grid_fft, rhs, "jacob_rhs");
+    //     // do the jacobi becuse I don't have anything else for the moment
+    //     for (lid_t ie = 0; ie < 45; ie++) {
+    // #ifndef MG_GAUSSSEIDEL
+    //         jacobi(sol, rhs, res, grid_fft);
+    // #else
+    //         gs(sol, rhs, nullptr, grid_fft);
+    // #endif
+    //         // compute the residual as rhs - A x to send to the coarser level
+    //     }
+    //     IOH5 dump = IOH5("data");
+    //     dump(grid_fft, sol, "jacob_sol");
+    //     dump(grid_fft, rhs, "jacob_rhs");
 
     // // do the FFT instead
     (*direct_solver_)(grid_fft, rhs, sol);
@@ -193,7 +192,7 @@ void Multigrid::Solve() {
     dump(grid_fft, rhs, "fft_rhs");
 
 #ifndef NDEBUG
-    lapla(sol, res, grid_fft);
+    lapla(grid_fft, sol, res);
     error2.Norm2(grid_fft, res, rhs, &norm2);
     m_log("after the direct: error = %e", norm2);
 #endif
@@ -213,7 +212,7 @@ void Multigrid::Solve() {
         // update the solution with it's coarsegrid version
         daxpy_plus(grid, res, sol, sol);  // sol = res + sol
 #ifndef NDEBUG
-        lapla(sol, res, grid);
+        lapla(grid,sol, res);
         error2.Norm2(grid, res, rhs, &norm2);
         m_log("up: entering level %d, error = %e", il, norm2);
 #endif
@@ -226,7 +225,7 @@ void Multigrid::Solve() {
 #endif
         }
 #ifndef NDEBUG
-        lapla(sol, res, grid);
+        lapla(grid,sol, res);
         error2.Norm2(grid, res, rhs, &norm2);
         m_log("up: leaving level %d, error = %e", il, norm2);
 #endif

@@ -4,6 +4,7 @@
 #include "flups.h"
 #include "grid.hpp"
 #include "murphy.hpp"
+#include "operator.hpp"
 
 class FFTSolver : public OperatorF2F {
    protected:

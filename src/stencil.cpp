@@ -1,46 +1,32 @@
 #include "stencil.hpp"
 
-// /**
-//  * @brief Construct a new Stencil by remembering the grid on which we operate.
-//  * 
-//  * @note: this is not needed but helps to defines another operator() function that does not conflict with the OperatorF2F::operator()() function
-//  * 
-//  * @param grid 
-//  */
-// Stencil::Stencil(Grid* grid) {
-//     grid_ = grid;
-// }
+#include "doop.hpp"
 
 /**
- * @brief applies the stencil on the current dimension, ida_, either the inner or the outer given the inner_ value 
- * 
- * @param qid 
- * @param block 
- * @param fid_src 
- * @param fid_trg 
+ * @brief redirects to the inner stencil computation
  */
-void Stencil::ApplyOpF2F(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) {
-    //-------------------------------------------------------------------------
-    if (inner_) {
-        ApplyOpDerivInner(qid, block, fid_src, fid_trg);
-    } else {
-        ApplyOpDerivOuter(qid, block, fid_src, fid_trg);
-    }
-    //-------------------------------------------------------------------------
+void CallStencilOpInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
+    stencil->ApplyStencilInner(qid, block, fid_src, fid_trg);
+}
+
+/**
+ * @brief redirects to the outer stencil computation
+ */
+void CallStencilOpOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
+    stencil->ApplyStencilOuter(qid, block, fid_src, fid_trg);
 }
 
 /**
  * @brief apply the stencil on the field_src and store the result in field_trg
  * 
- * This functions implements the dimension ghost computation, inner stencil and outer stencil computation overlapping.
- * The computation is done dimension by dimension on the exchanged dimension of the field_src.
- * At the end, the field_src ghost status is changed to true and the target field contains the result.
+ * This functions implements the ghost computation, inner stencil and outer stencil computation overlapping, dimension by dimension.
+ * At the end, the field_src ghost status is changed to true and the target field contains the result (with wrong ghost stauts).
  * 
  * @param field_src 
  * @param field_trg 
  * @param grid
  */
-void Stencil::operator()(Field* field_src, Field* field_trg,Grid* grid) {
+void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     m_begin;
     m_assert(field_src != nullptr, "the source field cannot be null");
     //-------------------------------------------------------------------------
@@ -48,18 +34,13 @@ void Stencil::operator()(Field* field_src, Field* field_trg,Grid* grid) {
     grid->GhostPullSend(field_src, 0);
     // start the inner operation on the first dimension
     if (field_trg != nullptr) {
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Start("stencil_inner");
-        }
-        ida_   = 0;
-        inner_ = true;
-        OperatorF2F::operator()(grid, field_src, field_trg);
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Stop("stencil_inner");
-        }
+        ida_ = 0;
+        m_profStart(grid->profiler(), "stencil_inner");
+        DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpInner, grid, field_src, field_trg, this);
+        m_profStop(grid->profiler(), "stencil_inner");
     }
     for (int ida = 1; ida < field_src->lda(); ida++) {
-                // receive the previous dimension
+        // receive the previous dimension
         grid->GhostPullRecv(field_src, ida - 1);
         // start the send for the next dimension
         grid->GhostPullSend(field_src, ida);
@@ -67,42 +48,28 @@ void Stencil::operator()(Field* field_src, Field* field_trg,Grid* grid) {
         grid->GhostPullFill(field_src, ida - 1);
         // do the outer operation if needed with the newly computed ghosts and already do the inner operation for the next dimension
         if (field_trg != nullptr) {
-            if (grid->profiler() != nullptr) {
-                grid->profiler()->Start("stencil_outer");
-            }
             // outer operation on the just received dim
-            ida_   = ida - 1;
-            inner_ = false;
-            OperatorF2F::operator()(grid, field_src, field_trg);
-            // new operation on the now received dimension
-            if (grid->profiler() != nullptr) {
-                grid->profiler()->Stop("stencil_outer");
-                grid->profiler()->Start("stencil_inner");
-            }
-            ida_   = ida;
-            inner_ = true;
-            OperatorF2F::operator()(grid, field_src, field_trg);
-            if (grid->profiler() != nullptr) {
-                grid->profiler()->Stop("stencil_inner");
-            }
+            ida_ = ida - 1;
+            m_profStart(grid->profiler(), "stencil_outer");
+            DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpOuter, grid, field_src, field_trg, this);
+            m_profStop(grid->profiler(), "stencil_outer");
+            // inner operation on the now received dimension
+            ida_ = ida;
+            m_profStart(grid->profiler(), "stencil_inner");
+            DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpInner, grid, field_src, field_trg, this);
+            m_profStop(grid->profiler(), "stencil_inner");
         }
     }
     grid->GhostPullRecv(field_src, field_src->lda() - 1);
     grid->GhostPullFill(field_src, field_src->lda() - 1);
     // start the inner operation on the first dimension
     if (field_trg != nullptr) {
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Start("stencil_outer");
-        }
-        ida_   = field_src->lda() - 1;
-        inner_ = false;
-        OperatorF2F::operator()(grid, field_src, field_trg);
-        if (grid->profiler() != nullptr) {
-            grid->profiler()->Stop("stencil_outer");
-        }
+        ida_ = field_src->lda() - 1;
+        m_profStart(grid->profiler(), "stencil_outer");
+        DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpOuter, grid, field_src, field_trg, this);
+        m_profStop(grid->profiler(), "stencil_outer");
     }
-    // set that everything is ready for the field
-    // note: the order is REALLY important, especially if this is a gauss-seidel call...
+    // update the ghost status
     field_src->ghost_status(true);
     if (field_trg != nullptr) {
         field_trg->ghost_status(false);

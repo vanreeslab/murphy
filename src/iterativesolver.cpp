@@ -1,6 +1,6 @@
 #include "iterativesolver.hpp"
 
-#include "operator.hpp"
+#include "doop.hpp"
 
 void CallIterativeSolverPrep(const qid_t* qid, GridBlock* block, Field* fid_sol, Field* fid_rhs, Field* fid_tmp, IterativeSolver* solver) {
     solver->IterativeSolverPrep(qid, block, fid_sol, fid_rhs, fid_tmp);

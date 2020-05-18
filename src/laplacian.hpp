@@ -2,7 +2,6 @@
 #define SRC_LAPLACIAN_HPP_
 
 #include "murphy.hpp"
-#include "operator.hpp"
 #include "stencil.hpp"
 
 /**
@@ -34,11 +33,10 @@ class LaplacianCross : public Stencil {
         }
     }
 
-   protected:
-    virtual void ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
-    virtual void ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
+    virtual void ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
+    virtual void ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
 };
 
 #endif  // SRC_LAPLACIAN_HPP_
 
-#include "laplacian.ipp"
+#include "laplacian.inc"

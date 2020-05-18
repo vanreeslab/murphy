@@ -3,7 +3,6 @@
 
 #include "grid.hpp"
 #include "murphy.hpp"
-#include "operator.hpp"
 
 class IterativeSolver{
    protected:

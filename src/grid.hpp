@@ -13,7 +13,6 @@
 #include "gridblock.hpp"
 #include "interpolator.hpp"
 #include "murphy.hpp"
-#include "operator.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
 

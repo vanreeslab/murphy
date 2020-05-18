@@ -1,6 +1,9 @@
 # *MU*lti*R*esolution multi*PHY*sics
 *Anything that can ~~go wrong~~ **scale strong** will ~~go wrong~~ **scale strong*** (Philippe Chatelain, 2020)
 
+
+![murphy - CI](https://github.com/van-Rees-Lab/murphy/workflows/murphy%20-%20CI/badge.svg)
+
 ### copyright and licences
 > Copyright (c) Massachusetts Institute of Technology
 

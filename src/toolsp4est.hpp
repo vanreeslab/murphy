@@ -3,6 +3,9 @@
 
 #include "p8est.h"
 #include "p8est_mesh.h"
+#include <limits>
+
+using std::numeric_limits;
 
 template <typename T>
 inline static T p4est_GetElement(sc_array_t* array, const int id) {

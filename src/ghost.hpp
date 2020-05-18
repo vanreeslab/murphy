@@ -8,7 +8,7 @@
 #include "ghostblock.hpp"
 #include "interpolator.hpp"
 #include "murphy.hpp"
-#include "operator.hpp"
+#include "doop.hpp"
 #include "physblock.hpp"
 #include "prof.hpp"
 
@@ -27,22 +27,19 @@ using gop_t = void (Ghost::*)(const qid_t* qid, GridBlock* block, Field* fid);
 /**
  * @brief performs the ghost update of a given grid field, in one dimension
  * 
- * For some description of the p4est library related to the gho
- * 
- * It is both a constant operator (see @ref OperatorF) when performing the ghost exchange
- * and a simple Operator (see @ref OperatorS) when performing the initialization.
+ * For some description of the p4est library related to the ghost management, see @ref doc/p4est.md
  * 
  * Ghosting relies on two structures, the blocks (local leafs) and the ghosts (other rank's leafs).
  * Only the non-local ghosts will have to be received. In the origin tree, they are called mirrors.
  * It means that a mirror is a ghost for one or multiple rank and a ghost is the block once received.
  * Then we interpolate (or copy) the information to the correct spot.
  * 
- * For the moment, all the block is being send/received. One optimisation is to only send a layer of 2x4 points in each direction.
- * Indeed, because we might have a coarser neighbor, we need to coarsen twice a block (worst case) and then need 4 points in every direction
+ * For the moment, all the block is being send/received. One optimisation is to only send an inner layer of points in each direction.
  * 
  * @warning the procedure assumes that the grid is correctly balanced!
  * 
  */
+
 class Ghost {
    protected:
     sid_t    ida_          = -1;                  //!< current ghosting dimension
