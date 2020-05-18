@@ -60,7 +60,7 @@ TEST_F(valid_Stencil, laplacian_o2) {
     polynom2(grid_, sol_);
 
     LaplacianCross<3> lapla = LaplacianCross<3>();
-    lapla(vort_, diff_, grid_);
+    lapla(grid_, vort_, diff_);
 
     real_t          norm2, normi;
     ErrorCalculator myerr;
@@ -87,7 +87,7 @@ TEST_F(valid_Stencil, laplacian_o4) {
     polynom2(grid_, sol_);
 
     LaplacianCross<5> lapla = LaplacianCross<5>();
-    lapla(vort_, diff_, grid_);
+    lapla(grid_, vort_, diff_);
 
     real_t          norm2, normi;
     ErrorCalculator myerr;
@@ -130,7 +130,7 @@ TEST_F(valid_Stencil, convergence_laplacian_o2_boundary3) {
         polynom2(grid_, sol_);
 
         LaplacianCross<3> lapla = LaplacianCross<3>();
-        lapla(vort_, diff_, grid_);
+        lapla(grid_, vort_, diff_);
 
         real_t          norm2;
         ErrorCalculator myerr;
@@ -175,7 +175,7 @@ TEST_F(valid_Stencil, convergence_laplacian_o2_boundary4) {
         polynom2(grid_, sol_);
 
         LaplacianCross<3> lapla = LaplacianCross<3>();
-        lapla(vort_, diff_, grid_);
+        lapla(grid_, vort_, diff_);
 
         real_t          norm2;
         ErrorCalculator myerr;
@@ -220,7 +220,7 @@ TEST_F(valid_Stencil, convergence_laplacian_o4_boundary4) {
         polynom2(grid_, sol_);
 
         LaplacianCross<5> lapla = LaplacianCross<5>();
-        lapla(vort_, diff_, grid_);
+        lapla(grid_, vort_, diff_);
 
         real_t          norm2;
         ErrorCalculator myerr;
@@ -265,7 +265,7 @@ TEST_F(valid_Stencil, convergence_laplacian_o4_boundary5) {
         polynom2(grid_, sol_);
 
         LaplacianCross<5> lapla = LaplacianCross<5>();
-        lapla(vort_, diff_, grid_);
+        lapla(grid_, vort_, diff_);
 
         real_t          norm2;
         ErrorCalculator myerr;
