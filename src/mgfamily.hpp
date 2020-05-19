@@ -2,11 +2,16 @@
 #define SRC_MGFAMILY_HPP_
 
 #include "gridblock.hpp"
-#include "gridblock.hpp"
+#include "interpolator.hpp"
 #include "murphy.hpp"
 
-#include "interpolator.hpp"
-
+/**
+ * @brief A familly is an association of one parent and 8 children
+ * 
+ * The familly takes full responsability of the created parents, as nobody else knows
+ * that they have been created by the coarsening of one grid
+ * 
+ */
 class MGFamily {
    protected:
     lid_t       parent_count_ = 0;
@@ -20,11 +25,8 @@ class MGFamily {
 
     inline lid_t parent_count() const { return parent_count_; }
 
-    void ToParents(Field* field_src, Field* field_trg, Interpolator* interp);
-    void ToChildren(Field* field_src, Field* field_trg, Interpolator* interp);
-
-    // MGFamily(GridBlock* me, GridBlock* sibling);
-    // MGFamily(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]);
+    void ToParents(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Interpolator* interp);
+    void ToChildren(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Interpolator* interp);
 };
 
 /**

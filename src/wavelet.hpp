@@ -107,4 +107,4 @@ class Wavelet : public Interpolator {
 
 #endif  // SRC_WAVELET_HPP_
 
-#include "wavelet.ipp"
+#include "wavelet.inc"

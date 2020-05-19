@@ -40,6 +40,7 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
     //-------------------------------------------------------------------------
     p8est_quadrant_t* quad  = info->quad;
     GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+    m_assert(block != nullptr,"the block you are trying to free has already been free'ed");
     delete (block);
     *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = nullptr;
     //-------------------------------------------------------------------------

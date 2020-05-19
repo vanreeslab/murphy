@@ -26,13 +26,15 @@ typedef struct interp_ctx_t {
     lid_t srcstart[3];  //!< first index available in the source memory
     lid_t srcend[3];    //!< last index available in the source memory
 #endif
+    real_t alpha = 0.0; //!< the constant multiplication factor: target = alpha * constant + interpolation(source)
     /**
      * @name position pointers
      * 
      * They both refer the position (0,0,0) of the target, hence the ghostsize is assumed to be zero
      * @{
      */
-    real_p sdata;  //!< refers the (0,0,0) location of the target memory, in the source layout
+    real_p sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
+    real_p cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
     real_p tdata;  //!< refers the (0,0,0) location of the target memory
     /** @} */
 } interp_ctx_t;
@@ -47,7 +49,7 @@ using std::string;
  */
 class Interpolator {
    public:
-   /**
+    /**
     * @brief returns a positive, single value that represents a refinement/coarsening criterion
     * 
     * @param block the memory layout to use to compute that value
@@ -57,6 +59,7 @@ class Interpolator {
     virtual real_t Criterion(MemLayout* block, real_p data) = 0;
 
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+    virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst);
 
     /**
     * @brief returns a string identifying the operator
@@ -68,7 +71,7 @@ class Interpolator {
     virtual lid_t NGhostCoarse() = 0;
 
    protected:
-   /**
+    /**
     * @brief coarsen the information for blocks having a jump in level
     * 
     * @param ctx the interpolation context, see @ref interp_ctx_t
@@ -80,13 +83,13 @@ class Interpolator {
      * 
      * @param ctx the interpolation context, see @ref interp_ctx_t
      */
-    virtual void Refine_(const interp_ctx_t* ctx) const                    = 0;
+    virtual void Refine_(const interp_ctx_t* ctx) const = 0;
     /**
      * @brief copy the information for blocks at the same level
      * 
      * @param ctx the interpolation context, see @ref interp_ctx_t
      */
-    virtual void Copy_(const interp_ctx_t* ctx) const                      = 0;
+    virtual void Copy_(const interp_ctx_t* ctx) const = 0;
 };
 
 #endif  // SRC_INTERPOLATE_HPP_

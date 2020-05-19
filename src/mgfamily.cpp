@@ -13,7 +13,15 @@ MGFamily::MGFamily(const lid_t num_children) {
     m_end;
 }
 
+/**
+ * @brief Destroy the MGFamily and the parents as nobody knows that they have been created
+ * 
+ */
 MGFamily::~MGFamily() {
+    for (lid_t id = 0; id < parent_count_; id++) {
+        delete (parents_[id]);
+    }
+    // I need to free the parents I created as nobody else know that I have created them
     m_free(parents_);
     m_free(children_);
 }
@@ -28,7 +36,16 @@ void MGFamily::AddMembers(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]
     //-------------------------------------------------------------------------
 }
 
-void MGFamily::ToChildren(Field* field_src, Field* field_trg, Interpolator* interp) {
+/**
+ * @brief compute the coarsen of the children to the parents: field_trg = alpha * field_cst + interp(field_src)
+ * 
+ * @param field_src a fine field that needs to be interpolated
+ * @param field_trg a coarse field that will contain the interpolation + alpha * field_cst
+ * @param field_cst a constant coarse field to add to the interpolation
+ * @param alpha the multiplication factor for the constant field
+ * @param interp the interpolator to use
+ */
+void MGFamily::ToChildren(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Interpolator* interp) {
     m_begin;
     m_assert(field_src->lda() == field_trg->lda(), "the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
@@ -54,22 +71,23 @@ void MGFamily::ToChildren(Field* field_src, Field* field_trg, Interpolator* inte
                 parent_end[id]   = shift[id] + M_HN + M_GS;
             }
             mem_block->Reset(M_GS, M_STRIDE, parent_start, parent_end);
-            // for every field, we interpolate it
 
             // interpolate for every dimension
             for (sid_t ida = 0; ida < field_src->lda(); ida++) {
                 // get the pointers
-                interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida));
+                interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida), alpha, child->data(field_cst, ida));
             }
         }
     }
     // un-validate the ghost status
     field_trg->ghost_status(false);
+    // delete the temp subblock
+    delete(mem_block);
     //-------------------------------------------------------------------------
     m_end;
 }
 
-void MGFamily::ToParents(Field* field_src, Field* field_trg, Interpolator* interp) {
+void MGFamily::ToParents(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Interpolator* interp) {
     m_begin;
     m_assert(field_src->lda() == field_trg->lda(),"the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
@@ -97,17 +115,18 @@ void MGFamily::ToParents(Field* field_src, Field* field_trg, Interpolator* inter
                 parent_end[id] = parent_start[id] + M_HN;
             }
             mem_block->Reset(M_GS, M_STRIDE, parent_start, parent_end);
-            // for every field, we interpolate it
 
             // interpolate for every dimension
             for (sid_t ida = 0; ida < field_src->lda(); ida++) {
                 // get the pointers
-                interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida));
+                interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida), alpha, parent->data(field_cst, ida));
             }
         }
     }
     // un-validate the ghost status
     field_trg->ghost_status(false);
+    // delete the temp memblock
+    delete(mem_block);
     //-------------------------------------------------------------------------
     m_end;
 }

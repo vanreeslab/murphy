@@ -156,15 +156,19 @@ void Multigrid::Solve() {
 #endif
         }
         // compute the residual as rhs - A x to send to the coarser level
+        // this operation is overkilled since it executed on the WHOLE active leaf, while only the finest level is concerned
         lapla(grid, sol, res);
 #ifndef NDEBUG
         error2.Norm2(grid, res, rhs, &norm2);
         m_log("down: leaving level %d, error = %e", il, norm2);
 #endif
+        // fine residual = - fine residula + fine rhs
+        // this operation is overkilled since it executed on the WHOLE active leaf, while only the finest level is concerned
         daxpy_minus(grid, res, rhs, res);
 
         // do the interpolation from the residual to the rhs of the next level
-        families_[il - 1]->ToParents(res, rhs, grid->interp());
+        // for the finer level: the coarser rhs = 0.0 * coarse rhs + interp(residual), the rest of the grid remain unchanged
+        families_[il - 1]->ToParents(res, rhs, rhs, 0.0, grid->interp());
         // do the partitioning, send the new rhs
         parts_[il - 1]->Start(&map_rhs_field, M_FORWARD);
         parts_[il - 1]->End(&map_rhs_field, M_FORWARD);
@@ -198,6 +202,7 @@ void Multigrid::Solve() {
 #endif
 
     //---------------------
+    string fname;
     // GOING UP
     for (sid_t il = 1; il <= n_level_; il++) {
         // get the ghost for the solution as we need them to refine
@@ -206,11 +211,18 @@ void Multigrid::Solve() {
         parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
         parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
         // do the interpolation using the same interpolation as the one used to go down
-        families_[il - 1]->ToChildren(sol, res, grids_[il]->interp());
+        fname = "before_familly_level_" + std::to_string(il);
+        dump(grids_[il-1], sol,fname);
+        // the finer solution = the existing solution + Interp( the coarse solution)
+        families_[il - 1]->ToChildren(sol, sol, sol,1.0, grids_[il]->interp());
+        // fname = "after_familly_level_" + std::to_string(il);
+        // dump(grids_[il],sol,fname);
         // we are now on the new grid!!
         Grid* grid = grids_[il];
         // update the solution with it's coarsegrid version
-        daxpy_plus(grid, res, sol, sol);  // sol = res + sol
+        // daxpy_plus(grid, res, sol, sol);  // sol = res + sol
+        fname = "sol_level_" + std::to_string(il);
+        dump(grid, sol,fname);
 #ifndef NDEBUG
         lapla(grid,sol, res);
         error2.Norm2(grid, res, rhs, &norm2);

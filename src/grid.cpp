@@ -102,21 +102,26 @@ void Grid::CopyFrom(Grid* grid){
 /**
  * @brief Destroy the Grid, frees all the blocks and the fields contained (if not done)
  * 
+ * @warning if we are a copy of another grid, we cannot know which block has been allocated by us,
+ * so we do not free the blocks!!
+ * 
  */
 Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
-    // destroy the interpolator
+    // destroy the interpolator and the details they are mine
     if (interp_ != nullptr) {
         delete (interp_);
     }
     if (detail_ != nullptr) {
         delete (detail_);
     }
-    // destroy the ghosts
+    // destroy the ghosts, they are mine as well
     DestroyGhost();
     // destroy the remaining blocks
-    p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
+    if (is_connect_owned_) {
+        p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
