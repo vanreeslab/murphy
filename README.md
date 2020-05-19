@@ -4,7 +4,7 @@
 <!-- from https://github.com/Naereen/badges -->
 ![murphy - CI](https://github.com/van-Rees-Lab/murphy/workflows/murphy%20-%20CI/badge.svg)
 [![GitHub issues](https://img.shields.io/github/issues/Naereen/StrapDown.js.svg)](https://github.com/van-Rees-Lab/murphy/issues)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-success.svg)](https://github.com/van-Rees-Lab/murphy/graphs/commit-activity)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-blue.svg)](https://github.com/van-Rees-Lab/murphy/graphs/commit-activity)
 
 ### copyright and licences
 > Copyright (c) Massachusetts Institute of Technology

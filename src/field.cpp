@@ -69,6 +69,16 @@ void Field::bctype(bctype_t type) {
  * @param ida the dimension of the field that will get the boundary condition
  * @param loc the placement of the boundary condition (X- = 0, X+ = 1, Y- = 2, Y+ = 3, Z- = 4, Z+ = 5 )
  */
-void Field::bctype(bctype_t type, const sid_t ida, const sid_t loc) {
+void Field::bctype(bctype_t type, const sid_t ida, const iface_t loc) {
     bctype_[loc][ida] = type;
+}
+
+/**
+ * @brief replaces the boundary condition pointer but the one given
+ * 
+ * @param type the new boundary condition pointer
+ * @param iface the face you wish to replace
+ */
+void Field::bctype(bctype_t* type, const iface_t iface) {
+    bctype_[iface] = type;
 }

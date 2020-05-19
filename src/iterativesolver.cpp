@@ -26,7 +26,13 @@ void IterativeSolver::operator()(Field* fid_sol, Field* fid_rhs, Field* fid_tmp,
     // determine which field will be used to contain the value
     // if a fid_tmp is given, we copy the current state to him and use it for the ghosts (ex Jacobi), if not, we use the sol field (ex: Gauss Seidel)
     Field* field_to_ghost;
+    bctype_t* tmp_bctype[6];
     if(fid_tmp != nullptr){
+        // store the current tmp boundary condition and impose the solution ones
+        for(iface_t iface=0; iface<6; iface++){
+            tmp_bctype[iface] = fid_tmp->bctype(iface);
+            fid_tmp->bctype(fid_sol->bctype(iface),iface);
+        }
         field_to_ghost = fid_tmp;
         ida_ = 0;
         DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverPrep, grid, fid_sol, fid_rhs, fid_tmp, this);
@@ -84,6 +90,11 @@ void IterativeSolver::operator()(Field* fid_sol, Field* fid_rhs, Field* fid_tmp,
     // we changed the solution field
     fid_sol->ghost_status(false);
     if (fid_tmp != nullptr) {
+        // reset the correct boundary conditions
+        for(iface_t iface=0; iface<6; iface++){
+            fid_tmp->bctype(tmp_bctype[iface],iface);
+        }
+        // set the ghosts to changed
         fid_tmp->ghost_status(false);
     }
     //-------------------------------------------------------------------------

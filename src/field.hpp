@@ -28,10 +28,11 @@ class Field {
      * 
      * @{
      */
-    inline sid_t    lda() const { return lda_; }
-    inline string   name() const { return name_; }
-    inline bool     ghost_status() const { return ghost_status_; }
-    inline bctype_t bctype(const sid_t ida, const sid_t iface) { return bctype_[iface][ida]; }
+    inline sid_t     lda() const { return lda_; }
+    inline string    name() const { return name_; }
+    inline bool      ghost_status() const { return ghost_status_; }
+    inline bctype_t  bctype(const sid_t ida, const sid_t iface) { return bctype_[iface][ida]; }
+    inline bctype_t* bctype(const sid_t iface) { return bctype_[iface]; }
     /** @} */
 
     /**
@@ -39,7 +40,7 @@ class Field {
      * 
      * @{
      */
-    
+
     /**
      * @brief sets the ghost information
      * 
@@ -47,9 +48,11 @@ class Field {
      */
     void ghost_status(bool status) { ghost_status_ = status; }
 
-    void bctype(bctype_t type, const sid_t ida, const sid_t loc);
+    void bctype(bctype_t* type, const iface_t iface);
+    void bctype(bctype_t type, const sid_t ida, const iface_t loc);
     void bctype(bctype_t type, const sid_t ida);
     void bctype(bctype_t type);
+
     /** @} */
 };
 

@@ -7,7 +7,7 @@
 #include "grid.hpp"
 #include "gridblock.hpp"
 #include "patch.hpp"
-
+#include "mgfamily.hpp"
 #include "multigrid.hpp"
 
 /**

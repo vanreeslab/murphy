@@ -93,6 +93,31 @@ class SetPolynom : public OperatorF {
     SetPolynom(lid_t degree[3], real_t direction[3]);
 };
 
+
+class SetExponential : public OperatorF {
+   protected:
+    real_t center_[3] = {0.0, 0.0, 0.0};
+    real_t sigma_[3]  = {0.0, 0.0, 0.0};
+    real_t alpha_ = 1.0;
+
+    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetExponential(real_t center[3], real_t sigma[3],real_t alpha);
+};
+
+class SetErf : public OperatorF {
+   protected:
+    real_t center_[3] = {0.0, 0.0, 0.0};
+    real_t sigma_[3]  = {0.0, 0.0, 0.0};
+    real_t alpha_ = 1.0;
+
+    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetErf(real_t center[3], real_t sigma[3],real_t alpha);
+};
+
 // /**
 //  * @brief sets a cosinus multiplied by an exponential in every dimension of a field
 //  */
