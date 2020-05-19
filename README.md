@@ -3,6 +3,8 @@
 
 
 ![murphy - CI](https://github.com/van-Rees-Lab/murphy/workflows/murphy%20-%20CI/badge.svg)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/van-Rees-Lab/murphy/graphs/commit-activity)
+[![GitHub issues](https://img.shields.io/github/issues/Naereen/StrapDown.js.svg)](https://github.com/van-Rees-Lab/murphy/issues)
 
 ### copyright and licences
 > Copyright (c) Massachusetts Institute of Technology
