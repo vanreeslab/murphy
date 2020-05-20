@@ -36,7 +36,7 @@ TEST_F(valid_Multigrid, perio_uniform_order2) {
     int commsize;
     MPI_Comm_size(MPI_COMM_WORLD, &commsize);
     if (commsize > 1) {
-        return 0;
+        ASSERT_EQ(1.0,1.0);
     }
 
     lvl_         = 3;
