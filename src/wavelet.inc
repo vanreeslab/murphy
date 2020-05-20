@@ -178,14 +178,14 @@ void Wavelet<order>::Refine_(const interp_ctx_t* ctx) const {
                 const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to 0.0
-                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[0];
-                ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[0];
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
 
                 for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
                     for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
