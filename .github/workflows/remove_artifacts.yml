@@ -8,7 +8,7 @@ on:
 jobs:
   remove-old-artifacts:
     runs-on: beast-tower
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
     - name: Remove old artifacts
       uses: c-hive/gha-remove-artifacts@v1
