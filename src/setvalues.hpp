@@ -79,6 +79,17 @@ class SetCosinus : public OperatorF {
     SetCosinus(real_t length[3], real_t freq[3]);
 };
 
+class SetLaplaCosinus : public OperatorF {
+   protected:
+    real_t freq_[3]   = {0, 0, 0};
+    real_t length_[3] = {0.0, 0.0, 0.0};
+
+    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetLaplaCosinus(real_t length[3], real_t freq[3]);
+};
+
 /**
  * @brief sets a polynomial in every dimension of a field
  */
