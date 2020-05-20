@@ -37,14 +37,14 @@ static size_t cstride(Interpolator* interp) {
  */
 static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
     // we need to find the sign = the direction of the normal:
-    sign[0] = 0;
-    sign[1] = 0;
-    sign[2] = 0;
+    sign[0] = 0.0;
+    sign[1] = 0.0;
+    sign[2] = 0.0;
 
     // check depending on the plane, the edge of the corner
     if (ibidule < 6) {
         sid_t dir = ibidule / 2;
-        sign[dir] = ((ibidule % 2) == 1) ? 1 : -1;
+        sign[dir] = ((ibidule % 2) == 1) ? 1.0 : -1.0;
     } else if (ibidule < 18) {
         sid_t iedge = ibidule - 6;
         /*
@@ -60,14 +60,18 @@ static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
         sid_t dir  = iedge / 4;           // this is the direction of the edge
         sid_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z or y if dir = x
         sid_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-        sign[dir1] = ((iedge % 4) % 2) == 1 ? +1 : -1;
-        sign[dir2] = ((iedge % 4) / 2) == 1 ? +1 : -1;
+        sign[dir1] = ((iedge % 4) % 2) == 1 ? +1.0 : -1.0;
+        sign[dir2] = ((iedge % 4) / 2) == 1 ? +1.0 : -1.0;
     } else {
         sid_t icorner = ibidule - 18;
-        sign[0]       = (icorner % 2) == 1 ? +1 : -1;
-        sign[1]       = ((icorner % 4) / 2) == 1 ? +1 : -1;
-        sign[2]       = (icorner / 4) == 1 ? +1 : -1;
+        sign[0]       = (icorner % 2) == 1 ? +1.0 : -1.0;
+        sign[1]       = ((icorner % 4) / 2) == 1 ? +1.0 : -1.0;
+        sign[2]       = (icorner / 4) == 1 ? +1.0 : -1.0;
     }
+
+    m_assert(sign[0] == 0.0 || sign[0] == 1.0 || sign[0] == -1.0, "wrong sign value: %e", sign[0]);
+    m_assert(sign[1] == 0.0 || sign[1] == 1.0 || sign[1] == -1.0, "wrong sign value: %e", sign[1]);
+    m_assert(sign[2] == 0.0 || sign[2] == 1.0 || sign[2] == -1.0, "wrong sign value: %e", sign[2]);
 }
 
 /**
@@ -341,11 +345,6 @@ void Ghost::MirrorToGhostRecv(Prof* prof) {
 void Ghost::PullFromGhost(Field* field, const sid_t ida) {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
-#ifndef NDEBUG
-    for (sid_t i = 0; i < 6; i++) {
-        m_assert(field->bctype(ida, i) != M_BC_NONE, "cannot compute ghost on field %s as no BC is set on face %d", field->name().c_str(), i);
-    }
-#endif
     //-------------------------------------------------------------------------
     // store the current interpolator and dimension
     ida_ = ida;
@@ -528,9 +527,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             // m_log("I have a grid with %d blocks and %d ghosts. Looking for neighbor %d of block %d = %d, %d",mesh->local_num_quadrants,ghost->ghosts.elem_count,ibidule,qid->cid,qid->qid,qid->tid);
             p8est_mesh_get_neighbors(forest, ghost, mesh, qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
         }
-        // decode the status and count the ghosts
         const lid_t nghosts = ngh_enc->elem_count;
-        m_assert(ngh_enc->elem_count < numeric_limits<lid_t>::max(), "the number of ghost is too big");
         //---------------------------------------------------------------------
         // we do the physics
         if (nghosts == 0) {
@@ -566,10 +563,19 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             } else {
                 p8est_qcoord_to_vertex(grid_->connect(), nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
             }
+            // fix the shift in coordinates needed IF the domain is periodic
             for (sid_t id = 0; id < 3; id++) {
-                ngh_pos[id] = block->xyz(id) + fmod(ngh_pos[id] - block->xyz(id) + grid_->domain_periodic(id) * sign[id] * grid_->domain_length(id), grid_->domain_length(id));
+                // does NOT work if ngh_pos == block->xyz
+                // ngh_pos[id] = block->xyz(id) + fmod(ngh_pos[id] - block->xyz(id) + grid_->domain_periodic(id) * sign[id] * grid_->domain_length(id), grid_->domain_length(id));
+                // new version
+                // if we are periodic, we overwrite the position in the direction of the normal !!ONLY!!
+                // since it is my neighbor in this normal direction, I am 100% sure that it's origin corresponds to the end of my block
+                const real_t to_replace = sign[id] * sign[id] * grid_->domain_periodic(id);  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
+                // get the expected position
+                const real_t expected_pos = block->xyz(id) + (sign[id] > 0.5) * m_quad_len(block->level()) - (sign[id] < -0.5) * m_quad_len(nghq->level);
+                // we override the position if a replacement is needed only
+                ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
             }
-
             // create the new block
             GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos);
 
@@ -829,7 +835,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
                 ZeroBoundary bc = ZeroBoundary();
                 bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_subblock, data_trg);
             } else {
-                m_assert(false, "this type of BC is not implemented yet");
+                m_assert(false, "this type of BC is not implemented yet %d",bctype);
             }
         }
 

@@ -35,6 +35,5 @@ GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_po
         end_[id]      = m_min(end_idx, me->end(id) + me->gs());
         // m_assert(((real_t)end_[id]) == end, "the end has to be an integer");
     }
-    // m_verb("shift = %d %d %d",shift_[0],shift_[1],shift_[2]);
     //-------------------------------------------------------------------------
 }
