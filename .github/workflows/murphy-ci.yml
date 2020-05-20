@@ -7,6 +7,7 @@ jobs:
   build-debug:
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
+    timeout-minutes: 20
     container:
       image: vanreeslab/murphy:v1.3
     # define the steps
@@ -27,6 +28,7 @@ jobs:
   build-test:
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
+    timeout-minutes: 20
     container:
       image: vanreeslab/murphy:v1.3
     # define the steps
@@ -49,6 +51,7 @@ jobs:
     needs: build-test
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
+    timeout-minutes: 20
     container:
       image: vanreeslab/murphy:v1.3
     # define the steps
@@ -67,6 +70,7 @@ jobs:
     needs: build-test
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
+    timeout-minutes: 20
     container:
       image: vanreeslab/murphy:v1.3
     # define the steps
@@ -85,6 +89,7 @@ jobs:
     needs: build-test
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
+    timeout-minutes: 20
     container:
       image: vanreeslab/murphy:v1.3
     # define the steps
@@ -103,6 +108,7 @@ jobs:
     needs: build-test
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
+    timeout-minutes: 20
     container:
       image: vanreeslab/murphy:v1.3
     # define the steps

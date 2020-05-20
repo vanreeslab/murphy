@@ -9,6 +9,7 @@
 #include "murphy.hpp"
 #include "setvalues.hpp"
 #include "multigrid.hpp"
+#incldue <mpi.h>
 
 #define DOUBLE_TOL 1e-9
 
@@ -31,6 +32,13 @@ class valid_Multigrid : public ::testing::Test {
 
 TEST_F(valid_Multigrid, perio_uniform_order2) {
     //-----------
+    // get the comm size and return if we are NOT sequential:
+    int commsize;
+    MPI_Comm_size(MPI_COMM_WORLD, &commsize);
+    if (commsize > 1) {
+        return 0;
+    }
+
     lvl_         = 3;
     periodic_[0] = true;
     periodic_[1] = true;
