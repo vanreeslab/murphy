@@ -135,6 +135,8 @@ void Multigrid::Solve() {
     ErrorCalculator error2 = ErrorCalculator();
 #endif
 
+    // string fname;
+    // IOH5   dump = IOH5("data");
     // initial error
 #ifndef NDEBUG
     lapla(grids_[n_level_], sol, res);
@@ -142,105 +144,127 @@ void Multigrid::Solve() {
     error2.Norms(grids_[n_level_], res, rhs, &norm2, &normi);
     m_log("initial error = %e and %e", norm2, normi);
 #endif
-    //---------------------
-    // GOING DOWN
-    for (sid_t il = n_level_; il > 0; il--) {
-        // this is the current grid
-        Grid* grid = grids_[il];
-        // Smooth that stuff
-        for (sid_t ie = 0; ie < eta_1_; ie++) {
+    for (sid_t icycle = 0; icycle < 5; icycle++) {
+        m_log("---- cycle %d",icycle);
+        //---------------------
+        // GOING DOWN
+        for (sid_t il = n_level_; il > 0; il--) {
+            // this is the current grid
+            Grid* grid = grids_[il];
+            // Smooth that stuff
+            for (sid_t ie = 0; ie < eta_1_; ie++) {
 #ifndef MG_GAUSSSEIDEL
-            jacobi(sol, rhs, res, grid);
+                jacobi(sol, rhs, res, grid);
 #else
-            gs(sol, rhs, nullptr, grid);
+                gs(sol, rhs, nullptr, grid);
+#endif
+                // #ifndef NDEBUG
+                //         lapla(grid, sol, res);
+                //         error2.Norms(grid, res, rhs, &norm2,&normi);
+                //         m_log("down: **Jacobi %d, error = %e %e**", ie, norm2, normi);
+                // #endif
+            }
+            // fname = "down_sol_level" + std::to_string(il);
+            // dump(grid, sol, fname);
+            // compute the residual as rhs - A x to send to the coarser level
+            // this operation is overkilled since it executed on the WHOLE active leaf, while only the finest level is concerned
+            lapla(grid, sol, res);
+#ifndef NDEBUG
+            error2.Norms(grid, res, rhs, &norm2, &normi);
+            m_log("down: leaving level %d, error = %e %e", il, norm2, normi);
+#endif
+            // fine residual = - fine residula + fine rhs
+            // this operation is overkilled since it executed on the WHOLE active leaf, while only the finest level is concerned
+            daxpy_minus(grid, res, rhs, res);
+
+            // do the interpolation from the residual to the rhs of the next level
+            // for the finer level: the coarser rhs = 0.0 * coarse rhs + interp(residual), the rest of the grid remain unchanged
+            families_[il - 1]->ToParents(res, rhs, rhs, 0.0, grid->interp());
+            // do the partitioning, send the new rhs
+            parts_[il - 1]->Start(&map_rhs_field, M_FORWARD);
+            parts_[il - 1]->End(&map_rhs_field, M_FORWARD);
+        }
+        //---------------------
+        // do the direct solve
+        Grid* grid_fft = grids_[0];
+        //     // do the jacobi becuse I don't have anything else for the moment
+        //     for (lid_t ie = 0; ie < 45; ie++) {
+        // #ifndef MG_GAUSSSEIDEL
+        //         jacobi(sol, rhs, res, grid_fft);
+        // #else
+        //         gs(sol, rhs, nullptr, grid_fft);
+        // #endif
+        //         // compute the residual as rhs - A x to send to the coarser level
+        //     }
+        //     IOH5 dump = IOH5("data");
+        //     dump(grid_fft, sol, "jacob_sol");
+        //     dump(grid_fft, rhs, "jacob_rhs");
+
+        // // do the FFT instead
+        (*direct_solver_)(grid_fft, rhs, sol);
+        // dump(grid_fft, sol, "fft_sol");
+        // dump(grid_fft, rhs, "fft_rhs");
+
+#ifndef NDEBUG
+        lapla(grid_fft, sol, res);
+        // dump(grid_fft, res, "fft_lapla");
+        error2.Norms(grid_fft, res, rhs, &norm2, &normi);
+        m_log("after the direct: error = %e %e", norm2, normi);
+#endif
+
+        //---------------------
+
+        // GOING UP
+        for (sid_t il = 1; il <= n_level_; il++) {
+            // get the ghost for the solution as we need them to refine
+            grids_[il - 1]->GhostPull(sol);
+            // fname = "sol_coarse_level_" + std::to_string(il-1);
+            // dump(grid, sol,fname);
+            // do the partitioning, send the solution + ghost
+            parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
+            parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
+            // do the interpolation using the same interpolation as the one used to go down
+            // fname = "before_familly_level_" + std::to_string(il);
+            // dump(grids_[il-1], sol,fname);
+            // the finer solution = the existing solution + Interp( the coarse solution)
+            // families_[il - 1]->ToChildren(sol, res, res,0.0, grids_[il]->interp());
+            families_[il - 1]->ToChildren(sol, sol, sol, 1.0, grids_[il]->interp());
+            // fname = "after_familly_level_" + std::to_string(il);
+            // dump(grids_[il],sol,fname);
+            // we are now on the new grid!!
+            Grid* grid = grids_[il];
+            // update the solution with it's coarsegrid version
+            // daxpy_plus(grid, res, sol, sol);  // sol = res + sol
+            // fname = "sol_coarse_interp_level_" + std::to_string(il);
+            // dump(grid, res,fname);
+            // fname = "sol_level_" + std::to_string(il);
+            // dump(grid, sol,fname);
+#ifndef NDEBUG
+            lapla(grid, sol, res);
+            // fname = "sol_level_lapla_" + std::to_string(il);
+            // dump(grid, res, fname);
+            error2.Norm2(grid, res, rhs, &norm2);
+            m_log("up: entering level %d, error = %e", il, norm2);
+#endif
+            // Gauss-Seidel - laplacian(sol) = rhs
+            for (sid_t ie = 0; ie < eta_2_; ie++) {
+#ifndef MG_GAUSSSEIDEL
+                jacobi(sol, rhs, res, grid);
+#else
+                gs(sol, rhs, nullptr, grid);
+#endif
+                // #ifndef NDEBUG
+                //             lapla(grid, sol, res);
+                //             error2.Norms(grid, res, rhs, &norm2, &normi);
+                //             m_log("up: Jacobi %d, error = `%16.16e %16.16e`", ie, norm2, normi);
+                // #endif
+            }
+#ifndef NDEBUG
+            lapla(grid, sol, res);
+            error2.Norms(grid, res, rhs, &norm2, &normi);
+            m_log("up: leaving level %d, error = %e %e", il, norm2, normi);
 #endif
         }
-        // compute the residual as rhs - A x to send to the coarser level
-        // this operation is overkilled since it executed on the WHOLE active leaf, while only the finest level is concerned
-        lapla(grid, sol, res);
-#ifndef NDEBUG
-        error2.Norm2(grid, res, rhs, &norm2);
-        m_log("down: leaving level %d, error = %e", il, norm2);
-#endif
-        // fine residual = - fine residula + fine rhs
-        // this operation is overkilled since it executed on the WHOLE active leaf, while only the finest level is concerned
-        daxpy_minus(grid, res, rhs, res);
-
-        // do the interpolation from the residual to the rhs of the next level
-        // for the finer level: the coarser rhs = 0.0 * coarse rhs + interp(residual), the rest of the grid remain unchanged
-        families_[il - 1]->ToParents(res, rhs, rhs, 0.0, grid->interp());
-        // do the partitioning, send the new rhs
-        parts_[il - 1]->Start(&map_rhs_field, M_FORWARD);
-        parts_[il - 1]->End(&map_rhs_field, M_FORWARD);
-    }
-    //---------------------
-    // do the direct solve
-    Grid* grid_fft = grids_[0];
-    //     // do the jacobi becuse I don't have anything else for the moment
-    //     for (lid_t ie = 0; ie < 45; ie++) {
-    // #ifndef MG_GAUSSSEIDEL
-    //         jacobi(sol, rhs, res, grid_fft);
-    // #else
-    //         gs(sol, rhs, nullptr, grid_fft);
-    // #endif
-    //         // compute the residual as rhs - A x to send to the coarser level
-    //     }
-    //     IOH5 dump = IOH5("data");
-    //     dump(grid_fft, sol, "jacob_sol");
-    //     dump(grid_fft, rhs, "jacob_rhs");
-
-    // // do the FFT instead
-    (*direct_solver_)(grid_fft, rhs, sol);
-    IOH5 dump = IOH5("data");
-    dump(grid_fft, sol, "fft_sol");
-    dump(grid_fft, rhs, "fft_rhs");
-
-#ifndef NDEBUG
-    lapla(grid_fft, sol, res);
-    error2.Norm2(grid_fft, res, rhs, &norm2);
-    m_log("after the direct: error = %e", norm2);
-#endif
-
-    //---------------------
-    string fname;
-    // GOING UP
-    for (sid_t il = 1; il <= n_level_; il++) {
-        // get the ghost for the solution as we need them to refine
-        grids_[il - 1]->GhostPull(sol);
-        // do the partitioning, send the solution + ghost
-        parts_[il - 1]->Start(&map_sol_field, M_BACKWARD);
-        parts_[il - 1]->End(&map_sol_field, M_BACKWARD);
-        // do the interpolation using the same interpolation as the one used to go down
-        fname = "before_familly_level_" + std::to_string(il);
-        dump(grids_[il-1], sol,fname);
-        // the finer solution = the existing solution + Interp( the coarse solution)
-        families_[il - 1]->ToChildren(sol, sol, sol,1.0, grids_[il]->interp());
-        // fname = "after_familly_level_" + std::to_string(il);
-        // dump(grids_[il],sol,fname);
-        // we are now on the new grid!!
-        Grid* grid = grids_[il];
-        // update the solution with it's coarsegrid version
-        // daxpy_plus(grid, res, sol, sol);  // sol = res + sol
-        fname = "sol_level_" + std::to_string(il);
-        dump(grid, sol,fname);
-#ifndef NDEBUG
-        lapla(grid,sol, res);
-        error2.Norm2(grid, res, rhs, &norm2);
-        m_log("up: entering level %d, error = %e", il, norm2);
-#endif
-        // Gauss-Seidel - laplacian(sol) = rhs
-        for (sid_t ie = 0; ie < eta_2_; ie++) {
-#ifndef MG_GAUSSSEIDEL
-            jacobi(sol, rhs, res, grid);
-#else
-            gs(sol, rhs, nullptr, grid);
-#endif
-        }
-#ifndef NDEBUG
-        lapla(grid,sol, res);
-        error2.Norm2(grid, res, rhs, &norm2);
-        m_log("up: leaving level %d, error = %e", il, norm2);
-#endif
     }
     //-------------------------------------------------------------------------
     m_end;

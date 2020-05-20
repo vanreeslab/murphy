@@ -13,8 +13,8 @@
 
 class Multigrid {
    protected:
-    sid_t  eta_1_     = 10;
-    sid_t  eta_2_     = 10;
+    sid_t  eta_1_     = 5;
+    sid_t  eta_2_     = 5;
     sid_t  fft_level_ = 0;
     sid_t  max_level_ = 0;
     sid_t  n_level_   = 0;
