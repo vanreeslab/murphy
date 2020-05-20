@@ -9,7 +9,7 @@
 #include "murphy.hpp"
 #include "setvalues.hpp"
 #include "multigrid.hpp"
-#incldue <mpi.h>
+#include <mpi.h>
 
 #define DOUBLE_TOL 1e-9
 
