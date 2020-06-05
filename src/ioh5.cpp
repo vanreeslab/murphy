@@ -340,9 +340,9 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     sprintf(msg, "%s%-128s", msg, line);
     // - L3
     if (dump_ghost_) {
-        sprintf(line, "\n              <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"%d %d %d\"/>", M_STRIDE + 1, M_STRIDE + 1, M_STRIDE + 1);
+        sprintf(line, "\n              <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"%d %d %d\"/>", M_STRIDE, M_STRIDE, M_STRIDE);
     } else {
-        sprintf(line, "\n              <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"%d %d %d\"/>", M_N + 1, M_N + 1, M_N + 1);
+        sprintf(line, "\n              <Topology TopologyType=\"3DCoRectMesh\" Dimensions=\"%d %d %d\"/>", M_N, M_N, M_N);
     }
     sprintf(msg, "%s%-128s", msg, line);
     // - L4
@@ -368,7 +368,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     // - L11
     sprintf(msg, "%s%-128s", msg, "\n              </Geometry>");
     // - L12
-    sprintf(line, "\n              <Attribute Name=\"data\" AttributeType=\"Vector\" Center=\"Cell\">");
+    sprintf(line, "\n              <Attribute Name=\"data\" AttributeType=\"Vector\" Center=\"Node\">");
     sprintf(msg, "%s%-128s", msg, line);
     // - L13
     if (dump_ghost_) {

@@ -125,7 +125,7 @@
  * 
  */
 /**
- * @brief returns the position of a point (i0,i1,i2) in the computational domain
+ * @brief returns the position of a point (i0,i1,i2) wrt to the computational domain
  * 
  * @param i0 the index in the x direction within a block
  * @param i1 the index in the y direction within a block
@@ -134,15 +134,15 @@
  * @param xyz the position of the origin of the block (!= the position of (0,0,0))
  * 
  */
-#define m_pos(pos, i0, i1, i2, hgrid, xyz)        \
-    ({                                            \
-        __typeof__(i0) _i0 = (i0);                \
-        __typeof__(i1) _i1 = (i1);                \
-        __typeof__(i2) _i2 = (i2);                \
-                                                  \
-        pos[0] = (_i0 + 0.5) * hgrid[0] + xyz[0]; \
-        pos[1] = (_i1 + 0.5) * hgrid[1] + xyz[1]; \
-        pos[2] = (_i2 + 0.5) * hgrid[2] + xyz[2]; \
+#define m_pos(pos, i0, i1, i2, hgrid, xyz) \
+    ({                                     \
+        __typeof__(i0) _i0 = (i0);         \
+        __typeof__(i1) _i1 = (i1);         \
+        __typeof__(i2) _i2 = (i2);         \
+                                           \
+        pos[0] = _i0 * hgrid[0] + xyz[0];  \
+        pos[1] = _i1 * hgrid[1] + xyz[1];  \
+        pos[2] = _i2 * hgrid[2] + xyz[2];  \
     })
 
 /**
@@ -161,9 +161,9 @@
         __typeof__(i1) _i1 = (i1);                \
         __typeof__(i2) _i2 = (i2);                \
                                                   \
-        offset[0] = (_i0 + 0.5) * hgrid[0];       \
-        offset[1] = (_i1 + 0.5) * hgrid[1];       \
-        offset[2] = (_i2 + 0.5) * hgrid[2];       \
+        offset[0] = _i0 * hgrid[0];               \
+        offset[1] = _i1 * hgrid[1];               \
+        offset[2] = _i2 * hgrid[2];               \
     })
 
 /**
