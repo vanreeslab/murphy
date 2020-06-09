@@ -327,4 +327,9 @@
     
 /** @} */
 
+// #if defined(__INTEL_COMPILER)
+// #define m_pragma_ivdep #pragma ivdep
+// #else
+// #define m_pragma_ivdep #pragma GCC ivdep
+
 #endif  // SRC_DEFS_HPP_

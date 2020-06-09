@@ -20,8 +20,8 @@ Grid::Grid() : ForestGrid() {
     interp_         = nullptr;
     detail_         = nullptr;
     // create a default interpolator
-    interp_ = new Wavelet<5>();
-    detail_ = new Wavelet<3>();
+    interp_ = new Wavelet<2,2>();
+    detail_ = new Wavelet<2,2>();
     //-------------------------------------------------------------------------
 };
 
@@ -62,8 +62,8 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
         prof->Create("stencil_outer");
     }
     // create a default interpolator
-    interp_ = new Wavelet<5>();
-    detail_ = new Wavelet<3>();
+    interp_ = new Wavelet<2,2>();
+    detail_ = new Wavelet<2,2>();
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
     // partition the grid to have compatible grid

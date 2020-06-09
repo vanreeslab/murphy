@@ -10,7 +10,7 @@
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg) {
+void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, MemPool* mem_pool) {
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     Interpolate(dlvl, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
@@ -27,7 +27,7 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
  * @param alpha the multiplication factor for the constant memory
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  */
-void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst){
+void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst, MemPool* mem_pool){
     m_assert(dlvl <= 2, "we cannot handle a difference in level > 2");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
     //-------------------------------------------------------------------------
@@ -61,6 +61,9 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     ctx.sdata = data_src + m_midx(shift[0], shift[1], shift[2], 0, block_src);
     ctx.cdata = data_cst;
     ctx.tdata = data_trg;
+
+    // store the working data
+    ctx.wdata = mem_pool->LockMemory(omp_get_thread_num());
 
     // call the correct function
     if (dlvl == -1) {
