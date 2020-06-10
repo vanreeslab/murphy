@@ -87,16 +87,19 @@ class Wavelet : public Interpolator {
    public:
     Wavelet() {
         m_assert(Nt <= N, "we do not support the case of Nt=%d > N=%d", Nt, N);
-        len_ha_ = 2 * (N + Nt) - 3;
-        len_ga_ = 2 * Nt - 1;
-        len_gs_ = N;
+        len_ha_   = 2 * (N + Nt) - 3;
+        len_ga_   = 2 * Nt - 1;
+        len_gs_   = N;
+        len_ha_2_ = 6 * ((N + Nt) - 2) + 1;
 
-        ha_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_));
-        ga_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ga_));
-        gs_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_gs_));
-        ha_ = ha_ + len_ha_ / 2;
-        ga_ = ga_ + len_ga_ / 2;
-        gs_ = gs_ + len_gs_ / 2 - 1;
+        ha_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_));
+        ha_2_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_2_));
+        ga_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ga_));
+        gs_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_gs_));
+        ha_   = ha_ + len_ha_ / 2;
+        ga_   = ga_ + len_ga_ / 2;
+        gs_   = gs_ + len_gs_ / 2 - 1;
+        ha_2_ = ha_2_ + len_ha_2_ / 2;
 
         // get the correct lifting filter given N
         if (N == 2 && Nt == 2) {
@@ -111,8 +114,22 @@ class Wavelet : public Interpolator {
             ga_[0]  = +1.0;
             ga_[1]  = -1.0 / 2.0;
             // gs
-            ga_[0] = +1.0 / 2.0;
-            ga_[1] = +1.0 / 2.0;
+            gs_[0] = +1.0 / 2.0;
+            gs_[1] = +1.0 / 2.0;
+            //ha_2
+            ha_2_[-6] = 1.0 / 64.0;
+            ha_2_[-5] = -1.0 / 32.0;
+            ha_2_[-4] = -1.0 / 8.0;
+            ha_2_[-3] = 1.0 / 32.0;
+            ha_2_[-2] = 7.0 / 64.0;
+            ha_2_[-1] = 1.0 / 4.0;
+            ha_2_[0]  = 1.0 / 2.0;
+            ha_2_[1]  = 1.0 / 4.0;
+            ha_2_[2]  = 7.0 / 64.0;
+            ha_2_[3]  = 1.0 / 32.0;
+            ha_2_[4]  = -1.0 / 8.0;
+            ha_2_[5]  = -1.0 / 32.0;
+            ha_2_[6]  = 1.0 / 64.0;
         } else if (N == 4 && Nt == 2) {
             // ha
             ha_[-4] = +1.0 / 64.0;
@@ -133,10 +150,36 @@ class Wavelet : public Interpolator {
             ga_[2]  = 0.0;
             ga_[3]  = 1.0 / 16.0;
             // gs
-            ga_[-1] = -1.0 / 16.0;
-            ga_[0]  = 9.0 / 16.0;
-            ga_[1]  = 9.0 / 16.0;
-            ga_[2]  = -1.0 / 16.0;
+            gs_[-1] = -1.0 / 16.0;
+            gs_[0]  = 9.0 / 16.0;
+            gs_[1]  = 9.0 / 16.0;
+            gs_[2]  = -1.0 / 16.0;
+            //ha_2_
+            ha_2_[-12] = 1.0 / 4096.0;
+            ha_2_[-11] = 0.0;
+            ha_2_[-10] = -1.0 / 512.0;
+            ha_2_[-9]  = 1.0 / 256.0;
+            ha_2_[-8]  = 19.0 / 2048.0;
+            ha_2_[-7]  = 1.0 / 256.0;
+            ha_2_[-6]  = 9.0 / 512.0;
+            ha_2_[-5]  = -1.0 / 32.0;
+            ha_2_[-4]  = -449.0 / 4096.0;
+            ha_2_[-3]  = 1.0 / 32.0;
+            ha_2_[-2]  = 7.0 / 64.0;
+            ha_2_[-1]  = 31.0 / 128.0;
+            ha_2_[0]   = 461.0 / 1024.0;
+            ha_2_[1]   = 31.0 / 128.0;
+            ha_2_[2]   = 7.0 / 64.0;
+            ha_2_[3]   = 1.0 / 32.0;
+            ha_2_[4]   = -449.0 / 4096.0;
+            ha_2_[5]   = -1.0 / 32.0;
+            ha_2_[6]   = 9.0 / 512.0;
+            ha_2_[7]   = 1.0 / 256.0;
+            ha_2_[8]   = 19.0 / 2048.0;
+            ha_2_[9]   = 1.0 / 256.0;
+            ha_2_[10]  = -1.0 / 512.0;
+            ha_2_[11]  = 0.0;
+            ha_2_[12]  = 1.0 / 4096.0;
         } else {
             m_assert(false, "wavelet N=%d.Nt=%d not implemented yet", N, Nt);
         }
@@ -146,6 +189,7 @@ class Wavelet : public Interpolator {
         m_begin;
         //-------------------------------------------------------------------------
         m_free(ha_ - (len_ha_ / 2));
+        m_free(ha_2_ - (len_ha_2_ / 2));
         m_free(ga_ - (len_ga_ / 2));
         m_free(gs_ - (len_gs_ / 2 - 1));
         //-------------------------------------------------------------------------

@@ -118,12 +118,16 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     m_assume_aligned(ctx->wdata);
 
     const real_t  alpha  = ctx->alpha;
-    const sid_t   ha_lim = (len_ha_ / 2) * dlvl;
+    const sid_t   ha_lim = (dlvl == 1) ? (len_ha_ / 2) : (dlvl == 2) ? (len_ha_2_ / 2) : 0;
     const real_t* ha     = (dlvl == 1) ? ha_ : (dlvl == 2) ? ha_2_ : nullptr;
 
     for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
+                // do some checks
+                m_assert(((ik0 - ha_lim) >= ctx->srcstart[0]) && ((ik0 + ha_lim) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - ha_lim, ctx->srcstart[0], ik0 + ha_lim, ctx->srcend[0]);
+                m_assert(((ik1 - ha_lim) >= ctx->srcstart[1]) && ((ik1 + ha_lim) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - ha_lim, ctx->srcstart[1], ik1 + ha_lim, ctx->srcend[1]);
+                m_assert(((ik2 - ha_lim) >= ctx->srcstart[2]) && ((ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - ha_lim, ctx->srcstart[2], ik2 + ha_lim, ctx->srcend[2]);
                 //get the local adress of the source, the target and the constant
                 real_p       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const real_p lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
@@ -131,7 +135,7 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
 
                 // add the constant
                 ltdata[0] = alpha * lcdata[0];
-                // we need to apply ha of size 2*N-1 in each direction
+                // apply the filter
                 for (sid_t id2 = -ha_lim; id2 <= ha_lim; id2++) {
                     for (sid_t id1 = -ha_lim; id1 <= ha_lim; id1++) {
                         for (sid_t id0 = -ha_lim; id0 <= ha_lim; id0++) {
@@ -154,59 +158,67 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
 template <int N, int Nt>
 void Wavelet<N,Nt>::Refine_(const interp_ctx_t* ctx) const {
     //-------------------------------------------------------------------------
-    // assure alignment for both target and source
+    // assure alignment for the target, the source, the constant and the temp data
     m_assume_aligned(ctx->tdata);
     m_assume_aligned(ctx->sdata);
     m_assume_aligned(ctx->cdata);
+    m_assume_aligned(ctx->wdata);
 
-    // const lid_t   hslen = order / 2;
-    // const real_t* hs    = hs_ + hslen;
-    // const real_t* sign  = sgn_hs_ + hslen;
-    // const real_t  alpha = ctx->alpha;
+    const real_t  alpha  = ctx->alpha;
+    const sid_t   gs_lim = (len_gs_ / 2);
+    const real_t* gs     = gs_;
 
-    // // for each of the data for the considered children
-    // for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
-    //     for (int ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
-    //         for (int ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
-    //             m_assert((ik0 - hslen >= ctx->srcstart[0]) && (ik0 + hslen < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - hslen, ctx->srcstart[0], ik0 + hslen, ctx->srcend[0]);
-    //             m_assert((ik1 - hslen >= ctx->srcstart[1]) && (ik1 + hslen < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - hslen, ctx->srcstart[1], ik1 + hslen, ctx->srcend[1]);
-    //             m_assert((ik2 - hslen >= ctx->srcstart[2]) && (ik2 + hslen < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - hslen, ctx->srcstart[2], ik2 + hslen, ctx->srcend[2]);
-    //             //get the local adress of the dady
-    //             real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-    //             const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-    //             const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+    m_verb("gslim = %d",gs_lim);
 
-    //             // reset to 0.0
-    //             ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
-    //             ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
+    for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
+        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
+            for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                m_assert((ik0 - gs_lim + 1 >= ctx->srcstart[0]) && (ik0 + gs_lim < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                m_assert((ik1 - gs_lim + 1 >= ctx->srcstart[1]) && (ik1 + gs_lim < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert((ik2 - gs_lim + 1 >= ctx->srcstart[2]) && (ik2 + gs_lim < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
-    //             for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
-    //                 for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
-    //                     for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
-    //                         // get the current parent's data
-    //                         const real_t ldata = lsdata[m_sidx(dm0, dm1, dm2, 0, ctx->srcstr)];
-    //                         const real_t fact  = hs[dm2] * hs[dm1] * hs[dm0];
-    //                         // we give the information to every wavelet which is inside my "block"
-    //                         ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += fact * ldata;
-    //                         ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += fact * ldata * sign[dm0];
-    //                         ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += fact * ldata * sign[dm1];
-    //                         ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += fact * ldata * sign[dm2];
-    //                         ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += fact * ldata * sign[dm1] * sign[dm2];
-    //                         ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += fact * ldata * sign[dm0] * sign[dm1];
-    //                         ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += fact * ldata * sign[dm0] * sign[dm2];
-    //                         ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += fact * ldata * sign[dm0] * sign[dm1] * sign[dm2];
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+                // reset to 0.0 the fine info
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = -gs_lim + 1; id0 <= gs_lim; id0++) {
+                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(id0, 0, 0, 0, ctx->srcstr)];
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0,id0, 0, 0, ctx->srcstr)];
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0,id0, 0, ctx->srcstr)];
+                }
+                // point (1,1,0) and (0,1,1) and (1,0,1)
+                for (sid_t id1 = -gs_lim + 1; id1 <= gs_lim; id1++) {
+                    for (sid_t id0 = -gs_lim + 1; id0 <= gs_lim; id0++) {
+                        ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, id1, 0, 0, ctx->srcstr)];
+                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, 0, id1, 0, ctx->srcstr)];
+                    }
+                }
+                // point (1,1,1)
+                for (sid_t id2 = -gs_lim + 1; id2 <= gs_lim; id2++) {
+                    for (sid_t id1 = -gs_lim + 1; id1 <= gs_lim; id1++) {
+                        for (sid_t id0 = -gs_lim + 1; id0 <= gs_lim; id0++) {
+                            ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        }
+                    }
+                }
+            }
+        }
+    }
     //-------------------------------------------------------------------------
 }
 
@@ -220,144 +232,53 @@ void Wavelet<N,Nt>::Refine_(const interp_ctx_t* ctx) const {
 template <int N, int Nt>
 void Wavelet<N,Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const {
     //-------------------------------------------------------------------------
-    // assure alignment for both target and source
     m_assume_aligned(ctx->tdata);
 
-    // const lid_t   hslen = order / 2;
-    // const real_t* ga    = ga_ + hslen;
-    // const real_t* sign  = sgn_ga_ + hslen;
+    const real_t  alpha  = ctx->alpha;
+    const sid_t   ga_lim = len_ga_/2;
+    const real_t* ga     = ga_;
 
-    // real_t ha_tmp[order] = {0};
-    // ha_tmp[order / 2]    = 0.5;
-    // const real_t* ha     = ha_tmp + hslen;
+    // for each of the data for the considered children
+    for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
+        for (int ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
+            for (int ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                real_p ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                m_assume_aligned(ltdata);
 
-    // // for each of the data for the considered children
-    // for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
-    //     for (int ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
-    //         for (int ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
-    //             //get the local adress of the dady
-    //             real_p ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-    //             m_assume_aligned(ltdata);
-
-    //             // set the detail coefficient to the
-    //             real_t detail[8];
-
-    //             // compute all the single coefficients
-    //             detail[0] = 0.0;
-    //             detail[1] = 0.0;
-    //             detail[2] = 0.0;
-    //             for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
-    //                 const real_t fact = ha[0] * ha[0] * ga[dm0];
-    //                 // this is dx
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 0, 0, 0, 0, ctx->trgstr)] * fact;
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 1, 0, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 0, 1, 0, 0, ctx->trgstr)] * fact;
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 0, 0, 1, 0, ctx->trgstr)] * fact;
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 0, 1, 1, 0, ctx->trgstr)] * fact;
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 1, 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 1, 0, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[0] += ltdata[m_sidx(2 * dm0 + 1, 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-
-    //                 // this is dy
-    //                 detail[1] += ltdata[m_sidx(0, 2 * dm0 + 0, 0, 0, ctx->trgstr)] * fact;
-    //                 detail[1] += ltdata[m_sidx(1, 2 * dm0 + 0, 0, 0, ctx->trgstr)] * fact;
-    //                 detail[1] += ltdata[m_sidx(0, 2 * dm0 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[1] += ltdata[m_sidx(0, 2 * dm0 + 0, 1, 0, ctx->trgstr)] * fact;
-    //                 detail[1] += ltdata[m_sidx(0, 2 * dm0 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[1] += ltdata[m_sidx(1, 2 * dm0 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[1] += ltdata[m_sidx(1, 2 * dm0 + 0, 1, 0, ctx->trgstr)] * fact;
-    //                 detail[1] += ltdata[m_sidx(1, 2 * dm0 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-
-    //                 // this is dz
-    //                 detail[2] += ltdata[m_sidx(0, 0, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-    //                 detail[2] += ltdata[m_sidx(1, 0, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-    //                 detail[2] += ltdata[m_sidx(0, 1, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-    //                 detail[2] += ltdata[m_sidx(0, 0, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[2] += ltdata[m_sidx(0, 1, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[2] += ltdata[m_sidx(1, 1, 2 * dm0 + 0, 0, ctx->trgstr)] * fact;
-    //                 detail[2] += ltdata[m_sidx(1, 0, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                 detail[2] += ltdata[m_sidx(1, 1, 2 * dm0 + 1, 0, ctx->trgstr)] * fact * sign[dm0];
-
-    //                 // m_verb("order = %d, dm0 = %d: fact = %f, sign = %f -> dx = %e, dy = %e, dz = %e",order,dm0,fact,sign[dm0],detail[0],detail[1],detail[2]);
-    //             }
-    //             // m_verb("order = %d, =================> dx = %e, dy = %e, dz = %e",order,detail[0],detail[1],detail[2]);
-
-    //             detail[3] = 0.0;
-    //             detail[4] = 0.0;
-    //             detail[5] = 0.0;
-    //             for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
-    //                 for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
-    //                     const real_t fact = ha[0] * ga[dm1] * ga[dm0];
-    //                     // this is dxy
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 0, 0, ctx->trgstr)] * fact;
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 1, 0, ctx->trgstr)] * fact;
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 0, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 1, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                     detail[3] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-
-    //                     // this is dyz
-    //                     detail[4] += ltdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-    //                     detail[4] += ltdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-    //                     detail[4] += ltdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                     detail[4] += ltdata[m_sidx(0, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                     detail[4] += ltdata[m_sidx(0, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-    //                     detail[4] += ltdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                     detail[4] += ltdata[m_sidx(1, 2 * dm0 + 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                     detail[4] += ltdata[m_sidx(1, 2 * dm0 + 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-
-    //                     // this is dxz
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact;
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 0, 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 0, 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 1, 0, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-    //                     detail[5] += ltdata[m_sidx(2 * dm0 + 1, 1, 2 * dm1 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-    //                 }
-    //             }
-
-    //             detail[6] = 0.0;
-    //             for (int dm2 = -(order / 2); dm2 <= (order / 2); dm2++) {
-    //                 for (int dm1 = -(order / 2); dm1 <= (order / 2); dm1++) {
-    //                     for (int dm0 = -(order / 2); dm0 <= (order / 2); dm0++) {
-    //                         const real_t fact = ha[0] * ga[dm1] * ga[dm0];
-    //                         // this is dxy
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->trgstr)] * fact;
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm0];
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm1];
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm2];
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 0, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm1] * sign[dm2];
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 0, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1];
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 0, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm2];
-    //                         detail[6] += ltdata[m_sidx(2 * dm0 + 1, 2 * dm1 + 1, 2 * dm2 + 1, 0, ctx->trgstr)] * fact * sign[dm0] * sign[dm1] * sign[dm2];
-    //                     }
-    //                 }
-    //             }
-
-    //             // get the mean value, the last missing ingredient
-    //             detail[7] = 0.0;
-    //             detail[7] += ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] * 0.125;
-    //             detail[7] += ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] * 0.125;
-
-    //             // m_verb("order = %d my details = %f %f %f %f %f %f %f %f",order,detail[0],detail[1],detail[2],detail[3],detail[4],detail[5],detail[6],detail[7]);
-
-    //             // store the max, relatively to the current value
-    //             for (int id = 0; id < 8; id++) {
-    //                 details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
-    //             }
-    //         }
-    //     }
-    // }
+                // set the detail coefficient to the
+                real_t detail[8] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+                // detail(0,0,0) = scaling!
+                detail[0] = ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
+                    detail[1] += ga[id0] * ltdata[m_sidx(1 + id0, 0, 0, 0, ctx->trgstr)];
+                    detail[2] += ga[id0] * ltdata[m_sidx(0, 1 + id0, 0, 0, ctx->trgstr)];
+                    detail[3] += ga[id0] * ltdata[m_sidx(0, 0, 1 + id0, 0, ctx->trgstr)];
+                }
+                // point (1,1,0) and (0,1,1) and (1,0,1)
+                for (sid_t id1 = -ga_lim; id1 <= ga_lim; id1++) {
+                    for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
+                        detail[4] += ga[id0] * ga[id1] * ltdata[m_sidx(1 + id0, 1 + id1, 0, 0, ctx->trgstr)];
+                        detail[5] += ga[id0] * ga[id1] * ltdata[m_sidx(0, 1 + id0, 1 + id1, 0, ctx->trgstr)];
+                        detail[6] += ga[id0] * ga[id1] * ltdata[m_sidx(1 + id0, 0, 1 + id1, 0, ctx->trgstr)];
+                    }
+                }
+                // point (1,1,1)
+                for (sid_t id2 = -ga_lim; id2 <= ga_lim; id2++) {
+                    for (sid_t id1 = -ga_lim; id1 <= ga_lim; id1++) {
+                        for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
+                            detail[7] += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(1 + id0, 1 + id1, 1 + id2, 0, ctx->trgstr)];
+                        }
+                    }
+                }
+                // store the max, relatively to the current value
+                // m_verb("details %e %e %e %e %e %e %e %e", detail[0], detail[1], detail[2], detail[3], detail[4], detail[5], detail[6], detail[7]);
+                for (int id = 1; id < 8; id++) {
+                    details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
+                }
+            }
+        }
+    }
     //-------------------------------------------------------------------------
 }
 
