@@ -11,6 +11,7 @@
 #include "doop.hpp"
 #include "physblock.hpp"
 #include "prof.hpp"
+#include "mempool.hpp"
 
 using std::list;
 
@@ -62,9 +63,11 @@ class Ghost {
     real_t *ghosts_  = nullptr;  //!< memory space for the ghost blocks
 
     ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
+    
+    // real_p *coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
+    MemPool* mem_pool_; //!< the current memory pool to use for the ghost, not owned
     Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
 
-    real_p *coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
 
     list<GhostBlock *> **block_sibling_;  //!<  list of blocks that are finer or same resolution
     list<GhostBlock *> **block_parent_;   //!<  list of blocks that are coarser
@@ -73,14 +76,14 @@ class Ghost {
     list<PhysBlock *> ** phys_;           //!<  physical blocks
 
    public:
-    Ghost(ForestGrid *grid, Interpolator *interp, const level_t min_level, const level_t max_level);
-    Ghost(ForestGrid *grid, Interpolator *interp) : Ghost(grid, interp, -1, P8EST_MAXLEVEL + 1){};
+    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level);
+    Ghost(ForestGrid *grid) : Ghost(grid, -1, P8EST_MAXLEVEL + 1){};
     ~Ghost();
 
     void PushToMirror(Field *field, const sid_t ida);
     void MirrorToGhostSend(Prof *prof);
     void MirrorToGhostRecv(Prof *prof);
-    void PullFromGhost(Field *field, const sid_t ida);
+    void PullFromGhost(Field* field, const sid_t ida, Interpolator* interp, MemPool* mem_pool);
 
     /**
      *  @name Execute on each block

@@ -75,7 +75,7 @@ void MGFamily::ToChildren(Field* field_src, Field* field_trg, Field* field_cst, 
             // interpolate for every dimension
             for (sid_t ida = 0; ida < field_src->lda(); ida++) {
                 // get the pointers
-                interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida), alpha, child->data(field_cst, ida));
+                // interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida), alpha, child->data(field_cst, ida));
             }
         }
     }
@@ -119,7 +119,7 @@ void MGFamily::ToParents(Field* field_src, Field* field_trg, Field* field_cst, c
             // interpolate for every dimension
             for (sid_t ida = 0; ida < field_src->lda(); ida++) {
                 // get the pointers
-                interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida), alpha, parent->data(field_cst, ida));
+                // interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida), alpha, parent->data(field_cst, ida));
             }
         }
     }

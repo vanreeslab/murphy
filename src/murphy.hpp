@@ -55,6 +55,16 @@ typedef enum m_direction_t {
     M_BACKWARD
 } m_direction_t;
 
+// template <typename T>
+// class m_shared_ptr {
+//    public:
+//     T* ptr;
+//     T* operator()() { return ptr; };
+// }
+
+// template <typename T>
+// class m_owned_ptr:public m_shared_ptr{};
+
 void murphy_init(int argc, char* argv[]);
 void murphy_finalize();
 

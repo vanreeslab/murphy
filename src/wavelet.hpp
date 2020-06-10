@@ -41,14 +41,14 @@
  * 
  * Refinement: we proceed to the operations in the reverse order
  * ```
- * ----c---------------c---------------c----    inverse update = lifting -> dictates Nt
- *     |_____     _____|_____     _____|
- *     |     \   /     |     \   /     |
- *     V      V V      V      V V      V
- * ----c-------d-------c-------d-------c----    inverse predict = dual-lifting -> dictates N
- *     |  _____|_____  |  _____|_____  |
+ * ----c------ 0 ------c------ 0 ------c----    inverse update = lifting -> dictates Nt
+ *     |  _____|_____  |  _____|_____  |        in our case, we have 0 as detail, so nothing is done
  *     | /     |     \ | /     |     \ |
  *     VV      V      VVV      V      VV
+ * ----c-------d-------c-------d-------c----    inverse predict = dual-lifting -> dictates N
+ *     |_____  |  _____|_____  |  _____|
+ *     |     \ | /     |     \ | /     |
+ *     V      VVV      V      VVV      V
  * ----c-------d-------c-------d-------c----    inverse split
  *     |       |       |       |       |
  *   1 |     1 |     1 |     1 |     1 |
@@ -60,6 +60,12 @@
  * every fine info will need N/2 detail coefficient to be updated, which are among the (2*N/2)-1 first fine ghost points.
  * Then, each detail needs Nt/2 scaling coef to be updated, found among the (Nt/2-1) fine information on its left.
  * Finally, we then need (N+Nt)-2 fine information, which is equivalent to (N+Nt)/2-1 coarse information
+ * 
+ * @warning To ease the implementation, we decided, for the moment, to consider stupid filters to apply.
+ * This increases (max factor 2) the number of operations but greatly simplifies the memory access.
+ * The filter coefficients are computed using this script: https://github.com/van-Rees-Lab/wavelet_tutorial/blob/master/code/interp_coef.py
+ * 
+ * @warning we MUST satisfy Nt <= N
  *  
  * 
  * @tparam N the number of vanishing moments of the dual wavelet -> interpolates polynomial of N-1
@@ -68,57 +74,80 @@
 template <int N, int Nt>
 class Wavelet : public Interpolator {
    protected:
-    real_t* s_lift_;
-    real_t* s_dual_;
+    sid_t len_ha_   = 0;
+    sid_t len_ha_2_ = 0;
+    sid_t len_ga_   = 0;
+    sid_t len_gs_   = 0;
+
+    real_p ha_   = nullptr;  //!< scaling analysis: 1 level coarsening
+    real_p ha_2_ = nullptr;  //!< scaling analysis: 2 level coarsening
+    real_p ga_   = nullptr;  //!< detail analysis: 1 level coarsening
+    real_p gs_   = nullptr;  //!< detail synthesis: 1 level refinement
 
    public:
     Wavelet() {
-        s_dual_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * (2 * N - 1)));
-        s_dual_ = s_dual_ + N - 1;
-        s_lift_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * (2 * Nt - 1)));
-        s_lift_ = s_lift_ + Nt - 1;
+        m_assert(Nt <= N, "we do not support the case of Nt=%d > N=%d", Nt, N);
+        len_ha_ = 2 * (N + Nt) - 3;
+        len_ga_ = 2 * Nt - 1;
+        len_gs_ = N;
+
+        ha_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_));
+        ga_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ga_));
+        gs_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_gs_));
+        ha_ = ha_ + len_ha_ / 2;
+        ga_ = ga_ + len_ga_ / 2;
+        gs_ = gs_ + len_gs_ / 2 - 1;
+
         // get the correct lifting filter given N
-        if (N == 2) {
-            // lifting coefficients
-            s_dual_[-1] = 1.0 / 2.0;
-            s_dual_[0]  = 1.0;
-            s_dual_[1]  = 1.0 / 2.0;
-        } else if (N == 4) {
-            // lifting coefficients
-            s_dual_[-3] = +1.0 / 16.0;
-            s_dual_[-2] = 0.0;
-            s_dual_[-1] = -9.0 / 16.0;
-            s_dual_[0]  = 1.0;
-            s_dual_[1]  = -9.0 / 16.0;
-            s_dual_[2]  = 0.0;
-            s_dual_[3]  = +1.0 / 16.0;
+        if (N == 2 && Nt == 2) {
+            // ha
+            ha_[-2] = -1.0 / 8.0;
+            ha_[-1] = +1.0 / 4.0;
+            ha_[0]  = +3.0 / 4.0;
+            ha_[1]  = +1.0 / 4.0;
+            ha_[2]  = -1.0 / 8.0;
+            // ga
+            ga_[-1] = -1.0 / 2.0;
+            ga_[0]  = +1.0;
+            ga_[1]  = -1.0 / 2.0;
+            // gs
+            ga_[0] = +1.0 / 2.0;
+            ga_[1] = +1.0 / 2.0;
+        } else if (N == 4 && Nt == 2) {
+            // ha
+            ha_[-4] = +1.0 / 64.0;
+            ha_[-3] = 0.0;
+            ha_[-2] = -1.0 / 8.0;
+            ha_[-1] = +1.0 / 4.0;
+            ha_[0]  = +23.0 / 32.0;
+            ha_[1]  = +1.0 / 4.0;
+            ha_[2]  = -1.0 / 8.0;
+            ha_[3]  = 0.0;
+            ha_[4]  = +1.0 / 64.0;
+            // ga
+            ga_[-3] = 1.0 / 16.0;
+            ga_[-2] = 0.0;
+            ga_[-1] = -9.0 / 16.0;
+            ga_[0]  = +1.0;
+            ga_[1]  = -9.0 / 16.0;
+            ga_[2]  = 0.0;
+            ga_[3]  = 1.0 / 16.0;
+            // gs
+            ga_[-1] = -1.0 / 16.0;
+            ga_[0]  = 9.0 / 16.0;
+            ga_[1]  = 9.0 / 16.0;
+            ga_[2]  = -1.0 / 16.0;
         } else {
-            m_assert(false, "wavelet N=%d not implemented yet", N);
-        }
-        // get the correct dual lifting filter given Nt
-        if (Nt == 2) {
-            // lifting coefficients
-            s_lift_[-1] = 1.0 / 4.0;
-            s_lift_[0]  = 1.0;
-            s_lift_[1]  = 1.0 / 4.0;
-        } else if (Nt == 4) {
-            // lifting coefficients
-            s_lift_[-3] = +1.0 / 32.0;
-            s_lift_[-2] = 0.0;
-            s_lift_[-1] = -9.0 / 32.0;
-            s_lift_[0]  = 1.0;
-            s_lift_[1]  = -9.0 / 32.0;
-            s_lift_[2]  = 0.0;
-            s_lift_[3]  = +1.0 / 32.0;
-        } else {
-            m_assert(false, "wavelet Nt=%d not implemented yet", Nt);
+            m_assert(false, "wavelet N=%d.Nt=%d not implemented yet", N, Nt);
         }
     }
 
     ~Wavelet() {
         m_begin;
         //-------------------------------------------------------------------------
-
+        m_free(ha_ - (len_ha_ / 2));
+        m_free(ga_ - (len_ga_ / 2));
+        m_free(gs_ - (len_gs_ / 2 - 1));
         //-------------------------------------------------------------------------
         m_end;
     }

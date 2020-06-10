@@ -109,7 +109,7 @@ void Wavelet<N,Nt>::Copy_(const interp_ctx_t* ctx) const {
  * @param dlvl the number of levels we have to refine
  */
 template <int N, int Nt>
-void Wavelet<N,Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
+void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     //-------------------------------------------------------------------------
     // assure alignment for the target, the source, the constant and the temp data
     m_assume_aligned(ctx->tdata);
@@ -117,94 +117,28 @@ void Wavelet<N,Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     m_assume_aligned(ctx->cdata);
     m_assume_aligned(ctx->wdata);
 
-    const lid_t  n_ghost = this->NGhostFine();
-    const real_t alpha   = ctx->alpha;
+    const real_t  alpha  = ctx->alpha;
+    const sid_t   ha_lim = (len_ha_ / 2) * dlvl;
+    const real_t* ha     = (dlvl == 1) ? ha_ : (dlvl == 2) ? ha_2_ : nullptr;
 
-    //copy the source data to the working memory (so we can change it's values)
-    for (lid_t ik2 = ctx->trgstart[2] - n_ghost; ik2 < ctx->trgend[2] + n_ghost; ik2++) {
-        for (lid_t ik1 = ctx->trgstart[1] - n_ghost; ik1 < ctx->trgend[1] + n_ghost; ik1++) {
-            for (lid_t ik0 = ctx->trgstart[0] - n_ghost; ik0 < ctx->trgend[0] + n_ghost; ik0++) {
-                // check memory access
-                m_assert(((2 * dlvl) * ik0 >= ctx->srcstart[0]) && ((2 * dlvl) * ik0 + (2 * dlvl - 1) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (2 * dlvl) * ik0, ctx->srcstart[0], (2 * dlvl) * ik0 + (2 * dlvl - 1), ctx->srcend[0]);
-                m_assert(((2 * dlvl) * ik1 >= ctx->srcstart[1]) && ((2 * dlvl) * ik1 + (2 * dlvl - 1) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (2 * dlvl) * ik1, ctx->srcstart[1], (2 * dlvl) * ik1 + (2 * dlvl - 1), ctx->srcend[1]);
-                m_assert(((2 * dlvl) * ik2 >= ctx->srcstart[2]) && ((2 * dlvl) * ik2 + (2 * dlvl - 1) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (2 * dlvl) * ik2, ctx->srcstart[2], (2 * dlvl) * ik2 + (2 * dlvl - 1), ctx->srcend[2]);
-                // do the copy of the 8 associated elements
-                real_p       lwdata = ctx->wdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
-                const real_p lsdata = ctx->sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
-                m_assume_aligned(lwdata);
-                m_assume_aligned(lsdata);
-                // do the copy
-                lwdata[m_sidx(0, 0, 0, 0, ctx->srcstr)] = lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
-                lwdata[m_sidx(1, 0, 0, 0, ctx->srcstr)] = lsdata[m_sidx(1, 0, 0, 0, ctx->srcstr)];
-                lwdata[m_sidx(0, 1, 0, 0, ctx->srcstr)] = lsdata[m_sidx(0, 1, 0, 0, ctx->srcstr)];
-                lwdata[m_sidx(0, 0, 1, 0, ctx->srcstr)] = lsdata[m_sidx(0, 0, 1, 0, ctx->srcstr)];
-                lwdata[m_sidx(1, 1, 0, 0, ctx->srcstr)] = lsdata[m_sidx(1, 1, 0, 0, ctx->srcstr)];
-                lwdata[m_sidx(1, 0, 1, 0, ctx->srcstr)] = lsdata[m_sidx(1, 0, 1, 0, ctx->srcstr)];
-                lwdata[m_sidx(0, 1, 1, 0, ctx->srcstr)] = lsdata[m_sidx(0, 1, 1, 0, ctx->srcstr)];
-                lwdata[m_sidx(1, 1, 1, 0, ctx->srcstr)] = lsdata[m_sidx(1, 1, 1, 0, ctx->srcstr)];
-            }
-        }
-    }
-
-    for (sid_t il = 0; il < dlvl; il++) {
-        //-----------------
-        // DUAL-LIFTING
-        // loop over the scaling coef and give the contribution to every detail
-        for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
-            for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
-                for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
-                    real_p lwdata = ctx->wdata + m_sidx(2 * il * ik0, 2 * il * ik1, 2 * il * ik2, 0, ctx->srcstr);
-                    // save the current scaling value
-                    real_t scaling = lwdata[0];
-                    // update the details associated with the current scaling
-                    for (sid_t id2 = -(N / 2); id2 < (N / 2); id2++) {
-                        for (sid_t id1 = -(N / 2); id1 < (N / 2); id1++) {
-                            for (sid_t id0 = -(N / 2); id0 < (N / 2); id0++) {
-                                lwdata[m_sidx(id0 * il, id1 * il, id2 * il, 0, ctx->srcstr)] -= scaling * s_dual_[id0] * s_dual_[id1] * s_dual_[id2];
-                            }
-                        }
-                    }
-                    // the scaling has been updated, so we reset its value
-                    lwdata[0] = scaling;
-                }
-            }
-        }
-        //-----------------
-        // LIFTING
-        // loop over the scaling and get the contribution from every detail
-        for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
-            for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
-                for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
-                    real_p lwdata = ctx->wdata + m_sidx(2 * il * ik0, 2 * il * ik1, 2 * il * ik2, 0, ctx->srcstr);
-                    // save the current scaling value
-                    real_t scaling = lwdata[0];
-                    // update the scaling with the neighboring details
-                    for (sid_t id2 = -(Nt / 2); id2 < (Nt / 2); id2++) {
-                        for (sid_t id1 = -(Nt / 2); id1 < (Nt / 2); id1++) {
-                            for (sid_t id0 = -(Nt / 2); id0 < (Nt / 2); id0++) {
-                                lwdata[0] += lwdata[m_sidx(id0 * il, id1 * il, id2 * il, 0, ctx->srcstr)] * s_lift_[id0] * s_lift_[id1] * s_lift_[id2];
-                            }
-                        }
-                    }
-                    // we added the scaling twice, so removing it
-                    lwdata[0] -= lwdata[0] * s_lift_[0] * s_lift_[0] * s_lift_[0];
-                }
-            }
-        }
-    }
-
-    //-----------------
-    // SPLITTING - we just take one data out of 2
-    // note: this cannot be merged with the lifting since we apply the splitting recursivelly to coarsen multiple levels at a time
     for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
                 //get the local adress of the source, the target and the constant
                 real_p       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const real_p lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const real_p lwdata = ctx->wdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
-                // fill the new scaling value
-                ltdata[0] = alpha * lcdata[0] + lwdata[0];
+                const real_p lsdata = ctx->sdata + m_sidx(2 * dlvl * ik0, 2 * dlvl * ik1, 2 * dlvl * ik2, 0, ctx->srcstr);
+
+                // add the constant
+                ltdata[0] = alpha * lcdata[0];
+                // we need to apply ha of size 2*N-1 in each direction
+                for (sid_t id2 = -ha_lim; id2 <= ha_lim; id2++) {
+                    for (sid_t id1 = -ha_lim; id1 <= ha_lim; id1++) {
+                        for (sid_t id0 = -ha_lim; id0 <= ha_lim; id0++) {
+                            ltdata[0] += lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)] * ha[id0] * ha[id1] * ha[id2];
+                        }
+                    }
+                }
             }
         }
     }

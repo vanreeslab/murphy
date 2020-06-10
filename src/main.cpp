@@ -11,6 +11,7 @@
 #include "prof.hpp"
 #include "parser.hpp"
 #include "multigrid.hpp"
+#include "mempool.hpp"
 
 using std::string;
 using std::to_string;
@@ -26,11 +27,13 @@ int main(int argc, char** argv) {
     string prof_name = string("MURPHY_") + to_string(comm_size) + string("ranks_") + to_string(omp_get_max_threads()) + string("threads");
     Prof*  prof      = new Prof(prof_name);
 
+    MemPool* mem_pool = new MemPool();
+
     //-------------------------------------------------------------------------
     for (int i = 0; i < argument.n_repeat_; i++) {
         // create a grid
         m_log("periodic? %d %d %d",argument.period_[0],argument.period_[1],argument.period_[2]);
-        Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
+        Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof,mem_pool);
         // get an refined and adapted grid given the patch
         grid->Adapt(&argument.patch_);
         // create a field
@@ -74,6 +77,7 @@ int main(int argc, char** argv) {
     // display the profiler
     prof->Disp();
     delete (prof);
+    delete(mem_pool);
     m_log("leaving, bye bye murphy\n");
     //-------------------------------------------------------------------------
     murphy_finalize();

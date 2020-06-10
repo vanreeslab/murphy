@@ -15,13 +15,11 @@ using std::string;
  */
 Grid::Grid() : ForestGrid() {
     //-------------------------------------------------------------------------
-    prof_           = nullptr;
-    ghost_          = nullptr;
-    interp_         = nullptr;
-    detail_         = nullptr;
+    prof_     = nullptr;
+    ghost_    = nullptr;
+    mem_pool_ = nullptr;
     // create a default interpolator
-    interp_ = new Wavelet<2,2>();
-    detail_ = new Wavelet<2,2>();
+    interp_ = new Wavelet<2, 2>();
     //-------------------------------------------------------------------------
 };
 
@@ -37,12 +35,14 @@ Grid::Grid() : ForestGrid() {
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof)
+Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof, MemPool* mem_pool)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
     //-------------------------------------------------------------------------
     // profiler
     prof_ = prof;
+    // memory pool
+    mem_pool_ = mem_pool;
     // init the profiler tracking
     if (prof_ != nullptr) {
         // ghost
@@ -63,7 +63,6 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     }
     // create a default interpolator
     interp_ = new Wavelet<2,2>();
-    detail_ = new Wavelet<2,2>();
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
     // partition the grid to have compatible grid
@@ -88,13 +87,15 @@ void Grid::CopyFrom(Grid* grid){
     //-------------------------------------------------------------------------
     this->ForestGrid::CopyFrom(grid);
     // copy the field mapping
-    for(auto iter = grid->FieldBegin(); iter!= grid->FieldEnd(); iter++){
-        string name = iter->first;
-        Field* fid = iter->second;
+    for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
+        string name   = iter->first;
+        Field* fid    = iter->second;
         fields_[name] = fid;
     }
     // copy the profiler
     prof_ = grid->profiler();
+    // copy the memory pool
+    mem_pool_ = grid->mem_pool();
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -112,9 +113,6 @@ Grid::~Grid() {
     // destroy the interpolator and the details they are mine
     if (interp_ != nullptr) {
         delete (interp_);
-    }
-    if (detail_ != nullptr) {
-        delete (detail_);
     }
     // destroy the ghosts, they are mine as well
     DestroyGhost();
@@ -142,7 +140,7 @@ void Grid::SetupGhost(){
     if (prof_ != nullptr) {
         prof_->Start("ghost_init");
     }
-    ghost_ = new Ghost(this, interp_);
+    ghost_ = new Ghost(this);
     if (prof_ != nullptr) {
         prof_->Stop("ghost_init");
     }
@@ -362,8 +360,8 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
         if(prof_!=nullptr){
             prof_->Start("ghost_cmpt");
         }
-        ghost_->PullFromGhost(field, ida);
-        if(prof_!=nullptr){
+        ghost_->PullFromGhost(field, ida, interp_, mem_pool_);
+        if (prof_ != nullptr) {
             prof_->Stop("ghost_cmpt");
         }
     }
@@ -542,7 +540,7 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  */
 void Grid::Adapt(Field* field) {
     m_begin;
-    m_log("--> grid adaptation started... (interpolator: %s)", detail_->Identity().c_str());
+    m_log("--> grid adaptation started... (interpolator: %s)", interp_->Identity().c_str());
     //-------------------------------------------------------------------------
     // store the criterion field
     tmp_ptr_ = reinterpret_cast<void*>(field);

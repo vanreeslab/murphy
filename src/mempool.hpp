@@ -13,8 +13,9 @@ using std::list;
  */
 class MemPool {
    private:
-    size_t         mem_size_ = 0;  //!< the size of a memory block allocated
-    list<real_t*>* mem_pool_;      //!< the list of the temporary memory allocated
+    size_t          mem_size_ = 0;        //!< the size of a memory block allocated
+    lid_t*          n_locked_ = nullptr;  //!< number of pointers locked (not in the list)
+    list<real_t*>** mem_pool_ = nullptr;  //!< the list of the temporary memory allocated
 
    public:
     explicit MemPool();
@@ -23,6 +24,8 @@ class MemPool {
 
     real_t* LockMemory(sid_t ithread);
     void    FreeMemory(sid_t ithread, real_t*);
+
+    lid_t n_locked(sid_t ithread) { return n_locked_[ithread]; }
 };
 
 #endif  // MEMPOOL_HPP_

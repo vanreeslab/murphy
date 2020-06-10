@@ -11,15 +11,19 @@ class test_Grid_Uniform : public ::testing::Test {
    protected:
     Grid* grid_;
 
+    MemPool* mem_pool_;
+
     int  lvl_         = 0;
     bool periodic_[3] = {false, true, false};
     int  l_[3]        = {1, 2, 3};
 
     void SetUp() override {
-        grid_ = new Grid(lvl_, periodic_, l_, MPI_COMM_WORLD, NULL);
+        mem_pool_ = new MemPool();
+        grid_ = new Grid(lvl_, periodic_, l_, MPI_COMM_WORLD, nullptr,mem_pool_);
     };
     void TearDown() override {
         delete (grid_);
+        delete(mem_pool_);
     };
 };
 

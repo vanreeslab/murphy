@@ -12,7 +12,7 @@
  */
 void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, MemPool* mem_pool) {
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
-    Interpolate(dlvl, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
+    Interpolate(dlvl, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg, mem_pool);
 }
 
 /**
@@ -33,6 +33,7 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
+
     m_verb("entering interpolator with shift = %d %d %d", shift[0], shift[1], shift[2]);
     m_verb("entering interpolator with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
     m_verb("entering interpolator with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
@@ -62,8 +63,11 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     ctx.cdata = data_cst;
     ctx.tdata = data_trg;
 
-    // store the working data
-    ctx.wdata = mem_pool->LockMemory(omp_get_thread_num());
+    // get the temp memory
+    int    ithread  = omp_get_thread_num();
+    real_p temp_ptr = mem_pool->LockMemory(ithread);
+    // and shift it to match the source data
+    ctx.wdata = temp_ptr + m_zeroidx(0, block_src) + m_midx(shift[0], shift[1], shift[2], 0, block_src);
 
     // call the correct function
     if (dlvl == -1) {
@@ -73,5 +77,8 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     } else if (dlvl > 0) {
         Coarsen_(&ctx, dlvl);
     }
+
+    // release the temp memory
+    mem_pool->FreeMemory(ithread,temp_ptr);
     //-------------------------------------------------------------------------
 }
