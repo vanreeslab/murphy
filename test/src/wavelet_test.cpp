@@ -56,58 +56,12 @@ class valid_Wavelet : public ::testing::Test {
 };
 
 //==============================================================================================================================
-static double order3_int(const double x) {
-    return M_PI * (x * x * x / 3.0) + M_PI_2 * (x * x / 2.0) - M_SQRT2 * x;
-}
 static double poly_1(const double x) {
-    return M_PI_2 * x - M_SQRT2;
+    // return M_PI_2 * x + M_SQRT2;
+    return x;
     // return x*16;
 }
-// TEST_F(valid_Wavelet, refine_order_3) {
-    // real_t coarse_mom_1 = 0.0;
-    // real_t coarse_mom_2 = 0.0;
-
-    // for (int id = 0; id < 3; id++) {
-    //     // fill the source
-    //     for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
-    //         for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
-    //             for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
-    //                 real_t x       = ((real_t)i0 + 0.5) * hcoarse_;
-    //                 real_t y       = ((real_t)i1 + 0.5) * hcoarse_;
-    //                 real_t z       = ((real_t)i2 + 0.5) * hcoarse_;
-    //                 real_t pos[3]  = {x, y, z};
-    //                 real_t x_left  = pos[id] - hcoarse_ / 2.0;
-    //                 real_t x_right = pos[id] + hcoarse_ / 2.0;
-
-    //                 data_coarse_[m_midx(i0, i1, i2, 0, block_coarse_)] = (order3_int(x_right) - order3_int(x_left)) / hcoarse_;
-    //             }
-    //         }
-    //     }
-
-    //     // do the interpolation (-1 is refinement)
-    //     Wavelet<3>* interp   = new Wavelet<3>();
-    //     lid_t       shift[3] = {0};
-    //     interp->Interpolate(-1, shift, block_coarse_, data_coarse_, block_fine_, data_fine_);
-
-    //     // check the result
-    //     real_t fine_mom_1 = 0.0;
-    //     real_t fine_mom_2 = 0.0;
-    //     for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-    //         for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-    //             for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-    //                 real_t x       = ((real_t)i0 + 0.5) * hfine_;
-    //                 real_t y       = ((real_t)i1 + 0.5) * hfine_;
-    //                 real_t z       = ((real_t)i2 + 0.5) * hfine_;
-    //                 real_t pos[3]  = {x, y, z};
-    //                 real_t x_left  = pos[id] - hfine_ / 2.0;
-    //                 real_t x_right = pos[id] + hfine_ / 2.0;
-
-    //                 ASSERT_NEAR(data_fine_[m_midx(i0, i1, i2, 0, block_fine_)], (order3_int(x_right) - order3_int(x_left)) / hfine_, DOUBLE_TOL) << "while testing direction " << id;
-    //             }
-    //         }
-    //     }
-    // }
-// }
+// test the wavelet + moments
 TEST_F(valid_Wavelet, coarsen_1_order_2_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = 0;
@@ -122,6 +76,10 @@ TEST_F(valid_Wavelet, coarsen_1_order_2_2) {
     real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
 
     for (int id = 0; id < 3; id++) {
+        real_t mom_coarse[4] = {0.0, 0.0, 0.0, 0.0};
+        real_t mom_fine[4]   = {0.0, 0.0, 0.0, 0.0};
+        real_t vol_fine      = (hfine_ * hfine_ * hfine_);
+        real_t vol_coarse    = (hcoarse_ * hcoarse_ * hcoarse_);
         // fill the source
         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
             for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
@@ -132,6 +90,26 @@ TEST_F(valid_Wavelet, coarsen_1_order_2_2) {
                     real_t pos[3] = {x, y, z};
 
                     data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_1(pos[id]);
+                }
+            }
+        }
+        // we need to have an odd number of coarse points -> coarse -1 points (coarse = 8)
+        for (int i2 = 2 * coarse_start_[2]; i2 < 2 * coarse_end_[2] - 3; i2++) {
+            for (int i1 = 2 * coarse_start_[1]; i1 < 2 * coarse_end_[1] - 3; i1++) {
+                for (int i0 = 2 * coarse_start_[0]; i0 < 2 * coarse_end_[0] - 3; i0++) {
+                    real_t x = i0 * hfine_;
+                    real_t y = i1 * hfine_;
+                    real_t z = i2 * hfine_;
+                    // trapezoidal moment computation
+                    real_t corr0 = (i0 == (2 * coarse_start_[0]) || i0 == (2 * coarse_end_[0] - 4)) ? (1.0 / 3.0) : (i0%2) == 0 ? (2.0 / 3.0) : 4.0/3.0;
+                    real_t corr1 = (i1 == (2 * coarse_start_[1]) || i1 == (2 * coarse_end_[1] - 4)) ? (1.0 / 3.0) : (i1%2) == 0 ? (2.0 / 3.0) : 4.0/3.0;
+                    real_t corr2 = (i2 == (2 * coarse_start_[2]) || i2 == (2 * coarse_end_[2] - 4)) ? (1.0 / 3.0) : (i2%2) == 0 ? (2.0 / 3.0) : 4.0/3.0;
+                    // get the moments
+                    real_t val = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
+                    mom_coarse[0] += val * vol_fine * corr0 * corr1 * corr2;
+                    mom_coarse[1] += x * val * vol_fine * corr0 * corr1 * corr2;
+                    mom_coarse[2] += y * val * vol_fine * corr0 * corr1 * corr2;
+                    mom_coarse[3] += z * val * vol_fine * corr0 * corr1 * corr2;
                 }
             }
         }
@@ -150,13 +128,45 @@ TEST_F(valid_Wavelet, coarsen_1_order_2_2) {
                     real_t z      = i2 * hcoarse_;
                     real_t pos[3] = {x, y, z};
 
-                    ASSERT_NEAR(data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)], poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id;
+                    real_t val = data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)];
+                    ASSERT_NEAR(val, poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id;
                 }
             }
         }
+        for (int i2 = coarse_start_[2]; i2 < coarse_end_[2] - 1; i2++) {
+            for (int i1 = coarse_start_[1]; i1 < coarse_end_[1] - 1; i1++) {
+                for (int i0 = coarse_start_[0]; i0 < coarse_end_[0] - 1; i0++) {
+                    real_t x = i0 * hcoarse_;
+                    real_t y = i1 * hcoarse_;
+                    real_t z = i2 * hcoarse_;
+
+                    real_t val = data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)];
+
+                    // trapezoidal moment computation
+                    real_t corr0 = (i0 == (coarse_start_[0]) || i0 == (coarse_end_[0] - 2)) ? (1.0 / 3.0) : (i0 % 2) == 0 ? (2.0 / 3.0) : 4.0 / 3.0;
+                    real_t corr1 = (i1 == (coarse_start_[1]) || i1 == (coarse_end_[1] - 2)) ? (1.0 / 3.0) : (i1 % 2) == 0 ? (2.0 / 3.0) : 4.0 / 3.0;
+                    real_t corr2 = (i2 == (coarse_start_[2]) || i2 == (coarse_end_[2] - 2)) ? (1.0 / 3.0) : (i2 % 2) == 0 ? (2.0 / 3.0) : 4.0 / 3.0;
+                    // get the moments
+                    mom_fine[0] += val * vol_coarse * corr0 * corr1 * corr2;
+                    mom_fine[1] += x * val * vol_coarse * corr0 * corr1 * corr2;
+                    mom_fine[2] += y * val * vol_coarse * corr0 * corr1 * corr2;
+                    mom_fine[3] += z * val * vol_coarse * corr0 * corr1 * corr2;
+                }
+                // m_verb("-------------\n");
+            }
+        }
+        printf("moments 0: %e vs %e\n", mom_coarse[0], mom_fine[0]);
+        printf("moments 1 in x: %e vs %e\n", mom_coarse[1], mom_fine[1]);
+        printf("moments 1 in y: %e vs %e\n", mom_coarse[2], mom_fine[2]);
+        printf("moments 1 in z: %e vs %e\n", mom_coarse[3], mom_fine[3]);
+        ASSERT_NEAR(mom_coarse[0], mom_fine[0], DOUBLE_TOL);
+        ASSERT_NEAR(mom_coarse[1], mom_fine[1], DOUBLE_TOL);
+        ASSERT_NEAR(mom_coarse[2], mom_fine[2], DOUBLE_TOL);
+        ASSERT_NEAR(mom_coarse[3], mom_fine[3], DOUBLE_TOL);
         delete (interp);
     }
 }
+// test the wavelets only (no moments)
 TEST_F(valid_Wavelet, coarsen_2_order_2_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = 0;
@@ -206,6 +216,7 @@ TEST_F(valid_Wavelet, coarsen_2_order_2_2) {
         delete (interp);
     }
 }
+// test the wavelets + moments
 TEST_F(valid_Wavelet, refine_order_2_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = -2;
@@ -221,7 +232,11 @@ TEST_F(valid_Wavelet, refine_order_2_2) {
     real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
 
     for (int id = 0; id < 3; id++) {
-        //check the result
+        real_t mom_coarse[4] = {0.0, 0.0, 0.0, 0.0};
+        real_t mom_fine[4]   = {0.0, 0.0, 0.0, 0.0};
+        real_t vol_fine      = (hfine_ * hfine_ * hfine_);
+        real_t vol_coarse    = (hcoarse_ * hcoarse_ * hcoarse_);
+        // fill the function
         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
             for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
                 for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
@@ -229,11 +244,32 @@ TEST_F(valid_Wavelet, refine_order_2_2) {
                     real_t y      = i1 * hcoarse_;
                     real_t z      = i2 * hcoarse_;
                     real_t pos[3] = {x, y, z};
-
                     data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)] = poly_1(pos[id]);
                 }
             }
         }
+        // we need to have an odd number of coarse points -> coarse -1 points (coarse = 8)
+        for (int i2 = fine_start_[2]/2; i2 < fine_end_[2]/2 - 1; i2++) {
+            for (int i1 = fine_start_[1]/2; i1 < fine_end_[1]/2 - 1; i1++) {
+                for (int i0 = fine_start_[0]/2; i0 < fine_end_[0]/2 - 1; i0++) {
+                    real_t x      = i0 * hcoarse_;
+                    real_t y      = i1 * hcoarse_;
+                    real_t z      = i2 * hcoarse_;
+                    // trapezoidal moment computation
+                    real_t corr0 = (i0 == (fine_start_[0]/2) || i0 == (fine_end_[0]/2 - 2)) ? (1.0 / 3.0) : (i0%2) == 0 ? (2.0 / 3.0) : 4.0/3.0;
+                    real_t corr1 = (i1 == (fine_start_[1]/2) || i1 == (fine_end_[1]/2 - 2)) ? (1.0 / 3.0) : (i1%2) == 0 ? (2.0 / 3.0) : 4.0/3.0;
+                    real_t corr2 = (i2 == (fine_start_[2]/2) || i2 == (fine_end_[2]/2 - 2)) ? (1.0 / 3.0) : (i2%2) == 0 ? (2.0 / 3.0) : 4.0/3.0;
+                    // get the moments
+                    real_t val =  data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)] ;
+                    // real_t val =  1.0;//data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
+                    mom_coarse[0] += val * vol_coarse * corr0 * corr1 * corr2;
+                    mom_coarse[1] += x * val * vol_coarse * corr0 * corr1 * corr2;
+                    mom_coarse[2] += y * val * vol_coarse * corr0 * corr1 * corr2;
+                    mom_coarse[3] += z * val * vol_coarse * corr0 * corr1 * corr2;
+                }
+            }
+        }
+        
 
         // do the coarsening
         Wavelet<2, 2>* interp   = new Wavelet<2, 2>();
@@ -249,15 +285,46 @@ TEST_F(valid_Wavelet, refine_order_2_2) {
                     real_t z      = i2 * hfine_;
                     real_t pos[3] = {x, y, z};
 
-                    ASSERT_NEAR(data_fine[m_midx(i0, i1, i2, 0, block_fine_)], poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id;
+                    real_t val = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
+                    ASSERT_NEAR(val, poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id;
                 }
             }
         }
+        for (int i2 = fine_start_[2]; i2 < fine_end_[2] - 3; i2++) {
+            for (int i1 = fine_start_[1]; i1 < fine_end_[1] - 3; i1++) {
+                for (int i0 = fine_start_[0]; i0 < fine_end_[0] - 3; i0++) {
+                    real_t x = i0 * hfine_;
+                    real_t y = i1 * hfine_;
+                    real_t z = i2 * hfine_;
 
+                    real_t val = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
+                    // real_t val = 1.0;//data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
+
+                    // trapezoidal moment computation
+                    real_t corr0 = (i0 == (fine_start_[0]) || i0 == (fine_end_[0] - 4)) ? (1.0 / 3.0) : (i0 % 2) == 0 ? (2.0 / 3.0) : 4.0 / 3.0;
+                    real_t corr1 = (i1 == (fine_start_[1]) || i1 == (fine_end_[1] - 4)) ? (1.0 / 3.0) : (i1 % 2) == 0 ? (2.0 / 3.0) : 4.0 / 3.0;
+                    real_t corr2 = (i2 == (fine_start_[2]) || i2 == (fine_end_[2] - 4)) ? (1.0 / 3.0) : (i2 % 2) == 0 ? (2.0 / 3.0) : 4.0 / 3.0;
+                    // get the moments
+                    mom_fine[0] += val * vol_fine * corr0 * corr1 * corr2;
+                    mom_fine[1] += x * val * vol_fine * corr0 * corr1 * corr2;
+                    mom_fine[2] += y * val * vol_fine * corr0 * corr1 * corr2;
+                    mom_fine[3] += z * val * vol_fine * corr0 * corr1 * corr2;
+                }
+            }
+        }
+        printf("moments 0: %e vs %e\n", mom_coarse[0], mom_fine[0]);
+        printf("moments 1 in x: %e vs %e\n", mom_coarse[1], mom_fine[1]);
+        printf("moments 1 in y: %e vs %e\n", mom_coarse[2], mom_fine[2]);
+        printf("moments 1 in z: %e vs %e\n", mom_coarse[3], mom_fine[3]);
+        ASSERT_NEAR(mom_coarse[0], mom_fine[0], DOUBLE_TOL);
+        ASSERT_NEAR(mom_coarse[1], mom_fine[1], DOUBLE_TOL);
+        ASSERT_NEAR(mom_coarse[2], mom_fine[2], DOUBLE_TOL);
+        ASSERT_NEAR(mom_coarse[3], mom_fine[3], DOUBLE_TOL);
         delete (interp);
     }
 }
 
+// test the details
 TEST_F(valid_Wavelet, detail_order_2_2) {
     real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
     // fill the source
