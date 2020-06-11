@@ -241,13 +241,16 @@ void Wavelet<N,Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) c
     for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (int ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
             for (int ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                // get the current data
                 real_p ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 m_assume_aligned(ltdata);
 
-                // set the detail coefficient to the
-                real_t detail[8] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+                // init the details
+                real_t detail[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
                 // detail(0,0,0) = scaling!
                 detail[0] = ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+
                 // point (1,0,0) and (0,1,0) and (0,0,1)
                 for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
                     detail[1] += ga[id0] * ltdata[m_sidx(1 + id0, 0, 0, 0, ctx->trgstr)];
@@ -271,7 +274,6 @@ void Wavelet<N,Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) c
                     }
                 }
                 // store the max, relatively to the current value
-                // m_verb("details %e %e %e %e %e %e %e %e", detail[0], detail[1], detail[2], detail[3], detail[4], detail[5], detail[6], detail[7]);
                 for (int id = 1; id < 8; id++) {
                     details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
                 }

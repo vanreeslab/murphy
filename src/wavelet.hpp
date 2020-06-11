@@ -21,7 +21,7 @@
  *     V       V       V       V       V
  * ----c-------d-------c-------d-------c----    predict = dual lifting -> dictates N
  *     |\______|______/|\______|______/|            N = 2 -> -1/2, 1 ,-1/2
- *     |       |       |       |       |            N = 4 -> 1/16, -9/16, 1, -9/16, 1/16
+ *     |       |       |       |       |            N = 4 -> 1/16, 0, -9/16, 1, -9/16, 0, 1/16
  *     V       V       V       V       V
  * ----c-------d-------c-------d-------c----    update = lifting -> dictates Nt
  *     |______/ \______|______/ \______|            Nt = 2 -> +1/4, 1, +1/4
@@ -32,11 +32,11 @@
  * We can check that the combined application of N=4 and Nt=2, we obtain the same results as table 2 in Sweldens 1996.
  * 
  * Numbef of needed ghost points, i.e. the number of finer info on the side of the last interessing point
- * every coarse point needs Nt/2 detail information to be updated. Those lifting info are found within the 2*(Nt/2)-1 first ghost points.
+ * every coarse point needs Nt/2 detail information to be updated. Those lifting info are found within the 2*(Nt/2)-1 = Nt -1 first ghost points.
  * Each of these details will in turn need N/2 scaling points to be up to date.
- * Hence, the last detail coefficient to be updates will need 2*(N/2)-1 points in the GP
+ * Hence, the last detail coefficient to be updates will need 2*(N/2)-1 = N - 1 points in the GP
  * 
- * The whole process needs then 2*(Nt/2)-1 + 2*(N/2)-1 = (N+Nt)-2 ghost points
+ * The whole process needs then Nt-1 + N-1 = (N+Nt)-2 ghost points on each side
  * 
  * 
  * Refinement: we proceed to the operations in the reverse order
@@ -87,10 +87,13 @@ class Wavelet : public Interpolator {
    public:
     Wavelet() {
         m_assert(Nt <= N, "we do not support the case of Nt=%d > N=%d", Nt, N);
-        len_ha_   = 2 * (N + Nt) - 3;
-        len_ga_   = 2 * Nt - 1;
+        sid_t lift_len = 1 + 2 * m_max(Nt - 1, 0);  // length of the lifting filter
+        sid_t dual_len = 1 + 2 * m_max(N - 1, 0);   // length of the dual filter
+
+        len_ha_   = 1 + ((Nt == 0) ? 0 : 2 * (lift_len / 2 + dual_len / 2));
+        len_ga_   = dual_len;  // details
         len_gs_   = N;
-        len_ha_2_ = 6 * ((N + Nt) - 2) + 1;
+        len_ha_2_ = 1 + ((Nt == 0) ? 0 : 6 * (lift_len / 2 + dual_len / 2));//6 * m_max(N - 1 + Nt - 1, 0);  //(Nt == 0) ? 0 : 6 * ((N + Nt) - 2);
 
         ha_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_));
         ha_2_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_2_));
@@ -130,6 +133,24 @@ class Wavelet : public Interpolator {
             ha_2_[4]  = -1.0 / 8.0;
             ha_2_[5]  = -1.0 / 32.0;
             ha_2_[6]  = 1.0 / 64.0;
+        } else if (N == 4 && Nt == 0) {
+            // ha
+            ha_[0] = 1.0;
+            // ga
+            ga_[-3] = 1.0 / 16.0;
+            ga_[-2] = 0.0;
+            ga_[-1] = -9.0 / 16.0;
+            ga_[0]  = +1.0;
+            ga_[1]  = -9.0 / 16.0;
+            ga_[2]  = 0.0;
+            ga_[3]  = 1.0 / 16.0;
+            // gs
+            gs_[-1] = -1.0 / 16.0;
+            gs_[0]  = 9.0 / 16.0;
+            gs_[1]  = 9.0 / 16.0;
+            gs_[2]  = -1.0 / 16.0;
+            //ha_2
+            ha_2_[0] = 1.0;
         } else if (N == 4 && Nt == 2) {
             // ha
             ha_[-4] = +1.0 / 64.0;
@@ -183,6 +204,7 @@ class Wavelet : public Interpolator {
         } else {
             m_assert(false, "wavelet N=%d.Nt=%d not implemented yet", N, Nt);
         }
+        m_log("Wavelet %d.%d with ga[%d], ha[%d],gs[%d],ha_2[%d]",N,Nt,len_ga_,len_ha_,len_gs_,len_ha_2_);
     }
 
     ~Wavelet() {
