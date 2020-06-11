@@ -25,11 +25,8 @@ class valid_Stencil : public ::testing::Test {
     Field* diff_;
     Field* sol_;
 
-    MemPool* mem_pool_;
-
     void SetUp() override {
-        mem_pool_ = new MemPool();
-        grid_     = new Grid(lvl_, periodic_, l_, MPI_COMM_WORLD, nullptr, mem_pool_);
+        grid_     = new Grid(lvl_, periodic_, l_, MPI_COMM_WORLD, nullptr);
 
         //add the field
         vort_ = new Field("vorticity", 1);
@@ -44,7 +41,6 @@ class valid_Stencil : public ::testing::Test {
         delete (diff_);
         delete (sol_);
         delete (grid_);
-        delete(mem_pool_);
     };
 };
 

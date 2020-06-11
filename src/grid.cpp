@@ -17,7 +17,6 @@ Grid::Grid() : ForestGrid() {
     //-------------------------------------------------------------------------
     prof_     = nullptr;
     ghost_    = nullptr;
-    mem_pool_ = nullptr;
     // create a default interpolator
     interp_ = new Wavelet<2, 2>();
     //-------------------------------------------------------------------------
@@ -35,14 +34,12 @@ Grid::Grid() : ForestGrid() {
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof, MemPool* mem_pool)
+Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
     //-------------------------------------------------------------------------
     // profiler
     prof_ = prof;
-    // memory pool
-    mem_pool_ = mem_pool;
     // init the profiler tracking
     if (prof_ != nullptr) {
         // ghost
@@ -94,8 +91,6 @@ void Grid::CopyFrom(Grid* grid){
     }
     // copy the profiler
     prof_ = grid->profiler();
-    // copy the memory pool
-    mem_pool_ = grid->mem_pool();
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -130,17 +125,17 @@ Grid::~Grid() {
  * @warning this function cannot be called on on existing structure
  * 
  */
-void Grid::SetupGhost(){
+void Grid::SetupGhost() {
     m_begin;
-    m_assert(ghost_ == nullptr,"cannot create something that already exists");
+    m_assert(ghost_ == nullptr, "cannot create something that already exists");
     //-------------------------------------------------------------------------
     // create the forestGrid part
     this->SetupP4estGhostMesh();
-     // create the ghosts structure
+    // create the ghosts structure
     if (prof_ != nullptr) {
         prof_->Start("ghost_init");
     }
-    ghost_ = new Ghost(this);
+    ghost_ = new Ghost(this, interp_);
     if (prof_ != nullptr) {
         prof_->Stop("ghost_init");
     }
@@ -360,7 +355,7 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
         if(prof_!=nullptr){
             prof_->Start("ghost_cmpt");
         }
-        ghost_->PullFromGhost(field, ida, interp_, mem_pool_);
+        ghost_->PullFromGhost(field, ida);
         if (prof_ != nullptr) {
             prof_->Stop("ghost_cmpt");
         }

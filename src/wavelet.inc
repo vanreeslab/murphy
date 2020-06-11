@@ -17,7 +17,7 @@ using std::pow;
  * @return real_t 
  */
 template <int N, int Nt>
-real_t Wavelet<N,Nt>::Criterion(MemLayout* block, real_p data, MemPool* mem_pool) {
+real_t Wavelet<N,Nt>::Criterion(MemLayout* block, real_p data) {
     //-------------------------------------------------------------------------
     real_t details_max[8] = {0};
     // get memory details
@@ -114,7 +114,6 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const {
     m_assume_aligned(ctx->tdata);
     m_assume_aligned(ctx->sdata);
     m_assume_aligned(ctx->cdata);
-    m_assume_aligned(ctx->wdata);
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   ha_lim = (dlvl == 1) ? (len_ha_ / 2) : (dlvl == 2) ? (len_ha_2_ / 2) : 0;
@@ -161,7 +160,6 @@ void Wavelet<N,Nt>::Refine_(const interp_ctx_t* ctx) const {
     m_assume_aligned(ctx->tdata);
     m_assume_aligned(ctx->sdata);
     m_assume_aligned(ctx->cdata);
-    m_assume_aligned(ctx->wdata);
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   gs_lim = (len_gs_ / 2);

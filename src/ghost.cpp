@@ -141,12 +141,13 @@ void CallGhostPullFromGhost(const qid_t* qid, GridBlock* block, Field* fid, Ghos
  * @param min_level 
  * @param max_level
  */
-Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level) {
+Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // get the important pointers
     grid_              = grid;
+    interp_            = interp;
     p8est_mesh_t* mesh = grid->mesh();
 
     // store the level information
@@ -181,12 +182,12 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level)
         DoOp_F_<op_t<Ghost*, nullptr_t>, Ghost*, nullptr_t>(CallGhostInitList, grid, il, nullptr, this);
     }
 
-    // // initialize the working coarse memory
-    // int nthreads = omp_get_max_threads();
-    // coarse_tmp_  = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * nthreads));
-    // for (int it = 0; it < nthreads; it++) {
-    //     coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * cstride(interp_) * cstride(interp_) * cstride(interp_)));
-    // }
+    // initialize the working coarse memory
+    int nthreads = omp_get_max_threads();
+    coarse_tmp_  = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * nthreads));
+    for (int it = 0; it < nthreads; it++) {
+        coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * cstride(interp_) * cstride(interp_) * cstride(interp_)));
+    }
     //-------------------------------------------------------------------------
     // m_log("ghost initialized with interpolator: %s -> %f percent of ghost comm not needed",interp_->Identity().c_str(),100.0*pow((M_N-2*cgs(interp_))/((real_t)M_N),3));
     m_log("ghost initialized with %s", interp_->Identity().c_str());
@@ -247,12 +248,12 @@ Ghost::~Ghost() {
     m_free(local_to_mirrors);
     m_free(ghost_to_local_);
 
-    // // free the temp memory
-    // int nthreads = omp_get_max_threads();
-    // for (int it = 0; it < nthreads; it++) {
-    //     m_free(coarse_tmp_[it]);
-    // }
-    // m_free(coarse_tmp_);
+    // free the temp memory
+    int nthreads = omp_get_max_threads();
+    for (int it = 0; it < nthreads; it++) {
+        m_free(coarse_tmp_[it]);
+    }
+    m_free(coarse_tmp_);
 
     // free the data memory
     m_free(mirrors_);
@@ -338,16 +339,13 @@ void Ghost::MirrorToGhostRecv(Prof* prof) {
  * @param field
  * @param ida 
  * @param interp
- * @param mem_pool
  */
-void Ghost::PullFromGhost(Field* field, const sid_t ida, Interpolator* interp, MemPool* mem_pool) {
+void Ghost::PullFromGhost(Field* field, const sid_t ida) {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-    // store the current interpolator, the dimension and the mem_pool
+    // store the current dimension
     ida_      = ida;
-    interp_   = interp;
-    mem_pool_ = mem_pool;
     // interpolate
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGhostPullFromGhost, grid_, il, field, this);
@@ -658,7 +656,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //-------------------------------------------------------------------------
     // get the working direction given the thread
     const int ithread = omp_get_thread_num();
-    real_p    tmp     = mem_pool_->LockMemory(ithread);
+    real_p    tmp     = coarse_tmp_[ithread];
 
     // get a subblock describing the ghost memory
     lid_t     ghost_start[3] = {0, 0, 0};
@@ -687,7 +685,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         MemLayout* block_trg = gblock;
         real_p     data_trg  = cur_block->data(fid, ida_);
         // interpolate
-        interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg,mem_pool_);
+        interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
 
         // we need to interpolate on the coarse version of myself as well
         if (do_coarse) {
@@ -703,7 +701,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
             MemLayout* block_trg = coarse_subblock;
             real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
             // interpolate, the level is 1 coarser and the shift is unchanged
-            interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg, mem_pool_);
+            interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
         }
     }
 
@@ -716,7 +714,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         MemLayout* block_trg = gblock;
         real_p     data_trg  = cur_block->data(fid, ida_);
         // interpolate
-        interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg, mem_pool_);
+        interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
 
         // we need to interpolate on the coarse version of myself as well
         if (do_coarse) {
@@ -732,7 +730,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
             MemLayout* block_trg = coarse_subblock;
             real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
             // interpolate, the level is 1 coarser and the shift is unchanged
-            interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg, mem_pool_);
+            interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
         }
     }
 
@@ -754,7 +752,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
-        interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg, mem_pool_);
+        interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
     // copy the ghost into the coarse representation
     for (auto biter = ghost_parent_[qid->cid]->begin(); biter != ghost_parent_[qid->cid]->end(); biter++) {
@@ -772,7 +770,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
-        interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg, mem_pool_);
+        interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
 
     // m_log("dbg: tree %d, quad %d: doing coarse ? %d", qid->tid, qid->qid,do_coarse);
@@ -792,7 +790,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         MemLayout* block_trg = coarse_subblock;
         real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
         // interpolate
-        interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg, mem_pool_);
+        interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg);
 
         // do here some physics, to completely fill the coarse block before the interpolation
         for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
@@ -855,7 +853,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         MemLayout*  block_trg = gblock;
         real_p      data_trg  = cur_block->data(fid, ida_);
         // interpolate
-        interp_->Interpolate(-1, shift, block_src, data_src, block_trg, data_trg, mem_pool_);
+        interp_->Interpolate(-1, shift, block_src, data_src, block_trg, data_trg);
     }
     // copy the ghost into the coarse representation
     for (auto biter = ghost_parent_[qid->cid]->begin(); biter != ghost_parent_[qid->cid]->end(); biter++) {
@@ -866,7 +864,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         MemLayout*  block_trg = gblock;
         real_p      data_trg  = cur_block->data(fid, ida_);
         // interpolate
-        interp_->Interpolate(-1, shift, block_src, data_src, block_trg, data_trg, mem_pool_);
+        interp_->Interpolate(-1, shift, block_src, data_src, block_trg, data_trg);
     }
 
     //-------------------------------------------------------------------------
@@ -899,8 +897,6 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     }
     delete (ghost_subblock);
     delete (coarse_subblock);
-
-    mem_pool_->FreeMemory(ithread, tmp);
 
     // m_log("dbg: tree %d, quad %d: finiiiish", qid->tid, qid->qid);
     //-------------------------------------------------------------------------

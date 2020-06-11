@@ -5,7 +5,6 @@
 #include "gtest/gtest.h"
 #include "murphy.hpp"
 #include "subblock.hpp"
-#include "mempool.hpp"
 
 #define DOUBLE_TOL 1e-13
 
@@ -18,7 +17,6 @@ class valid_Wavelet : public ::testing::Test {
     real_t    hcoarse_;
     real_t    hfine_;
 
-    MemPool* mem_pool_;
 
     lid_t coarse_start_[3];
     lid_t coarse_end_[3];
@@ -29,8 +27,6 @@ class valid_Wavelet : public ::testing::Test {
     void SetUp() override {
         data_fine_   = (real_t*)m_calloc(20 * 20 * 20 * sizeof(real_t));
         data_coarse_ = (real_t*)m_calloc(20 * 20 * 20 * sizeof(real_t));
-        
-        mem_pool_ = new MemPool();
         
         for (int id = 0; id < 3; id++) {
             coarse_start_[id] = -M_GS;
@@ -50,7 +46,6 @@ class valid_Wavelet : public ::testing::Test {
 
         delete (block_coarse_);
         delete (block_fine_);
-        delete (mem_pool_);
     };
 };
 
@@ -114,7 +109,7 @@ TEST_F(valid_Wavelet, coarsen_1_order_2_2) {
         // do the coarsening
         Wavelet<2, 2>* interp   = new Wavelet<2, 2>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(1, shift, block_fine_, data_fine, block_coarse_, data_coarse, mem_pool_);
+        interp->Interpolate(1, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
         //check the result
         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
@@ -195,7 +190,7 @@ TEST_F(valid_Wavelet, coarsen_2_order_2_2) {
         // do the coarsening
         Wavelet<2, 2>* interp   = new Wavelet<2, 2>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse, mem_pool_);
+        interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
         //check the result
         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
@@ -271,7 +266,7 @@ TEST_F(valid_Wavelet, refine_order_2_2) {
         // do the coarsening
         Wavelet<2, 2>* interp   = new Wavelet<2, 2>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine, mem_pool_);
+        interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine);
 
         // fill the source
         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
@@ -346,6 +341,8 @@ TEST_F(valid_Wavelet, detail_order_2_2) {
     ASSERT_NEAR(detail_max[0], 0.0, DOUBLE_TOL);  // d_x = 0.0
     ASSERT_NEAR(detail_max[1], 0.0, DOUBLE_TOL);  // d_y = 0.0
     ASSERT_NEAR(detail_max[2], 0.0, DOUBLE_TOL);  // d_z = 0.0
+
+    delete (interp);
 }
 
 //==============================================================================================================================
@@ -408,7 +405,7 @@ TEST_F(valid_Wavelet, coarsen_1_order_4_0) {
         // do the coarsening
         Wavelet<4, 0>* interp   = new Wavelet<4, 0>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(1, shift, block_fine_, data_fine, block_coarse_, data_coarse, mem_pool_);
+        interp->Interpolate(1, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
         //check the result
         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
@@ -489,7 +486,7 @@ TEST_F(valid_Wavelet, coarsen_2_order_4_0) {
         // do the coarsening
         Wavelet<4,0>* interp   = new Wavelet<4, 0>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse, mem_pool_);
+        interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
         //check the result
         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
@@ -565,7 +562,7 @@ TEST_F(valid_Wavelet, refine_order_4_0) {
         // do the coarsening
         Wavelet<4, 0>* interp   = new Wavelet<4, 0>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine, mem_pool_);
+        interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine);
 
         // fill the source
         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
@@ -647,6 +644,8 @@ TEST_F(valid_Wavelet, detail_order_4_0) {
     ASSERT_NEAR(detail_max[0], 0.0, DOUBLE_TOL);  // d_x = 0.0
     ASSERT_NEAR(detail_max[1], 0.0, DOUBLE_TOL);  // d_y = 0.0
     ASSERT_NEAR(detail_max[2], 0.0, DOUBLE_TOL);  // d_z = 0.0
+
+    delete (interp);
 }
 
 //==============================================================================================================================
@@ -706,7 +705,7 @@ TEST_F(valid_Wavelet, coarsen_1_order_4_2) {
         // do the coarsening
         Wavelet<4, 2>* interp   = new Wavelet<4, 2>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(1, shift, block_fine_, data_fine, block_coarse_, data_coarse, mem_pool_);
+        interp->Interpolate(1, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
         //check the result
         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
@@ -863,7 +862,7 @@ TEST_F(valid_Wavelet, refine_order_4_2) {
         // do the coarsening
         Wavelet<4, 2>* interp   = new Wavelet<4, 2>();
         lid_t          shift[3] = {0};
-        interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine, mem_pool_);
+        interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine);
 
         // fill the source
         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
@@ -943,4 +942,6 @@ TEST_F(valid_Wavelet, detail_order_4_2) {
     ASSERT_NEAR(detail_max[0], 0.0, DOUBLE_TOL);  // d_x = 0.0
     ASSERT_NEAR(detail_max[1], 0.0, DOUBLE_TOL);  // d_y = 0.0
     ASSERT_NEAR(detail_max[2], 0.0, DOUBLE_TOL);  // d_z = 0.0
+
+    delete (interp);
 }

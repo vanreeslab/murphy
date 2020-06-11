@@ -168,7 +168,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
-        real_t norm = interp->Criterion(block, data,grid->mem_pool());
+        real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
         m_verb("refine? %e vs %e", norm, grid->rtol());
@@ -203,7 +203,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
         for (int ida = 0; ida < fid->lda(); ida++) {
             real_p data = block->data(fid, ida);
-            real_t norm = interp->Criterion(block, data,grid->mem_pool());
+            real_t norm = interp->Criterion(block, data);
             // coarsen if the norm is bigger
             coarsen = (norm < grid->ctol());
             // coarsen the whole grid if one dimension needs to be coarsened
@@ -309,7 +309,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(dlvl, shift, mem_block, block_out->data(current_field, ida), block_in, block_in->data(current_field, ida), grid->mem_pool());
+                        interp->Interpolate(dlvl, shift, mem_block, block_out->data(current_field, ida), block_in, block_in->data(current_field, ida));
                     }
                 }
             } else if (num_incoming == 1) {
@@ -334,7 +334,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(dlvl, shift, block_out, block_out->data(current_field, ida), mem_block, block_in->data(current_field, ida), grid->mem_pool());
+                        interp->Interpolate(dlvl, shift, block_out, block_out->data(current_field, ida), mem_block, block_in->data(current_field, ida));
                     }
                 }
             }

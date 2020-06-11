@@ -9,7 +9,6 @@
 #include "memlayout.hpp"
 #include "murphy.hpp"
 #include "p8est.h"
-#include "mempool.hpp"
 
 /**
  * @brief Defines all the required information to perform an interpolation on a given block
@@ -37,7 +36,6 @@ typedef struct interp_ctx_t {
     real_p sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
     real_p cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
     real_p tdata;  //!< refers the (0,0,0) location of the target memory
-    real_p wdata; //!< working data, garanteed to be big enough for any case
     /** @} */
 } interp_ctx_t;
 
@@ -58,9 +56,9 @@ class Interpolator {
     * @param data the memory adress refering to point (0,0,0)
     * @return real_t the criterion value, always >= 0
     */
-    virtual real_t Criterion(MemLayout* block, real_p data, MemPool* mem_pool) = 0;
-    virtual void   Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, MemPool* mem_pool);
-    virtual void   Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst, MemPool* mem_pool);
+    virtual real_t Criterion(MemLayout* block, real_p data) = 0;
+    virtual void   Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+    virtual void   Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst);
 
     /**
     * @brief returns a string identifying the operator

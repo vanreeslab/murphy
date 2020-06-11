@@ -218,7 +218,7 @@ class Wavelet : public Interpolator {
         m_end;
     }
 
-    real_t Criterion(MemLayout* block, real_p data, MemPool* mem_pool) override;
+    real_t Criterion(MemLayout* block, real_p data) override;
     void   Details(MemLayout* block, real_p data, real_t* criterion);
 
     string Identity() override { return "interpolating wavelet" + std::to_string(N) + "." + std::to_string(Nt); }

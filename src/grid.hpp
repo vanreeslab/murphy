@@ -15,7 +15,6 @@
 #include "murphy.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
-#include "mempool.hpp"
 
 using std::list;
 using std::numeric_limits;
@@ -31,7 +30,6 @@ class Grid : public ForestGrid {
     Prof*         prof_     = nullptr;  //!< the profiler to use, may stay null
     Ghost*        ghost_    = nullptr;  //!< the ghost structure that handles one dimension of a field
     Interpolator* interp_   = nullptr;  //!< the interpolator to use for all the multilevel operations
-    MemPool*      mem_pool_ = nullptr;  //!< memory pool used for temporary memory access
 
     real_t rtol_ = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_ = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
@@ -40,7 +38,7 @@ class Grid : public ForestGrid {
 
    public:
        explicit Grid();
-    Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof, MemPool* mem_pool);
+    Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
 
     size_t LocalMemSize() const;
@@ -51,7 +49,6 @@ class Grid : public ForestGrid {
 
     Prof*    profiler() { return prof_; }
     bool     HasProfiler() { return prof_ != nullptr; }
-    MemPool* mem_pool() { return mem_pool_; }
 
     void CopyFrom(Grid* grid);
     void SetupGhost();
