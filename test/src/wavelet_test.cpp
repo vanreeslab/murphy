@@ -158,56 +158,56 @@ TEST_F(valid_Wavelet, coarsen_1_order_2_2) {
         delete (interp);
     }
 }
-// test the wavelets only (no moments)
-TEST_F(valid_Wavelet, coarsen_2_order_2_2) {
-    for (int id = 0; id < 3; id++) {
-        coarse_start_[id] = 0;
-        coarse_end_[id]   = 2;
-        fine_start_[id]   = -6;
-        fine_end_[id]     = 8 + 6;
-    }
-    block_coarse_->Reset(6, 20, coarse_start_, coarse_end_);
-    block_fine_->Reset(6, 20, fine_start_, fine_end_);
+// // test the wavelets only (no moments)
+// TEST_F(valid_Wavelet, coarsen_2_order_2_2) {
+//     for (int id = 0; id < 3; id++) {
+//         coarse_start_[id] = 0;
+//         coarse_end_[id]   = 2;
+//         fine_start_[id]   = -6;
+//         fine_end_[id]     = 8 + 6;
+//     }
+//     block_coarse_->Reset(6, 20, coarse_start_, coarse_end_);
+//     block_fine_->Reset(6, 20, fine_start_, fine_end_);
 
-    real_p data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
-    real_p data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
+//     real_p data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
+//     real_p data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
 
-    for (int id = 0; id < 3; id++) {
-        // fill the source
-        for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-            for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-                for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-                    real_t x      = i0 * hfine_;
-                    real_t y      = i1 * hfine_;
-                    real_t z      = i2 * hfine_;
-                    real_t pos[3] = {x, y, z};
+//     for (int id = 0; id < 3; id++) {
+//         // fill the source
+//         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
+//             for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
+//                 for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
+//                     real_t x      = i0 * hfine_;
+//                     real_t y      = i1 * hfine_;
+//                     real_t z      = i2 * hfine_;
+//                     real_t pos[3] = {x, y, z};
 
-                    data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_1(pos[id]);
-                }
-            }
-        }
+//                     data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_1(pos[id]);
+//                 }
+//             }
+//         }
 
-        // do the coarsening
-        Wavelet<2, 2>* interp   = new Wavelet<2, 2>();
-        lid_t          shift[3] = {0};
-        interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse);
+//         // do the coarsening
+//         Wavelet<2, 2>* interp   = new Wavelet<2, 2>();
+//         lid_t          shift[3] = {0};
+//         interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
-        //check the result
-        for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
-            for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
-                for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
-                    real_t x      = i0 * hcoarse_*2;
-                    real_t y      = i1 * hcoarse_*2;
-                    real_t z      = i2 * hcoarse_*2;
-                    real_t pos[3] = {x, y, z};
+//         //check the result
+//         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
+//             for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
+//                 for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
+//                     real_t x      = i0 * hcoarse_*2;
+//                     real_t y      = i1 * hcoarse_*2;
+//                     real_t z      = i2 * hcoarse_*2;
+//                     real_t pos[3] = {x, y, z};
 
-                    ASSERT_NEAR(data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)], poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id << " in " << i0 << " " << i1 << " " << i2;
-                }
-            }
-        }
-        delete (interp);
-    }
-}
+//                     ASSERT_NEAR(data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)], poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id << " in " << i0 << " " << i1 << " " << i2;
+//                 }
+//             }
+//         }
+//         delete (interp);
+//     }
+// }
 // test the wavelets + moments
 TEST_F(valid_Wavelet, refine_order_2_2) {
     for (int id = 0; id < 3; id++) {
@@ -454,56 +454,56 @@ TEST_F(valid_Wavelet, coarsen_1_order_4_0) {
         delete (interp);
     }
 }
-// test the wavelets only (no moments)
-TEST_F(valid_Wavelet, coarsen_2_order_4_0) {
-    for (int id = 0; id < 3; id++) {
-        coarse_start_[id] = 0;
-        coarse_end_[id]   = 2;
-        fine_start_[id]   = -6;
-        fine_end_[id]     = 8 + 6;
-    }
-    block_coarse_->Reset(6, 20, coarse_start_, coarse_end_);
-    block_fine_->Reset(6, 20, fine_start_, fine_end_);
+// // test the wavelets only (no moments)
+// TEST_F(valid_Wavelet, coarsen_2_order_4_0) {
+//     for (int id = 0; id < 3; id++) {
+//         coarse_start_[id] = 0;
+//         coarse_end_[id]   = 2;
+//         fine_start_[id]   = -6;
+//         fine_end_[id]     = 8 + 6;
+//     }
+//     block_coarse_->Reset(6, 20, coarse_start_, coarse_end_);
+//     block_fine_->Reset(6, 20, fine_start_, fine_end_);
 
-    real_p data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
-    real_p data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
+//     real_p data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
+//     real_p data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
 
-    for (int id = 0; id < 3; id++) {
-        // fill the source
-        for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-            for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-                for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-                    real_t x      = i0 * hfine_;
-                    real_t y      = i1 * hfine_;
-                    real_t z      = i2 * hfine_;
-                    real_t pos[3] = {x, y, z};
+//     for (int id = 0; id < 3; id++) {
+//         // fill the source
+//         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
+//             for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
+//                 for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
+//                     real_t x      = i0 * hfine_;
+//                     real_t y      = i1 * hfine_;
+//                     real_t z      = i2 * hfine_;
+//                     real_t pos[3] = {x, y, z};
 
-                    data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_3(pos[id]);
-                }
-            }
-        }
+//                     data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_3(pos[id]);
+//                 }
+//             }
+//         }
 
-        // do the coarsening
-        Wavelet<4,0>* interp   = new Wavelet<4, 0>();
-        lid_t          shift[3] = {0};
-        interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse);
+//         // do the coarsening
+//         Wavelet<4,0>* interp   = new Wavelet<4, 0>();
+//         lid_t          shift[3] = {0};
+//         interp->Interpolate(2, shift, block_fine_, data_fine, block_coarse_, data_coarse);
 
-        //check the result
-        for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
-            for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
-                for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
-                    real_t x      = i0 * hcoarse_*2;
-                    real_t y      = i1 * hcoarse_*2;
-                    real_t z      = i2 * hcoarse_*2;
-                    real_t pos[3] = {x, y, z};
+//         //check the result
+//         for (int i2 = coarse_start_[2]; i2 < coarse_end_[2]; i2++) {
+//             for (int i1 = coarse_start_[1]; i1 < coarse_end_[1]; i1++) {
+//                 for (int i0 = coarse_start_[0]; i0 < coarse_end_[0]; i0++) {
+//                     real_t x      = i0 * hcoarse_*2;
+//                     real_t y      = i1 * hcoarse_*2;
+//                     real_t z      = i2 * hcoarse_*2;
+//                     real_t pos[3] = {x, y, z};
 
-                    ASSERT_NEAR(data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)], poly_3(pos[id]), DOUBLE_TOL) << "while testing direction " << id << " in " << i0 << " " << i1 << " " << i2;
-                }
-            }
-        }
-        delete (interp);
-    }
-}
+//                     ASSERT_NEAR(data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)], poly_3(pos[id]), DOUBLE_TOL) << "while testing direction " << id << " in " << i0 << " " << i1 << " " << i2;
+//                 }
+//             }
+//         }
+//         delete (interp);
+//     }
+// }
 // test the wavelets + moments
 TEST_F(valid_Wavelet, refine_order_4_0) {
     for (int id = 0; id < 3; id++) {

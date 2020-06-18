@@ -20,12 +20,12 @@ docker run -it --rm immc/murphy-ci:v1.2
 #download flups locally
 git clone git@git.immc.ucl.ac.be:examples/flups.git
 # build the container
-docker build -t vanreeslab/murphy:v1.3 .
+docker build -t vanreeslab/murphy:v1.4 .
 #push it
 docker login
-docker push vanreeslab/murphy:v1.3
+docker push vanreeslab/murphy:v1.4
 ```
 to test the container locally:
 ```
-docker run --rm -it vanreeslab/murphy:v1.3
+docker run --rm -it vanreeslab/murphy:v1.4
 ```

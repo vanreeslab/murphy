@@ -26,7 +26,6 @@ RUN rm -rf /p4est
 # RUN git clone https://git.immc.ucl.ac.be/examples/flups.git
 COPY flups /flups
 RUN cd /flups &&\
-    git checkout dev_4murphy &&\
     ARCH_FILE=make_arch/make.docker_valid_opt PREFIX=/soft/flups make install -j
 RUN rm -rf /flups
 
