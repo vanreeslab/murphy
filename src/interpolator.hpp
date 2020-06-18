@@ -80,19 +80,26 @@ class Interpolator {
     * @param ctx the interpolation context, see @ref interp_ctx_t
     * @param dlvl the number of level we have to coarsen
     */
-    virtual void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const = 0;
+    virtual void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl)  = 0;
     /**
      * @brief refines by one level the information
      * 
      * @param ctx the interpolation context, see @ref interp_ctx_t
      */
-    virtual void Refine_(const interp_ctx_t* ctx) const = 0;
+    virtual void Refine_(const interp_ctx_t* ctx)  = 0;
+    /**
+     * @brief refines by one level the information, in the presence of a resolution jump
+     * 
+     * @param ctx the interpolation context, see @ref interp_ctx_t
+     * @param normal the normal of the ghost layer to compute
+     */
+    virtual void Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3])  = 0;
     /**
      * @brief copy the information for blocks at the same level
      * 
      * @param ctx the interpolation context, see @ref interp_ctx_t
      */
-    virtual void Copy_(const interp_ctx_t* ctx) const = 0;
+    virtual void Copy_(const interp_ctx_t* ctx)  = 0;
 };
 
 #endif  // SRC_INTERPOLATE_HPP_

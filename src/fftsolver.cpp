@@ -70,7 +70,7 @@ FFTSolver::FFTSolver(Grid *grid, Field *sol, const int fft_level) {
         flups_bc_[2][0][ida] = flups_get_bc(grid->domain_periodic(2), sol->bctype(ida, 4));
         flups_bc_[2][1][ida] = flups_get_bc(grid->domain_periodic(2), sol->bctype(ida, 5));
     }
-    flups_solver_ = flups_init(flups_topo_, flups_bc_, h, L, 2);
+    flups_solver_ = flups_init(flups_topo_, flups_bc_, h, L, NOD);
 
     flups_set_greenType(flups_solver_, LGF_2);
     flups_setup(flups_solver_, true);
