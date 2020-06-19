@@ -321,7 +321,7 @@ class Wavelet : public Interpolator {
    protected:
     void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl)  override;
     void Refine_(const interp_ctx_t* ctx)  override;
-    void Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3])  override;
+    void RefineGhost_(const interp_ctx_t* ctx)  override;
     void Copy_(const interp_ctx_t* ctx)  override;
     void Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) ;
 };

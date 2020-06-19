@@ -170,9 +170,9 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
-                m_assert((ik0 - gs_lim + 1 >= ctx->srcstart[0]) && (ik0 + gs_lim < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
-                m_assert((ik1 - gs_lim + 1 >= ctx->srcstart[1]) && (ik1 + gs_lim < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
-                m_assert((ik2 - gs_lim + 1 >= ctx->srcstart[2]) && (ik2 + gs_lim < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                m_assert((ik0 - gs_lim >= ctx->srcstart[0]) && (ik0 + gs_lim + 1 <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                m_assert((ik1 - gs_lim >= ctx->srcstart[1]) && (ik1 + gs_lim + 1 <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert((ik2 - gs_lim >= ctx->srcstart[2]) && (ik2 + gs_lim + 1 <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
                 real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
@@ -219,7 +219,7 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
     //-------------------------------------------------------------------------
 }
 template <int N, int Nt>
-void Wavelet<N, Nt>::Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3]) {
+void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
     m_assert(n_ghost_[M_WFRONT] % 2 == 0 & n_ghost_[M_WBACK] % 2 == 1, "we used this simplification throughout this function");
     //-------------------------------------------------------------------------
     // assure alignment for the target, the source, the constant and the temp data
@@ -227,7 +227,8 @@ void Wavelet<N, Nt>::Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3
     m_assume_aligned(ctx->sdata);
     m_assume_aligned(ctx->cdata);
 
-    const real_t alpha = ctx->alpha;
+    const real_t alpha     = ctx->alpha;
+    const sid_t*  normal = ctx->normal;
 
     // given the normal, get the correct gs filter: the regular, the front or the back
     real_t** gs_g[3];
@@ -262,20 +263,40 @@ void Wavelet<N, Nt>::Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3
     // gs_xlim[1] = (normal[1] == 0) ? 0 : (normal[1] == -1) ? n_info_[M_WFRONT][M_WFINE] : n_info_[M_WBACK][M_WFINE];
     // gs_xlim[2] = (normal[2] == 0) ? 0 : (normal[2] == -1) ? n_info_[M_WFRONT][M_WFINE] : n_info_[M_WBACK][M_WFINE];
 
+    m_log("processing normal = %d %d %d", normal[0], normal[1], normal[2]);
+
+    /**
+     * ```
+     *                     n_ghost     
+     *            |<--------------------->|
+     *            o-----x-----o-----x-----|
+     *            |           |           |
+     *            |           |           |
+     * o----------o-----------o-----------|
+     * |<-------->|<--------------------->|
+     * | gs_shift         gs_lim          |
+     * |<-------------------------------->|
+     *              n_info
+     * ```
+     **/
+
     for (sid_t id = 0; id < 3; id++) {
         // x coarse
         gs_g[id]     = (normal[id] == 0) ? (&gs_) : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WCOAR] : gs_g_[M_WBACK][M_WCOAR];
         gs_shift[id] = (normal[id] == 0) ? (len_gs_ / 2 - 1) : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WCOAR] - n_ghost_[M_WFRONT] / 2) : 0;
         gs_lim[id]   = (normal[id] == 0) ? (len_gs_ / 2 - 1) : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WCOAR] - gs_shift[id] - 2) : (n_info_[M_WBACK][M_WCOAR] - 2);
-        // x fine
-        gs_x[id]      = (normal[id] == 0) ? nullptr : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WFINE] : gs_g_[M_WBACK][M_WFINE];
+        // x fine - we use any filter when the normal is 0, as we won't apply it
+        gs_x[id]      = (normal[id] == 0) ? gs_g_[M_WFRONT][M_WFINE] : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WFINE] : gs_g_[M_WBACK][M_WFINE];
         gs_xshift[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? n_ghost_[M_WFRONT] : -(n_info_[M_WBACK][M_WFINE] + 1);
         gs_xlim[id]   = (normal[id] == 0) ? 0 : (normal[id] == -1) ? n_info_[M_WFRONT][M_WFINE] : n_info_[M_WBACK][M_WFINE];
     }
 
+    m_log("gs_shift = %d %d %d and gs_lim = %d %d %d",gs_shift[0],gs_shift[1],gs_shift[2],gs_lim[0],gs_lim[1],gs_lim[2]);
+
     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                
                 // m_assert((ik0 - gs_lim + 1 >= ctx->srcstart[0]) && (ik0 + gs_lim < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
                 // m_assert((ik1 - gs_lim + 1 >= ctx->srcstart[1]) && (ik1 + gs_lim < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 // m_assert((ik2 - gs_lim + 1 >= ctx->srcstart[2]) && (ik2 + gs_lim < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
@@ -289,25 +310,37 @@ void Wavelet<N, Nt>::Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3
                 g_id[0] = (normal[0] != 0) * (ik0 - ctx->trgstart[0] / 2);
                 g_id[1] = (normal[1] != 0) * (ik1 - ctx->trgstart[1] / 2);
                 g_id[2] = (normal[2] != 0) * (ik2 - ctx->trgstart[2] / 2);
+                
+
+                m_log("we have the gid = %d %d %d",g_id[0],g_id[1],g_id[2]);
                 // get the correct filter position
                 real_t* gs[3];
-                gs[0] = gs_g[0][g_id[0]] + (gs_shift[0] + g_id[0]);
-                gs[1] = gs_g[1][g_id[1]] + (gs_shift[1] + g_id[1]);
-                gs[2] = gs_g[2][g_id[2]] + (gs_shift[2] + g_id[2]);
+                // gs[0] = gs_g[0][g_id[0]] + (gs_shift[0] + g_id[0]);
+                // gs[1] = gs_g[1][g_id[1]] + (gs_shift[1] + g_id[1]);
+                // gs[2] = gs_g[2][g_id[2]] + (gs_shift[2] + g_id[2]);
                 // get the number of points, left and right to cover
                 sid_t gs_lim_l[3];
-                gs_lim_l[0] = gs_shift[0] + g_id[0];
-                gs_lim_l[1] = gs_shift[1] + g_id[1];
-                gs_lim_l[2] = gs_shift[2] + g_id[2];
+                // gs_lim_l[0] = gs_shift[0] + g_id[0];
+                // gs_lim_l[1] = gs_shift[1] + g_id[1];
+                // gs_lim_l[2] = gs_shift[2] + g_id[2];
                 sid_t gs_lim_r[3];
-                gs_lim_r[0] = gs_lim[0] - g_id[0];
-                gs_lim_r[1] = gs_lim[1] - g_id[1];
-                gs_lim_r[2] = gs_lim[2] - g_id[2];
+                // gs_lim_r[0] = gs_lim[0] - g_id[0];
+                // gs_lim_r[1] = gs_lim[1] - g_id[1];
+                // gs_lim_r[2] = gs_lim[2] - g_id[2];
 
                 real_t* gx[3];
-                gx[0] = gs_x[0][g_id[0]];
-                gx[1] = gs_x[1][g_id[1]];
-                gx[2] = gs_x[2][g_id[2]];
+                // gx[0] = gs_x[0][g_id[0]];
+                // gx[1] = gs_x[1][g_id[1]];
+                // gx[2] = gs_x[2][g_id[2]];
+
+                for (sid_t id = 0; id < 3; id++) {
+                    gs[id]       = gs_g[id][g_id[id]] + (gs_shift[id] + g_id[id]);
+                    gs_lim_l[id] = gs_shift[id] + g_id[id];
+                    gs_lim_r[id] = gs_lim[id] - g_id[id];
+                    gx[id]       = gs_x[id][g_id[id]];
+                }
+
+                m_log("gs_lim_r = [%d,%d,%d -> gs_lim_l = %d,%d,%d]",gs_lim_l[0],gs_lim_l[1],gs_lim_l[2],gs_lim_r[0]+1,gs_lim_r[1]+1,gs_lim_r[2]+1);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];

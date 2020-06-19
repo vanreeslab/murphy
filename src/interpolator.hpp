@@ -26,7 +26,8 @@ typedef struct interp_ctx_t {
     lid_t srcstart[3];  //!< first index available in the source memory
     lid_t srcend[3];    //!< last index available in the source memory
 #endif
-    real_t alpha = 0.0; //!< the constant multiplication factor: target = alpha * constant + interpolation(source)
+    real_t alpha  = 0.0;      //!< the constant multiplication factor: target = alpha * constant + interpolation(source)
+    sid_t* normal = nullptr;  //!< normal to the ghost zone
     /**
      * @name position pointers
      * 
@@ -57,8 +58,10 @@ class Interpolator {
     * @return real_t the criterion value, always >= 0
     */
     virtual real_t Criterion(MemLayout* block, real_p data) = 0;
-    virtual void   Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
-    virtual void   Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst);
+
+    virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+    virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, sid_t normal[3]);
+    virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst, sid_t normal[3]);
 
     /**
     * @brief returns a string identifying the operator
@@ -93,7 +96,7 @@ class Interpolator {
      * @param ctx the interpolation context, see @ref interp_ctx_t
      * @param normal the normal of the ghost layer to compute
      */
-    virtual void Refine_ghost_(const interp_ctx_t* ctx, const sid_t normal[3])  = 0;
+    virtual void RefineGhost_(const interp_ctx_t* ctx)  = 0;
     /**
      * @brief copy the information for blocks at the same level
      * 

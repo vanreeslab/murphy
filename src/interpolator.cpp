@@ -10,9 +10,27 @@
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg) {
+void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg)
+{
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
-    Interpolate(dlvl, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
+    Interpolate(dlvl, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg, nullptr);
+}
+
+/**
+ * @brief 
+ * 
+ * @param dlvl the difference of level: level_src - level_trg, i.e. > 0 means coarsening, = 0 means copy and < 0 means refinement
+ * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
+ * @param block_src description of data_src memory layout 
+ * @param data_src the 0-position of the src memory, i.e. the memory location of (0,0,0) for the source
+ * @param block_trg descripiton of data_trg
+ * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
+ * @param normal the normal of the ghost layer to compute, dictate which direction is affected by the jump in resolution
+ */
+void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg, sid_t normal[3])
+{
+    // if not normal we simply set a nullptr
+    Interpolate(dlvl, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg, normal);
 }
 
 /**
@@ -26,10 +44,13 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  * @param alpha the multiplication factor for the constant memory
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
+ * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst){
-    m_assert(dlvl <= 2, "we cannot handle a difference in level > 2");
+void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg, const real_t alpha, real_p data_cst, sid_t normal[3])
+{
+    m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
+    m_assert(!(normal != nullptr && dlvl == 1), "if a normal is given, we only copy or refine");
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
@@ -54,8 +75,9 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     ctx.srcstr = block_src->stride();
     ctx.trgstr = block_trg->stride();
 
-    // store the multiplication factor
+    // store the multiplication factor and the normal
     ctx.alpha = alpha;
+    ctx.normal = normal;
 
     // get the correct aligned arrays
     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
@@ -64,11 +86,22 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
     ctx.tdata = data_trg;
 
     // call the correct function
-    if (dlvl == -1) {
+    if (dlvl == -1 && normal == nullptr)
+    {
+        m_log("the normal is = %p, so going to refine as usual", normal);
         Refine_(&ctx);
-    } else if (dlvl == 0) {
+    }
+    else if (dlvl == -1 && normal != nullptr)
+    {
+        m_log("the normal is = %p, so going to refine go ghosts", normal);
+        RefineGhost_(&ctx);
+    }
+    else if (dlvl == 0)
+    {
         Copy_(&ctx);
-    } else if (dlvl > 0) {
+    }
+    else if (dlvl > 0)
+    {
         Coarsen_(&ctx, dlvl);
     }
     //-------------------------------------------------------------------------
