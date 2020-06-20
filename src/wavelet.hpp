@@ -32,7 +32,7 @@
  *     |______/ \______|______/ \______|            Nt = 2 -> +1/4, 1, +1/4
  *     |               |               |            Nt = 4 -> -1/32,  9/32, 9/32, -1/32
  *     V               V               V
- * ----c-------d-------c-------d-------c----
+ * ----c-------0-------c-------0-------c----
  * ```
  * We can check that the combined application of N=4 and Nt=2, we obtain the same results as table 2 in Sweldens 1996.
  * 

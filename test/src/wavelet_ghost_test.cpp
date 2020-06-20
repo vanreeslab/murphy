@@ -47,9 +47,10 @@ class valid_Wavelet_Ghost : public ::testing::Test {
     };
 };
 
+
 //==============================================================================================================================
 static double poly_1(const double x) {
-    return M_PI_2 * x + M_SQRT2;
+    return x;// M_PI_2 * x + M_SQRT2;
 }
 // test the wavelet + moments
 TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
@@ -63,8 +64,8 @@ TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
     }
     fine_start_[0] = -M_GS;
     fine_end_[0]   = 0;
-    fine_end_[1]   = M_N - 1;
-    fine_end_[2]   = M_N - 1;
+    fine_end_[1]   = M_N - 2;
+    fine_end_[2]   = M_N - 2;
 
     block_coarse_->Reset(M_GS, M_STRIDE, coarse_start_, coarse_end_);
     block_fine_->Reset(M_GS, M_STRIDE, fine_start_, fine_end_);
@@ -92,20 +93,20 @@ TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
             }
         }
 
+
         // fill the coarse block
         for (int i2 = 0; i2 < M_N; i2++) {
             for (int i1 = 0; i1 < M_N; i1++) {
                 for (int i0 = 0; i0 < M_N; i0++) {
-                    real_t x      = shift_coarse[0] + i0 * hfine_;
-                    real_t y      = shift_coarse[1] + i1 * hfine_;
-                    real_t z      = shift_coarse[2] + i2 * hfine_;
+                    real_t x      = shift_coarse[0] + i0 * hcoarse_;
+                    real_t y      = shift_coarse[1] + i1 * hcoarse_;
+                    real_t z      = shift_coarse[2] + i2 * hcoarse_;
                     real_t pos[3] = {x, y, z};
 
                     data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)] = poly_1(pos[id]);
                 }
             }
         }
-
         // do the refinement
         Wavelet<2, 2>* interp    = new Wavelet<2, 2>();
         lid_t          shift[3]  = {M_N, 0, 0};
@@ -122,7 +123,7 @@ TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
                     real_t pos[3] = {x, y, z};
 
                     real_t val = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
-                    ASSERT_NEAR(val, poly_1(pos[id]), DOUBLE_TOL) << "while testing direction " << id;
+                    ASSERT_NEAR(val, poly_1(pos[id]), DOUBLE_TOL) << "in" << i0 << " " << i1 << " " << i2 << " while testing direction " << id;
                 }
             }
         }
