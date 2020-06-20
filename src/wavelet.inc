@@ -283,36 +283,21 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
                 const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
-                // get the detail ID, i.e. which filter has to be used
-                sid_t g_id[3];
-                g_id[0] = (normal[0] != 0) * (ik0 - ctx->trgstart[0] / 2);
-                g_id[1] = (normal[1] != 0) * (ik1 - ctx->trgstart[1] / 2);
-                g_id[2] = (normal[2] != 0) * (ik2 - ctx->trgstart[2] / 2);
-                
-                m_log("------------------");
-
-                m_log("we have the gid = %d %d %d",g_id[0],g_id[1],g_id[2]);
                 real_t* gs[3];
                 real_t* gx[3];
                 sid_t   s_xshift[3];
                 sid_t   x_xshift[3];
 
-                
                 // get the correct filter
+                lid_t ik[3] = {ik0, ik1, ik2};
                 for (sid_t id = 0; id < 3; id++) {
-                    gs[id]       = gs_g[id][g_id[id]];
-                    gx[id]       = gx_g[id][g_id[id]];
+                    sid_t g_id = (normal[id] != 0) * (ik[id] - ctx->trgstart[id] / 2);
+                    gs[id]     = gs_g[id][g_id];
+                    gx[id]     = gx_g[id][g_id];
                     // shift the starting point for the application of the coarse filter
-                    s_xshift[id] = gs_xshift[id] - g_id[id];
-                    x_xshift[id] = gx_xshift[id] - g_id[id];
+                    s_xshift[id] = gs_xshift[id] - g_id;
+                    x_xshift[id] = gx_xshift[id] - g_id;
                 }
-
-                // m_log("gs_lim_r = [%d,%d,%d -> gs_lim_l = %d,%d,%d]", gs_lim_l[0], gs_lim_l[1], gs_lim_l[2], gs_lim_r[0] + 1, gs_lim_r[1] + 1, gs_lim_r[2] + 1);
-                m_log("gs_lim =[0,0,0 -> %d,%d,%d]", gs_lim[0], gs_lim[1], gs_lim[2]);
-                m_log("gx_lim =[0,0,0 -> %d,%d,%d]", gx_lim[0], gx_lim[1], gx_lim[2]);
-
-                m_log("s_xshift =%d,%d,%d", s_xshift[0], s_xshift[1], s_xshift[2]);
-                m_log("x_xshift =%d,%d,%d", x_xshift[0], x_xshift[1], x_xshift[2]);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -329,91 +314,68 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
 
                 //--------------
                 // DX point (1,0,0)
-                m_log("DX @ %d %d %d: ",2*ik0+1,2*ik1,2*ik2);
                 for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                    m_log(" + %f * %f", gs[0][id0], lsdata[m_sidx(s_xshift[0]+id0, 0, 0, 0, ctx->srcstr)]);
                     ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[0][id0] * lsdata[m_sidx(s_xshift[0]+id0, 0, 0, 0, ctx->srcstr)];
                 }
-                // m_log("x");
                 for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                    m_log(" + %f * %f", gx[0][id0], ltdata[m_sidx(x_xshift[0] + id0, 0, 0, 0, ctx->trgstr)]);
                     ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 0, 0, 0, ctx->trgstr)];
                 }
-                m_log("final = %e",ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)]);
                 //--------------
                 // DY point (0,1,0)
-                // m_log("for %d %d %d: ", 2 * ik0, 2 * ik1 + 1, 2 * ik2);
-                m_log("DY @ %d %d %d: ",2*ik0,2*ik1+1,2*ik2);
-                for (sid_t id0 = 0; id0 < gs_lim[1]; id0++) {
-                    // m_log(" + %f * %f", gs[0][id0], lsdata[m_sidx(id0, 0, 0, 0, ctx->srcstr)]);
-                    m_log(" + %f * %f", gs[1][id0] , lsdata[m_sidx(0, s_xshift[1] + id0, 0, 0, ctx->srcstr)]);
-                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[1][id0] * lsdata[m_sidx(0, s_xshift[1] + id0, 0, 0, ctx->srcstr)];
+                for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[1][id1] * lsdata[m_sidx(0, s_xshift[1] + id1, 0, 0, ctx->srcstr)];
                 }
-                m_log("+x");
-                for (sid_t id0 = 0; id0 < gx_lim[1]; id0++) {
-                    // m_log(" + %f * %f", gx[1][id0], ltdata[m_sidx(0, s_xshift[1] + id0, 0, 0, ctx->trgstr)]);
-                    m_log(" + %f * %f", gx[1][id0] , ltdata[m_sidx(0, x_xshift[1] + id0, 0, 0, ctx->trgstr)]);
-                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gx[1][id0] * ltdata[m_sidx(0, x_xshift[1] + id0, 0, 0, ctx->trgstr)];
+                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(0, x_xshift[1] + id1, 0, 0, ctx->trgstr)];
                 }
-                // m_log("final = %e",ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)]);
-                m_log("final = %e",ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)]);
                 //--------------
                 // DZ point (0,0,1)
-                for (sid_t id0 = 0; id0 < gs_lim[2]; id0++) {
-                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[2][id0] * lsdata[m_sidx(0, 0, s_xshift[2] + id0, 0, ctx->srcstr)];
+                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[2][id2] * lsdata[m_sidx(0, 0, s_xshift[2] + id2, 0, ctx->srcstr)];
                 }
-                for (sid_t id0 = 0; id0 < gx_lim[2]; id0++) {
-                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gx[2][id0] * ltdata[m_sidx(0, 0, x_xshift[2] + id0, 0, ctx->trgstr)];
+                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(0, 0, x_xshift[2] + id2, 0, ctx->trgstr)];
                 }
                 
                 //--------------
                 // DXY point (1,1,0)
-                m_log("DXY @ %d %d %d: ", 2 * ik0 + 1, 2 * ik1 + 1, 2 * ik2);
                 for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
-                    // gs * gs
                     for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                        m_log(" + %f * %f * %f", gs[0][id0], gs[1][id1], lsdata[m_sidx(s_xshift[0]+id0, s_xshift[1]+id1, 0, 0, ctx->srcstr)]);
                         ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[0][id0] * gs[1][id1] * lsdata[m_sidx(s_xshift[0]+id0, s_xshift[1]+id1, 0, 0, ctx->srcstr)];
                     }
-                    // gs * gx
-                    for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                        m_log(" + %f * %f * %f", gx[0][id0], gs[1][id1], ltdata[m_sidx(x_xshift[0] + id0, x_xshift[1] + id1, 0, 0, ctx->trgstr)]);
-                        ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gx[0][id0] * gs[1][id1] * ltdata[m_sidx(x_xshift[0] + id0, s_xshift[1] + id1, 0, 0, ctx->trgstr)];
-                    }
                 }
-                // m_log("+x");
-                // gy * gs
+                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
+                    ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 1, 0, 0, ctx->trgstr)];
+                }
                 for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
-                    for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                        m_log(" + %f * %f * %f", gs[0][id0], gx[1][id1], ltdata[m_sidx(s_xshift[0] + id0, x_xshift[1] + id1, 0, 0, ctx->trgstr)]);
-                        ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[0][id0] * gx[1][id1] * ltdata[m_sidx(s_xshift[0] + id0, x_xshift[1] + id1, 0, 0, ctx->trgstr)];
-                    }
+                    ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(1, x_xshift[1] + id1, 0, 0, ctx->trgstr)];
                 }
-                m_log("final = %e", ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)]);
-                
                 //--------------
                 // DYZ  point (0,1,1)
-                for (sid_t id1 = 0; id1 < gs_lim[2]; id1++) {
-                    for (sid_t id0 = 0; id0 < gs_lim[1]; id0++) {
-                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[1][id0] * gs[2][id1] * lsdata[m_sidx(0, s_xshift[1] + id0, s_xshift[2] + id1, 0, ctx->srcstr)];
+                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
+                    for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
+                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[1][id1] * gs[2][id2] * lsdata[m_sidx(0, s_xshift[1] + id1, s_xshift[2] + id2, 0, ctx->srcstr)];
                     }
                 }
-                for (sid_t id1 = 0; id1 < gx_lim[2]; id1++) {
-                    for (sid_t id0 = 0; id0 < gx_lim[1]; id0++) {
-                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gx[1][id0] * gx[2][id1] * ltdata[m_sidx(0, x_xshift[1] + id0, x_xshift[2] + id1, 0, ctx->trgstr)];
-                    }
+                // gx for Y, in the middle in Z
+                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
+                    ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(0, x_xshift[1] + id1, 1, 0, ctx->trgstr)];
+                }
+                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
+                    ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(0, 1, x_xshift[2] + id2, 0, ctx->trgstr)];
                 }
                 //--------------
                 // DXZ point (1,0,1)
-                for (sid_t id1 = 0; id1 < gs_lim[2]; id1++) {
+                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
                     for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[0][id0] * gs[2][id1] * lsdata[m_sidx(s_xshift[0] + id0, 0, s_xshift[2] + id1, 0, ctx->srcstr)];
+                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[0][id0] * gs[2][id2] * lsdata[m_sidx(s_xshift[0] + id0, 0, s_xshift[2] + id2, 0, ctx->srcstr)];
                     }
                 }
-                for (sid_t id1 = 0; id1 < gx_lim[2]; id1++) {
-                    for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gx[0][id0] * gx[2][id1] * ltdata[m_sidx(x_xshift[0] + id0, 0, x_xshift[2] + id1, 0, ctx->trgstr)];
-                    }
+                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
+                    ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 0, 1, 0, ctx->trgstr)];
+                }
+                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
+                    ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(1, 0, x_xshift[2] + id2, 0, ctx->trgstr)];
                 }
                 //--------------
                 // DXYZ point (1,1,1)
@@ -424,12 +386,14 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
                         }
                     }
                 }
+                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
+                    ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 1, 1, 0, ctx->trgstr)];
+                }
+                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
+                    ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(1, x_xshift[1] + id1, 1, 0, ctx->trgstr)];
+                }
                 for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
-                    for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
-                        for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                            ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[0][id0] * gx[1][id1] * gx[2][id2] * ltdata[m_sidx(x_xshift[0] + id0, x_xshift[1] + id1, x_xshift[2] + id1, 0, ctx->trgstr)];
-                        }
-                    }
+                    ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(1, 1, x_xshift[2] + id2, 0, ctx->trgstr)];
                 }
             }
         }

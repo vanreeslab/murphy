@@ -47,7 +47,6 @@ class valid_Wavelet_Ghost : public ::testing::Test {
     };
 };
 
-
 //==============================================================================================================================
 static double poly_1(const double x) {
     return x;// M_PI_2 * x + M_SQRT2;
@@ -127,6 +126,7 @@ TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
                 }
             }
         }
+
         // for (int i2 = coarse_start_[2]; i2 < coarse_end_[2] - 1; i2++) {
         //     for (int i1 = coarse_start_[1]; i1 < coarse_end_[1] - 1; i1++) {
         //         for (int i0 = coarse_start_[0]; i0 < coarse_end_[0] - 1; i0++) {
