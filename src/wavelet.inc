@@ -232,15 +232,15 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
 
     // we have to choose the direction that will do the cross ones in case of 
 
-    // given the normal, get the correct gs filter: the regular, the front or the back
-    real_t** gs_g[3];
-    sid_t    gs_xshift[3]; // shift to apply to reach the correct X values for the filter
-    sid_t    gs_lim[3];
-    // filter for the fine points
-    real_t** gx_g[3];
-    sid_t    gx_xshift[3];  // the shift to apply to reach the correct X (!) values for the filter
-    sid_t    gx_lim[3];
-    // sid_t    gx_lim_r[3];
+    // // given the normal, get the correct gs filter: the regular, the front or the back
+    // real_t** gs_g[3];
+    // sid_t    gs_xshift[3]; // shift to apply to reach the correct X values for the filter
+    // // sid_t    gs_lim[3];
+    // // filter for the fine points
+    // real_t** gx_g[3];
+    // sid_t    gx_xshift[3];  // the shift to apply to reach the correct X (!) values for the filter
+    // sid_t    gx_lim;
+    // // sid_t    gx_lim_r[3];
 
     m_log("processing normal = %d %d %d", normal[0], normal[1], normal[2]);
 
@@ -259,18 +259,20 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
      * ```
      **/
 
-    for (sid_t id = 0; id < 3; id++) {
-        // x coarse - the exact quantities depend on the ghost point considered
-        gs_g[id]      = (normal[id] == 0) ? (&gs_) : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WCOAR] : gs_g_[M_WBACK][M_WCOAR];
-        gs_xshift[id] = (normal[id] == 0) ? -(len_gs_ / 2 - 1) : (normal[id] == -1) ? -(n_info_[M_WFRONT][M_WCOAR] - n_ghost_[M_WFRONT] / 2) : 0;
-        gs_lim[id]    = (normal[id] == 0) ? (len_gs_) : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WCOAR]) : (n_info_[M_WBACK][M_WCOAR]);
-        // x fine -  the quantities are fixed for any ghost point, except the filter coefficients
-        gx_g[id]      = (normal[id] == 0) ? &(gs_) : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WFINE] : gs_g_[M_WBACK][M_WFINE];
-        gx_xshift[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? n_ghost_[M_WFRONT] : -(n_info_[M_WBACK][M_WFINE] + 1);
-        gx_lim[id]    = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WFINE]) : (n_info_[M_WBACK][M_WFINE]);
-    }
+    const sid_t   gs_lim = (len_gs_ / 2) - 1;
+    const real_t* gs     = gs_ + gs_lim;
 
-    // m_log("gs_shift = %d %d %d and gs_lim = %d %d %d", gs_shift[0], gs_shift[1], gs_shift[2], gs_lim[0], gs_lim[1], gs_lim[2]);
+    // for (sid_t id = 0; id < 3; id++) {
+    //     // x coarse - the exact quantities depend on the ghost point considered
+    //     gs_xshift[id] = (normal[id] == 0) ? -gs_lim : (normal[id] == -1) ? -(len_gs_ / 2 - 1) : 0;
+    //     gs_lim[id]    = (normal[id] == 0) ? (len_gs_) : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WCOAR]) : (n_info_[M_WBACK][M_WCOAR]);
+    //     // x fine -  the quantities are fixed for any ghost point, except the filter coefficients
+    //     gx_g[id]      = (normal[id] == 0) ? &(gs_) : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WFINE] : gs_g_[M_WBACK][M_WFINE];
+    //     gx_xshift[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? n_ghost_[M_WFRONT] : -(n_info_[M_WBACK][M_WFINE] + 1);
+    //     gx_lim[id]    = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WFINE]) : (n_info_[M_WBACK][M_WFINE]);
+    // }
+
+    real_t* temp = temp_[omp_get_num_threads()] + (gs_lim + len_gs_ * (gs_lim + len_gs_ * gs_lim));
 
     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
@@ -283,20 +285,72 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
                 const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
-                real_t* gs[3];
-                real_t* gx[3];
-                sid_t   s_xshift[3];
-                sid_t   x_xshift[3];
+                sid_t gc_lim_l[3];
+                sid_t gc_lim_r[3];
+                sid_t gf_lim_l[3];
+                sid_t gf_lim_r[3];
+                sid_t x_shift[3];
 
-                // get the correct filter
                 lid_t ik[3] = {ik0, ik1, ik2};
                 for (sid_t id = 0; id < 3; id++) {
-                    sid_t g_id = (normal[id] != 0) * (ik[id] - ctx->trgstart[id] / 2);
-                    gs[id]     = gs_g[id][g_id];
-                    gx[id]     = gx_g[id][g_id];
-                    // shift the starting point for the application of the coarse filter
-                    s_xshift[id] = gs_xshift[id] - g_id;
-                    x_xshift[id] = gx_xshift[id] - g_id;
+                    gc_lim_l[id] = (normal[id] == +1) ? (ik[id] - ctx->trgstart[id] / 2) : (-gs_lim);
+                    gc_lim_r[id] = (normal[id] == -1) ? (ctx->trgend[id] / 2 - ik[id]) : (gs_lim+2);
+                    gf_lim_l[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? gc_lim_r[id] : (-gs_lim);
+                    gf_lim_r[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (gs_lim+2) : gc_lim_l[id];
+                    x_shift[id]  = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (gc_lim_r[id] * 2) : (gc_lim_l[id] * 2);
+                }
+
+                // m_log(gs_lim)
+                // m_log("gc_lim_l = %d %d %d -> gc_lim_r = %d %d %d",gc_lim_l[0],gc_lim_l[1],gc_lim_l[2],gc_lim_r[0],gc_lim_r[1],gc_lim_r[2]);
+                // m_log("gf_lim_l = %d %d %d -> gf_lim_r = %d %d %d",gf_lim_l[0],gf_lim_l[1],gf_lim_l[2],gf_lim_r[0],gf_lim_r[1],gf_lim_r[2]);
+                // m_log("x_shift = %d %d %d", x_shift[0], x_shift[1], x_shift[2]);
+
+                // to avoid the splitting all the loops, we gather everything under the same memory entity
+                for (sid_t id2 = gc_lim_l[2]; id2 < gc_lim_r[2]; id2++) {
+                    for (sid_t id1 = gc_lim_l[1]; id1 < gc_lim_r[1]; id1++) {
+                        for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        }
+                        for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
+                        }
+                    }
+                    for (sid_t id1 = gf_lim_l[1]; id1 < gf_lim_r[1]; id1++) {
+                        for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        }
+                        for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
+                        }
+                    }
+                }
+                for (sid_t id2 = gf_lim_l[2]; id2 < gf_lim_r[2]; id2++) {
+                    for (sid_t id1 = gc_lim_l[1]; id1 < gc_lim_r[1]; id1++) {
+                        for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        }
+                        for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
+                        }
+                    }
+                    for (sid_t id1 = gf_lim_l[1]; id1 < gf_lim_r[1]; id1++) {
+                        for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        }
+                        for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
+                            temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
+                        }
+                    }
+                }
+
+                for (sid_t id2 = -gs_lim; id2 <= (gs_lim + 1); id2++) {
+                    for (sid_t id1 = -gs_lim; id1 <= (gs_lim + 1); id1++) {
+                        for (sid_t id0 = -gs_lim; id0 <= (gs_lim + 1); id0++) {
+                            printf("%f ",temp[id0 + len_gs_ * (id1 + len_gs_ * id2)]);
+                        }
+                        printf("\t");
+                    }
+                    printf("\n");
                 }
 
                 // reset to the constant
@@ -313,87 +367,27 @@ void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
 
                 //--------------
-                // DX point (1,0,0)
-                for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[0][id0] * lsdata[m_sidx(s_xshift[0]+id0, 0, 0, 0, ctx->srcstr)];
+                // DX, DY, DZ
+                for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
+                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * temp[id0 + len_gs_ * (0 + len_gs_ * 0)];
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * temp[0 + len_gs_ * (id0 + len_gs_ * 0)];
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * temp[0 + len_gs_ * (0 + len_gs_ * id0)];
                 }
-                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 0, 0, 0, ctx->trgstr)];
-                }
-                //--------------
-                // DY point (0,1,0)
-                for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
-                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[1][id1] * lsdata[m_sidx(0, s_xshift[1] + id1, 0, 0, ctx->srcstr)];
-                }
-                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
-                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(0, x_xshift[1] + id1, 0, 0, ctx->trgstr)];
-                }
-                //--------------
-                // DZ point (0,0,1)
-                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
-                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[2][id2] * lsdata[m_sidx(0, 0, s_xshift[2] + id2, 0, ctx->srcstr)];
-                }
-                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
-                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(0, 0, x_xshift[2] + id2, 0, ctx->trgstr)];
-                }
-                
-                //--------------
-                // DXY point (1,1,0)
-                for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
-                    for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                        ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[0][id0] * gs[1][id1] * lsdata[m_sidx(s_xshift[0]+id0, s_xshift[1]+id1, 0, 0, ctx->srcstr)];
+                // DXY, DYZ, DXZ
+                for (sid_t id1 = -gs_lim; id1 <= gs_lim + 1; id1++) {
+                    for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
+                        ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * temp[id0 + len_gs_ * (id1 + len_gs_ * 0)];
+                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * temp[0 + len_gs_ * (id0 + len_gs_ * id1)];
+                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * temp[id1 + len_gs_ * (0 + len_gs_ * id0)];
                     }
                 }
-                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                    ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 1, 0, 0, ctx->trgstr)];
-                }
-                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
-                    ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(1, x_xshift[1] + id1, 0, 0, ctx->trgstr)];
-                }
-                //--------------
-                // DYZ  point (0,1,1)
-                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
-                    for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
-                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[1][id1] * gs[2][id2] * lsdata[m_sidx(0, s_xshift[1] + id1, s_xshift[2] + id2, 0, ctx->srcstr)];
-                    }
-                }
-                // gx for Y, in the middle in Z
-                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
-                    ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(0, x_xshift[1] + id1, 1, 0, ctx->trgstr)];
-                }
-                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
-                    ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(0, 1, x_xshift[2] + id2, 0, ctx->trgstr)];
-                }
-                //--------------
-                // DXZ point (1,0,1)
-                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
-                    for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[0][id0] * gs[2][id2] * lsdata[m_sidx(s_xshift[0] + id0, 0, s_xshift[2] + id2, 0, ctx->srcstr)];
-                    }
-                }
-                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                    ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 0, 1, 0, ctx->trgstr)];
-                }
-                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
-                    ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(1, 0, x_xshift[2] + id2, 0, ctx->trgstr)];
-                }
-                //--------------
-                // DXYZ point (1,1,1)
-                for (sid_t id2 = 0; id2 < gs_lim[2]; id2++) {
-                    for (sid_t id1 = 0; id1 < gs_lim[1]; id1++) {
-                        for (sid_t id0 = 0; id0 < gs_lim[0]; id0++) {
-                            ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[0][id0] * gs[1][id1] * gs[2][id2] * lsdata[m_sidx(s_xshift[0] + id0, s_xshift[1] + id1, s_xshift[2] + id2, 0, ctx->srcstr)];
+                // DYZ
+                for (sid_t id2 = -gs_lim; id2 <= gs_lim + 1; id2++) {
+                    for (sid_t id1 = -gs_lim; id1 <= gs_lim + 1; id1++) {
+                        for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
+                            ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * temp[id0 + len_gs_ * (id1 + len_gs_ * id2)];
                         }
                     }
-                }
-                for (sid_t id0 = 0; id0 < gx_lim[0]; id0++) {
-                    ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[0][id0] * ltdata[m_sidx(x_xshift[0] + id0, 1, 1, 0, ctx->trgstr)];
-                }
-                for (sid_t id1 = 0; id1 < gx_lim[1]; id1++) {
-                    ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[1][id1] * ltdata[m_sidx(1, x_xshift[1] + id1, 1, 0, ctx->trgstr)];
-                }
-                for (sid_t id2 = 0; id2 < gx_lim[2]; id2++) {
-                    ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gx[2][id2] * ltdata[m_sidx(1, 1, x_xshift[2] + id2, 0, ctx->trgstr)];
                 }
             }
         }

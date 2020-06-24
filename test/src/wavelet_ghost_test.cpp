@@ -106,6 +106,7 @@ TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
                 }
             }
         }
+        
         // do the refinement
         Wavelet<2, 2>* interp    = new Wavelet<2, 2>();
         lid_t          shift[3]  = {M_N, 0, 0};

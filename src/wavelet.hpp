@@ -94,6 +94,8 @@ class Wavelet : public Interpolator {
     // real_p ha_2_ = nullptr;  //!< scaling analysis: 2 level coarsening
     // sid_t len_ha_2_ = 0;
 
+    real_t** temp_;
+
    public:
     Wavelet() {
         m_assert(Nt <= N, "we do not support the case of Nt=%d > N=%d", Nt, N);
@@ -297,7 +299,14 @@ class Wavelet : public Interpolator {
         } else {
             m_assert(false, "wavelet N=%d.Nt=%d not implemented yet", N, Nt);
         }
-        m_log("Wavelet %d.%d with ga[%d], ha[%d],gs[%d], (%d,%d) ghosts needed",N,Nt,len_ga_,len_ha_,len_gs_,n_ghost_[M_WFRONT],n_ghost_[M_WBACK]);
+
+        int nthread = omp_get_max_threads();
+        temp_       = reinterpret_cast<real_t**>(m_calloc(nthread * sizeof(real_t*)));
+        for (sid_t it = 0; it < nthread; it++) {
+            temp_[it] = reinterpret_cast<real_t*>(m_calloc(len_gs_ * len_gs_ * len_gs_ * sizeof(real_t)));
+        }
+
+        m_log("Wavelet %d.%d with ga[%d], ha[%d],gs[%d], (%d,%d) ghosts needed", N, Nt, len_ga_, len_ha_, len_gs_, n_ghost_[M_WFRONT], n_ghost_[M_WBACK]);
         //-------------------------------------------------------------------------
     }
 
@@ -307,6 +316,12 @@ class Wavelet : public Interpolator {
         m_free(ha_);
         m_free(ga_);
         m_free(gs_);
+
+        int nthread = omp_get_max_threads();
+        for (sid_t it = 0; it < nthread; it++) {
+            m_free(temp_[it]);
+        }
+        m_free(temp_);
         //-------------------------------------------------------------------------
         m_end;
     }
