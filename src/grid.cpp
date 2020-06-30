@@ -64,7 +64,6 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_,this,true);
-    //echange should be straightforward as completely empty
     part.Start(&fields_,M_FORWARD);
     part.End(&fields_,M_FORWARD);
     // setup the ghost stuctures as the mesh will not change anymore
@@ -132,13 +131,9 @@ void Grid::SetupGhost() {
     // create the forestGrid part
     this->SetupP4estGhostMesh();
     // create the ghosts structure
-    if (prof_ != nullptr) {
-        prof_->Start("ghost_init");
-    }
+    m_profStart(prof_,"ghost_init");
     ghost_ = new Ghost(this, interp_);
-    if (prof_ != nullptr) {
-        prof_->Stop("ghost_init");
-    }
+    m_profStop(prof_,"ghost_init");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -283,21 +278,18 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
-    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        if (prof_ != nullptr) {
-            prof_->Start("ghost_cmpt");
-        }
+        // get the mirror
+        m_profStart(prof_, "ghost_cmpt");
         ghost_->PushToMirror(field, ida);
-        if (prof_ != nullptr) {
-            prof_->Stop("ghost_cmpt");
-            prof_->Start("ghost_comm");
-        }
+        m_profStop(prof_, "ghost_cmpt");
+
+        // communicate
+        m_profStart(prof_, "ghost_comm");
         ghost_->MirrorToGhostSend(prof_);
-        if (prof_ != nullptr) {
-            prof_->Stop("ghost_comm");
-        }
+        m_profStop(prof_, "ghost_comm");
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -317,17 +309,13 @@ void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
-    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
-        if (prof_ != nullptr) {
-            prof_->Start("ghost_comm");
-        }
+        m_profStart(prof_, "ghost_comm");
         ghost_->MirrorToGhostRecv(prof_);
-        if (prof_ != nullptr) {
-            prof_->Stop("ghost_comm");
-        }
+        m_profStop(prof_, "ghost_comm");
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -348,17 +336,13 @@ void Grid::GhostPullFill(Field* field, const sid_t ida) {
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(interp_ != nullptr, "the inteprolator cannot be null");
-    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
         // receive the current communication, the mirrors are now free
-        if(prof_!=nullptr){
-            prof_->Start("ghost_cmpt");
-        }
+        m_profStart(prof_, "ghost_cmpt");
         ghost_->PullFromGhost(field, ida);
-        if (prof_ != nullptr) {
-            prof_->Stop("ghost_cmpt");
-        }
+        m_profStop(prof_, "ghost_cmpt");
     }
     //-------------------------------------------------------------------------
     m_end;

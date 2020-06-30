@@ -103,7 +103,7 @@ void Interpolator::DoMagic(const sid_t dlvl,const bool force_copy, const lid_t s
 
     // call the correct function
     if (dlvl == 0 || force_copy) {
-        m_assert(dlvl > 0, "the copy cannot be called with a negative dlvl argument");
+        m_assert(dlvl >= 0, "the copy cannot be called with a negative dlvl argument, dlvl = %d, force copy = %d",dlvl,force_copy);
         Copy_(dlvl,&ctx);
     }
     else if (dlvl == -1) {

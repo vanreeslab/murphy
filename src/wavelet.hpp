@@ -306,7 +306,7 @@ class Wavelet : public Interpolator {
             temp_[it] = reinterpret_cast<real_t*>(m_calloc(len_gs_ * len_gs_ * len_gs_ * sizeof(real_t)));
         }
 
-        m_log("Wavelet %d.%d with ga[%d], ha[%d],gs[%d], (%d,%d) ghosts needed", N, Nt, len_ga_, len_ha_, len_gs_, n_ghost_[M_WFRONT], n_ghost_[M_WBACK]);
+        m_log("Wavelet %d.%d with ga[%d], ha[%d], gs[%d], (%d,%d) ghosts needed", N, Nt, len_ga_, len_ha_, len_gs_, n_ghost_[M_WFRONT], n_ghost_[M_WBACK]);
         //-------------------------------------------------------------------------
     }
 
@@ -332,12 +332,12 @@ class Wavelet : public Interpolator {
     */
 
    public:
-    string Identity() const override { return "interpolating wavelet" + std::to_string(N) + "." + std::to_string(Nt); }
+    string Identity() const override { return "interpolating wavelet " + std::to_string(N) + "." + std::to_string(Nt); }
 
     lid_t NGhostCoarseFront() const override { return n_info_[M_WFRONT][M_WCOAR]; }
     lid_t NGhostCoarseBack() const override { return n_info_[M_WBACK][M_WCOAR]; }
-    lid_t NGhostFineFront() const override { return n_ghost_[M_WFRONT]; }
-    lid_t NGhostFineBack() const override { return n_ghost_[M_WBACK]; }
+    lid_t NGhostFineFront() const override { return n_ghost_[0]; }
+    lid_t NGhostFineBack() const override { return n_ghost_[1]; }
 
     real_t Criterion(MemLayout* block, real_p data) override;
 

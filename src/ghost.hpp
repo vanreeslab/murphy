@@ -46,6 +46,7 @@ class Ghost {
     level_t  min_level_     = -1;                  //!< minimum active level, min_level included
     level_t  max_level_     = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
     iblock_t n_active_quad_ = 0;                   //!< the number of quadrant that needs to have ghost informations
+    sid_t    nghost_[2]     = {0, 0};              //!< the number of ghost (front,back) that are actually needed
 
     // information that tracks which block is involved
     iblock_t  n_mirror_to_send_ = 0;        //!< get how many mirrors to send
@@ -53,10 +54,10 @@ class Ghost {
     iblock_t *local_to_mirrors  = nullptr;  //!< for each registered mirror to send, stores the p4est mirror id
     iblock_t *ghost_to_local_   = nullptr;  //!< for each p4est ghost block stores the local id of the ghost to recv
 
-    lid_t        n_send_request_   = 0;        //!< the number of send requests by level
-    lid_t        n_recv_request_   = 0;        //!< the number of receive requests by level
-    MPI_Request* mirror_send_      = nullptr;  //!< the send requests for the mirrors
-    MPI_Request *ghost_recv_       = nullptr;  //!< the receive requests for the ghosts
+    lid_t        n_send_request_ = 0;        //!< the number of send requests by level
+    lid_t        n_recv_request_ = 0;        //!< the number of receive requests by level
+    MPI_Request *mirror_send_    = nullptr;  //!< the send requests for the mirrors
+    MPI_Request *ghost_recv_     = nullptr;  //!< the receive requests for the ghosts
 
     real_t *mirrors_ = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
     real_t *ghosts_  = nullptr;  //!< memory space for the ghost blocks
@@ -74,14 +75,14 @@ class Ghost {
     list<PhysBlock *> ** phys_;            //!<  physical blocks
 
    public:
+    Ghost(ForestGrid *grid, Interpolator *interp);
     Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, Interpolator *interp);
-    Ghost(ForestGrid *grid, Interpolator *interp) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp){};
     ~Ghost();
 
     void PushToMirror(Field *field, const sid_t ida);
     void MirrorToGhostSend(Prof *prof);
     void MirrorToGhostRecv(Prof *prof);
-    void PullFromGhost(Field* field, const sid_t ida);
+    void PullFromGhost(Field *field, const sid_t ida);
 
     /**
      *  @name Execute on each block
@@ -92,21 +93,23 @@ class Ghost {
     void PushToMirror4Block(const qid_t *qid, GridBlock *block, Field *fid);
     void PullFromGhost4Block(const qid_t *qid, GridBlock *cur_block, Field *fid);
     /** @} */
-    // void PullFromGhost4Block_Children(const qid_t *qid, GridBlock *cur_block, Field *fid,
-    //                                  const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_Sibling(const qid_t *qid, GridBlock *cur_block, Field *fid,
-                                     const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_FromParent(const qid_t *qid, GridBlock *cur_block, Field *fid,
-                                        const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_Myself(const qid_t *qid, GridBlock *cur_block, Field *fid, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_ToParent(const qid_t *qid, GridBlock *cur_block, Field *fid,
-                                      SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    // void PullFromGhost4Block_Physics(const qid_t *qid, GridBlock *cur_block, PhysBlock *gblock, Field *fid, real_t hgrid[3], real_t *data);
 
    protected:
     void InitComm_();
     void LoopOnMirrorBlock_(const gop_t op, Field *field);
     void LoopOnGhostBlock_(const gop_t op, Field *field);
+
+     // void PullFromGhost4Block_Children(const qid_t *qid, GridBlock *cur_block, Field *fid,
+    //                                  const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
+    void PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block, Field *fid,
+                                     const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
+    void PullFromGhost4Block_FromParent_(const qid_t *qid, GridBlock *cur_block, Field *fid,
+                                        const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
+    void PullFromGhost4Block_Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid, SubBlock *coarse_block, real_t *coarse_mem);
+    void PullFromGhost4Block_ToParent_(const qid_t *qid, GridBlock *cur_block, Field *fid,
+                                      SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
+    // void PullFromGhost4Block_Physics(const qid_t *qid, GridBlock *cur_block, PhysBlock *gblock, Field *fid, real_t hgrid[3], real_t *data);
+
     // void CreateOnLevels_(ForestGrid *grid, Interpolator *interp, const level_t min_level, const level_t max_level);
 };
 

@@ -18,7 +18,7 @@ static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0},
 template <int npoint>
 class Boundary {
    public:
-   /**
+    /**
     * @brief has to be implemented by boundary condition classes
     * 
     * given the data values, builds a polynomial representation of the ghost points:
@@ -95,10 +95,10 @@ class Boundary {
                     }
                     // get the ghost point position
                     real_t pos[3];
-                    m_pos_relative(pos, i0, i1, i2 , hgrid);
+                    m_pos_relative(pos, i0, i1, i2, hgrid);
                     // if we have a negative normal, simply the position of the indexes
                     // if we have a positive normal, we need to substract 1
-                    
+
                     // get the ghost value
                     ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, pos[dir], hgrid[dir], fsign[dir], boundary_condition);
                 }
@@ -118,35 +118,21 @@ class OddBoundary_4 : public Boundary<3> {
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
 };
 
-/**
- * @brief applies an extrapolation boundary condition O(h^4) using a polynomial a x^3 + b x^2 + c x + d
- *
- */
 class ExtrapBoundary_4 : public Boundary<4> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
 };
-/**
- * @brief applies an extrapolation boundary condition O(h^3) using a polynomial a x^2 + b x + c
- */
+
 class ExtrapBoundary_3 : public Boundary<3> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
 };
-/**
- * @brief applies an extrapolation boundary condition O(h^5) using a polynomial a x^4 + b x^3 + c x^2 + d x + e
- */
+
 class ExtrapBoundary_5 : public Boundary<5> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
 };
 
-/**
- * @brief applies an UNBOUNDED bondary condition by extrapolation
- * ```
- * f(x) = a x^3 + b x^2 + c x + d = data;
- * ```
- */
 class ZeroBoundary : public Boundary<0> {
    protected:
     real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;

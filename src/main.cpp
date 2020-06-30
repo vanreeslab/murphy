@@ -51,11 +51,14 @@ int main(int argc, char** argv) {
         // SetSinus sinus = SetSinus(length,freq);
         // sinus(grid,vort);
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        // vort->bctype(M_BC_ODD);
+        vort->bctype(M_BC_ODD);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
 
+        grid->GhostPull(vort);
+
         IOH5 dump = IOH5("data");
+        dump.dump_ghost(true);
         dump(grid,vort);
 
         // init the MG solver

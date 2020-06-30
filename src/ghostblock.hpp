@@ -24,7 +24,7 @@ class GhostBlock : public SubBlock {
     };
 
    public:
-    GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3], const bool ngh_to_me);
+    GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3], const sid_t nghost[3], const bool ngh_to_me);
 
     // return arguments
     sid_t        dlvl() const { return dlvl_; }

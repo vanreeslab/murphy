@@ -14,9 +14,6 @@
  * The ghost are padded so that the array is aligned
  */
 static lid_t cgs(Interpolator* interp) {
-    // lid_t nghost    = (interp->NGhostCoarseFront() + 1);
-    // lid_t n_in_line = (M_ALIGNMENT / sizeof(real_t));
-    // nghost          = nghost + n_in_line - (nghost % n_in_line);
     return interp->NGhostCoarseFront();
 }
 /**
@@ -130,16 +127,30 @@ void CallGhostPullFromGhost(const qid_t* qid, GridBlock* block, Field* fid, Ghos
 }
 
 /**
- * @brief Construct a new Ghost given a ForestGrid and an interpolator, allocate the ghost lists and initiates the communications
+ * @brief Construct a new Ghost object 
+ * 
+ * see Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp) for details
+ * 
+ * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
+ * @param interp the interpolator to use, will drive the number of ghost points to consider
+ */
+Ghost::Ghost(ForestGrid* grid, Interpolator* interp) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp) {
+    // simply call the detailed constructor
+}
+
+/**
+ * @brief Construct a new Ghost, allocate the ghost lists and initiates the communications
  * 
  * Once created, the ghost is fixed for a given grid. if the grid changes, a new Ghost objects has to be created.
  * 
- * @note: The Interpolator has to be given beforehands because the output of Interpolator::NGhostCoarse() drives the coarse block allocation
+ * @note: The Interpolator has to be given beforehands because the it drives the number of actual GP to consider.
+ * While for memory performances, the number of ghost points is given by M_GS, the wavelet does not require that many ghost points to
+ * be computed. To reduce the memory cost, only the needed ghost points will be computed.
  * 
- * @param grid 
- * @param interp 
- * @param min_level 
- * @param max_level
+ * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
+ * @param min_level the minimum level on which the GP are initiated
+ * @param max_level the maximum level on which the GP are initiated
+ * @param interp the interpolator to use, will drive the number of ghost points to consider
  */
 Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp) {
     m_begin;
@@ -153,6 +164,12 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     // store the level information
     min_level_ = m_max(min_level, 0);
     max_level_ = m_min(max_level, P8EST_QMAXLEVEL);
+
+    // store the number of ghosts needed
+    nghost_[0] = interp_->NGhostFineFront();
+    nghost_[1] = interp_->NGhostFineBack();
+    m_assert(nghost_[0] <= M_GS,"The memory for the ghost points is too small: M_GS = %d vs nghost = %d",M_GS,nghost_[0]);
+    m_assert(nghost_[1] <= M_GS,"The memory for the ghost points is too small: M_GS = %d vs nghost = %d",M_GS,nghost_[1]);
 
     // initialize the communications and the mirrors, ghosts arrays
     InitComm_();
@@ -181,7 +198,7 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
         ghost_parent_[ib]   = new list<GhostBlock*>();
         phys_[ib]           = new list<PhysBlock*>();
     }
-    // init the list on every active block
+    // init the list on every active block that matches the level requirements
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, nullptr_t>, Ghost*, nullptr_t>(CallGhostInitList, grid, il, nullptr, this);
     }
@@ -193,8 +210,7 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
         coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * cstride(interp_) * cstride(interp_) * cstride(interp_)));
     }
     //-------------------------------------------------------------------------
-    // m_log("ghost initialized with interpolator: %s -> %f percent of ghost comm not needed",interp_->Identity().c_str(),100.0*pow((M_N-2*cgs(interp_))/((real_t)M_N),3));
-    m_log("ghost initialized with %s", interp_->Identity().c_str());
+    m_log("ghost initialized with %s, nghost = %d %d", interp_->Identity().c_str(),nghost_[0],nghost_[1]);
     m_end;
 }
 
@@ -567,6 +583,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
 
             // get the position of the neighbor, as seen by me!!! may be different than the actual one if there is a periodic bc
             real_t ngh_pos[3];
+            sid_t  nghost[3];
             if (!isghost) {
                 // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
                 GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
@@ -588,9 +605,12 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 const real_t expected_pos = block->xyz(id) + (sign[id] > 0.5) * m_quad_len(block->level()) - (sign[id] < -0.5) * m_quad_len(nghq->level);
                 // we override the position if a replacement is needed only
                 ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
+
+                // set the number of ghost to compute
+                nghost[id] = nghost_[m_max(int(sign[id]), 0)];
             }
             // create the new block
-            GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos, true);
+            GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos, nghost, true);
 
             // associate the correct memory and push back
             if (!isghost) {
@@ -601,7 +621,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 if (gb->dlvl() == 1) {
                     // create the new block
                     // GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos);
-// #pragma omp critical
+                    // #pragma omp critical
                     // bchildren->push_back(gb);
                 } else if (gb->dlvl() == 0) {
 #pragma omp critical
@@ -610,7 +630,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
                     bparent->push_back(gb);
                     // get my contribution to the ghost of my parent
-                    GhostBlock* invert_gb = new GhostBlock(block, nghq->level, ngh_pos, false);
+                    GhostBlock* invert_gb = new GhostBlock(block, nghq->level, ngh_pos, nghost, false);
                     bchildren->push_back(invert_gb);
                 } else {
                     m_assert(false, "The delta level is not correct: %d", gb->dlvl());
@@ -707,11 +727,11 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     }
 
     // first, treat the siblings -> will copy to the ghost location + copy to the temp
-    PullFromGhost4Block_Sibling(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
+    PullFromGhost4Block_Sibling_(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
 
     // do a coarse version of myself and complete with some physics if needed
     if (do_coarse) {
-        PullFromGhost4Block_Myself(qid, cur_block, fid, coarse_subblock, tmp);
+        PullFromGhost4Block_Myself_(qid, cur_block, fid, coarse_subblock, tmp);
         // reset the coarse sublock to the full position
         for (int id = 0; id < 3; id++) {
             coarse_start[id] = -cgs(interp_);
@@ -720,7 +740,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
     }
     // then, treat the parents -> copy to the temp
-    PullFromGhost4Block_FromParent(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
+    PullFromGhost4Block_FromParent_(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
 
     // //-------------------------------------------------------------------------
     // // do the blocks, on my level or finer
@@ -826,7 +846,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     // interpolate the ghost representation on myself
     
     // need to put the ghost to my parent's place
-    PullFromGhost4Block_ToParent(qid, cur_block, fid, ghost_subblock, coarse_subblock, tmp);
+    PullFromGhost4Block_ToParent_(qid, cur_block, fid, ghost_subblock, coarse_subblock, tmp);
 
     //-------------------------------------------------------------------------
     // finally do some physics
@@ -853,7 +873,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
             ZeroBoundary bc = ZeroBoundary();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
         } else {
-            m_assert(false, "this type of BC is not implemented yet");
+            m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
         }
     }
     delete (ghost_subblock);
@@ -934,7 +954,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     // //-------------------------------------------------------------------------
 // }
 
-void Ghost::PullFromGhost4Block_Sibling(const qid_t *qid, GridBlock *cur_block, Field *fid,
+void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block, Field *fid,
                                               const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem){
     //-------------------------------------------------------------------------
     lid_t coarse_start[3];
@@ -1005,7 +1025,7 @@ void Ghost::PullFromGhost4Block_Sibling(const qid_t *qid, GridBlock *cur_block, 
     //-------------------------------------------------------------------------
 }
 
-void Ghost::PullFromGhost4Block_FromParent(const qid_t* qid, GridBlock* cur_block, Field* fid,
+void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_block, Field* fid,
                                            const bool do_coarse, SubBlock* ghost_block, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
     lid_t coarse_start[3];
@@ -1073,7 +1093,7 @@ void Ghost::PullFromGhost4Block_FromParent(const qid_t* qid, GridBlock* cur_bloc
     //-------------------------------------------------------------------------
 }
 
-void Ghost::PullFromGhost4Block_Myself(const qid_t* qid, GridBlock* cur_block, Field* fid, SubBlock* coarse_block, real_t* coarse_mem) {
+void Ghost::PullFromGhost4Block_Myself_(const qid_t* qid, GridBlock* cur_block, Field* fid, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
     lid_t coarse_start[3];
     lid_t coarse_end[3];
@@ -1132,13 +1152,13 @@ void Ghost::PullFromGhost4Block_Myself(const qid_t* qid, GridBlock* cur_block, F
             ZeroBoundary bc = ZeroBoundary();
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
         } else {
-            m_assert(false, "this type of BC is not implemented yet %d", bctype);
+            m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
         }
         //-------------------------------------------------------------------------
     }
 }
 
-void Ghost::PullFromGhost4Block_ToParent(const qid_t* qid, GridBlock* cur_block, Field* fid,
+void Ghost::PullFromGhost4Block_ToParent_(const qid_t* qid, GridBlock* cur_block, Field* fid,
                                          SubBlock* ghost_block, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
     lid_t coarse_start[3];
