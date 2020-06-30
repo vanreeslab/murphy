@@ -24,14 +24,14 @@ class GhostBlock : public SubBlock {
     };
 
    public:
+    GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3], const bool ngh_to_me);
+
+    // return arguments
     sid_t        dlvl() const { return dlvl_; }
     lid_t        shift(const int id) const { return shift_[id]; }
     const lid_t* shift() const { return shift_; }
-
-    real_p     data_src() { return data_src_; }
-    GridBlock* block_src() { return block_src_; }
-
-    GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3]) ;
+    real_p       data_src() { return data_src_; }
+    GridBlock*   block_src() { return block_src_; }
 
     void data_src(real_p data) { data_src_ = data; }
     void block_src(GridBlock* block) { block_src_ = block; }

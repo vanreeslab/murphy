@@ -12,7 +12,6 @@
 class PhysBlock : public SubBlock {
    protected:
     sid_t iface_;  //!< ID of the normal to the face
-
    public:
     sid_t iface() { return iface_; }
     sid_t dir() { return iface_ / 2; }

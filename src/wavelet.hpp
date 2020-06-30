@@ -78,11 +78,11 @@
 template <int N, int Nt>
 class Wavelet : public Interpolator {
    protected:
-    sid_t len_ha_    = 0;
-    sid_t len_ga_    = 0;
-    sid_t len_gs_    = 0;
+    sid_t len_ha_ = 0;
+    sid_t len_ga_ = 0;
+    sid_t len_gs_ = 0;
 
-    sid_t n_ghost_[2]      = {0, 0};            //!< number of ghost for a block: i.e. [front: normal = -1, back: normal=+1]
+    sid_t n_ghost_[2]   = {0, 0};            //!< number of ghost for a block: i.e. [front: normal = -1, back: normal=+1]
     sid_t n_info_[2][2] = {{0, 0}, {0, 0}};  //!< for each block side, the number of coarse points and fine points needed
     // standard filters
     real_t* ha_ = nullptr;  //!< scaling analysis: 1 level coarsening
@@ -108,8 +108,8 @@ class Wavelet : public Interpolator {
             len_ga_ = 3;
             len_gs_ = 2;
             // number of ghosts
-            n_ghost_[M_WFRONT]            = 2;  // total number of ghost @ front
-            n_ghost_[M_WBACK]             = 1;  // total number of ghost @ back
+            n_ghost_[M_WFRONT]         = 2;  // total number of ghost @ front
+            n_ghost_[M_WBACK]          = 1;  // total number of ghost @ back
             n_info_[M_WFRONT][M_WCOAR] = 1;  // front, n_coarse
             n_info_[M_WFRONT][M_WFINE] = 3;  // front, n_fine
             n_info_[M_WBACK][M_WCOAR]  = 0;  // back, n_coarse
@@ -120,20 +120,20 @@ class Wavelet : public Interpolator {
             len_ga_ = 7;
             len_gs_ = 4;
             // number of ghosts
-            n_ghost_[M_WFRONT]            = 2;
-            n_ghost_[M_WBACK]             = 3;
+            n_ghost_[M_WFRONT]         = 2;
+            n_ghost_[M_WBACK]          = 3;
             n_info_[M_WFRONT][M_WCOAR] = 2;  // front, n_coarse
             n_info_[M_WFRONT][M_WFINE] = 3;  // front, n_fine
             n_info_[M_WBACK][M_WCOAR]  = 3;  // back, n_coarse
             n_info_[M_WBACK][M_WFINE]  = 2;  // back, n_fine
         } else if (N == 4 && Nt == 2) {
             // length of the filters
-            len_ha_   = 9;
-            len_ga_   = 7;
-            len_gs_   = 4;
+            len_ha_ = 9;
+            len_ga_ = 7;
+            len_gs_ = 4;
             // number of ghosts
-            n_ghost_[0]      = 4;
-            n_ghost_[1]      = 3;
+            n_ghost_[0]   = 4;
+            n_ghost_[1]   = 3;
             n_info_[0][0] = 3;  // front, n_coarse
             n_info_[0][1] = 7;  // front, n_fine
             n_info_[1][0] = 3;  // back, n_coarse
@@ -143,9 +143,9 @@ class Wavelet : public Interpolator {
         }
 
         // allocate the memory for the filters
-        ha_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_));
-        ga_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ga_));
-        gs_   = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_gs_));
+        ha_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ha_));
+        ga_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_ga_));
+        gs_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * len_gs_));
         // ha_   = ha_ + len_ha_ / 2;
         // ga_   = ga_ + len_ga_ / 2;
         // gs_   = gs_ + len_gs_ / 2 - 1;
@@ -176,13 +176,13 @@ class Wavelet : public Interpolator {
             // ha
             ha_[0] = -1.0 / 8.0;
             ha_[1] = +1.0 / 4.0;
-            ha_[2]  = +3.0 / 4.0;
-            ha_[3]  = +1.0 / 4.0;
-            ha_[4]  = -1.0 / 8.0;
+            ha_[2] = +3.0 / 4.0;
+            ha_[3] = +1.0 / 4.0;
+            ha_[4] = -1.0 / 8.0;
             // ga
             ga_[0] = -1.0 / 2.0;
-            ga_[1]  = +1.0;
-            ga_[2]  = -1.0 / 2.0;
+            ga_[1] = +1.0;
+            ga_[2] = -1.0 / 2.0;
             // gs
             gs_[0] = +1.0 / 2.0;
             gs_[1] = +1.0 / 2.0;
@@ -202,18 +202,18 @@ class Wavelet : public Interpolator {
             // ha
             ha_[0] = 1.0;
             // ga
-            ga_[-3] = 1.0 / 16.0;
-            ga_[-2] = 0.0;
-            ga_[-1] = -9.0 / 16.0;
-            ga_[0]  = +1.0;
-            ga_[1]  = -9.0 / 16.0;
-            ga_[2]  = 0.0;
-            ga_[3]  = 1.0 / 16.0;
+            ga_[0] = 1.0 / 16.0;
+            ga_[1] = 0.0;
+            ga_[2] = -9.0 / 16.0;
+            ga_[3] = +1.0;
+            ga_[4] = -9.0 / 16.0;
+            ga_[5] = 0.0;
+            ga_[6] = 1.0 / 16.0;
             // gs
-            gs_[-1] = -1.0 / 16.0;
-            gs_[0]  = 9.0 / 16.0;
-            gs_[1]  = 9.0 / 16.0;
-            gs_[2]  = -1.0 / 16.0;
+            gs_[0] = -1.0 / 16.0;
+            gs_[1] = 9.0 / 16.0;
+            gs_[2] = 9.0 / 16.0;
+            gs_[3] = -1.0 / 16.0;
             // modified filters
             sid_t ig = 0;
             // front coarse
@@ -232,28 +232,28 @@ class Wavelet : public Interpolator {
             gs_g_[M_WBACK][M_WFINE][ig][1] = 0.0;
         } else if (N == 4 && Nt == 2) {
             // ha
-            ha_[-4] = +1.0 / 64.0;
-            ha_[-3] = 0.0;
-            ha_[-2] = -1.0 / 8.0;
-            ha_[-1] = +1.0 / 4.0;
-            ha_[0]  = +23.0 / 32.0;
-            ha_[1]  = +1.0 / 4.0;
-            ha_[2]  = -1.0 / 8.0;
-            ha_[3]  = 0.0;
-            ha_[4]  = +1.0 / 64.0;
+            ha_[0] = +1.0 / 64.0;
+            ha_[1] = 0.0;
+            ha_[2] = -1.0 / 8.0;
+            ha_[3] = +1.0 / 4.0;
+            ha_[4] = +23.0 / 32.0;
+            ha_[5] = +1.0 / 4.0;
+            ha_[6] = -1.0 / 8.0;
+            ha_[7] = 0.0;
+            ha_[8] = +1.0 / 64.0;
             // ga
-            ga_[-3] = 1.0 / 16.0;
-            ga_[-2] = 0.0;
-            ga_[-1] = -9.0 / 16.0;
-            ga_[0]  = +1.0;
-            ga_[1]  = -9.0 / 16.0;
-            ga_[2]  = 0.0;
-            ga_[3]  = 1.0 / 16.0;
+            ga_[0] = 1.0 / 16.0;
+            ga_[1] = 0.0;
+            ga_[2] = -9.0 / 16.0;
+            ga_[3] = +1.0;
+            ga_[4] = -9.0 / 16.0;
+            ga_[5] = 0.0;
+            ga_[6] = 1.0 / 16.0;
             // gs
-            gs_[-1] = -1.0 / 16.0;
-            gs_[0]  = 9.0 / 16.0;
-            gs_[1]  = 9.0 / 16.0;
-            gs_[2]  = -1.0 / 16.0;
+            gs_[0] = -1.0 / 16.0;
+            gs_[1] = 9.0 / 16.0;
+            gs_[2] = 9.0 / 16.0;
+            gs_[3] = -1.0 / 16.0;
             // modified filters
             // ghost 0
             sid_t ig = 0;
@@ -326,19 +326,40 @@ class Wavelet : public Interpolator {
         m_end;
     }
 
-    real_t Criterion(MemLayout* block, real_p data) override;
-    void   Details(MemLayout* block, real_p data, real_t* criterion);
+    /*
+    * @name function overriding Interpolator class
+    * @{
+    */
 
-    string Identity() override { return "interpolating wavelet" + std::to_string(N) + "." + std::to_string(Nt); }
-    lid_t  NGhostCoarse() const override { return (N + Nt) / 2 - 1; }
-    lid_t  NGhostFine() const override { return N + Nt - 2; }
+   public:
+    string Identity() const override { return "interpolating wavelet" + std::to_string(N) + "." + std::to_string(Nt); }
+
+    lid_t NGhostCoarseFront() const override { return n_info_[M_WFRONT][M_WCOAR]; }
+    lid_t NGhostCoarseBack() const override { return n_info_[M_WBACK][M_WCOAR]; }
+    lid_t NGhostFineFront() const override { return n_ghost_[M_WFRONT]; }
+    lid_t NGhostFineBack() const override { return n_ghost_[M_WBACK]; }
+
+    real_t Criterion(MemLayout* block, real_p data) override;
 
    protected:
-    void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl)  override;
-    void Refine_(const interp_ctx_t* ctx)  override;
-    void RefineGhost_(const interp_ctx_t* ctx)  override;
-    void Copy_(const interp_ctx_t* ctx)  override;
-    void Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) ;
+    void Coarsen_(const interp_ctx_t* ctx) override;
+    void Refine_(const interp_ctx_t* ctx) override;
+    void Copy_(const sid_t dlvl, const interp_ctx_t* ctx) override;
+    /* @}*/
+
+    /*
+    * @name implementation specific function
+    * @{
+    */
+   public:
+    void Details(MemLayout* block, real_p data, real_t* criterion);
+
+   protected:
+    void Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm);
+
+    /* @}*/
+
+    // void RefineGhost_(const interp_ctx_t* ctx)  override;
 };
 
 #endif  // SRC_WAVELET_HPP_

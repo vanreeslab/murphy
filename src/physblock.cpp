@@ -16,7 +16,7 @@ PhysBlock::PhysBlock(const sid_t iface, MemLayout* block) {
 
     for (int id = 0; id < 3; id++) {
         start_[id] = -block->gs();
-        end_[id]   = block->stride()-block->gs();
+        end_[id]   = block->stride() - block->gs();
     }
 
     // store the face ID
@@ -25,9 +25,10 @@ PhysBlock::PhysBlock(const sid_t iface, MemLayout* block) {
     // overwrite in the face direction
     const sid_t dir  = iface_ / 2;
     const sid_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus
-    // see definition of Boundary for acessing
-    start_[dir] = (sign == 0) ? (-block->gs()) : 1;
-    end_[dir]   = start_[dir] + block->gs();
+    // see definition of @ref face_start
+    // if we go minus, we need to overwrite the first point as it sits on the boundary
+    start_[dir] = (sign == 0) ? (-block->gs()) : 0;
+    end_[dir]   = start_[dir] + block->gs() + (sign == 0) ? 1 : 0;
 
     //-------------------------------------------------------------------------
 }
