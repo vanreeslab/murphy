@@ -106,6 +106,7 @@ Grid::~Grid() {
     //-------------------------------------------------------------------------
     // destroy the interpolator and the details they are mine
     if (interp_ != nullptr) {
+        m_log("dealloc the interp");
         delete (interp_);
     }
     // destroy the ghosts, they are mine as well

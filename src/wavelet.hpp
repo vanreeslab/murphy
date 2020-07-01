@@ -152,24 +152,24 @@ class Wavelet : public Interpolator {
         // ha_2_ = ha_2_ + len_ha_2_ / 2;
 
         // ghost modified filters, only used for n_ghost/2 detail points
-        sid_t n_ghost_det = n_ghost_[M_WFRONT] / 2;
-        if (n_ghost_det > 0) {
-            gs_g_[M_WFRONT][M_WCOAR] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
-            gs_g_[M_WFRONT][M_WFINE] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
-            for (sid_t ig = 0; ig < n_ghost_det; ig++) {
-                gs_g_[M_WFRONT][M_WCOAR][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WFRONT][M_WCOAR]));
-                gs_g_[M_WFRONT][M_WFINE][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WFRONT][M_WFINE]));
-            }
-        }
-        n_ghost_det = n_ghost_[M_WBACK] / 2;
-        if (n_ghost_det > 0) {
-            gs_g_[M_WBACK][M_WCOAR] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
-            gs_g_[M_WBACK][M_WFINE] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
-            for (sid_t ig = 0; ig < n_ghost_det; ig++) {
-                gs_g_[M_WBACK][M_WCOAR][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WBACK][M_WCOAR]));
-                gs_g_[M_WBACK][M_WFINE][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WBACK][M_WFINE]));
-            }
-        }
+        // sid_t n_ghost_det = n_ghost_[M_WFRONT] / 2;
+        // if (n_ghost_det > 0) {
+        //     gs_g_[M_WFRONT][M_WCOAR] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
+        //     gs_g_[M_WFRONT][M_WFINE] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
+        //     for (sid_t ig = 0; ig < n_ghost_det; ig++) {
+        //         gs_g_[M_WFRONT][M_WCOAR][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WFRONT][M_WCOAR]));
+        //         gs_g_[M_WFRONT][M_WFINE][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WFRONT][M_WFINE]));
+        //     }
+        // }
+        // n_ghost_det = n_ghost_[M_WBACK] / 2;
+        // if (n_ghost_det > 0) {
+        //     gs_g_[M_WBACK][M_WCOAR] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
+        //     gs_g_[M_WBACK][M_WFINE] = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * n_ghost_det));
+        //     for (sid_t ig = 0; ig < n_ghost_det; ig++) {
+        //         gs_g_[M_WBACK][M_WCOAR][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WBACK][M_WCOAR]));
+        //         gs_g_[M_WBACK][M_WFINE][ig] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * n_info_[M_WBACK][M_WFINE]));
+        //     }
+        // }
 
         // get the correct lifting filter given N
         if (N == 2 && Nt == 2) {
@@ -187,17 +187,17 @@ class Wavelet : public Interpolator {
             gs_[0] = +1.0 / 2.0;
             gs_[1] = +1.0 / 2.0;
             // modified filters - detail ghost 0
-            sid_t ig = 0;
+            // sid_t ig = 0;
             // front coarse
-            gs_g_[M_WFRONT][M_WCOAR][ig][0] = 1.0 / 2.0;
-            // front fine
-            gs_g_[M_WFRONT][M_WFINE][ig][0] = 3.0 / 7.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][1] = 1.0 / 7.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][2] = -1.0 / 14.0;
-            // back coarse
-            gs_g_[M_WBACK][M_WCOAR] = nullptr;
-            // back fine
-            gs_g_[M_WBACK][M_WFINE] = nullptr;
+            // gs_g_[M_WFRONT][M_WCOAR][ig][0] = 1.0 / 2.0;
+            // // front fine
+            // gs_g_[M_WFRONT][M_WFINE][ig][0] = 3.0 / 7.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][1] = 1.0 / 7.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][2] = -1.0 / 14.0;
+            // // back coarse
+            // gs_g_[M_WBACK][M_WCOAR] = nullptr;
+            // // back fine
+            // gs_g_[M_WBACK][M_WFINE] = nullptr;
         } else if (N == 4 && Nt == 0) {
             // ha
             ha_[0] = 1.0;
@@ -214,22 +214,22 @@ class Wavelet : public Interpolator {
             gs_[1] = 9.0 / 16.0;
             gs_[2] = 9.0 / 16.0;
             gs_[3] = -1.0 / 16.0;
-            // modified filters
-            sid_t ig = 0;
-            // front coarse
-            gs_g_[M_WFRONT][M_WCOAR][ig][0] = -1.0 / 16.0;
-            gs_g_[M_WFRONT][M_WCOAR][ig][1] = 9.0 / 16.0;
-            // front fine
-            gs_g_[M_WFRONT][M_WFINE][ig][0] = 9.0 / 16.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][1] = 0.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][2] = -1.0 / 16.0;
-            // back coarse
-            gs_g_[M_WBACK][M_WCOAR][ig][0] = 9.0 / 16.0;
-            gs_g_[M_WBACK][M_WCOAR][ig][1] = 9.0 / 16.0;
-            gs_g_[M_WBACK][M_WCOAR][ig][1] = -1.0 / 16.0;
-            // back fine
-            gs_g_[M_WBACK][M_WFINE][ig][0] = -1.0 / 16.0;
-            gs_g_[M_WBACK][M_WFINE][ig][1] = 0.0;
+            // // modified filters
+            // sid_t ig = 0;
+            // // front coarse
+            // gs_g_[M_WFRONT][M_WCOAR][ig][0] = -1.0 / 16.0;
+            // gs_g_[M_WFRONT][M_WCOAR][ig][1] = 9.0 / 16.0;
+            // // front fine
+            // gs_g_[M_WFRONT][M_WFINE][ig][0] = 9.0 / 16.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][1] = 0.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][2] = -1.0 / 16.0;
+            // // back coarse
+            // gs_g_[M_WBACK][M_WCOAR][ig][0] = 9.0 / 16.0;
+            // gs_g_[M_WBACK][M_WCOAR][ig][1] = 9.0 / 16.0;
+            // gs_g_[M_WBACK][M_WCOAR][ig][1] = -1.0 / 16.0;
+            // // back fine
+            // gs_g_[M_WBACK][M_WFINE][ig][0] = -1.0 / 16.0;
+            // gs_g_[M_WBACK][M_WFINE][ig][1] = 0.0;
         } else if (N == 4 && Nt == 2) {
             // ha
             ha_[0] = +1.0 / 64.0;
@@ -254,48 +254,48 @@ class Wavelet : public Interpolator {
             gs_[1] = 9.0 / 16.0;
             gs_[2] = 9.0 / 16.0;
             gs_[3] = -1.0 / 16.0;
-            // modified filters
-            // ghost 0
-            sid_t ig = 0;
-            // front coarse
-            gs_g_[M_WFRONT][M_WCOAR][ig][0] = -1.0 / 16.0;
-            gs_g_[M_WFRONT][M_WCOAR][ig][1] = 9.0 / 16.0;
-            gs_g_[M_WFRONT][M_WCOAR][ig][2] = 439.0 / 782.0;  // from python: 31617/56320
-            // front fine
-            gs_g_[M_WFRONT][M_WFINE][ig][0] = -369.0 / 7040.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][1] = -63.0 / 3520.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][2] = 44.0 / 4441.0;  // from python 279/28160
-            gs_g_[M_WFRONT][M_WFINE][ig][3] = 1.0 / 3520.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][4] = -9.0 / 7040.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][5] = 0.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][6] = 1.0 / 56320.0;
-            // ghost 1
-            ig = 1;
-            // front coarse
-            gs_g_[M_WFRONT][M_WCOAR][ig][0] = 0.0;
-            gs_g_[M_WFRONT][M_WCOAR][ig][1] = -1.0 / 16.0;
-            gs_g_[M_WFRONT][M_WCOAR][ig][2] = 503.0 / 880.0;
-            // front fine
-            gs_g_[M_WFRONT][M_WFINE][ig][0] = 211 / 440;
-            gs_g_[M_WFRONT][M_WFINE][ig][1] = 8 / 55;
-            gs_g_[M_WFRONT][M_WFINE][ig][2] = -59.0 / 440.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][3] = -1.0 / 55.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][4] = 17.0 / 880.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][5] = 0.0;
-            gs_g_[M_WFRONT][M_WFINE][ig][6] = -1.0 / 880.0;
-            // ghost 0
-            ig = 0;
-            // back coarse
-            gs_g_[M_WBACK][M_WCOAR][ig][0] = 73.0 / 128.0;
-            gs_g_[M_WBACK][M_WCOAR][ig][1] = 575.0 / 1024.0;
-            gs_g_[M_WBACK][M_WCOAR][ig][1] = -1.0 / 16.0;
-            // back fine
-            gs_g_[M_WBACK][M_WFINE][ig][0] = -1.0 / 1024.0;
-            gs_g_[M_WBACK][M_WFINE][ig][1] = 0.0;
-            gs_g_[M_WBACK][M_WFINE][ig][2] = 1.0 / 128.0;
-            gs_g_[M_WBACK][M_WFINE][ig][3] = -1.0 / 64.0;
-            gs_g_[M_WBACK][M_WFINE][ig][4] = -23.0 / 512.0;
-            gs_g_[M_WBACK][M_WFINE][ig][5] = -1.0 / 64.0;
+            // // modified filters
+            // // ghost 0
+            // sid_t ig = 0;
+            // // front coarse
+            // gs_g_[M_WFRONT][M_WCOAR][ig][0] = -1.0 / 16.0;
+            // gs_g_[M_WFRONT][M_WCOAR][ig][1] = 9.0 / 16.0;
+            // gs_g_[M_WFRONT][M_WCOAR][ig][2] = 439.0 / 782.0;  // from python: 31617/56320
+            // // front fine
+            // gs_g_[M_WFRONT][M_WFINE][ig][0] = -369.0 / 7040.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][1] = -63.0 / 3520.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][2] = 44.0 / 4441.0;  // from python 279/28160
+            // gs_g_[M_WFRONT][M_WFINE][ig][3] = 1.0 / 3520.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][4] = -9.0 / 7040.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][5] = 0.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][6] = 1.0 / 56320.0;
+            // // ghost 1
+            // ig = 1;
+            // // front coarse
+            // gs_g_[M_WFRONT][M_WCOAR][ig][0] = 0.0;
+            // gs_g_[M_WFRONT][M_WCOAR][ig][1] = -1.0 / 16.0;
+            // gs_g_[M_WFRONT][M_WCOAR][ig][2] = 503.0 / 880.0;
+            // // front fine
+            // gs_g_[M_WFRONT][M_WFINE][ig][0] = 211 / 440;
+            // gs_g_[M_WFRONT][M_WFINE][ig][1] = 8 / 55;
+            // gs_g_[M_WFRONT][M_WFINE][ig][2] = -59.0 / 440.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][3] = -1.0 / 55.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][4] = 17.0 / 880.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][5] = 0.0;
+            // gs_g_[M_WFRONT][M_WFINE][ig][6] = -1.0 / 880.0;
+            // // ghost 0
+            // ig = 0;
+            // // back coarse
+            // gs_g_[M_WBACK][M_WCOAR][ig][0] = 73.0 / 128.0;
+            // gs_g_[M_WBACK][M_WCOAR][ig][1] = 575.0 / 1024.0;
+            // gs_g_[M_WBACK][M_WCOAR][ig][1] = -1.0 / 16.0;
+            // // back fine
+            // gs_g_[M_WBACK][M_WFINE][ig][0] = -1.0 / 1024.0;
+            // gs_g_[M_WBACK][M_WFINE][ig][1] = 0.0;
+            // gs_g_[M_WBACK][M_WFINE][ig][2] = 1.0 / 128.0;
+            // gs_g_[M_WBACK][M_WFINE][ig][3] = -1.0 / 64.0;
+            // gs_g_[M_WBACK][M_WFINE][ig][4] = -23.0 / 512.0;
+            // gs_g_[M_WBACK][M_WFINE][ig][5] = -1.0 / 64.0;
         } else {
             m_assert(false, "wavelet N=%d.Nt=%d not implemented yet", N, Nt);
         }

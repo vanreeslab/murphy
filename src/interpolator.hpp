@@ -50,6 +50,9 @@ using std::string;
  */
 class Interpolator {
    public:
+    // need to define the destructor as virtual to be sure to go by the implemented destructor
+    virtual ~Interpolator(){};
+
     /**
     * @brief returns a positive, single value that represents a refinement/coarsening criterion
     * 

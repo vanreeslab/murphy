@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
         grid->Adapt(&argument.patch_);
         // create a field
         Field* vort = new Field("vorticity", 3);
-        Field* psi  = new Field("psi", 3);
-        Field* res  = new Field("residual", 3);
+        // Field* psi  = new Field("psi", 3);
+        // Field* res  = new Field("residual", 3);
         // // register the field to the grid
         grid->AddField(vort);
         // grid->AddField(psi);
@@ -69,8 +69,8 @@ int main(int argc, char** argv) {
 
         // and destroy the grid and the field
         delete (vort);
-        delete (psi);
-        delete (res);
+        // delete (psi);
+        // delete (res);
         // delete (poisson);
         delete (grid);
     }

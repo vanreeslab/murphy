@@ -375,7 +375,7 @@ void Ghost::PullFromGhost(Field* field, const sid_t ida) {
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current dimension
-    ida_      = ida;
+    ida_ = ida;
     // interpolate
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGhostPullFromGhost, grid_, il, field, this);
@@ -631,6 +631,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     bparent->push_back(gb);
                     // get my contribution to the ghost of my parent
                     GhostBlock* invert_gb = new GhostBlock(block, nghq->level, ngh_pos, nghost, false);
+#pragma omp critical
                     bchildren->push_back(invert_gb);
                 } else {
                     m_assert(false, "The delta level is not correct: %d", gb->dlvl());

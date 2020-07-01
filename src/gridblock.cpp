@@ -60,8 +60,8 @@ real_p GridBlock::data(Field* fid) {
 real_p GridBlock::data(const Field* fid, const sid_t ida) {
 #ifndef NDEBUG
     // check the field validity
-    datamap_t::iterator it = data_map_.find(fid->name());
-    m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
+    auto it = data_map_.find(fid->name());
+    m_assert(it != data_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     // check the alignment in memory
     real_p data = it->second + m_zeroidx(ida, this);
     m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);

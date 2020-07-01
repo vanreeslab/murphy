@@ -25,10 +25,9 @@ PhysBlock::PhysBlock(const sid_t iface, MemLayout* block) {
     // overwrite in the face direction
     const sid_t dir  = iface_ / 2;
     const sid_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus
-    // see definition of @ref face_start
+    // the start and end is defined wrt @ref face_start
     // if we go minus, we need to overwrite the first point as it sits on the boundary
     start_[dir] = (sign == 0) ? (-block->gs()) : 0;
-    end_[dir]   = start_[dir] + block->gs() + (sign == 0) ? 1 : 0;
-
+    end_[dir]   = start_[dir] + block->gs() + ((sign == 0) ? 1 : 0);
     //-------------------------------------------------------------------------
 }
