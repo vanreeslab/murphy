@@ -73,16 +73,36 @@ class Interpolator {
     * @brief returns a string identifying the operator
     */
     virtual string Identity() const = 0;
+    // /**
+    // * @brief returns how many coarse points are needed for the computation of a fine ghost values (front and back)
+    // */
+    // virtual lid_t NGhostCoarseFront() const = 0;
+    // virtual lid_t NGhostCoarseBack() const  = 0;
+    // /**
+    // * @brief returns how many ghost points are needed for a block (front and back)
+    // */
+    // virtual lid_t NGhostFineFront() const = 0;
+    // virtual lid_t NGhostFineBack() const  = 0;
+    
     /**
-    * @brief returns how many coarse points are needed for the computation of a fine ghost values (front and back)
-    */
-    virtual lid_t NGhostCoarseFront() const = 0;
-    virtual lid_t NGhostCoarseBack() const  = 0;
+     * @name filter length
+     * @{
+     */
+    virtual lid_t ncoarsen_front() const   = 0;
+    virtual lid_t ncriterion_front() const = 0;
+    virtual lid_t nrefine_front() const    = 0;
+    virtual lid_t ncoarsen_back() const   = 0;
+    virtual lid_t ncriterion_back() const = 0;
+    virtual lid_t nrefine_back() const    = 0;
+    /** @} */
+
     /**
-    * @brief returns how many ghost points are needed for a block (front and back)
-    */
-    virtual lid_t NGhostFineFront() const = 0;
-    virtual lid_t NGhostFineBack() const  = 0;
+     * @name ghost length, worst case of everyfilter
+     * @{
+     */
+    virtual lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
+    virtual lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())); }
+    /** @} */
 
    protected:
     /**

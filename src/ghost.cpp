@@ -9,19 +9,39 @@
 #include "wavelet.hpp"
 
 /**
- * @brief returns the number of ghost points for the coarse block
- *
- * The ghost are padded so that the array is aligned
+ * @brief returns the number of ghost points for the coarse block (in the front)
  */
-static lid_t cgs(Interpolator* interp) {
-    return interp->NGhostCoarseFront();
+static lid_t CoarseNGhostFront(Interpolator* interp) {
+    // we need the max between the number of scaling in front 
+    //      = (interp->nghost_front() / 2)
+    // and the number of details
+    //      = (interp->nghost_front() / 2) + interp->nrefine_front()
+    const lid_t gp = (interp->nghost_front() / 2) + interp->nrefine_front();
+    return gp;
 }
+
+/**
+ * @brief returns the number of ghost points for the coarse block (in the back)
+ */
+static lid_t CoarseNGhostBack(Interpolator* interp) {
+    // we need the max between the number of scaling
+    //      = (interp->nghost_back()+1) / 2
+    const lid_t gp_scaling = ((interp->nghost_back()+1) / 2);
+    // and the number of details
+    //      = (interp->nghost_back()) / 2 +  + interp->nrefine_back()
+    const lid_t gp_detail  = ((interp->nghost_back()+1) / 2) + interp->nrefine_back();
+    return m_max(gp_scaling,gp_detail);
+}
+
 /**
  * @brief returns the stride of the coarse block
- * it needs NGhostCoarse()+1 ghost points to perform the refinement in the fine's ghost points
+ * we need ghost points in front, at the back and M_HN points inbetween
  */
-static size_t cstride(Interpolator* interp) {
-    return interp->NGhostCoarseFront() + M_HN + interp->NGhostCoarseBack();
+static size_t CoarseStride(Interpolator* interp) {
+    const lid_t gp_front = CoarseNGhostFront(interp);
+    const lid_t gp_back  = CoarseNGhostBack(interp);
+    // the stride = ghost point in front + in back + M_HN in between
+    return gp_front + M_HN + gp_back;
 }
 
 /**
@@ -70,9 +90,12 @@ static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
 }
 
 /**
- * @brief given a starting id in a block and a number of coarse ghost points, returns the corresponding starting id for the coarse representation of it
+ * @brief given a starting a ghost range for a block, transform it into the needed range for its coarse representation
+ * if the point is inside the block, we divide its id by 2, if the point is in the ghost points,
+ * we take ALL the coarse ghost points
  * 
- * @note this is magic...
+ * 
+ * @warning this is magic...
  * 
  * we compute:
  * b = a + M_N, such that
@@ -80,38 +103,26 @@ static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
  *      if a is in the center points, M_N <= b < 2* M_N
  *      if a is in the ghost points, 2* M_N <= b
  * 
- * c is binary: 0 if a is in the ghost points and 1 if a is in the center points
+ * c is 0,1,2,3:
+ *      = 0 if a is in the negative ghost points
+ *      = 1 if a is in the center points, including 0
+ *      = 2 if a is M_N
+ *      = 3 if a is in the negative GP
  * 
- * d is the number of points taken into the ghost points or the number of points interior to the block
- * 
- * e is the scaled d to the coarse block:
- *  if d is interior: c=1, and we divide by 2 the id
- *  if d is the number in the ghost points:  c=0 and
- *      if d contains all the ghost points, we scale it to contain all the coarse gp
- *      if d contains a part of the ghost points, we abort
- * 
- * we return a sum of:
- * (a / M_N) * M_HN = the rescaled length of a to the new length (M_HN):
- *      if a < M_N, it will be 0
- *      if a >= M_N, it will be 1
- * (a % M_N) / (c + 1) = the rest of the lentgh, divided by c+1=2 if a is in the center or =1 if a is on the side
- * 
- * As a summary:
- *      if a is in the ghost points, a > 0, c = 0 =>  returns 0 + a/1
- *      if a is in the center points, 0 <= a < M_N => returns 0 + a/2
- *      if a is in the ghost points, a >= M_N => returns M_HN + (a%M_N)/1 
+ * the correct ID is returned based on the value of c
  * 
  * @param a the id in the block
- * @param cgs the number of ghost points in the coarse level
+ * @param interp the interpolator used
  * @return lid_t 
  */
-static inline lid_t CoarseFromBlock(const lid_t a, const lid_t cgs) {
-    const lid_t b = (a + M_N);
-    const lid_t c = (b / M_N) % 2;
-    const lid_t d = (a % M_N);
-    const lid_t e = c * (d / 2) + (1 - c) * ((d / M_GS) * cgs);
-    m_assert(((1 - c) * (d % M_GS)) == 0, "this should NOT happen");
-    return (a / M_N) * M_HN + e;
+static inline lid_t CoarseFromBlock(const lid_t a, Interpolator* interp) {
+    const lid_t gp_front = CoarseNGhostFront(interp);
+    const lid_t gp_back  = CoarseNGhostBack(interp);
+    const lid_t b        = (a + M_N);
+    const lid_t c        = (b / M_N) + (a > M_N);
+    const lid_t res[4]   = {-gp_front, (a / 2), M_HN, M_HN + gp_back};
+    // return the correct choice
+    return res[c];
 }
 
 void CallGhostInitList(const qid_t* qid, GridBlock* block, nullptr_t fid, Ghost* ghost) {
@@ -166,8 +177,8 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     max_level_ = m_min(max_level, P8EST_QMAXLEVEL);
 
     // store the number of ghosts needed
-    nghost_[0] = interp_->NGhostFineFront();
-    nghost_[1] = interp_->NGhostFineBack();
+    nghost_[0] = interp_->nghost_front();
+    nghost_[1] = interp_->nghost_back();
     m_assert(nghost_[0] <= M_GS,"The memory for the ghost points is too small: M_GS = %d vs nghost = %d",M_GS,nghost_[0]);
     m_assert(nghost_[1] <= M_GS,"The memory for the ghost points is too small: M_GS = %d vs nghost = %d",M_GS,nghost_[1]);
 
@@ -207,8 +218,9 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     int nthreads = omp_get_max_threads();
     coarse_tmp_  = reinterpret_cast<real_t**>(m_calloc(sizeof(real_t*) * nthreads));
     for (int it = 0; it < nthreads; it++) {
-        coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * cstride(interp_) * cstride(interp_) * cstride(interp_)));
+        coarse_tmp_[it] = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * CoarseStride(interp_) * CoarseStride(interp_) * CoarseStride(interp_)));
     }
+    m_log("coarse block allocated withstride = %d",CoarseStride(interp_));
     //-------------------------------------------------------------------------
     m_log("ghost initialized with %s, nghost = %d %d", interp_->Identity().c_str(),nghost_[0],nghost_[1]);
     m_end;
@@ -529,7 +541,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
     list<GhostBlock*>* gparent   = ghost_parent_[qid->cid];
     list<PhysBlock*>*  phys      = phys_[qid->cid];
 
-    // //----------------------------------
+    //----------------------------------
     // // temporary sc array used to get the ghosts
     sc_array_t* ngh_quad;  // points to the quad
     sc_array_t* ngh_qid;   // give the ID of the quad or ghost
@@ -570,6 +582,14 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             // else, the edges and corners will be filled through the face
         }
         //---------------------------------------------------------------------
+        // get the number of ghost:
+        sid_t nghost_front[3];
+        sid_t nghost_back[3];
+        for (sid_t id = 0; id < 3; id++) {
+            // set the number of ghost to compute
+            nghost_front[id] = interp_->nghost_front();
+            nghost_back[id]  = interp_->nghost_back();
+        }
         // this is a real block or a ghost
         for (lid_t nid = 0; nid < nghosts; nid++) {
             const int  status  = *(ngh_enc->array + nid * sizeof(int));
@@ -583,7 +603,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
 
             // get the position of the neighbor, as seen by me!!! may be different than the actual one if there is a periodic bc
             real_t ngh_pos[3];
-            sid_t  nghost[3];
+            
             if (!isghost) {
                 // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
                 GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
@@ -607,10 +627,11 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
 
                 // set the number of ghost to compute
-                nghost[id] = nghost_[m_max(int(sign[id]), 0)];
+                // nghost_front[id] = interp_->nghost_front();
+                // nghost_back [id] = interp_->nghost_back();
             }
             // create the new block
-            GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos, nghost, true);
+            GhostBlock* gb = new GhostBlock(block, nghq->level, ngh_pos, nghost_front,nghost_back, true);
 
             // associate the correct memory and push back
             if (!isghost) {
@@ -630,7 +651,8 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
 #pragma omp critical
                     bparent->push_back(gb);
                     // get my contribution to the ghost of my parent
-                    GhostBlock* invert_gb = new GhostBlock(block, nghq->level, ngh_pos, nghost, false);
+                    GhostBlock* invert_gb = new GhostBlock(block, nghq->level, ngh_pos, nghost_front,nghost_back, false);
+                    invert_gb->block_src(ngh_block);
 #pragma omp critical
                     bchildren->push_back(invert_gb);
                 } else {
@@ -707,10 +729,6 @@ void Ghost::PushToMirror4Block(const qid_t* qid, GridBlock* block, Field* fid) {
  */
 void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* fid) {
     //-------------------------------------------------------------------------
-    // get the working array given the thread
-    const int ithread = omp_get_thread_num();
-    real_p    tmp     = coarse_tmp_[ithread];
-
     // get a subblock describing the ghost memory
     lid_t     ghost_start[3] = {0, 0, 0};
     lid_t     ghost_end[3]   = {M_N, M_N, M_N};
@@ -718,13 +736,17 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
 
     lid_t     coarse_start[3] = {0, 0, 0};
     lid_t     coarse_end[3]   = {M_HN, M_HN, M_HN};
-    SubBlock* coarse_subblock = new SubBlock(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    SubBlock* coarse_subblock = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+
+    // get the working array given the thread
+    const int ithread = omp_get_thread_num();
+    real_p    tmp     = coarse_tmp_[ithread];
 
     // determine if we have to use the coarse representation
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
     // if so, reset the coarse info
     if (do_coarse) {
-        memset(tmp, 0, cstride(interp_) * cstride(interp_) * cstride(interp_) * sizeof(real_t));
+        memset(tmp, 0, CoarseStride(interp_) * CoarseStride(interp_) * CoarseStride(interp_) * sizeof(real_t));
     }
 
     // first, treat the siblings -> will copy to the ghost location + copy to the temp
@@ -735,10 +757,10 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
         PullFromGhost4Block_Myself_(qid, cur_block, fid, coarse_subblock, tmp);
         // reset the coarse sublock to the full position
         for (int id = 0; id < 3; id++) {
-            coarse_start[id] = -cgs(interp_);
-            coarse_end[id]   = cstride(interp_) - cgs(interp_);
+            coarse_start[id] = -CoarseNGhostFront(interp_);
+            coarse_end[id]   = CoarseStride(interp_) - CoarseNGhostFront(interp_);
         }
-        coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+        coarse_subblock->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     }
     // then, treat the parents -> copy to the temp
     PullFromGhost4Block_FromParent_(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
@@ -763,7 +785,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
     //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
     //         }
-    //         coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    //         coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     //         // memory details
     //         MemLayout* block_src = ngh_block;
     //         real_p     data_src  = ngh_block->data(fid, ida_);
@@ -792,7 +814,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
     //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
     //         }
-    //         coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    //         coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     //         // memory details
     //         MemLayout* block_src = ghost_subblock;
     //         real_p     data_src  = gblock->data_src();
@@ -813,7 +835,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //         coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
     //         coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
     //     }
-    //     coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    //     coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     //     // memory details
     //     MemLayout* block_src = ngh_block;
     //     real_p     data_src  = ngh_block->data(fid, ida_);
@@ -831,7 +853,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //         coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
     //         coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
     //     }
-    //     coarse_subblock->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    //     coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     //     // memory details
     //     MemLayout* block_src = ghost_subblock;
     //     real_p     data_src  = gblock->data_src();
@@ -910,7 +932,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
     //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
     //         }
-    //         coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    //         coarse_block->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     //         // memory details
     //         MemLayout* block_src = ngh_block;
     //         real_p     data_src  = ngh_block->data(fid, ida_);
@@ -941,7 +963,7 @@ void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* f
     //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
     //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
     //         }
-    //         coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    //         coarse_block->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     //         // memory details
     //         MemLayout* block_src = ghost_block;
     //         real_p     data_src  = gblock->data_src();
@@ -961,6 +983,8 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
     lid_t coarse_start[3];
     lid_t coarse_end[3];
 
+    m_log("entering siblings");
+
     // do the blocks on my level
     for (auto biter = block_sibling_[qid->cid]->begin(); biter != block_sibling_[qid->cid]->end(); biter++) {
         GhostBlock* gblock    = (*biter);
@@ -976,19 +1000,20 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
 
         // we need to copy the data to the coarse representation
         if (do_coarse) {
+            m_log("doooo coarse!!");
             // set the coarse block to the correct position
             for (int id = 0; id < 3; id++) {
-                coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-                coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
+                coarse_start[id] = CoarseFromBlock(gblock->start(id),interp_);
+                coarse_end[id]   = CoarseFromBlock(gblock->end(id), interp_);
             }
-            coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+            coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
             // memory details
             MemLayout* block_src = ngh_block;
             real_p     data_src  = ngh_block->data(fid, ida_);
             MemLayout* block_trg = coarse_block;
             real_p     data_trg  = coarse_mem + m_zeroidx(0, coarse_block);
             // interpolate, the level is 1 coarser and the shift is unchanged
-            m_assert(gblock->dlvl()==1,"the difference of level MUST be 1");
+            m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
             interp_->Copy(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
         }
     }
@@ -1009,10 +1034,10 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
         if (do_coarse) {
             // set the coarse block to the correct position
             for (int id = 0; id < 3; id++) {
-                coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-                coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
+                coarse_start[id] = CoarseFromBlock(gblock->start(id),interp_);
+                coarse_end[id]   = CoarseFromBlock(gblock->end(id), interp_);
             }
-            coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+            coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
             // memory details
             MemLayout* block_src = ghost_block;
             real_p     data_src  = gblock->data_src();
@@ -1029,6 +1054,7 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
 void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_block, Field* fid,
                                            const bool do_coarse, SubBlock* ghost_block, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
+    m_log("entering from parent");
     lid_t coarse_start[3];
     lid_t coarse_end[3];
     // copy the coarse blocks to the coarse representation
@@ -1037,10 +1063,10 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
         GridBlock*  ngh_block = gblock->block_src();
         // setup the coarse sublock to the position
         for (int id = 0; id < 3; id++) {
-            coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-            coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
+            coarse_start[id] = CoarseFromBlock(gblock->start(id),interp_);
+            coarse_end[id]   = CoarseFromBlock(gblock->end(id), interp_);
         }
-        coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+        coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = ngh_block;
         real_p     data_src  = ngh_block->data(fid, ida_);
@@ -1055,10 +1081,10 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
         GhostBlock* gblock = (*biter);
         // update the coarse subblock
         for (int id = 0; id < 3; id++) {
-            coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-            coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
+            coarse_start[id] = CoarseFromBlock(gblock->start(id), interp_);
+            coarse_end[id]   = CoarseFromBlock(gblock->end(id), interp_);
         }
-        coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+        coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = ghost_block;
         real_p     data_src  = gblock->data_src();
@@ -1068,7 +1094,14 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
         m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
         interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
+    m_log("copy of the neighbor is done, now compute the fine info");
     //---------------------
+    // reset the coarse block to the correct position
+    for (int id = 0; id < 3; id++) {
+        coarse_start[id] = -CoarseNGhostFront(interp_);
+        coarse_end[id]   = CoarseStride(interp_) - CoarseNGhostFront(interp_);
+    }
+    coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     // now that we have everything, we compute the fine ghosts
     for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
         GhostBlock* gblock    = (*biter);
@@ -1096,6 +1129,9 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
 
 void Ghost::PullFromGhost4Block_Myself_(const qid_t* qid, GridBlock* cur_block, Field* fid, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
+
+    m_log("entering myself");
+
     lid_t coarse_start[3];
     lid_t coarse_end[3];
     //set the coarse block to its whole domain
@@ -1103,7 +1139,7 @@ void Ghost::PullFromGhost4Block_Myself_(const qid_t* qid, GridBlock* cur_block, 
         coarse_start[id] = 0;
         coarse_end[id]   = M_HN;
     }
-    coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+    coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     // get memory details
     lid_t      shift[3]  = {0, 0, 0};
     MemLayout* block_src = cur_block;
@@ -1111,7 +1147,8 @@ void Ghost::PullFromGhost4Block_Myself_(const qid_t* qid, GridBlock* cur_block, 
     MemLayout* block_trg = coarse_block;
     real_p     data_trg  = coarse_mem + m_zeroidx(0, coarse_block);
     // interpolate
-    interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg);
+    interp_->Copy(1, shift, block_src, data_src, block_trg, data_trg);
+
 
     // do here some physics, to completely fill the coarse block before the interpolation
     for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
@@ -1121,17 +1158,17 @@ void Ghost::PullFromGhost4Block_Myself_(const qid_t* qid, GridBlock* cur_block, 
         const bctype_t bctype = fid->bctype(ida_, gblock->iface());
         // in the face direction, the start and the end are already correct, only the fstart changes
         lid_t fstart[3];
-        coarse_start[dir] = gblock->start(dir);
-        coarse_end[dir]   = gblock->end(dir);
-        fstart[dir]       = CoarseFromBlock(face_start[gblock->iface()][dir], cgs(interp_));
+        coarse_start[dir] = CoarseFromBlock(gblock->start(dir), interp_);
+        coarse_end[dir]   = CoarseFromBlock(gblock->end(dir), interp_);
+        fstart[dir]       = CoarseFromBlock(face_start[gblock->iface()][dir], interp_);
         // in the other direction, we need to rescale the dimensions
         for (int id = 1; id < 3; id++) {
-            coarse_start[(dir + id) % 3] = CoarseFromBlock(gblock->start((dir + id) % 3), cgs(interp_));
-            coarse_end[(dir + id) % 3]   = CoarseFromBlock(gblock->end((dir + id) % 3), cgs(interp_));
-            fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3], cgs(interp_));
+            coarse_start[(dir + id) % 3] = CoarseFromBlock(gblock->start((dir + id) % 3), interp_);
+            coarse_end[(dir + id) % 3]   = CoarseFromBlock(gblock->end((dir + id) % 3), interp_);
+            fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3], interp_);
         }
         // reset the coarse block and get the correct memory location
-        coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+        coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         real_p data_trg = coarse_mem + m_zeroidx(0, coarse_block);
         // get the correct face_start
         if (bctype == M_BC_EVEN) {
@@ -1164,6 +1201,9 @@ void Ghost::PullFromGhost4Block_ToParent_(const qid_t* qid, GridBlock* cur_block
     //-------------------------------------------------------------------------
     lid_t coarse_start[3];
     lid_t coarse_end[3];
+
+    m_log("entering to parent");
+
     // copy the coarse blocks to the coarse representation
     for (auto biter = block_children_[qid->cid]->begin(); biter != block_children_[qid->cid]->end(); biter++) {
         GhostBlock* gblock    = (*biter);
@@ -1173,17 +1213,17 @@ void Ghost::PullFromGhost4Block_ToParent_(const qid_t* qid, GridBlock* cur_block
         //     coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
         //     coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
         // }
-        // coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+        // coarse_block->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         // memory details
         MemLayout* block_src = cur_block;
         real_p     data_src  = cur_block->data(fid, ida_);
-        MemLayout* block_trg = ngh_block;
+        MemLayout* block_trg = gblock;
         real_p     data_trg  = ngh_block->data(fid, ida_);
         // interpolate, the level is 1 coarser and the shift is unchanged
         interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
     // copy the ghost into the coarse representation
-    for (auto biter = block_children_[qid->cid]->begin(); biter != block_children_[qid->cid]->end(); biter++) {
+    for (auto biter = ghost_children_[qid->cid]->begin(); biter != ghost_children_[qid->cid]->end(); biter++) {
         m_assert(false, "euh this needs an MPI layer!!");
         // GhostBlock* gblock = (*biter);
         // // update the coarse subblock
@@ -1191,7 +1231,7 @@ void Ghost::PullFromGhost4Block_ToParent_(const qid_t* qid, GridBlock* cur_block
         //     coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
         //     coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
         // }
-        // coarse_block->Reset(cgs(interp_), cstride(interp_), coarse_start, coarse_end);
+        // coarse_block->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         // // memory details
         // MemLayout* block_src = ghost_block;
         // real_p     data_src  = gblock->data_src();

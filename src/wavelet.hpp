@@ -82,12 +82,12 @@ class Wavelet : public Interpolator {
     sid_t len_ga_ = 0;
     sid_t len_gs_ = 0;
 
-    sid_t n_ghost_[2]   = {0, 0};            //!< number of ghost for a block: i.e. [front: normal = -1, back: normal=+1]
-    sid_t n_info_[2][2] = {{0, 0}, {0, 0}};  //!< for each block side, the number of coarse points and fine points needed
+    // sid_t n_ghost_[2]   = {0, 0}; //!< number of ghost needed by the wavelet computation on  for a block: i.e. [front: normal = -1, back: normal=+1]
+    // sid_t n_info_[2] = {{0, 0}, {0, 0}};  //!< for each block side, the number of coarse points and fine points needed
     // standard filters
-    real_t* ha_ = nullptr;  //!< scaling analysis: 1 level coarsening
-    real_t* ga_ = nullptr;  //!< detail analysis: 1 level coarsening
-    real_t* gs_ = nullptr;  //!< detail synthesis: 1 level refinement
+    real_t* ha_ = nullptr;  //!< scaling analysis: 1 level coarsening -> coarsening computation
+    real_t* ga_ = nullptr;  //!< detail analysis: 1 level coarsening -> detail computation
+    real_t* gs_ = nullptr;  //!< detail synthesis: 1 level refinement -> refinement computation
     // modified filter
     real_t** gs_g_[2][2] = {{nullptr, nullptr}, {nullptr, nullptr}};  //!< modified gs filter for the ghosting[front,back][coarse,fine][ighost]
 
@@ -108,36 +108,36 @@ class Wavelet : public Interpolator {
             len_ga_ = 3;
             len_gs_ = 2;
             // number of ghosts
-            n_ghost_[M_WFRONT]         = 2;  // total number of ghost @ front
-            n_ghost_[M_WBACK]          = 1;  // total number of ghost @ back
-            n_info_[M_WFRONT][M_WCOAR] = 1;  // front, n_coarse
-            n_info_[M_WFRONT][M_WFINE] = 3;  // front, n_fine
-            n_info_[M_WBACK][M_WCOAR]  = 0;  // back, n_coarse
-            n_info_[M_WBACK][M_WFINE]  = 0;  // back, n_fine
+            // n_ghost_[M_WFRONT]         = 2;  // total number of ghost @ front
+            // n_ghost_[M_WBACK]          = 1;  // total number of ghost @ back
+            // n_info_[M_WFRONT][M_WCOAR] = 1;  // front, n_coarse
+            // n_info_[M_WFRONT][M_WFINE] = 3;  // front, n_fine
+            // n_info_[M_WBACK][M_WCOAR]  = 0;  // back, n_coarse
+            // n_info_[M_WBACK][M_WFINE]  = 0;  // back, n_fine
         } else if (N == 4 && Nt == 0) {
             // length of the filters
             len_ha_ = 1;
             len_ga_ = 7;
             len_gs_ = 4;
             // number of ghosts
-            n_ghost_[M_WFRONT]         = 2;
-            n_ghost_[M_WBACK]          = 3;
-            n_info_[M_WFRONT][M_WCOAR] = 2;  // front, n_coarse
-            n_info_[M_WFRONT][M_WFINE] = 3;  // front, n_fine
-            n_info_[M_WBACK][M_WCOAR]  = 3;  // back, n_coarse
-            n_info_[M_WBACK][M_WFINE]  = 2;  // back, n_fine
+            // n_ghost_[M_WFRONT]         = 2;
+            // n_ghost_[M_WBACK]          = 3;
+            // n_info_[M_WFRONT][M_WCOAR] = 2;  // front, n_coarse
+            // n_info_[M_WFRONT][M_WFINE] = 3;  // front, n_fine
+            // n_info_[M_WBACK][M_WCOAR]  = 3;  // back, n_coarse
+            // n_info_[M_WBACK][M_WFINE]  = 2;  // back, n_fine
         } else if (N == 4 && Nt == 2) {
             // length of the filters
             len_ha_ = 9;
             len_ga_ = 7;
             len_gs_ = 4;
             // number of ghosts
-            n_ghost_[0]   = 4;
-            n_ghost_[1]   = 3;
-            n_info_[0][0] = 3;  // front, n_coarse
-            n_info_[0][1] = 7;  // front, n_fine
-            n_info_[1][0] = 3;  // back, n_coarse
-            n_info_[1][1] = 6;  // back, n_fine
+            // n_ghost_[0]   = 4;
+            // n_ghost_[1]   = 3;
+            // n_info_[0][0] = 3;  // front, n_coarse
+            // n_info_[0][1] = 7;  // front, n_fine
+            // n_info_[1][0] = 3;  // back, n_coarse
+            // n_info_[1][1] = 6;  // back, n_fine
         } else {
             m_assert(false, "wavelet N=%d.Nt=%d not implemented yet", N, Nt);
         }
@@ -306,7 +306,7 @@ class Wavelet : public Interpolator {
             temp_[it] = reinterpret_cast<real_t*>(m_calloc(len_gs_ * len_gs_ * len_gs_ * sizeof(real_t)));
         }
 
-        m_log("Wavelet %d.%d with ga[%d], ha[%d], gs[%d], (%d,%d) ghosts needed", N, Nt, len_ga_, len_ha_, len_gs_, n_ghost_[M_WFRONT], n_ghost_[M_WBACK]);
+        m_log("Wavelet %d.%d with ga[%d], ha[%d], gs[%d], (%d,%d) ghosts needed", N, Nt, len_ga_, len_ha_, len_gs_, nghost_front(), nghost_back());
         //-------------------------------------------------------------------------
     }
 
@@ -334,10 +334,16 @@ class Wavelet : public Interpolator {
    public:
     string Identity() const override { return "interpolating wavelet " + std::to_string(N) + "." + std::to_string(Nt); }
 
-    lid_t NGhostCoarseFront() const override { return n_info_[M_WFRONT][M_WCOAR]; }
-    lid_t NGhostCoarseBack() const override { return n_info_[M_WBACK][M_WCOAR]; }
-    lid_t NGhostFineFront() const override { return n_ghost_[0]; }
-    lid_t NGhostFineBack() const override { return n_ghost_[1]; }
+    // lid_t NGhostCoarseFront() const override { return n_info_[M_WFRONT][M_WCOAR]; }
+    // lid_t NGhostCoarseBack() const override { return n_info_[M_WBACK][M_WCOAR]; }
+    // front length
+    lid_t ncoarsen_front() const override { return len_ha_ / 2; }
+    lid_t nrefine_front() const override { return len_gs_ / 2 - 1; }
+    lid_t ncriterion_front() const override { return len_ga_ / 2 - 1; }
+    // back length
+    lid_t ncoarsen_back() const override { return len_ha_ / 2 - 1; }
+    lid_t nrefine_back() const override { return len_gs_ / 2; }
+    lid_t ncriterion_back() const override { return len_ga_ / 2; }
 
     real_t Criterion(MemLayout* block, real_p data) override;
 

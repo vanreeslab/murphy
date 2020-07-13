@@ -32,7 +32,12 @@ int main(int argc, char** argv) {
         m_log("periodic? %d %d %d",argument.period_[0],argument.period_[1],argument.period_[2]);
         Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
         // get an refined and adapted grid given the patch
-        grid->Adapt(&argument.patch_);
+        list<Patch> patch;
+        real_t      origin[3] = {0.5, 0.0, 0.0};
+        real_t      length[3] = {0.5, 1.0, 1.0};
+        patch.push_back(Patch(origin, length, 2));
+        grid->Adapt(&patch);
+        // grid->Adapt(&argument.patch_);
         // create a field
         Field* vort = new Field("vorticity", 3);
         // Field* psi  = new Field("psi", 3);

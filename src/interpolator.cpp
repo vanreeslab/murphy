@@ -71,17 +71,20 @@ void Interpolator::DoMagic(const sid_t dlvl,const bool force_copy, const lid_t s
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
-    m_verb("entering interpolator with shift = %d %d %d", shift[0], shift[1], shift[2]);
-    m_verb("entering interpolator with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
-    m_verb("entering interpolator with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
-    m_verb("entering interpolator with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
-    m_verb("entering interpolator with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
+    // m_log("-----------------");
+    // m_log("entering interpolator with shift = %d %d %d", shift[0], shift[1], shift[2]);
+    // m_log("entering interpolator with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
+    // m_log("entering interpolator with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
+    // m_log("entering interpolator with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
+    // m_log("entering interpolator with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
+
+    fflush(stdout);
 
     // get memory details
     for (int id = 0; id < 3; id++) {
-        // the parent starting and ending is place form the child point of view
+        // the src starting and ending is place form the target point of view
 #ifndef NDEBUG
-        // the starting position of the source contains the ghosts, by definition
+        // for the target point of view, the start of the source is is in start - shift, same for the end
         ctx.srcstart[id] = block_src->start(id) - shift[id];
         ctx.srcend[id]   = block_src->end(id) - shift[id];
 #endif

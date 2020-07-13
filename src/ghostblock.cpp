@@ -2,15 +2,17 @@
 #include "p8est_bits.h"
 
 /**
- * @brief Construct a new Ghost Block. Computes the area that is at the intersection between a neighboring block and me.
+ * @brief Construct a new Ghost Block:: Ghost Block object
  * 
  * @warning this computation assumes that the nieghbor is a full block of size M_N. In practise, this assumption should always be valid
  * 
- * @param me the current block
- * @param ngh_level the neighbor level
- * @param ngh_pos the origin position of my neighbor
+ * @param me 
+ * @param ngh_level 
+ * @param ngh_pos 
+ * @param nghost the needed number of ghosts
+ * @param ngh_to_me 
  */
-GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3], const sid_t nghost[3], const bool ngh_to_me) {
+GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3], const sid_t nghost_front[3], const sid_t nghost_back[3], const bool ngh_to_me) {
     //-------------------------------------------------------------------------
     // get the ghost size and the
     gs_     = me->gs();
@@ -29,10 +31,10 @@ GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_po
             shift_[id]       = (lid_t)(shift_pos / len_ngh * M_N);
             // the start = the position of my neighbor in my frame, bounded to 0
             lid_t start_idx = (lid_t)((ngh_pos[id] - me->xyz(id)) / me->hgrid(id));
-            start_[id]      = m_max(start_idx, -nghost[id]);
+            start_[id]      = m_max(start_idx, -nghost_front[id]);
             // the end = min of how many my nieghbor can give to me and how many I can receive
             lid_t end_idx = (lid_t)((ngh_pos[id] + len_ngh - me->xyz(id)) / me->hgrid(id));
-            end_[id]      = m_min(end_idx, me->end(id) +nghost[id]);
+            end_[id]      = m_min(end_idx, me->end(id) + nghost_back[id]);
         }
     } else {
         // set the level gap > 0 if the I am finer
@@ -43,10 +45,10 @@ GhostBlock::GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_po
             shift_[id]       = (lid_t)(shift_pos / me->hgrid(id));
             // the start = the position of me in my neighbor's frame, bounded to 0
             lid_t start_idx = (lid_t)((me->xyz(id) - ngh_pos[id]) / len_me * M_N);
-            start_[id]      = m_max(start_idx, -nghost[id]);
+            start_[id]      = m_max(start_idx, -nghost_front[id]);
             // the end = min of how many my neighbor can give to me and how many I can receive
             lid_t end_idx = (lid_t)((me->xyz(id) + len_ngh - ngh_pos[id]) / len_me * M_N);
-            end_[id]      = m_min(end_idx, me->end(id) + nghost[id]);
+            end_[id]      = m_min(end_idx, me->end(id) + nghost_back[id]);
         }
     }
     //-------------------------------------------------------------------------

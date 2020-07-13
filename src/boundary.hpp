@@ -68,13 +68,12 @@ class Boundary {
         // real_t offset[3];
         // m_pos_relative(offset, 0, 0, 0, hgrid);
 
-        // m_log("doing fsign = %f %f %f",fsign[0],fsign[1],fsign[2]);
+        m_log("doing fsign = %f %f %f", fsign[0], fsign[1], fsign[2]);
 
         // shift the data to the correct spot -> this is the origin for both the block->start/end and the data from the block
         real_p ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);
 
-        // m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2],
-        //       block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
+        m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2], block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
         // let's goooo
         for (lid_t i2 = block->start(2); i2 < block->end(2); i2++) {
             for (lid_t i1 = block->start(1); i1 < block->end(1); i1++) {
@@ -91,9 +90,15 @@ class Boundary {
                         const lid_t idx1 = (!isphys[1]) ? i1 : (-(ip + 1) * fsign[1]);
                         const lid_t idx2 = (!isphys[2]) ? i2 : (-(ip + 1) * fsign[2]);
 
-                        m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride() - block->gs()), "index 0 is wrong: %d = %d - %d * %d * %d with gs=%d and strid=%d", fstart[0] + idx0, (!isphys[0]) * i0, ip, (int)fsign[0], (int)isphys[0], block->gs(), block->stride());
-                        m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride() - block->gs()), "index 1 is wrong: %d = %d - %d * %d * %d with gs=%d and strid=%d", fstart[1] + idx1, (!isphys[1]) * i1, ip, (int)fsign[1], (int)isphys[1], block->gs(), block->stride());
-                        m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride() - block->gs()), "index 2 is wrong: %d = %d - %d * %d * %d with gs=%d and strid=%d", fstart[2] + idx2, (!isphys[2]) * i2, ip, (int)fsign[2], (int)isphys[2], block->gs(), block->stride());
+                        // check that we stay at the correct sport for everybody
+                        m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
+                        m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
+                        m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
+
+                        // check the specific isphys direction
+                        m_assert((((fstart[0] + idx0) * isphys[0]) >= 0) && ((fstart[0] + idx0) * isphys[0]) < (block->stride() - block->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
+                        m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block->stride() - block->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
+                        m_assert((((fstart[2] + idx2) * isphys[2]) >= 0) && ((fstart[2] + idx2) * isphys[2]) < (block->stride() - block->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
 
                         f[ip] = ldata[m_midx(idx0, idx1, idx2, 0, block)];
                     }

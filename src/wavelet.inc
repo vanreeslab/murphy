@@ -78,9 +78,12 @@ template <int N, int Nt>
 void Wavelet<N, Nt>::Copy_(const sid_t dlvl, const interp_ctx_t* ctx) {
     //-------------------------------------------------------------------------
     // ensure alignment for target, constant and source
-    m_assume_aligned(ctx->tdata);
-    m_assume_aligned(ctx->sdata);
-    m_assume_aligned(ctx->cdata);
+    // m_assume_aligned(ctx->tdata);
+    // // m_assume_aligned(ctx->sdata);
+    // m_assume_aligned(ctx->cdata);
+
+    m_log("src from %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2], ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
+    m_log("trg from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2], ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
 
     const lid_t  scaling = pow(2, dlvl);
     const real_t alpha   = ctx->alpha;
@@ -89,14 +92,17 @@ void Wavelet<N, Nt>::Copy_(const sid_t dlvl, const interp_ctx_t* ctx) {
     for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
-                m_assert((ik0 >= ctx->srcstart[0]) && (ik0 < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->srcstart[0], ik0, ctx->srcend[0]);
-                m_assert((ik1 >= ctx->srcstart[1]) && (ik1 < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->srcstart[1], ik1, ctx->srcend[1]);
-                m_assert((ik2 >= ctx->srcstart[2]) && (ik2 < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->srcstart[2], ik2, ctx->srcend[2]);
+                m_assert(((scaling * ik0) >= ctx->srcstart[0]) && ((scaling * ik0) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->srcstart[0], ik0, ctx->srcend[0]);
+                m_assert(((scaling * ik1) >= ctx->srcstart[1]) && ((scaling * ik1) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->srcstart[1], ik1, ctx->srcend[1]);
+                m_assert(((scaling * ik2) >= ctx->srcstart[2]) && ((scaling * ik2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->srcstart[2], ik2, ctx->srcend[2]);
                 // get the current parent's data
                 real_p       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const real_p lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const real_p lsdata = ctx->sdata + m_sidx(scaling * ik0, scaling * ik1, scaling * ik2, 0, ctx->srcstr);
                 // do the simple copy
+                m_assert(((ik0) >= ctx->trgstart[0]) && ((ik0) < ctx->trgend[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->trgstart[0], ik0, ctx->trgend[0]);
+                m_assert(((ik1) >= ctx->trgstart[1]) && ((ik1) < ctx->trgend[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->trgstart[1], ik1, ctx->trgend[1]);
+                m_assert(((ik2) >= ctx->trgstart[2]) && ((ik2) < ctx->trgend[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->trgstart[2], ik2, ctx->trgend[2]);
                 ltdata[0] = alpha * lcdata[0] + lsdata[0];
             }
         }
@@ -116,9 +122,9 @@ template <int N, int Nt>
 void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx) {
     //-------------------------------------------------------------------------
     // assure alignment for the target, the source, the constant and the temp data
-    m_assume_aligned(ctx->tdata);
-    m_assume_aligned(ctx->sdata);
-    m_assume_aligned(ctx->cdata);
+    // m_assume_aligned(ctx->tdata);
+    // m_assume_aligned(ctx->sdata);
+    // m_assume_aligned(ctx->cdata);
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   ha_lim = len_ha_ / 2;
@@ -128,13 +134,13 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx) {
         for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
                 // do some checks
-                m_assert(((ik0 - ha_lim) >= ctx->srcstart[0]) && ((ik0 + ha_lim) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - ha_lim, ctx->srcstart[0], ik0 + ha_lim, ctx->srcend[0]);
-                m_assert(((ik1 - ha_lim) >= ctx->srcstart[1]) && ((ik1 + ha_lim) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - ha_lim, ctx->srcstart[1], ik1 + ha_lim, ctx->srcend[1]);
-                m_assert(((ik2 - ha_lim) >= ctx->srcstart[2]) && ((ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - ha_lim, ctx->srcstart[2], ik2 + ha_lim, ctx->srcend[2]);
+                m_assert(((ik0 - ha_lim) >= (ctx->srcstart[0])) && ((ik0 + ha_lim) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - ha_lim, ctx->srcstart[0], ik0 + ha_lim, ctx->srcend[0]);
+                m_assert(((ik1 - ha_lim) >= (ctx->srcstart[1])) && ((ik1 + ha_lim) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - ha_lim, ctx->srcstart[1], ik1 + ha_lim, ctx->srcend[1]);
+                m_assert(((ik2 - ha_lim) >= (ctx->srcstart[2])) && ((ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - ha_lim, ctx->srcstart[2], ik2 + ha_lim, ctx->srcend[2]);
                 //get the local adress of the source, the target and the constant
                 real_p       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const real_p lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(2 * ik0, 2 * ik1, 2* ik2, 0, ctx->srcstr);
+                const real_p lsdata = ctx->sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
 
                 // add the constant
                 ltdata[0] = alpha * lcdata[0];
@@ -164,21 +170,23 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
     //-------------------------------------------------------------------------
     // assure alignment for the target, the source, the constant and the temp data
     m_assume_aligned(ctx->tdata);
-    m_assume_aligned(ctx->sdata);
+    // m_assume_aligned(ctx->sdata);
     m_assume_aligned(ctx->cdata);
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   gs_lim = (len_gs_ / 2) - 1;
     const real_t* gs     = gs_ + gs_lim;
 
-    m_verb("gslim = %d", gs_lim);
+    m_log("gslim = %d", gs_lim);
+
+    m_log("trg = %d %d %d to %d %d %d ", ctx->trgstart[0] / 2, ctx->trgstart[1] / 2, ctx->trgstart[2] / 2, ctx->trgend[0] / 2, ctx->trgend[1] / 2, ctx->trgend[2] / 2);
 
     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
-                m_assert((ik0 - gs_lim >= ctx->srcstart[0]) && (ik0 + gs_lim + 1 <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
-                m_assert((ik1 - gs_lim >= ctx->srcstart[1]) && (ik1 + gs_lim + 1 <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
-                m_assert((ik2 - gs_lim >= ctx->srcstart[2]) && (ik2 + gs_lim + 1 <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
                 real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
@@ -198,23 +206,23 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
 
                 // point (1,0,0) and (0,1,0) and (0,0,1)
-                for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
                     ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(id0, 0, 0, 0, ctx->srcstr)];
                     ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
                     ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
                 }
                 // point (1,1,0) and (0,1,1) and (1,0,1)
-                for (sid_t id1 = -gs_lim; id1 <= gs_lim + 1; id1++) {
-                    for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
+                for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                    for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
                         ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, id1, 0, 0, ctx->srcstr)];
                         ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
                         ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, 0, id1, 0, ctx->srcstr)];
                     }
                 }
                 // point (1,1,1)
-                for (sid_t id2 = -gs_lim; id2 <= gs_lim + 1; id2++) {
-                    for (sid_t id1 = -gs_lim; id1 <= gs_lim + 1; id1++) {
-                        for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
+                for (sid_t id2 = (-gs_lim); id2 <= (gs_lim + 1); id2++) {
+                    for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                        for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
                             ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
                         }
                     }
@@ -236,7 +244,7 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
 //     const real_t alpha     = ctx->alpha;
 //     const sid_t*  normal = ctx->normal;
 
-//     // we have to choose the direction that will do the cross ones in case of 
+//     // we have to choose the direction that will do the cross ones in case of
 
 //     // // given the normal, get the correct gs filter: the regular, the front or the back
 //     // real_t** gs_g[3];
@@ -252,7 +260,7 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
 
 //     /**
 //      * ```
-//      *                     n_ghost        |                           |        n_ghost        
+//      *                     n_ghost        |                           |        n_ghost
 //      *            |<--------------------->|                           |<--------------------->|
 //      *            o-----x-----o-----x-----|-----x-----x               o-----x-----o-----x-----|
 //      *            |           |           |                           |           |           |
@@ -261,7 +269,7 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
 //      * |<-------->|<--------------------->|                           |<--------->|<--------------------->|
 //      * | gs_shift         gs_lim          |                           | gs_shift         gs_lim           |
 //      * |<-------------------------------->|                           |<--------------------------------->|
-//      *              n_info                |                           |            n_info                
+//      *              n_info                |                           |            n_info
 //      * ```
 //      **/
 

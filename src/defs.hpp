@@ -93,7 +93,7 @@
 /** @} */
 
 /**
- * @name min max macros
+ * @name min max sign macros
  * 
  */
 /**
@@ -116,6 +116,17 @@
         __typeof__(a) _a = (a); \
         __typeof__(b) _b = (b); \
         _a < _b ? _a : _b;      \
+    })
+
+/**
+ * @brief returns the sign of a number
+ * 
+ */
+#define m_sign(a)                    \
+    ({                               \
+        __typeof__(a) a_    = (a);   \
+        __typeof__(a) zero_ = 0;     \
+        (zero_ < a_) - (a_ < zero_); \
     })
 
 /** @} */
