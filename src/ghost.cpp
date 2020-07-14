@@ -569,19 +569,6 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             p8est_mesh_get_neighbors(forest, ghost, mesh, qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
         }
         const lid_t nghosts = ngh_enc->elem_count;
-        //---------------------------------------------------------------------
-        // we do the physics
-        if (nghosts == 0) {
-            sid_t isphys[3] = {0, 0, 0};
-            // we only apply the physics to entire faces
-            if (ibidule < 6) {
-                PhysBlock* pb = new PhysBlock(ibidule, block);
-#pragma omp critical
-                phys->push_back(pb);
-            }
-            // else, the edges and corners will be filled through the face
-        }
-        //---------------------------------------------------------------------
         // get the number of ghost:
         sid_t nghost_front[3];
         sid_t nghost_back[3];
@@ -590,6 +577,19 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             nghost_front[id] = interp_->nghost_front();
             nghost_back[id]  = interp_->nghost_back();
         }
+        //---------------------------------------------------------------------
+        // we do the physics
+        if (nghosts == 0) {
+            sid_t isphys[3] = {0, 0, 0};
+            // we only apply the physics to entire faces
+            if (ibidule < 6) {
+                PhysBlock* pb = new PhysBlock(ibidule, block, nghost_front, nghost_back);
+#pragma omp critical
+                phys->push_back(pb);
+            }
+            // else, the edges and corners will be filled through the face
+        }
+        //---------------------------------------------------------------------
         // this is a real block or a ghost
         for (lid_t nid = 0; nid < nghosts; nid++) {
             const int  status  = *(ngh_enc->array + nid * sizeof(int));
