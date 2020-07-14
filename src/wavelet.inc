@@ -82,8 +82,8 @@ void Wavelet<N, Nt>::Copy_(const sid_t dlvl, const interp_ctx_t* ctx) {
     // // m_assume_aligned(ctx->sdata);
     // m_assume_aligned(ctx->cdata);
 
-    m_log("src from %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2], ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
-    m_log("trg from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2], ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
+    // m_log("src from %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2], ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
+    // m_log("trg from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2], ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
 
     const lid_t  scaling = pow(2, dlvl);
     const real_t alpha   = ctx->alpha;
@@ -123,7 +123,7 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx) {
     //-------------------------------------------------------------------------
     // assure alignment for the target, the source, the constant and the temp data
     // m_assume_aligned(ctx->tdata);
-    // m_assume_aligned(ctx->sdata);
+    m_assume_aligned(ctx->sdata);
     // m_assume_aligned(ctx->cdata);
 
     const real_t  alpha  = ctx->alpha;
@@ -177,9 +177,16 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
     const sid_t   gs_lim = (len_gs_ / 2) - 1;
     const real_t* gs     = gs_ + gs_lim;
 
-    m_log("gslim = %d", gs_lim);
+    // m_log("gslim = %d", gs_lim);
 
-    m_log("trg = %d %d %d to %d %d %d ", ctx->trgstart[0] / 2, ctx->trgstart[1] / 2, ctx->trgstart[2] / 2, ctx->trgend[0] / 2, ctx->trgend[1] / 2, ctx->trgend[2] / 2);
+    // m_log("trg = %d %d %d to %d %d %d ", ctx->trgstart[0] / 2, ctx->trgstart[1] / 2, ctx->trgstart[2] / 2, ctx->trgend[0] / 2, ctx->trgend[1] / 2, ctx->trgend[2] / 2);
+
+    // m_assert((ctx->trgstart[0]%2==0) && (ctx->trgend[0]%2==0),"the starting %d and ending %d location must be even in dir %d",ctx->trgstart[0],ctx->trgend[0],0);
+    // m_assert((ctx->trgstart[1]%2==0) && (ctx->trgend[1]%2==0),"the starting %d and ending %d location must be even in dir %d",ctx->trgstart[1],ctx->trgend[1],1);
+    // m_assert((ctx->trgstart[2]%2==0) && (ctx->trgend[2]%2==0),"the starting %d and ending %d location must be even in dir %d",ctx->trgstart[2],ctx->trgend[2],2);
+    m_assert((ctx->trgstart[0]%2==0),"the starting location = %d must be even in dir %d",ctx->trgstart[0],0);
+    m_assert((ctx->trgstart[1]%2==0),"the starting location = %d must be even in dir %d",ctx->trgstart[1],1);
+    m_assert((ctx->trgstart[2]%2==0),"the starting location = %d must be even in dir %d",ctx->trgstart[2],2);
 
     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
@@ -228,8 +235,275 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
                     }
                 }
             }
+            // I cannot go in x=1
+            for (lid_t ik0 = ctx->trgend[0] / 2; ik0 < (ctx->trgend[0] + 1) / 2; ik0++) {
+                m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                }
+                // point (1,1,0) and (0,1,1) and (1,0,1)
+                for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                    for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                        ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                    }
+                }
+            }
+        }
+        // I cannot go in y=1
+        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < (ctx->trgend[1]+1) / 2; ik1++) {
+            for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                // m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(id0, 0, 0, 0, ctx->srcstr)];
+                    // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                }
+                // point (1,1,0) and (0,1,1) and (1,0,1)
+                for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                    for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                        // ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, id1, 0, 0, ctx->srcstr)];
+                        // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                        ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, 0, id1, 0, ctx->srcstr)];
+                    }
+                }
+                // // point (1,1,1)
+                // for (sid_t id2 = (-gs_lim); id2 <= (gs_lim + 1); id2++) {
+                //     for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //         for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //             ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                //         }
+                //     }
+                // }
+            }
+            // I cannot go in x=1
+            for (lid_t ik0 = ctx->trgend[0] / 2; ik0 < (ctx->trgend[0] + 1) / 2; ik0++) {
+                m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                    // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                    ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                }
+                // // point (1,1,0) and (0,1,1) and (1,0,1)
+                // for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //     for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //         ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                //     }
+                // }
+            }
         }
     }
+    // I cannot go to z=1
+    for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < (ctx->trgend[2]+1) / 2; ik2++) {
+        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
+            for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                // m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(id0, 0, 0, 0, ctx->srcstr)];
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                    // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                }
+                // point (1,1,0) and (0,1,1) and (1,0,1)
+                for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                    for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                        ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, id1, 0, 0, ctx->srcstr)];
+                        // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                        // ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, 0, id1, 0, ctx->srcstr)];
+                    }
+                }
+                // // point (1,1,1)
+                // for (sid_t id2 = (-gs_lim); id2 <= (gs_lim + 1); id2++) {
+                //     for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //         for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //             ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                //         }
+                //     }
+                // }
+            }
+            // I cannot go in x=1
+            for (lid_t ik0 = ctx->trgend[0] / 2; ik0 < (ctx->trgend[0] + 1) / 2; ik0++) {
+                m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                // m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                    ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                    // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                }
+                // // point (1,1,0) and (0,1,1) and (1,0,1)
+                // for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //     for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //         ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                //     }
+                // }
+            }
+        }
+        // I cannot go in y=1
+        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < (ctx->trgend[1]+1) / 2; ik1++) {
+            for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+                m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                // m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                // m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // point (1,0,0) and (0,1,0) and (0,0,1)
+                for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                    ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(id0, 0, 0, 0, ctx->srcstr)];
+                    // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                    // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                }
+                // // point (1,1,0) and (0,1,1) and (1,0,1)
+                // for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //     for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //         // ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, id1, 0, 0, ctx->srcstr)];
+                //         // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                //         ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(id0, 0, id1, 0, ctx->srcstr)];
+                //     }
+                // }
+                // // point (1,1,1)
+                // for (sid_t id2 = (-gs_lim); id2 <= (gs_lim + 1); id2++) {
+                //     for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //         for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //             ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                //         }
+                //     }
+                // }
+            }
+            // I cannot go in x=1
+            for (lid_t ik0 = ctx->trgend[0] / 2; ik0 < (ctx->trgend[0] + 1) / 2; ik0++) {
+                m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
+                //get the local adress of the arrays
+                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+
+                // reset to the constant
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
+                // ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
+
+                // point (0,0,0)
+                ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
+
+                // // point (1,0,0) and (0,1,0) and (0,0,1)
+                // for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //     // ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, id0, 0, 0, ctx->srcstr)];
+                //     ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * lsdata[m_sidx(0, 0, id0, 0, ctx->srcstr)];
+                // }
+                // // point (1,1,0) and (0,1,1) and (1,0,1)
+                // for (sid_t id1 = (-gs_lim); id1 <= (gs_lim + 1); id1++) {
+                //     for (sid_t id0 = (-gs_lim); id0 <= (gs_lim + 1); id0++) {
+                //         ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * lsdata[m_sidx(0, id0, id1, 0, ctx->srcstr)];
+                //     }
+                // }
+            }
+        }
+    }
+
     //-------------------------------------------------------------------------
 }
 // template <int N, int Nt>

@@ -68,12 +68,12 @@ class Boundary {
         // real_t offset[3];
         // m_pos_relative(offset, 0, 0, 0, hgrid);
 
-        m_log("doing fsign = %f %f %f", fsign[0], fsign[1], fsign[2]);
+        // m_log("doing fsign = %f %f %f", fsign[0], fsign[1], fsign[2]);
 
         // shift the data to the correct spot -> this is the origin for both the block->start/end and the data from the block
         real_p ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);
 
-        m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2], block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
+        // m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2], block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
         // let's goooo
         for (lid_t i2 = block->start(2); i2 < block->end(2); i2++) {
             for (lid_t i1 = block->start(1); i1 < block->end(1); i1++) {

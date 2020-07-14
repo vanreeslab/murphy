@@ -29,7 +29,7 @@ static lid_t CoarseNGhostBack(Interpolator* interp) {
     const lid_t gp_scaling = ((interp->nghost_back()+1) / 2);
     // and the number of details
     //      = (interp->nghost_back()) / 2 +  + interp->nrefine_back()
-    const lid_t gp_detail  = ((interp->nghost_back()+1) / 2) + interp->nrefine_back();
+    const lid_t gp_detail  = ((interp->nghost_back()) / 2) + interp->nrefine_back();
     return m_max(gp_scaling,gp_detail);
 }
 
@@ -222,7 +222,7 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     }
     m_log("coarse block allocated withstride = %d",CoarseStride(interp_));
     //-------------------------------------------------------------------------
-    m_log("ghost initialized with %s, nghost = %d %d", interp_->Identity().c_str(),nghost_[0],nghost_[1]);
+    m_log("ghost initialized with %s, nghost = %d %d, coarse ghost = %d %d", interp_->Identity().c_str(),nghost_[0],nghost_[1],CoarseNGhostFront(interp_),CoarseNGhostBack(interp_));
     m_end;
 }
 
@@ -983,7 +983,7 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
     lid_t coarse_start[3];
     lid_t coarse_end[3];
 
-    m_log("entering siblings");
+    // m_log("entering siblings");
 
     // do the blocks on my level
     for (auto biter = block_sibling_[qid->cid]->begin(); biter != block_sibling_[qid->cid]->end(); biter++) {
@@ -1000,7 +1000,7 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
 
         // we need to copy the data to the coarse representation
         if (do_coarse) {
-            m_log("doooo coarse!!");
+            // m_log("doooo coarse!!");
             // set the coarse block to the correct position
             for (int id = 0; id < 3; id++) {
                 coarse_start[id] = CoarseFromBlock(gblock->start(id),interp_);
@@ -1054,7 +1054,7 @@ void Ghost::PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block,
 void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_block, Field* fid,
                                            const bool do_coarse, SubBlock* ghost_block, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
-    m_log("entering from parent");
+    // m_log("entering from parent");
     lid_t coarse_start[3];
     lid_t coarse_end[3];
     // copy the coarse blocks to the coarse representation
@@ -1078,6 +1078,7 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
     }
     // copy the ghost into the coarse representation
     for (auto biter = ghost_parent_[qid->cid]->begin(); biter != ghost_parent_[qid->cid]->end(); biter++) {
+        m_assert(false,"cannot be here!!");
         GhostBlock* gblock = (*biter);
         // update the coarse subblock
         for (int id = 0; id < 3; id++) {
@@ -1092,9 +1093,9 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
         real_p     data_trg  = coarse_mem + m_zeroidx(0, coarse_block);
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
-        interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
+        interp_->Copy(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
-    m_log("copy of the neighbor is done, now compute the fine info");
+    // m_log("copy of the neighbor is done, now compute the fine info");
     //---------------------
     // reset the coarse block to the correct position
     for (int id = 0; id < 3; id++) {
@@ -1129,9 +1130,7 @@ void Ghost::PullFromGhost4Block_FromParent_(const qid_t* qid, GridBlock* cur_blo
 
 void Ghost::PullFromGhost4Block_Myself_(const qid_t* qid, GridBlock* cur_block, Field* fid, SubBlock* coarse_block, real_t* coarse_mem) {
     //-------------------------------------------------------------------------
-
-    m_log("entering myself");
-
+    // m_log("entering myself");
     lid_t coarse_start[3];
     lid_t coarse_end[3];
     //set the coarse block to its whole domain
@@ -1202,7 +1201,7 @@ void Ghost::PullFromGhost4Block_ToParent_(const qid_t* qid, GridBlock* cur_block
     lid_t coarse_start[3];
     lid_t coarse_end[3];
 
-    m_log("entering to parent");
+    // m_log("entering to parent");
 
     // copy the coarse blocks to the coarse representation
     for (auto biter = block_children_[qid->cid]->begin(); biter != block_children_[qid->cid]->end(); biter++) {

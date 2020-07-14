@@ -88,8 +88,8 @@ class Wavelet : public Interpolator {
     real_t* ha_ = nullptr;  //!< scaling analysis: 1 level coarsening -> coarsening computation
     real_t* ga_ = nullptr;  //!< detail analysis: 1 level coarsening -> detail computation
     real_t* gs_ = nullptr;  //!< detail synthesis: 1 level refinement -> refinement computation
-    // modified filter
-    real_t** gs_g_[2][2] = {{nullptr, nullptr}, {nullptr, nullptr}};  //!< modified gs filter for the ghosting[front,back][coarse,fine][ighost]
+    // // modified filter
+    // real_t** gs_g_[2][2] = {{nullptr, nullptr}, {nullptr, nullptr}};  //!< modified gs filter for the ghosting[front,back][coarse,fine][ighost]
 
     // real_p ha_2_ = nullptr;  //!< scaling analysis: 2 level coarsening
     // sid_t len_ha_2_ = 0;
