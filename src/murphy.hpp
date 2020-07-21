@@ -11,11 +11,13 @@
 typedef int32_t lid_t;
 typedef int8_t  sid_t;
 
-typedef double  real_t;
 //function oriented data types
-typedef int8_t  iface_t;
+typedef int8_t         iface_t;
 typedef int8_t         level_t;  //!< data type for a level
+typedef int            rank_t;   //!< rank data types
+typedef double         real_t;
 typedef p4est_locidx_t iblock_t;  //!< datatype to index blocks, ghosts and quadrants
+
 
 typedef real_t* __restrict real_p;
 typedef std::map<std::string, real_p> datamap_t;

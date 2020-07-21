@@ -207,7 +207,7 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
             // select the hyperslab of the memory
             status = H5Sselect_hyperslab(memspace, H5S_SELECT_SET, memoffset, memstride, memcount, memblock);
             // do the writting for the data, we need to shift it by hand since memoffset cannot be < 0
-            real_p data = block->data(fid) + m_midx(-M_GS, -M_GS, -M_GS, 0, block);
+            real_p data = block->pointer(fid);// + m_midx(-M_GS, -M_GS, -M_GS, 0, block);
             status      = H5Dwrite(fileset, H5T_NATIVE_DOUBLE, memspace, filespace, H5P_DEFAULT, data);
         }
     }

@@ -7,8 +7,8 @@
 void murphy_init(int argc, char** argv) {
     //-------------------------------------------------------------------------
     int provided;
-    // set MPI_THREAD_FUNNELED or MPI_THREAD_SERIALIZED
-    int requested = MPI_THREAD_FUNNELED;
+    // set MPI_THREAD_SERIALIZED
+    int requested = MPI_THREAD_SERIALIZED;
     MPI_Init_thread(&argc, &argv, requested, &provided);
     if (provided != requested) {
         printf("The MPI-provided thread behavior does not match\n");

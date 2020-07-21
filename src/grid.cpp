@@ -267,14 +267,14 @@ void Grid::ResetFields(const map<string, Field*>* fields) {
 }
 
 /**
- * @brief Pull ghost points (take the values from the neighbors): fill the mirror buffers and start the send MPI call
+ * @brief Pull ghost points (take the values from the neighbors): start to obtain the ghost points from coarser and same level neighbors
  * 
- * @warning this function is part of the advanced control feature
+ * @warning you have to call the @ref GhostPull_CoarseEnd() before making any other communication
  * 
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPullSend(Field* field, const sid_t ida) {
+void Grid::GhostPull_CoarseStart(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
@@ -282,30 +282,21 @@ void Grid::GhostPullSend(Field* field, const sid_t ida) {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        // get the mirror
-        m_profStart(prof_, "ghost_cmpt");
-        ghost_->PushToMirror(field, ida);
-        m_profStop(prof_, "ghost_cmpt");
-
-        // communicate
-        m_profStart(prof_, "ghost_comm");
-        ghost_->MirrorToGhostSend(prof_);
-        m_profStop(prof_, "ghost_comm");
+        m_profStart(prof_,"ghostpull_coarse_start");
+        ghost_->GetGhost_Post(field,ida);
+        m_profStop(prof_,"ghostpull_coarse_start");
     }
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Pull ghost points (take the values from the neighbors): receive the buffers.
- * After this function, the receive buffers are full and the send buffers are available for another send
- * 
- * @warning this function is part of the advanced control feature
+ * @brief Pull ghost points (take the values from the neighbors): end to obtain the ghost points from coarser and same level neighbors
  * 
  * @param field the considered field
  * @param ida the received dimension
  */
-void Grid::GhostPullRecv(Field* field, const sid_t ida) {
+void Grid::GhostPull_CoarseEnd(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
@@ -313,71 +304,76 @@ void Grid::GhostPullRecv(Field* field, const sid_t ida) {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        // receive the current communication, the mirrors are now free
-        m_profStart(prof_, "ghost_comm");
-        ghost_->MirrorToGhostRecv(prof_);
-        m_profStop(prof_, "ghost_comm");
+        m_profStart(prof_, "ghostpull_coarse_end");
+        ghost_->GetGhost_Wait(field, ida);
+        m_profStop(prof_, "ghostpull_coarse_end");
     }
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Pull ghost points (take the values from the neighbors): get the actual ghost points values from the received buffers
- * After this function, the reception buffers are available for another reception
+ * @brief Pull ghost points (take the values from the neighbors): start to obtain the ghost points from finer neighbors
  * 
- * @warning this function is part of the advanced control feature
+ * @param field the considered field
+ * @param ida the received dimension
+ */
+void Grid::GhostPull_FineStart(Field* field, const sid_t ida) {
+    m_begin;
+    m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
+    m_assert(field != nullptr, "the source field cannot be null");
+    m_assert(IsAField(field), "the field does not belong to this grid");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
+    //-------------------------------------------------------------------------
+    if (!field->ghost_status()) {
+        m_profStart(prof_, "ghostpull_fine_start");
+        ghost_->PutGhost_Post(field, ida);
+        m_profStop(prof_, "ghostpull_fine_start");
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief Pull ghost points (take the values from the neighbors): end to obtain the ghost points from finer neighbors
  * 
  * @param field the considered field
  * @param ida the filled dimension
  */
-void Grid::GhostPullFill(Field* field, const sid_t ida) {
+void Grid::GhostPull_FineEnd(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
     m_assert(IsAField(field), "the field does not belong to this grid");
-    m_assert(interp_ != nullptr, "the inteprolator cannot be null");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        // receive the current communication, the mirrors are now free
-        m_profStart(prof_, "ghost_cmpt");
-        ghost_->PullFromGhost(field, ida);
-        m_profStop(prof_, "ghost_cmpt");
+        m_profStart(prof_, "ghostpull_fine_start");
+        ghost_->PutGhost_Wait(field, ida);
+        m_profStop(prof_, "ghostpull_fine_start");
     }
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Pull the ghost points (take the values from the neighbors)
- * 
- * It implements the overlapping between the send and the reception of every dimension in order
- * reduce the total computational time.
- * 
- * After this function, the ghost status of the field is set as up-to-date
+ * @brief Pull the ghost points (take the values from the neighbors): after this function, the ghost status of the field is set as up-to-date
  * 
  * @param field the field which requires the ghost
  */
 void Grid::GhostPull(Field* field) {
     m_begin;
     m_assert(field != nullptr, "the source field cannot be null");
-    m_assert(ghost_ != nullptr,"The ghost structure is not valid, unable to use it");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     // start the send in the first dimension
-    GhostPullSend(field, 0);
-    for (int ida = 1; ida < field->lda(); ida++) {
-        // receive the previous dimension
-        GhostPullRecv(field, ida - 1);
-        // start the send for the next dimension
-        GhostPullSend(field, ida);
-        // fill the ghost values of the just-received information
-        GhostPullFill(field, ida - 1);
+    for (int ida = 0; ida < field->lda(); ida++) {
+        GhostPull_CoarseStart(field, ida);
+        GhostPull_CoarseEnd(field, ida);
+        GhostPull_FineStart(field, ida);
+        GhostPull_FineEnd(field, ida);
     }
-    GhostPullRecv(field, field->lda() - 1);
-    // fill the ghost values of the just-received information
-    GhostPullFill(field, field->lda() - 1);
-    // set that everything is ready for the field
+    // // set that everything is ready for the field
     field->ghost_status(true);
     //-------------------------------------------------------------------------
     m_end;

@@ -66,51 +66,6 @@ void Wavelet<N, Nt>::Details(MemLayout* block, real_p data, real_t* details_max)
 }
 
 /**
- * @brief copy the value of the source memory to the target memory
- * 
- * @tparam N the number of vanishing moment (not needed here...)
- * @tparam Nt the order of interpolation (not needed here...)
- * 
- * @param 
- * @param ctx the interpolation context
- */
-template <int N, int Nt>
-void Wavelet<N, Nt>::Copy_(const sid_t dlvl, const interp_ctx_t* ctx) {
-    //-------------------------------------------------------------------------
-    // ensure alignment for target, constant and source
-    // m_assume_aligned(ctx->tdata);
-    // // m_assume_aligned(ctx->sdata);
-    // m_assume_aligned(ctx->cdata);
-
-    // m_log("src from %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2], ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
-    // m_log("trg from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2], ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
-
-    const lid_t  scaling = pow(2, dlvl);
-    const real_t alpha   = ctx->alpha;
-
-    // do the copy
-    for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
-        for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
-            for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
-                m_assert(((scaling * ik0) >= ctx->srcstart[0]) && ((scaling * ik0) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->srcstart[0], ik0, ctx->srcend[0]);
-                m_assert(((scaling * ik1) >= ctx->srcstart[1]) && ((scaling * ik1) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->srcstart[1], ik1, ctx->srcend[1]);
-                m_assert(((scaling * ik2) >= ctx->srcstart[2]) && ((scaling * ik2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->srcstart[2], ik2, ctx->srcend[2]);
-                // get the current parent's data
-                real_p       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(scaling * ik0, scaling * ik1, scaling * ik2, 0, ctx->srcstr);
-                // do the simple copy
-                m_assert(((ik0) >= ctx->trgstart[0]) && ((ik0) < ctx->trgend[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->trgstart[0], ik0, ctx->trgend[0]);
-                m_assert(((ik1) >= ctx->trgstart[1]) && ((ik1) < ctx->trgend[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->trgstart[1], ik1, ctx->trgend[1]);
-                m_assert(((ik2) >= ctx->trgstart[2]) && ((ik2) < ctx->trgend[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->trgstart[2], ik2, ctx->trgend[2]);
-                ltdata[0] = alpha * lcdata[0] + lsdata[0];
-            }
-        }
-    }
-    //-------------------------------------------------------------------------
-}
-
-/**
  * @brief coarsen the values of the source memory to gather them in the target memory.
  * It can refine on up to 2 successive levels
  * 

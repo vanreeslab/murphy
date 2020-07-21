@@ -25,6 +25,13 @@ inline static int8_t p4est_MaxLocalLevel(const p8est_t* forest) {
     //---------------------------------------------------------------------
 };
 
+inline static int p4est_GetOwnerFromGhost(p8est_t* forest, p8est_quadrant_t* ghost) {
+    //---------------------------------------------------------------------
+    p4est_topidx_t tree_id = ghost->p.piggy3.which_tree;
+    return p8est_quadrant_find_owner(forest, tree_id,-1,ghost);
+    //---------------------------------------------------------------------
+};
+
 inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, p8est_quadrant_t* mirror) {
     //---------------------------------------------------------------------
     p8est_tree_t*  tree    = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);

@@ -29,5 +29,6 @@ PhysBlock::PhysBlock(const sid_t iface, MemLayout* block, const sid_t nghost_fro
     // if we go minus, we need to overwrite the first point as it sits on the boundary
     start_[dir] = (sign == 0) ? (-nghost_front[dir]) : 0;
     end_[dir]   = (sign == 0) ? 1 : nghost_back[dir];
+    // m_log("physical block init in dir")
     //-------------------------------------------------------------------------
 }

@@ -14,15 +14,22 @@
 
 using std::list;
 
-#define M_NGHOST (M_N * M_N * M_N)
-#define M_NNEIGHBOR 26
+// #define M_NGHOST (M_N * M_N * M_N)
+
+// alias boring names
+using GBLocal      = GhostBlock<GridBlock *>;
+using GBMirror     = GhostBlock<MPI_Aint>;
+using GBPhysic     = PhysBlock;
+using ListGBLocal  = list<GBLocal *>;
+using ListGBMirror = list<GBMirror *>;
+using listGBPhysic = list<GBPhysic *>;
 
 class Ghost;
 
 /**
  * @brief pointer to an member function of the class @ref Ghost
  */
-using gop_t = void (Ghost::*)(const qid_t* qid, GridBlock* block, Field* fid);
+using gop_t = void (Ghost::*)(const qid_t *qid, GridBlock *block, Field *fid);
 
 /**
  * @brief performs the ghost update of a given grid field, in one dimension
@@ -45,7 +52,7 @@ class Ghost {
     sid_t    ida_           = -1;                  //!< current ghosting dimension
     level_t  min_level_     = -1;                  //!< minimum active level, min_level included
     level_t  max_level_     = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
-    iblock_t n_active_quad_ = 0;                   //!< the number of quadrant that needs to have ghost informations
+    iblock_t n_active_quad_ = -1;                   //!< the number of quadrant that needs to have ghost informations
     sid_t    nghost_[2]     = {0, 0};              //!< the number of ghost (front,back) that are actually needed
 
     // information that tracks which block is involved
@@ -59,25 +66,54 @@ class Ghost {
     MPI_Request *mirror_send_    = nullptr;  //!< the send requests for the mirrors
     MPI_Request *ghost_recv_     = nullptr;  //!< the receive requests for the ghosts
 
-    real_t *mirrors_ = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
-    real_t *ghosts_  = nullptr;  //!< memory space for the ghost blocks
+    //---------------
+    // RMA
+    MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit a RMA to access my mirrors
+    MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be target by my RMA calls to access mirrors
+
+    // acess to the mirror data
+    MPI_Win mirrors_window_ = MPI_WIN_NULL;  //!< MPI Window for the RMA communication
+    real_t *mirrors_        = nullptr;       //!< memory space for the mirror blocks, computed using n_mirror_to_send_
+    
+    // access to the mirror displacement -> non null only during the initlist function
+    MPI_Win   local2disp_window_ = MPI_WIN_NULL;  //!< MPI Window for the RMA communication
+    MPI_Aint *local2disp_        = nullptr;       //!< for each quadrant, indicate its corresponding mirror ID
+
+    //---------------
+
+    real_t *ghosts_         = nullptr;       //!< memory space for the ghost blocks
 
     ForestGrid *  grid_;        //!< pointer to the associated @ref ForestGrid, shared, not owned
     real_p *      coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
     Interpolator *interp_;      //!< pointer to the associated @ref Interpolator, shared, not owned
 
-    list<GhostBlock *> **block_sibling_;   //!<  list of blocks that are on the  same resolution
-    list<GhostBlock *> **block_children_;  //!<  list of blocks that are finer
-    list<GhostBlock *> **block_parent_;    //!<  list of blocks that are coarser
-    list<GhostBlock *> **ghost_sibling_;   //!<  list of ghosts that are on the same resolution
-    list<GhostBlock *> **ghost_children_;  //!<  list of ghosts that are on the same resolution
-    list<GhostBlock *> **ghost_parent_;    //!<  list of ghosts that are coarser
-    list<PhysBlock *> ** phys_;            //!<  physical blocks
+    ListGBLocal ** block_sibling_;   //!<  list of blocks that are on the  same resolution
+    ListGBLocal ** block_children_;  //!<  list of blocks that are finer
+    ListGBLocal ** block_parent_;    //!<  list of blocks that are coarser
+    ListGBMirror **ghost_sibling_;   //!<  list of ghosts that are on the same resolution
+    ListGBMirror **ghost_children_;  //!<  list of ghosts that are on the same resolution
+    ListGBMirror **ghost_parent_;    //!<  list of ghosts that are coarser
+    listGBPhysic **phys_;            //!<  physical blocks
 
    public:
     Ghost(ForestGrid *grid, Interpolator *interp);
     Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, Interpolator *interp);
     ~Ghost();
+
+    /**
+     * @name RMA-based ghosting -- divided in 4 steps (order matters!)
+     * @{
+     */
+    void GetGhost_Post(Field *field, const sid_t ida);  // step 1
+    void GetGhost_Wait(Field *field, const sid_t ida);  // step 2
+    void PutGhost_Post(Field *field, const sid_t ida);  // step 3
+    void PutGhost_Wait(Field *field, const sid_t ida);  // step 4
+    // block functions
+    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);  // step 1
+    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);  // step 2
+    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);  // step 3
+    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);  // step 4
+    /** @}*/
 
     void PushToMirror(Field *field, const sid_t ida);
     void MirrorToGhostSend(Prof *prof);
@@ -90,19 +126,37 @@ class Ghost {
      *  @{
      */
     void InitList4Block(const qid_t *qid, GridBlock *block);
+    void PushToWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
+
     void PushToMirror4Block(const qid_t *qid, GridBlock *block, Field *fid);
     void PullFromGhost4Block(const qid_t *qid, GridBlock *cur_block, Field *fid);
     /** @} */
 
    protected:
+    // void InitComm_();
     void InitComm_();
+    void FreeComm_();
+    void InitList_();
+    void FreeList_();
+
+    void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
+    void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
+    void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
+    void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
+    void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
+    void Compute4Block_Refine_(const ListGBLocal *ghost_list, real_t *ptr_src, real_t *data_trg);
+    void Compute4Block_Refine_(const ListGBMirror *ghost_list, real_t *ptr_src, real_t *data_trg);
+
+    // void Compute4Block_Sibling_(const list<GhostBlock *> *ghost_list, const bool do_coarse, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
+    // void Compute4Block_FromParent_(const list<GhostBlock *> *ghost_list, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
+
     void LoopOnMirrorBlock_(const gop_t op, Field *field);
     void LoopOnGhostBlock_(const gop_t op, Field *field);
 
-     // void PullFromGhost4Block_Children(const qid_t *qid, GridBlock *cur_block, Field *fid,
+    // void PullFromGhost4Block_Children(const qid_t *qid, GridBlock *cur_block, Field *fid,
     //                                  const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block, Field *fid,
-                                     const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
+    // void PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block, Field *fid,
+    //                                   const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
     void PullFromGhost4Block_FromParent_(const qid_t *qid, GridBlock *cur_block, Field *fid,
                                         const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
     void PullFromGhost4Block_Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid, SubBlock *coarse_block, real_t *coarse_mem);

@@ -19,10 +19,12 @@ using std::numeric_limits;
  */
 class GridBlock : public MemLayout {
    protected:
-    sid_t     level_;     //!< the level of the block
+    level_t   level_;     //!< the level of the block
     real_t    xyz_[3];    //!< the origin of the block
     real_t    hgrid_[3];  //!< the grid spacing of the block
     datamap_t data_map_;  //<! a map of the pointers to the actual data
+
+    real_t* ptr_ghost_ = nullptr;  //!< a pointer of data that I do not handle but which uniquely associated to me for the ghost computation
 
    public:
     GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
@@ -45,13 +47,27 @@ class GridBlock : public MemLayout {
     const real_t* xyz() const { return xyz_; }
 
     /**
+     * @name handle the ghost data pointer
+     * @{
+     */
+    void   AllocatePtrGhost(const size_t memsize);
+    void   ptr_ghost(real_p ptr) { ptr_ghost_ = ptr; }
+    real_p ptr_ghost() const { return ptr_ghost_; }
+    /**@} */
+
+    /**
      * @name datamap access
      * 
      * @{
      */
+    // data = memory address of (0,0,0)
     real_p data(Field* fid);
     real_p data(const Field* fid, const sid_t ida);
     real_p data(const Field* fid) const;
+    // pointer = raw data pointe
+    real_p pointer(Field* fid);
+    real_p pointer(const Field* fid, const sid_t ida);
+    real_p pointer(const Field* fid) const;
     /** @} */
 
     /**

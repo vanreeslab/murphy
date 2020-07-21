@@ -1,6 +1,7 @@
 #ifndef SRC_DEFS_HPP_
 #define SRC_DEFS_HPP_
 
+#include <execinfo.h>
 #include <mpi.h>
 #include <omp.h>
 #include <p8est.h>
