@@ -27,8 +27,10 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
  */
 GridBlock::~GridBlock() {
     //-------------------------------------------------------------------------
+    m_verb("destruct gridBlock");
     if (ptr_ghost_ != nullptr) {
-        MPI_Free_mem(&ptr_ghost_);
+        m_verb("freeing the ghost ptr @ %p", ptr_ghost_);
+        MPI_Free_mem(ptr_ghost_);
         ptr_ghost_ = nullptr;
     }
     DeleteFields();
@@ -44,8 +46,10 @@ void GridBlock::AllocatePtrGhost(const size_t memsize) {
     //-------------------------------------------------------------------------
     if (ptr_ghost_ == nullptr) {
         MPI_Alloc_mem(memsize, MPI_INFO_NULL, &ptr_ghost_);
+        m_verb("allocating the ghost ptr of size %ld, @ %p", ptr_size_, ptr_ghost_)
+            m_assert(ptr_ghost_ != nullptr, "the pointer is still null, not possible");
     } else {
-        m_log("no ghost ptr allocated, already present");
+        m_verb("no ghost ptr allocated, already present");
     }
     //-------------------------------------------------------------------------
 }

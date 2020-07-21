@@ -331,7 +331,6 @@ void Ghost::InitList_(){
 
     // init the list on every active block that matches the level requirements
     for (level_t il = min_level_; il <= max_level_; il++) {
-        m_log("init ghosts for level %d", il);
         DoOp_F_<op_t<Ghost*, nullptr_t>, Ghost*, nullptr_t>(CallGhostInitList, grid_, il, nullptr, this);
     }
 
@@ -350,17 +349,30 @@ void Ghost::InitList_(){
 void Ghost::FreeList_() {
     m_begin;
     //-------------------------------------------------------------------------
-    p8est_mesh_t* mesh = grid_->mesh();
     // clear the lists
     for (lid_t ib = 0; ib < n_active_quad_; ib++) {
         // free the blocks
-        for (auto biter : (*block_children_[ib])) delete biter;
-        for (auto biter : (*ghost_children_[ib])) delete biter;
-        for (auto biter : (*block_sibling_[ib])) delete biter;
-        for (auto biter : (*ghost_sibling_[ib])) delete biter;
-        for (auto biter : (*block_parent_[ib])) delete biter;
-        for (auto biter : (*ghost_parent_[ib])) delete biter;
-        for (auto piter : (*phys_[ib])) delete piter;
+        for (auto biter : (*block_children_[ib])) {
+            delete biter;
+        }
+        for (auto biter : (*ghost_children_[ib])) {
+            delete biter;
+        }
+        for (auto biter : (*block_sibling_[ib])) {
+            delete biter;
+        }
+        for (auto biter : (*ghost_sibling_[ib])) {
+            delete biter;
+        }
+        for (auto biter : (*block_parent_[ib])) {
+            delete biter;
+        }
+        for (auto biter : (*ghost_parent_[ib])) {
+            delete biter;
+        }
+        for (auto piter : (*phys_[ib])) {
+            delete piter;
+        }
         // purge everything
         delete (block_children_[ib]);
         delete (ghost_children_[ib]);
@@ -680,6 +692,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     bchildren->push_back(invert_gb);
                 } else {
                     m_assert(gb->dlvl() == 1, "The delta level is not correct: %d", gb->dlvl());
+                    delete gb;
                 }
             } else {
                 // get the local number in the remote rank and the remote rank
@@ -706,6 +719,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     bchildren->push_back(invert_gb);
                 } else {
                     m_assert(gb->dlvl() == 1, "The delta level is not correct: %d", gb->dlvl());
+                    delete gb;
                 }
             }
         }
@@ -807,6 +821,7 @@ void Ghost::Compute4Block_Copy2Myself_(const ListGBLocal* ghost_list, Field* fid
         // copy the information
         interp_->Copy(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
     }
+    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -840,7 +855,10 @@ void Ghost::Compute4Block_Copy2Coarse_(const ListGBLocal* ghost_list, Field* fid
         // m_log("entering interpolator with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
         // m_log("entering interpolator with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
         interp_->Copy(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
+
+        delete block_trg;
     }
+    delete block_src;
     //-------------------------------------------------------------------------
 }
 void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list, Field* fid, GridBlock* block_trg, real_t* data_trg) {
@@ -858,6 +876,7 @@ void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list, Field* 
         // copy the information
         interp_->GetRma(gblock->dlvl(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
     }
+    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -887,7 +906,10 @@ void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* 
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
         interp_->GetRma(gblock->dlvl() + 1, block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
+
+        delete block_trg;
     }
+    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -963,8 +985,8 @@ void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur_block,
         // reset the coarse block and get the correct memory location
         coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         real_p data_trg = ptr_trg + m_zeroidx(0, coarse_block);
-        m_log("doing phyyysiiiics in dir %d from %d %d %d to %d %d %d",dir,gblock->start(0),gblock->start(1),gblock->start(2),gblock->end(0),gblock->end(1),gblock->end(2));
-        m_log("doing phyyysiiiics in dir %d from %d %d %d to %d %d %d",dir,coarse_block->start(0),coarse_block->start(1),coarse_block->start(2),coarse_block->end(0),coarse_block->end(1),coarse_block->end(2));
+        m_verb("doing phyyysiiiics in dir %d from %d %d %d to %d %d %d", dir, gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
+        m_verb("doing phyyysiiiics in dir %d from %d %d %d to %d %d %d", dir, coarse_block->start(0), coarse_block->start(1), coarse_block->start(2), coarse_block->end(0), coarse_block->end(1), coarse_block->end(2));
         // get the correct face_start
         if (bctype == M_BC_EVEN) {
             EvenBoundary_4 bc = EvenBoundary_4();
@@ -989,6 +1011,7 @@ void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur_block,
         }
         //-------------------------------------------------------------------------
     }
+    delete coarse_block;
 }
 
 void Ghost::Compute4Block_Refine_(const ListGBLocal* ghost_list, real_t* ptr_src, real_t* data_trg) {
@@ -1014,6 +1037,7 @@ void Ghost::Compute4Block_Refine_(const ListGBLocal* ghost_list, real_t* ptr_src
         // interpolate, the level is 1 coarser and the shift is unchanged
         interp_->Interpolate(-1, shift, block_src, data_src, gblock, data_trg);
     }
+    delete block_src;
     //-------------------------------------------------------------------------
 }
 void Ghost::Compute4Block_Refine_(const ListGBMirror* ghost_list, real_t* ptr_src, real_t* data_trg) {
@@ -1034,6 +1058,8 @@ void Ghost::Compute4Block_Refine_(const ListGBMirror* ghost_list, real_t* ptr_sr
         // interpolate, the level is 1 coarser and the shift is unchanged
         interp_->Interpolate(-1, shift, block_src, data_src, gblock, data_trg);
     }
+
+    delete block_src;
     //-------------------------------------------------------------------------
 }
 

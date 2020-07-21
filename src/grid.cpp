@@ -147,6 +147,7 @@ void Grid::DestroyGhost() {
     m_begin;
     //-------------------------------------------------------------------------
     if (ghost_ != nullptr) {
+        m_log("dealloc the ghost");
         delete (ghost_);
         ghost_ = nullptr;
     }

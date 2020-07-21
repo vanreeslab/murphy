@@ -19,6 +19,8 @@ class SubBlock : public MemLayout {
     SubBlock(){}
     SubBlock(const lid_t gs, const lid_t stride, const lid_t start[3], const lid_t end[3]);
 
+    virtual ~SubBlock(){};
+
     void Reset(const lid_t gs, const lid_t stride, const lid_t start[3], const lid_t end[3]);
 
     /**

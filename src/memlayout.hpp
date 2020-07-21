@@ -46,6 +46,8 @@ class MemLayout {
     virtual lid_t start(const int id) const = 0;  //!< the starting point for the region of interest
     virtual lid_t end(const int id) const   = 0;  //!< the end point of the region of interest
 
+    virtual ~MemLayout(){};
+
     /**
      * @brief converts the current MemLayout to it's corresponding MPI Datatype vector and commit it
      * 

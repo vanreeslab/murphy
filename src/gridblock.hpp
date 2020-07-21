@@ -50,9 +50,9 @@ class GridBlock : public MemLayout {
      * @name handle the ghost data pointer
      * @{
      */
-    void   AllocatePtrGhost(const size_t memsize);
-    void   ptr_ghost(real_p ptr) { ptr_ghost_ = ptr; }
     real_p ptr_ghost() const { return ptr_ghost_; }
+    void   ptr_ghost(real_p ptr) { ptr_ghost_ = ptr; }
+    void   AllocatePtrGhost(const size_t memsize);
     /**@} */
 
     /**
