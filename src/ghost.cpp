@@ -540,222 +540,9 @@ void Ghost::PutGhost_Wait(Field* field, const sid_t ida) {
     m_end;
 }
 
-
-
-// /**
-//  * @brief given the dimension and the field, copy the mirror blocks that are located on the given level to the send buffers
-//  * 
-//  * @param field 
-//  * @param ida 
-//  */
-// void Ghost::PushToMirror(Field* field, const sid_t ida) {
-//     m_begin;
-//     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
-//     //-------------------------------------------------------------------------
-//     // // store the current dimension
-//     // ida_ = ida;
-//     // // loop on the mirrors and copy the values
-//     // LoopOnMirrorBlock_(&Ghost::PushToMirror4Block, field);
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
-// /**
-//  * @brief starts the send requests for all the mirror block that are located on a given level
-//  * 
-//  * @warning we do not start the reception requests because we are not sure the buffers are available
-//  * 
-//  */
-// void Ghost::MirrorToGhostSend(Prof* prof) {
-//     m_begin;
-//     //-------------------------------------------------------------------------
-//     // if (n_send_request_ > 0) {
-//     //     m_profStart(prof, "ghost_comm_start");
-//     //     // youhou
-//     //     MPI_Startall(n_send_request_, mirror_send_);
-//     //     // finitooo
-//     //     m_profStop(prof, "ghost_comm_start");
-//     // }
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
-// /**
-//  * @brief starts the reception requests, end the send requests and end the reception requests for the blocks that are located on a given level
-//  * 
-//  * @param prof profiler, might be nullptr
-//  */
-// void Ghost::MirrorToGhostRecv(Prof* prof) {
-//     m_begin;
-//     //-------------------------------------------------------------------------
-//     // if (n_recv_request_ > 0) {
-//     //     m_profStart(prof, "ghost_comm_start");
-//     //     //
-//     //     MPI_Startall(n_recv_request_, ghost_recv_);
-//     //     //
-//     //     m_profStop(prof, "ghost_comm_start");
-//     // }
-//     // if (n_send_request_ > 0) {
-//     //     m_profStart(prof, "ghost_comm_wait");
-//     //     //
-//     //     MPI_Waitall(n_send_request_, mirror_send_, MPI_STATUSES_IGNORE);
-//     //     //
-//     //     m_profStop(prof, "ghost_comm_wait");
-//     // }
-//     // if (n_recv_request_ > 0) {
-//     //     m_profStart(prof, "ghost_comm_wait");
-//     //     //
-//     //     MPI_Waitall(n_recv_request_, ghost_recv_, MPI_STATUSES_IGNORE);
-//     //     //
-//     //     m_profStop(prof, "ghost_comm_wait");
-//     // }
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
-// /**
-//  * @brief compute the ghost values from the received buffers and the local blocks
-//  * 
-//  * @param field
-//  * @param ida 
-//  * @param interp
-//  */
-// void Ghost::PullFromGhost(Field* field, const sid_t ida) {
-//     m_begin;
-//     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
-//     //-------------------------------------------------------------------------
-//     // // store the current dimension
-//     // ida_ = ida;
-//     // // interpolate
-//     // for (level_t il = min_level_; il <= max_level_; il++) {
-//     //     DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGhostPullFromGhost, grid_, il, field, this);
-//     // }
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
-// /**
-//  * @brief initalize the MPI_Request communication once, ready to be used
-//  * 
-//  * @note One p4est mirror structure can be send to multiple ranks
-//  * 
-//  */
-// void Ghost::InitComm_() {
-//     m_begin;
-//     //-------------------------------------------------------------------------
-//     int            mpi_size = grid_->mpisize();
-//     MPI_Comm       mpi_comm = grid_->mpicomm();
-//     p8est_t*       forest   = grid_->forest();
-//     p8est_ghost_t* ghost    = grid_->ghost();
-
-//     // get who send/recv what by level
-//     for (int ir = 0; ir < mpi_size; ir++) {
-//         // send a mirror
-//         iblock_t rank_n_2_send = 0;
-//         iblock_t send_first    = ghost->mirror_proc_offsets[ir];
-//         iblock_t send_last     = ghost->mirror_proc_offsets[ir + 1];
-//         for (iblock_t bid = send_first; bid < send_last; bid++) {
-//             // access the element and ask for its level
-//             qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, ghost->mirror_proc_mirrors[bid]);
-//             sid_t   mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
-//             // update the counters if the mirror is admissible
-//             // we need to have called the function p4est_balance()!!
-//             if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
-//                 rank_n_2_send++;
-//             }
-//         }
-//         // if we added some blocks, create a new request and increment the global counter
-//         n_send_request_ += (rank_n_2_send > 0) ? 1 : 0;
-//         n_mirror_to_send_ += rank_n_2_send;
-
-//         // recv a ghost
-//         iblock_t rank_n_2_recv = 0;
-//         iblock_t recv_first    = ghost->proc_offsets[ir];
-//         iblock_t recv_last     = ghost->proc_offsets[ir + 1];
-//         for (iblock_t bid = recv_first; bid < recv_last; bid++) {
-//             // get the ghost level
-//             level_t ghost_level = p8est_quadrant_array_index(&ghost->ghosts, bid)->level;
-//             // it is not ensured that the ghost quad has a level, so run a check
-//             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
-//                 rank_n_2_recv++;
-//             }
-//         }
-//         // if we added some blocks, create a new request and increment the global counter
-//         n_recv_request_ += (rank_n_2_recv > 0) ? 1 : 0;
-//         n_ghost_to_recv_ += rank_n_2_recv;
-//     }
-
-//     // allocate the request and local arrays for each level
-//     local_to_mirrors = reinterpret_cast<iblock_t*>(m_calloc(n_mirror_to_send_ * sizeof(iblock_t*)));
-//     ghost_to_local_  = reinterpret_cast<iblock_t*>(m_calloc(ghost->ghosts.elem_count * sizeof(iblock_t*)));
-//     mirror_send_     = reinterpret_cast<MPI_Request*>(m_calloc(n_send_request_ * sizeof(MPI_Request)));
-//     ghost_recv_      = reinterpret_cast<MPI_Request*>(m_calloc(n_recv_request_ * sizeof(MPI_Request)));
-
-//     // allocate the mirror and ghost data arrays to the max among each level
-//     mirrors_ = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * M_NGHOST * n_mirror_to_send_));
-//     ghosts_  = reinterpret_cast<real_t*>(m_calloc(sizeof(real_t) * M_NGHOST * n_ghost_to_recv_));
-
-//     // allocate the MPI requests
-//     lid_t    send_request_offset = 0;
-//     lid_t    recv_request_offset = 0;
-//     iblock_t mirror_offset       = 0;
-//     iblock_t ghost_offset        = 0;
-//     for (int ir = 0; ir < mpi_size; ir++) {
-//         // send a mirror
-//         iblock_t rank_n_2_send = 0;
-//         iblock_t send_first    = ghost->mirror_proc_offsets[ir];
-//         iblock_t send_last     = ghost->mirror_proc_offsets[ir + 1];
-//         for (iblock_t bid = send_first; bid < send_last; bid++) {
-//             // access the element and ask for its level
-//             qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, ghost->mirror_proc_mirrors[bid]);
-//             sid_t   mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
-//             if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
-//                 iblock_t add_id          = mirror_offset + rank_n_2_send;
-//                 local_to_mirrors[add_id] = ghost->mirror_proc_mirrors[bid];
-//                 rank_n_2_send++;
-//             }
-//         }
-//         if (rank_n_2_send > 0) {
-//             // move the sendbuf to howmany have already been send * the size of one block
-//             real_p send_buf  = mirrors_ + mirror_offset * M_NGHOST;
-//             size_t send_size = rank_n_2_send * M_NGHOST;
-//             MPI_Send_init(send_buf, send_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, mirror_send_ + send_request_offset);
-//             // update the offsets
-//             mirror_offset += rank_n_2_send;
-//             send_request_offset++;
-//         }
-//         // recv a ghost
-//         iblock_t rank_n_2_recv = 0;
-//         iblock_t recv_first    = ghost->proc_offsets[ir];
-//         iblock_t recv_last     = ghost->proc_offsets[ir + 1];
-//         for (iblock_t bid = recv_first; bid < recv_last; bid++) {
-//             // get the ghost level
-//             level_t ghost_level = p8est_quadrant_array_index(&ghost->ghosts, bid)->level;
-//             // it is not ensured that the ghost quad has a level, so run a check
-//             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
-//                 iblock_t add_id      = ghost_offset + rank_n_2_recv;
-//                 ghost_to_local_[bid] = add_id;
-//                 rank_n_2_recv++;
-//             }
-//         }
-//         if (rank_n_2_recv > 0) {
-//             // move the sendbuf to howmany have already been send * the size of one block
-//             real_p recv_buf  = ghosts_ + ghost_offset * M_NGHOST;
-//             size_t recv_size = rank_n_2_recv * M_NGHOST;
-//             MPI_Recv_init(recv_buf, recv_size, M_MPI_REAL, ir, P4EST_COMM_GHOST_EXCHANGE, mpi_comm, ghost_recv_ + recv_request_offset);
-//             // update the offsets
-//             ghost_offset += rank_n_2_recv;
-//             recv_request_offset++;
-//         }
-//     }
-//     m_assert(ghost_offset == n_ghost_to_recv_, "the two numbers have to match");
-//     m_assert(mirror_offset == n_mirror_to_send_, "the two numbers have to match");
-//     m_assert(send_request_offset == n_send_request_, "the two numbers have to match");
-//     m_assert(recv_request_offset == n_recv_request_, "the two numbers have to match");
-
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
+//*************************************************************************************************************************************
+// BLOCK FUNCTIONS
+//*************************************************************************************************************************************
 
 /**
  * @brief setup the ghosting lists, for the considered block
@@ -932,30 +719,6 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
     //-------------------------------------------------------------------------
 }
 
-// /**
-//  * @brief copy the block information into the mirror buffer for a given field and dimension
-//  * 
-//  * @param qid the quadrant ID
-//  * @param block th block that is an actual mirror
-//  * @param fid the field ID
-//  */
-// void Ghost::PushToMirror4Block(const qid_t* qid, GridBlock* block, Field* fid) {
-//     m_assert(ida_ >= 0, "the current working dimension has to be correct");
-//     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
-//     //-------------------------------------------------------------------------
-//     real_p mirror = mirrors_ + qid->cid * M_NGHOST;
-//     real_p data   = block->data(fid, ida_);
-
-//     for (int i2 = 0; i2 < M_N; i2++) {
-//         for (int i1 = 0; i1 < M_N; i1++) {
-//             for (int i0 = 0; i0 < M_N; i0++) {
-//                 mirror[m_sidx(i0, i1, i2, 0, M_N)] = data[m_idx(i0, i1, i2)];
-//             }
-//         }
-//     }
-//     //-------------------------------------------------------------------------
-// }
-
 void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
@@ -976,71 +739,32 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
     real_p tmp = block->ptr_ghost();
     // determine if we have to use the coarse representation
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
-    // if so, reset the coarse info
-    if (do_coarse) {
-        memset(tmp, 0, CoarseMemSize(interp_));
-    }
-
-    if (qid->cid == 16) {
-        lid_t coarse_start[3];
-        lid_t coarse_end[3];
-
-        //set the coarse block to its whole domain
-        for (int id = 0; id < 3; id++) {
-            coarse_start[id] = 0;
-            coarse_end[id]   = M_HN;
-        }
-        SubBlock* coarse_block = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-        for (int i2 = 7; i2 < 8; i2++) {
-            for (int i1 = 0; i1 < 9; i1++) {
-                printf("%d %d: ", i1, i2);
-                for (int i0 = 0; i0 < M_HN; i0++) {
-                    printf("%f ", *(tmp + m_zeroidx(0, coarse_block) + m_sidx(i0, i1, i2, 0, coarse_block->stride())));
-                }
-                printf("\n");
-            }
-        }
-    }
 
     //................................................
-    // start with the ghost blocks
+    // start to obtain the missing info with my siblings
     Compute4Block_GetRma2Myself_(ghost_sibling_[qid->cid], fid, block, block->data(fid, ida_));
+    Compute4Block_Copy2Myself_(block_sibling_[qid->cid], fid, block, block->data(fid, ida_));
+
+    //................................................
+    // get the contribution of my parents
     if (do_coarse) {
+        // reset the coarse memory
+        memset(tmp, 0, CoarseMemSize(interp_));
+
+        // get the info from my siblings
         Compute4Block_GetRma2Coarse_(ghost_sibling_[qid->cid], fid, block, tmp);
         Compute4Block_GetRma2Coarse_(ghost_parent_[qid->cid], fid, block, tmp);
-    }
 
-    // and now the local ones!
-    Compute4Block_Copy2Myself_(block_sibling_[qid->cid], fid, block, block->data(fid, ida_));
-    if (do_coarse) {
-        m_log("-----------------");
-        m_log("QID = %d", qid->cid);
-        m_log("doing copy to coarse");
+        // from my parents
         Compute4Block_Copy2Coarse_(block_sibling_[qid->cid], fid, block, tmp);
         Compute4Block_Copy2Coarse_(block_parent_[qid->cid], fid, block, tmp);
-    }
-    if (qid->cid == 16) {
-        m_log("check the coarse after copying the parents and the siblings");
-        lid_t coarse_start[3];
-        lid_t coarse_end[3];
 
-        //set the coarse block to its whole domain
-        for (int id = 0; id < 3; id++) {
-            coarse_start[id] = 0;
-            coarse_end[id]   = M_HN;
-        }
-        SubBlock* coarse_block = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-        for (int i2 = -1; i2 < 9; i2++) {
-            for (int i1 = 4; i1 < 5; i1++) {
-                printf("x %d %d: ", i1, i2);
-                for (int i0 = -1; i0 < 1; i0++) {
-                    printf("%f ", *(tmp + m_zeroidx(0, coarse_block) + m_sidx(i0, i1, i2, 0, coarse_block->stride())));
-                }
-                printf("\n");
-            }
-        }
+        // we need to compute the physics BEFORE interpolating on the coarse block as
+        // the physics on the coarse does not overwrite the first point
+        Compute4Block_Phys2Myself_(qid, block, fid);
+        // also do the info from myself, while waiting for the comm
+        Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
     }
-
     //-------------------------------------------------------------------------
 }
 
@@ -1051,335 +775,22 @@ void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) 
     // determine if we have to use the coarse representation
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
 
-    if (qid->cid == 16) {
-        m_log("check the coarse before copying myself");
-        lid_t coarse_start[3];
-        lid_t coarse_end[3];
-
-        //set the coarse block to its whole domain
-        for (int id = 0; id < 3; id++) {
-            coarse_start[id] = 0;
-            coarse_end[id]   = M_HN;
-        }
-        SubBlock* coarse_block = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-        for (int i2 = -1; i2 < 9; i2++) {
-            for (int i1 = 4; i1 < 5; i1++) {
-                printf("x %d %d: ", i1, i2);
-                for (int i0 = -1; i0 < 1; i0++) {
-                    printf("%f ", *(tmp + m_zeroidx(0, coarse_block) + m_sidx(i0, i1, i2, 0, coarse_block->stride())));
-                }
-                printf("\n");
-            }
-        }
-    }
-
-    // now that the copy are over, just need to add myself and the physics
+    // now that the copy are over, I can compute the refinement
     if (do_coarse) {
-        Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
-
-        if (qid->cid == 16) {
-            m_log("check the coarse after copying myself");
-            lid_t coarse_start[3];
-            lid_t coarse_end[3];
-
-            //set the coarse block to its whole domain
-            for (int id = 0; id < 3; id++) {
-                coarse_start[id] = 0;
-                coarse_end[id]   = M_HN;
-            }
-            SubBlock* coarse_block = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-            for (int i2 = -1; i2 < 9; i2++) {
-                for (int i1 = 4; i1 < 5; i1++) {
-                    printf("x %d %d: ",i1,i2);
-                    for (int i0 = -1; i0 < 1; i0++) {
-                        printf("%f ", *(tmp + m_zeroidx(0, coarse_block) + m_sidx(i0, i1, i2, 0, coarse_block->stride())));
-                    }
-                    printf("\n");
-                }
-            }
-        }
-        // compute the fine ghosts
-        m_log("-----------------");
-        m_log("QID = %d", qid->cid);
         Compute4Block_Refine_(block_parent_[qid->cid], tmp, block->data(fid, ida_));
         Compute4Block_Refine_(ghost_parent_[qid->cid], tmp, block->data(fid, ida_));
-    } else {
-        m_log("nothing to do, leaving");
     }
-
     //-------------------------------------------------------------------------
 }
 
-void Ghost::PutGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid){
-
+void Ghost::PutGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) {
 }
-void Ghost::PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid){
-
+void Ghost::PutGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
-// /**
-//  * @brief given an up-to-date @ref ghost_ arrays,
-//  * compute the ghosts points for the current block (field @ref fid, dimension @ref ida_)
-//  * 
-//  * @warning this function runs inside an OpenMP parallel region
-//  * 
-//  * @note a lot of dependencies appear if the block has a coarser neighbor. To solve it, we build
-//  * step by step a coarse representation of the current block, which is then used to refine to the actual block.
-//  * 
-//  * @param qid the quadrant id, see @ref qid_t
-//  * @param cur_block the current grid block, see @ref GridBlock
-//  * @param fid the current field, see @ref Field
-//  */
-// void Ghost::PullFromGhost4Block(const qid_t* qid, GridBlock* cur_block, Field* fid) {
-//     //-------------------------------------------------------------------------
-//     // get a subblock describing the ghost memory
-//     lid_t     ghost_start[3] = {0, 0, 0};
-//     lid_t     ghost_end[3]   = {M_N, M_N, M_N};
-//     SubBlock* ghost_subblock = new SubBlock(0, M_N, ghost_start, ghost_end);
-
-//     lid_t     coarse_start[3] = {0, 0, 0};
-//     lid_t     coarse_end[3]   = {M_HN, M_HN, M_HN};
-//     SubBlock* coarse_subblock = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-
-//     // get the working array given the thread
-//     const int ithread = omp_get_thread_num();
-//     real_p    tmp     = coarse_tmp_[ithread];
-
-//     // determine if we have to use the coarse representation
-//     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
-//     // if so, reset the coarse info
-//     if (do_coarse) {
-//         memset(tmp, 0, CoarseStride(interp_) * CoarseStride(interp_) * CoarseStride(interp_) * sizeof(real_t));
-//     }
-
-//     // first, treat the siblings -> will copy to the ghost location + copy to the temp
-//     PullFromGhost4Block_Sibling_(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
-
-//     // do a coarse version of myself and complete with some physics if needed
-//     if (do_coarse) {
-//         PullFromGhost4Block_Myself_(qid, cur_block, fid, coarse_subblock, tmp);
-//         // reset the coarse sublock to the full position
-//         for (int id = 0; id < 3; id++) {
-//             coarse_start[id] = -CoarseNGhostFront(interp_);
-//             coarse_end[id]   = CoarseStride(interp_) - CoarseNGhostFront(interp_);
-//         }
-//         coarse_subblock->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-//     }
-//     // then, treat the parents -> copy to the temp
-//     PullFromGhost4Block_FromParent_(qid, cur_block, fid, do_coarse, ghost_subblock, coarse_subblock, tmp);
-
-//     // //-------------------------------------------------------------------------
-//     // // do the blocks, on my level or finer
-//     // for (auto biter = block_sibling_[qid->cid]->begin(); biter != block_sibling_[qid->cid]->end(); biter++) {
-//     //     GhostBlock* gblock    = (*biter);
-//     //     GridBlock*  ngh_block = gblock->block_src();
-//     //     // memory details
-//     //     MemLayout* block_src = ngh_block;
-//     //     real_p     data_src  = ngh_block->data(fid, ida_);
-//     //     MemLayout* block_trg = gblock;
-//     //     real_p     data_trg  = cur_block->data(fid, ida_);
-//     //     // interpolate
-//     //     interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
-
-//     //     // we need to interpolate on the coarse version of myself as well
-//     //     if (do_coarse) {
-//     //         // set the coarse block to the correct position
-//     //         for (int id = 0; id < 3; id++) {
-//     //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-//     //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
-//     //         }
-//     //         coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-//     //         // memory details
-//     //         MemLayout* block_src = ngh_block;
-//     //         real_p     data_src  = ngh_block->data(fid, ida_);
-//     //         MemLayout* block_trg = coarse_subblock;
-//     //         real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
-//     //         // interpolate, the level is 1 coarser and the shift is unchanged
-//     //         interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-//     //     }
-//     // }
-
-//     // // do the ghosts, on my level or finer
-//     // for (auto biter = ghost_sibling_[qid->cid]->begin(); biter != ghost_sibling_[qid->cid]->end(); biter++) {
-//     //     GhostBlock* gblock = (*biter);
-//     //     // memory details
-//     //     MemLayout* block_src = ghost_subblock;
-//     //     real_p     data_src  = gblock->data_src();
-//     //     MemLayout* block_trg = gblock;
-//     //     real_p     data_trg  = cur_block->data(fid, ida_);
-//     //     // interpolate
-//     //     interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
-
-//     //     // we need to interpolate on the coarse version of myself as well
-//     //     if (do_coarse) {
-//     //         // set the coarse block to the correct position
-//     //         for (int id = 0; id < 3; id++) {
-//     //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-//     //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
-//     //         }
-//     //         coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-//     //         // memory details
-//     //         MemLayout* block_src = ghost_subblock;
-//     //         real_p     data_src  = gblock->data_src();
-//     //         MemLayout* block_trg = coarse_subblock;
-//     //         real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
-//     //         // interpolate, the level is 1 coarser and the shift is unchanged
-//     //         interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-//     //     }
-//     // }
-
-//     // //-------------------------------------------------------------------------
-//     // // copy the coarse blocks to the coarse representation
-//     // for (auto biter = block_parent_[qid->cid]->begin(); biter != block_parent_[qid->cid]->end(); biter++) {
-//     //     GhostBlock* gblock    = (*biter);
-//     //     GridBlock*  ngh_block = gblock->block_src();
-//     //     // setup the coarse sublock to the position
-//     //     for (int id = 0; id < 3; id++) {
-//     //         coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-//     //         coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
-//     //     }
-//     //     coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-//     //     // memory details
-//     //     MemLayout* block_src = ngh_block;
-//     //     real_p     data_src  = ngh_block->data(fid, ida_);
-//     //     MemLayout* block_trg = coarse_subblock;
-//     //     real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
-//     //     // interpolate, the level is 1 coarser and the shift is unchanged
-//     //     m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
-//     //     interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-//     // }
-//     // // copy the ghost into the coarse representation
-//     // for (auto biter = ghost_parent_[qid->cid]->begin(); biter != ghost_parent_[qid->cid]->end(); biter++) {
-//     //     GhostBlock* gblock = (*biter);
-//     //     // update the coarse subblock
-//     //     for (int id = 0; id < 3; id++) {
-//     //         coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-//     //         coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
-//     //     }
-//     //     coarse_subblock->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-//     //     // memory details
-//     //     MemLayout* block_src = ghost_subblock;
-//     //     real_p     data_src  = gblock->data_src();
-//     //     MemLayout* block_trg = coarse_subblock;
-//     //     real_p     data_trg  = tmp + m_zeroidx(0, coarse_subblock);
-//     //     // interpolate, the level is 1 coarser and the shift is unchanged
-//     //     m_assert(gblock->dlvl() + 1 == 0, "the gap in level has to be 0");
-//     //     interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-//     // }
-
-//     // m_log("dbg: tree %d, quad %d: doing coarse ? %d", qid->tid, qid->qid,do_coarse);
-//     //-------------------------------------------------------------------------
-//     // interpolate the ghost representation on myself
-    
-//     // need to put the ghost to my parent's place
-//     PullFromGhost4Block_ToParent_(qid, cur_block, fid, ghost_subblock, coarse_subblock, tmp);
-
-//     //-------------------------------------------------------------------------
-//     // finally do some physics
-//     for (auto piter = phys_[qid->cid]->begin(); piter != phys_[qid->cid]->end(); piter++) {
-//         PhysBlock* gblock = (*piter);
-//         // get the direction and the corresponding bctype
-//         bctype_t bctype = fid->bctype(ida_, gblock->iface());
-//         if (bctype == M_BC_EVEN) {
-//             EvenBoundary_4 bc = EvenBoundary_4();
-//             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-//         } else if (bctype == M_BC_ODD) {
-//             OddBoundary_4 bc = OddBoundary_4();
-//             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-//         } else if (bctype == M_BC_EXTRAP_3) {
-//             ExtrapBoundary_3 bc = ExtrapBoundary_3();
-//             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-//         } else if (bctype == M_BC_EXTRAP_4) {
-//             ExtrapBoundary_4 bc = ExtrapBoundary_4();
-//             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-//         } else if (bctype == M_BC_EXTRAP_5) {
-//             ExtrapBoundary_5 bc = ExtrapBoundary_5();
-//             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-//         } else if (bctype == M_BC_ZERO) {
-//             ZeroBoundary bc = ZeroBoundary();
-//             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, cur_block->data(fid, ida_));
-//         } else {
-//             m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
-//         }
-//     }
-//     delete (ghost_subblock);
-//     delete (coarse_subblock);
-
-//     // m_log("dbg: tree %d, quad %d: finiiiish", qid->tid, qid->qid);
-//     //-------------------------------------------------------------------------
-// }
-
-// void Ghost::PullFromGhost4Block_Children(const qid_t *qid, GridBlock *cur_block, Field *fid,
-//                                               const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem){
-    // //-------------------------------------------------------------------------
-    // lid_t coarse_start[3];
-    // lid_t coarse_end[3];
-
-    // // do the blocks on my level
-    // for (auto biter = block_children_[qid->cid]->begin(); biter != block_children_[qid->cid]->end(); biter++) {
-    //     GhostBlock* gblock    = (*biter);
-    //     GridBlock*  ngh_block = gblock->block_src();
-    //     // memory details
-    //     MemLayout* block_src = ngh_block;
-    //     real_p     data_src  = ngh_block->data(fid, ida_);
-    //     MemLayout* block_trg = gblock;
-    //     real_p     data_trg  = cur_block->data(fid, ida_);
-    //     // interpolate
-    //     m_assert(gblock->dlvl() == +1,"we are treating children, the delta level must be +1");
-    //     interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
-
-    //     // we need to copy the data to the coarse representation
-    //     if (do_coarse) {
-    //         // set the coarse block to the correct position
-    //         for (int id = 0; id < 3; id++) {
-    //             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-    //             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
-    //         }
-    //         coarse_block->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-    //         // memory details
-    //         MemLayout* block_src = ngh_block;
-    //         real_p     data_src  = ngh_block->data(fid, ida_);
-    //         MemLayout* block_trg = coarse_block;
-    //         real_p     data_trg  = coarse_mem + m_zeroidx(0, coarse_block);
-    //         // interpolate, the level is 1 coarser and the shift is unchanged
-    //         m_assert(gblock->dlvl()==1,"the difference of level MUST be 1");
-    //         interp_->Copy(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-    //     }
-    // }
-
-    // // do the ghosts, on my level
-    // for (auto biter = ghost_children_[qid->cid]->begin(); biter != ghost_children_[qid->cid]->end(); biter++) {
-    //     GhostBlock* gblock = (*biter);
-    //     // memory details
-    //     MemLayout* block_src = ghost_block;
-    //     real_p     data_src  = gblock->data_src();
-    //     MemLayout* block_trg = gblock;
-    //     real_p     data_trg  = cur_block->data(fid, ida_);
-    //     // interpolate
-    //     m_assert(gblock->dlvl() == 0,"we are treating sibling, the delta level must be 0");
-    //     interp_->Interpolate(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
-
-//     // we need to interpolate on the coarse version of myself as well
-//     if (do_coarse) {
-//         // set the coarse block to the correct position
-//         for (int id = 0; id < 3; id++) {
-//             coarse_start[id] = CoarseFromBlock(gblock->start(id), cgs(interp_));
-//             coarse_end[id]   = CoarseFromBlock(gblock->end(id), cgs(interp_));
-//         }
-//         coarse_block->Reset(cgs(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-//         // memory details
-//         MemLayout* block_src = ghost_block;
-//         real_p     data_src  = gblock->data_src();
-//         MemLayout* block_trg = coarse_block;
-//         real_p     data_trg  = coarse_mem + m_zeroidx(0, coarse_block);
-//         // interpolate, the level is 1 coarser and the shift is unchanged
-//         m_assert(gblock->dlvl()==1,"the difference of level MUST be 1");
-//         interp_->Interpolate(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-//     }
-// }
-// //-------------------------------------------------------------------------
-// }
-
+//*************************************************************************************************************************************
+// COMPUTE4BLOCK FUNCTIONS
+//*************************************************************************************************************************************
 void Ghost::Compute4Block_Copy2Myself_(const ListGBLocal* ghost_list, Field* fid, GridBlock* block_trg, real_t* data_trg) {
     //-------------------------------------------------------------------------
     // the source block is always the same
@@ -1475,9 +886,40 @@ void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* 
 
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
-        interp_->GetRma(gblock->dlvl() + 1, block_src, disp_src, block_trg, data_trg,disp_rank,mirrors_window_);
+        interp_->GetRma(gblock->dlvl() + 1, block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
     }
     //-------------------------------------------------------------------------
+}
+
+void Ghost::Compute4Block_Phys2Myself_(const qid_t* qid, GridBlock* cur_block, Field* fid) {
+    //-------------------------------------------------------------------------
+    real_p data_trg = cur_block->data(fid, ida_);
+    for (auto gblock : (*phys_[qid->cid])) {
+        bctype_t bctype = fid->bctype(ida_, gblock->iface());
+        // get the correct face_start
+        if (bctype == M_BC_EVEN) {
+            EvenBoundary_4 bc = EvenBoundary_4();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
+        } else if (bctype == M_BC_ODD) {
+            OddBoundary_4 bc = OddBoundary_4();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
+        } else if (bctype == M_BC_EXTRAP_3) {
+            ExtrapBoundary_3 bc = ExtrapBoundary_3();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
+        } else if (bctype == M_BC_EXTRAP_4) {
+            ExtrapBoundary_4 bc = ExtrapBoundary_4();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
+        } else if (bctype == M_BC_EXTRAP_5) {
+            ExtrapBoundary_5 bc = ExtrapBoundary_5();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
+        } else if (bctype == M_BC_ZERO) {
+            ZeroBoundary bc = ZeroBoundary();
+            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
+        } else {
+            m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
+        }
+        //-------------------------------------------------------------------------
+    }
 }
 
 void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur_block, Field* fid, real_t* ptr_trg) {

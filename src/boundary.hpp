@@ -64,20 +64,21 @@ class Boundary {
         const bool    isphys[3] = {dir == 0, dir == 1, dir == 2};
         const real_t* fsign     = face_sign[iface];
         m_assert((fsign[0] + fsign[1] + fsign[2] == -1) || (fsign[0] + fsign[1] + fsign[2] == +1), "only 1 component of face_sign must be non null: %f %f %f ", fsign[0], fsign[1], fsign[2]);
-        // get the offset in memory, i.e. the position of the first point (0,0,0)
-        // real_t offset[3];
-        // m_pos_relative(offset, 0, 0, 0, hgrid);
 
-        // m_log("doing fsign = %f %f %f", fsign[0], fsign[1], fsign[2]);
-
-        // shift the data to the correct spot -> this is the origin for both the block->start/end and the data from the block
+        // shift the data to the correct spot, along the face
         real_p ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);
+        lid_t  start[3];
+        lid_t  end[3];
+        for (sid_t id = 0; id < 3; ++id) {
+            start[id] = block->start(id) - fstart[id];
+            end[id]   = block->end(id) - fstart[id];
+        }
 
         // m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2], block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
         // let's goooo
-        for (lid_t i2 = block->start(2); i2 < block->end(2); i2++) {
-            for (lid_t i1 = block->start(1); i1 < block->end(1); i1++) {
-                for (lid_t i0 = block->start(0); i0 < block->end(0); i0++) {
+        for (lid_t i2 = start[2]; i2 < end[2]; i2++) {
+            for (lid_t i1 = start[1]; i1 < end[1]; i1++) {
+                for (lid_t i0 = start[0]; i0 < end[0]; i0++) {
                     // we need three interpolations points in the face direction
                     real_t f[npoint];
                     for (sid_t ip = 0; ip < npoint; ip++) {

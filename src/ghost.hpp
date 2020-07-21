@@ -146,6 +146,7 @@ class Ghost {
     void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
     void Compute4Block_Refine_(const ListGBLocal *ghost_list, real_t *ptr_src, real_t *data_trg);
     void Compute4Block_Refine_(const ListGBMirror *ghost_list, real_t *ptr_src, real_t *data_trg);
+    void Compute4Block_Phys2Myself_(const qid_t* qid, GridBlock* cur_block, Field* fid);
 
     // void Compute4Block_Sibling_(const list<GhostBlock *> *ghost_list, const bool do_coarse, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
     // void Compute4Block_FromParent_(const list<GhostBlock *> *ghost_list, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);

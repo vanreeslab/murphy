@@ -25,10 +25,9 @@ PhysBlock::PhysBlock(const sid_t iface, MemLayout* block, const sid_t nghost_fro
     // overwrite in the face direction
     const sid_t dir  = iface_ / 2;
     const sid_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus
-    // the start and end is defined wrt @ref face_start
-    // if we go minus, we need to overwrite the first point as it sits on the boundary
-    start_[dir] = (sign == 0) ? (-nghost_front[dir]) : 0;
-    end_[dir]   = (sign == 0) ? 1 : nghost_back[dir];
-    // m_log("physical block init in dir")
+
+    // update the needed coordinates in the dir direction (we overwrite the first info if we go minus)
+    start_[dir] = (sign == 0) ? start_[dir] : M_N;
+    end_[dir]   = (sign == 0) ? 1 : end_[dir];
     //-------------------------------------------------------------------------
 }
