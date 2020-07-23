@@ -87,8 +87,12 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
         }
     }
 
+    m_log("I have before %d new quads locally", forest->local_num_quadrants);
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
-    p4est_gloidx_t nqshipped = p8est_partition_ext(forest, 1, nullptr);
+    p4est_gloidx_t nqshipped = p8est_partition_ext(forest, true, NULL);
+    // p4est_gloidx_t nqshipped = p8est_partition_for_coarsening(forest, 0, NULL);
+    m_log("we decided to move %ld blocks", nqshipped);
+    m_log("I have now %d new quads locally", forest->local_num_quadrants);
     // m_log("warning, using a non-coarsening compatible partitioning");
 
     // m_log("total %ld blocks are moving: going from %d to now %d in here", nqshipped, n_loc_block, forest->local_num_quadrants);

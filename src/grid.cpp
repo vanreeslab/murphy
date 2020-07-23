@@ -132,6 +132,7 @@ void Grid::SetupGhost() {
     // create the forestGrid part
     this->SetupP4estGhostMesh();
     // create the ghosts structure
+    m_log("starting the Ghost construction");
     m_profStart(prof_,"ghost_init");
     ghost_ = new Ghost(this, interp_);
     m_profStop(prof_,"ghost_init");

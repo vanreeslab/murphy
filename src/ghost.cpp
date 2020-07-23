@@ -206,6 +206,7 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     for (level_t il = min_level_; il <= max_level_; il++) {
         n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
     }
+    m_log("I have locally %d active quads",n_active_quad_);
 
     // store the number of ghosts needed
     nghost_[0] = interp_->nghost_front();
@@ -298,13 +299,15 @@ void Ghost::InitList_(){
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_active_quad_ * sizeof(MPI_Aint);
-    m_log("allocating %ld bytes in the window for %d active quad",win_mem_size,n_active_quad_);
+    m_log("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
     MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
     MPI_Info_free(&info);
+
     for (iblock_t ib = 0; ib < n_active_quad_; ib++) {
-        local2disp_[ib] = 0;
+        local2disp_[ib] = -1;
     }
     MPI_Win_fence(0, local2disp_window_);
+    m_log("local_disp window initiated");
 
     //................................................
     // compute the number of admissible local mirros and store their reference in the array
@@ -320,6 +323,13 @@ void Ghost::InitList_(){
             local2disp_[local_id] = (count++) * m_blockmemsize(1);
         }
     }
+    printf("my array of ghosts is:");
+    for (iblock_t ib = 0; ib < forest->local_num_quadrants; ib++) {
+        printf("%ld ", local2disp_[ib]);
+    }
+    printf("\n");
+
+    m_log("filling local2disp has been done");
     MPI_Win_fence(0, local2disp_window_);
 
     //................................................
@@ -336,12 +346,14 @@ void Ghost::InitList_(){
 
     // complete the access epoch and wait for the exposure one
     MPI_Win_complete(local2disp_window_);
+    m_log("access are over, now waiting for the exposure to finish");
     MPI_Win_wait(local2disp_window_);
 
     //................................................
     // local2disp_ = nullptr;
     MPI_Win_free(&local2disp_window_);
     local2disp_window_ = MPI_WIN_NULL;
+    m_log("done with the local2disp window");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -415,12 +427,17 @@ void Ghost::InitComm_(){
             n_mirror_to_send_++;
         }
     }
+    m_log("I have %d mirrors to send",n_mirror_to_send_);
     // initialize the Window by allocating the memory space needed for the exchange
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_mirror_to_send_ * m_blockmemsize(1) * sizeof(real_t);
+    m_log("mirror window: size = %ld, disp = %ld",win_mem_size,sizeof(real_t));
     MPI_Win_allocate(win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_, &mirrors_window_);
+    // -> waiting for a feedback on my submitted issus (https://github.com/open-mpi/ompi/issues/7955)
+    // m_assert(m_isaligned(mirrors_),"the mirror temp array is not aligned: his alignment is %ld",((uintptr_t)mirrors_)%M_ALIGNMENT);
+    m_assert(mirrors_window_!= MPI_WIN_NULL,"the MPI window created is null, which is not a good news");
     MPI_Info_free(&info);
 
     //................................................
@@ -505,6 +522,7 @@ void Ghost::GetGhost_Post(Field* field, const sid_t ida) {
     // fill the Window memory with the Mirror information
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
+    m_log("posting the exposure and access");
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
@@ -528,7 +546,7 @@ void Ghost::GetGhost_Wait(Field* field, const sid_t ida) {
     m_log("now starting refinement on field %s and dimension %d",field->name().c_str(),ida);
     // we now have all the information needed for the refinement
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
+        // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -703,6 +721,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 // create the new mirror block
                 GBMirror* gb = new GBMirror(block, nghq->level, ngh_pos, nghost_front, nghost_back, true, ngh_rank);
                 // ask the displacement (will be available later, when completing the call
+                m_log("asking the id of local block %d to proc %d",ngh_local_id,ngh_rank);
                 MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 
                 // register the ghost block in a list
@@ -740,10 +759,10 @@ void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
     real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
     real_p data   = block->pointer(fid, ida_);
     // data should be aligned
-    m_assume_aligned(mirror);
+    // m_assume_aligned(mirror); -> waiting for a feedback on my submitted issus (https://github.com/open-mpi/ompi/issues/7955)
     m_assume_aligned(data);
     // copy the data
-    memcpy(data, mirror, m_blockmemsize(1) * sizeof(real_t));
+    memcpy(mirror, data, m_blockmemsize(1) * sizeof(real_t));
     //-------------------------------------------------------------------------
 }
 
@@ -755,6 +774,8 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
 
     //................................................
+    m_log("---------------------");
+    m_log("QID = %d", qid->cid);
     // start to obtain the missing info with my siblings
     Compute4Block_GetRma2Myself_(ghost_sibling_[qid->cid], fid, block, block->data(fid, ida_));
     Compute4Block_Copy2Myself_(block_sibling_[qid->cid], fid, block, block->data(fid, ida_));
@@ -772,10 +793,11 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
         // from my parents
         Compute4Block_Copy2Coarse_(block_sibling_[qid->cid], fid, block, tmp);
         Compute4Block_Copy2Coarse_(block_parent_[qid->cid], fid, block, tmp);
-
-        // we need to compute the physics BEFORE interpolating on the coarse block as
-        // the physics on the coarse does not overwrite the first point
-        Compute4Block_Phys2Myself_(qid, block, fid);
+    }
+    // we need to compute the physics BEFORE interpolating on the coarse block, but after having the transfert started!
+    // the physics on the coarse does not overwrite the first point
+    Compute4Block_Phys2Myself_(qid, block, fid);
+    if (do_coarse) {
         // also do the info from myself, while waiting for the comm
         Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
     }
@@ -874,7 +896,7 @@ void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list, Field* 
         rank_t     disp_rank = gblock->rank();
         MemLayout* block_trg = gblock;
         // copy the information
-        interp_->GetRma(gblock->dlvl(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
+        interp_->GetRma(gblock->dlvl(), gblock->shift(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
     }
     delete block_src;
     //-------------------------------------------------------------------------
@@ -893,8 +915,8 @@ void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* 
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
-        MPI_Aint disp_src = gblock->data_src();
-        rank_t disp_rank = gblock->rank();
+        MPI_Aint disp_src  = gblock->data_src();
+        rank_t   disp_rank = gblock->rank();
         // set the coarse block to the correct position
         for (int id = 0; id < 3; id++) {
             coarse_start[id] = CoarseFromBlock(gblock->start(id), interp_);
@@ -905,7 +927,7 @@ void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* 
 
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
-        interp_->GetRma(gblock->dlvl() + 1, block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
+        interp_->GetRma(gblock->dlvl() + 1, gblock->shift(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
 
         delete block_trg;
     }

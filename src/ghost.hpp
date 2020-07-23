@@ -72,12 +72,12 @@ class Ghost {
     MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be target by my RMA calls to access mirrors
 
     // acess to the mirror data
-    MPI_Win mirrors_window_ = MPI_WIN_NULL;  //!< MPI Window for the RMA communication
-    real_t *mirrors_        = nullptr;       //!< memory space for the mirror blocks, computed using n_mirror_to_send_
-    
+    MPI_Win mirrors_window_;     //!< MPI Window for the RMA communication
+    real_t *mirrors_ = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
+
     // access to the mirror displacement -> non null only during the initlist function
-    MPI_Win   local2disp_window_ = MPI_WIN_NULL;  //!< MPI Window for the RMA communication
-    MPI_Aint *local2disp_        = nullptr;       //!< for each quadrant, indicate its corresponding mirror ID
+    MPI_Win   local2disp_window_;     //!< MPI Window for the RMA communication
+    MPI_Aint *local2disp_ = nullptr;  //!< for each quadrant, indicate its corresponding mirror ID
 
     //---------------
 
@@ -146,7 +146,7 @@ class Ghost {
     void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
     void Compute4Block_Refine_(const ListGBLocal *ghost_list, real_t *ptr_src, real_t *data_trg);
     void Compute4Block_Refine_(const ListGBMirror *ghost_list, real_t *ptr_src, real_t *data_trg);
-    void Compute4Block_Phys2Myself_(const qid_t* qid, GridBlock* cur_block, Field* fid);
+    void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid);
 
     // void Compute4Block_Sibling_(const list<GhostBlock *> *ghost_list, const bool do_coarse, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
     // void Compute4Block_FromParent_(const list<GhostBlock *> *ghost_list, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);

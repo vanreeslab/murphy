@@ -66,7 +66,7 @@ class Interpolator {
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
     virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst);
     // the RMA variant of Copy
-    virtual void GetRma(const sid_t dlvl, MemLayout* block_src, MPI_Aint disp_src, MemLayout* block_trg, real_p data_trg, int src_rank, MPI_Win win);
+    virtual void GetRma(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, MPI_Aint disp_src, MemLayout* block_trg, real_t* data_trg, int src_rank, MPI_Win win);
     /** @} */
 
     virtual real_t Criterion(MemLayout* block, real_p data) = 0;
