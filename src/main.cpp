@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
         list<Patch> patch;
         real_t      origin[3] = {0.5, 0.0, 0.0};
         real_t      length[3] = {0.5, 1.0, 1.0};
-        // patch.push_back(Patch(origin, length, 2));
+        patch.push_back(Patch(origin, length, 2));
         grid->Adapt(&patch);
         // grid->Adapt(&argument.patch_);
         // create a field

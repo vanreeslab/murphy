@@ -539,14 +539,14 @@ void Ghost::GetGhost_Wait(Field* field, const sid_t ida) {
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
+    m_verb("closing the RMA access");
     // finish the access epochs for the exposure epoch to be over
     MPI_Win_complete(mirrors_window_);
     // wait for the exposure epoch to be over
     MPI_Win_wait(mirrors_window_);
-    m_log("now starting refinement on field %s and dimension %d",field->name().c_str(),ida);
     // we now have all the information needed for the refinement
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
+        DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -721,7 +721,6 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 // create the new mirror block
                 GBMirror* gb = new GBMirror(block, nghq->level, ngh_pos, nghost_front, nghost_back, true, ngh_rank);
                 // ask the displacement (will be available later, when completing the call
-                m_log("asking the id of local block %d to proc %d",ngh_local_id,ngh_rank);
                 MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 
                 // register the ghost block in a list
@@ -733,7 +732,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     gparent->push_back(gb);
                     // get my contribution to the ghost of my parent neighbor
                     GBLocal* invert_gb = new GBLocal(block, nghq->level, ngh_pos, nghost_front, nghost_back, false, ngh_rank);
-                    MPI_Get(invert_gb->data_src(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
+                    MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 #pragma omp critical
                     bchildren->push_back(invert_gb);
                 } else {
@@ -774,8 +773,6 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
 
     //................................................
-    m_log("---------------------");
-    m_log("QID = %d", qid->cid);
     // start to obtain the missing info with my siblings
     Compute4Block_GetRma2Myself_(ghost_sibling_[qid->cid], fid, block, block->data(fid, ida_));
     Compute4Block_Copy2Myself_(block_sibling_[qid->cid], fid, block, block->data(fid, ida_));
@@ -786,7 +783,7 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
         // reset the coarse memory
         memset(tmp, 0, CoarseMemSize(interp_));
 
-        // get the info from my siblings
+        // get the missing part from my ghost neighbors
         Compute4Block_GetRma2Coarse_(ghost_sibling_[qid->cid], fid, block, tmp);
         Compute4Block_GetRma2Coarse_(ghost_parent_[qid->cid], fid, block, tmp);
 
@@ -903,6 +900,9 @@ void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list, Field* 
 }
 
 void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* fid, GridBlock* block_trg, real_t* ptr_trg) {
+    m_assert(ghost_list != nullptr, "the ghost list cannot be null");
+    m_assert(block_trg != nullptr, "the ghost list cannot be null");
+    m_assert(ptr_trg != nullptr, "the ghost list cannot be null");
     //-------------------------------------------------------------------------
     // the source block is always the same
     const lid_t src_start[3] = {0, 0, 0};
@@ -913,6 +913,7 @@ void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* 
     lid_t coarse_start[3];
     lid_t coarse_end[3];
 
+    //................................................
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
         MPI_Aint disp_src  = gblock->data_src();
@@ -926,8 +927,8 @@ void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, Field* 
         real_p     data_trg  = ptr_trg + m_zeroidx(0, block_trg);
 
         // interpolate, the level is 1 coarser and the shift is unchanged
-        m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
-        interp_->GetRma(gblock->dlvl() + 1, gblock->shift(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
+        m_assert((gblock->dlvl() + 1) == 1 || (gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 or 0");
+        interp_->GetRma((gblock->dlvl() + 1), gblock->shift(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
 
         delete block_trg;
     }
