@@ -158,4 +158,59 @@ class MemLayout {
     // };
 };
 
+
+/**
+ * @brief convert a Memory layout into a MPI datatype
+ * 
+ * @note see exemple 4.13, page 123 of the MPI standard 3.1
+ * 
+ * @param start 
+ * @param end 
+ * @param gs 
+ * @param stride 
+ * @param scale 
+ * @return MPI_Datatype 
+ */
+static inline MPI_Datatype ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t gs, const lid_t stride, const lid_t scale) {
+    m_begin;
+    m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
+    //-------------------------------------------------------------------------
+    // convert the
+    lid_t        start_g[3] = {(start[0] + gs), (start[1] + gs), (start[2] + gs)};
+    lid_t        end_g[3]   = {(end[0] + gs), (end[1] + gs), (end[2] + gs)};
+    MPI_Datatype x_type, xy_type, xyz_type;
+    //................................................
+    // do x type
+    int      count_x  = (end_g[0] - start_g[0]);
+    MPI_Aint stride_x = sizeof(real_t);
+    m_assert(count_x > 0, "we at least need to take 1 element");
+    m_assert(count_x <= stride, "we cannot take more element than the stride");
+    // m_log("we take %d elems with a stide of %ld", count_x / scale, stride_x * scale);
+    MPI_Type_create_hvector(count_x / scale, 1, stride_x * scale, M_MPI_REAL, &x_type);
+    //................................................
+    // do y type
+    int      count_y  = (end_g[1] - start_g[1]);
+    MPI_Aint stride_y = stride_x * stride;
+    m_assert(count_y > 0, "we at least need to take 1 element");
+    m_assert(count_y <= stride, "we cannot take more element than the stride");
+    // m_log("we take %d elems with a stide of %ld", count_y / scale, stride_y * scale);
+    MPI_Type_create_hvector(count_y / scale, 1, stride_y * scale, x_type, &xy_type);
+    //................................................
+    // do z type
+    int      count_z  = (end_g[2] - start_g[2]);
+    MPI_Aint stride_z = stride_y * stride;
+    m_assert(count_z > 0, "we at least need to take 1 element");
+    m_assert(count_z <= stride, "we cannot take more element than the stride");
+    // m_log("we take %d elems with a stide of %ld", count_z / scale, stride_z * scale);
+    MPI_Type_create_hvector(count_z / scale, 1, stride_z * scale, xy_type, &xyz_type);
+    MPI_Type_commit(&xyz_type);
+    //................................................
+    // free the useless types and return
+    MPI_Type_free(&x_type);
+    MPI_Type_free(&xy_type);
+    return xyz_type;
+    //-------------------------------------------------------------------------
+    m_end;
+};
+
 #endif  // SRC_MEMLAYOUT_HPP_

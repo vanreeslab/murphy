@@ -81,19 +81,20 @@ class Ghost {
 
     //---------------
 
-    real_t *ghosts_         = nullptr;       //!< memory space for the ghost blocks
+    real_t *ghosts_ = nullptr;  //!< memory space for the ghost blocks
 
     ForestGrid *  grid_;        //!< pointer to the associated @ref ForestGrid, shared, not owned
     real_p *      coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
     Interpolator *interp_;      //!< pointer to the associated @ref Interpolator, shared, not owned
 
-    ListGBLocal ** block_sibling_;   //!<  list of blocks that are on the  same resolution
-    ListGBLocal ** block_children_;  //!<  list of blocks that are finer
-    ListGBLocal ** block_parent_;    //!<  list of blocks that are coarser
-    ListGBMirror **ghost_sibling_;   //!<  list of ghosts that are on the same resolution
-    ListGBMirror **ghost_children_;  //!<  list of ghosts that are on the same resolution
-    ListGBMirror **ghost_parent_;    //!<  list of ghosts that are coarser
-    listGBPhysic **phys_;            //!<  physical blocks
+    ListGBLocal ** block_sibling_;         //!<  list of blocks that are on the  same resolution
+    ListGBLocal ** block_parent_;          //!<  list of blocks that are coarser
+    ListGBLocal ** block_parent_reverse_;  //!<
+    ListGBMirror **ghost_sibling_;         //!<  list of ghosts that are on the same resolution
+    ListGBMirror **ghost_children_;        //!<  list of ghosts that are on the same resolution
+    ListGBMirror **ghost_parent_;          //!<  list of ghosts that are coarser
+    ListGBMirror **ghost_parent_reverse_;   //!<
+    listGBPhysic **phys_;                  //!<  physical blocks
 
    public:
     Ghost(ForestGrid *grid, Interpolator *interp);
@@ -127,6 +128,7 @@ class Ghost {
      */
     void InitList4Block(const qid_t *qid, GridBlock *block);
     void PushToWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
+    void PullFromWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
 
     void PushToMirror4Block(const qid_t *qid, GridBlock *block, Field *fid);
     void PullFromGhost4Block(const qid_t *qid, GridBlock *cur_block, Field *fid);
@@ -139,14 +141,17 @@ class Ghost {
     void InitList_();
     void FreeList_();
 
-    void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
-    void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
-    void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
-    void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
-    void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
-    void Compute4Block_Refine_(const ListGBLocal *ghost_list, real_t *ptr_src, real_t *data_trg);
-    void Compute4Block_Refine_(const ListGBMirror *ghost_list, real_t *ptr_src, real_t *data_trg);
-    void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid);
+    inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
+    inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
+    inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
+    inline void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
+    inline void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
+    inline void Compute4Block_Refine_(const ListGBLocal *ghost_list, real_t *ptr_src, real_t *data_trg);
+    inline void Compute4Block_Refine_(const ListGBMirror *ghost_list, real_t *ptr_src, real_t *data_trg);
+    inline void Compute4Block_Coarsen2Coarse_(real_t *data_src, real_t *ptr_trg);
+    inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, real_t *ptr_src, Field *fid);
+    inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, real_t *ptr_src, Field *fid);
+    inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid);
 
     // void Compute4Block_Sibling_(const list<GhostBlock *> *ghost_list, const bool do_coarse, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
     // void Compute4Block_FromParent_(const list<GhostBlock *> *ghost_list, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);

@@ -118,7 +118,7 @@ static void GhostGetSign(sid_t ibidule, real_t sign[3]) {
  * 
  * c is 0,1,2,3:
  *      = 0 if a is in the negative ghost points
- *      = 1 if a is in the center points, including 0
+ *      = 1 if a is in the center points, including 0, we scale it by two but preserve the odd numbers
  *      = 2 if a is M_N
  *      = 3 if a is in the negative GP
  * 
@@ -133,7 +133,7 @@ static inline lid_t CoarseFromBlock(const lid_t a, Interpolator* interp) {
     const lid_t gp_back  = CoarseNGhostBack(interp);
     const lid_t b        = (a + M_N);
     const lid_t c        = (b / M_N) + (a > M_N);
-    const lid_t res[4]   = {-gp_front, (a / 2), M_HN, M_HN + gp_back};
+    const lid_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_HN, M_HN + gp_back};
     // return the correct choice
     return res[c];
 }
@@ -263,28 +263,31 @@ Ghost::~Ghost() {
     m_end;
 }
 
-
-void Ghost::InitList_(){
+void Ghost::InitList_() {
     m_begin;
     //-------------------------------------------------------------------------
     // allocate the lists for the corresponding quads
-    block_children_ = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
-    block_sibling_  = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
-    block_parent_   = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
-    ghost_children_ = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
-    ghost_sibling_  = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
-    ghost_parent_   = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
-    phys_           = (listGBPhysic**)m_calloc(n_active_quad_ * sizeof(listGBPhysic*));
+    // block_children_ = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
+    block_sibling_        = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
+    block_parent_         = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
+    block_parent_reverse_ = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
+    ghost_children_       = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
+    ghost_sibling_        = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
+    ghost_parent_         = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
+    ghost_parent_reverse_ = (ListGBMirror**)m_calloc(n_active_quad_ * sizeof(ListGBMirror*));
+    phys_                 = (listGBPhysic**)m_calloc(n_active_quad_ * sizeof(listGBPhysic*));
     // init the lists
     for (int ib = 0; ib < n_active_quad_; ib++) {
         // purge everything
-        block_children_[ib] = new ListGBLocal();
-        block_sibling_[ib]  = new ListGBLocal();
-        block_parent_[ib]   = new ListGBLocal();
-        ghost_children_[ib] = new ListGBMirror();
-        ghost_sibling_[ib]  = new ListGBMirror();
-        ghost_parent_[ib]   = new ListGBMirror();
-        phys_[ib]           = new listGBPhysic();
+        // block_children_[ib] = new ListGBLocal();
+        block_sibling_[ib]        = new ListGBLocal();
+        block_parent_[ib]         = new ListGBLocal();
+        block_parent_reverse_[ib] = new ListGBLocal();
+        ghost_children_[ib]       = new ListGBMirror();
+        ghost_sibling_[ib]        = new ListGBMirror();
+        ghost_parent_[ib]         = new ListGBMirror();
+        ghost_parent_reverse_[ib] = new ListGBMirror();
+        phys_[ib]                 = new listGBPhysic();
     }
 
     //................................................
@@ -364,9 +367,9 @@ void Ghost::FreeList_() {
     // clear the lists
     for (lid_t ib = 0; ib < n_active_quad_; ib++) {
         // free the blocks
-        for (auto biter : (*block_children_[ib])) {
-            delete biter;
-        }
+        // for (auto biter : (*block_children_[ib])) {
+        //     delete biter;
+        // }
         for (auto biter : (*ghost_children_[ib])) {
             delete biter;
         }
@@ -382,30 +385,40 @@ void Ghost::FreeList_() {
         for (auto biter : (*ghost_parent_[ib])) {
             delete biter;
         }
+        for (auto biter : (*block_parent_reverse_[ib])) {
+            delete biter;
+        }
+        for (auto biter : (*ghost_parent_reverse_[ib])) {
+            delete biter;
+        }
         for (auto piter : (*phys_[ib])) {
             delete piter;
         }
         // purge everything
-        delete (block_children_[ib]);
+        // delete (block_children_[ib]);
         delete (ghost_children_[ib]);
         delete (block_sibling_[ib]);
         delete (ghost_sibling_[ib]);
         delete (block_parent_[ib]);
         delete (ghost_parent_[ib]);
+        delete (block_parent_reverse_[ib]);
+        delete (ghost_parent_reverse_[ib]);
         delete (phys_[ib]);
     }
-    m_free(block_children_);
+    // m_free(block_children_);
     m_free(ghost_children_);
     m_free(block_sibling_);
     m_free(ghost_sibling_);
     m_free(block_parent_);
     m_free(ghost_parent_);
+    m_free(block_parent_reverse_);
+    m_free(ghost_parent_reverse_);
     m_free(phys_);
     //-------------------------------------------------------------------------
     m_end;
 }
 
-void Ghost::InitComm_(){
+void Ghost::InitComm_() {
     m_begin;
     m_assert(n_active_quad_ >= 0, "the number of active quads must be computed beforehand");
     //-------------------------------------------------------------------------
@@ -522,7 +535,7 @@ void Ghost::GetGhost_Post(Field* field, const sid_t ida) {
     // fill the Window memory with the Mirror information
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
-    m_log("posting the exposure and access");
+    m_verb("posting the exposure and access");
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
@@ -557,6 +570,15 @@ void Ghost::PutGhost_Post(Field* field, const sid_t ida) {
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
+    // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
+    m_verb("posting the exposure and access");
+    MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
+    // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
+    MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    // start what can be done = sibling and parents copy
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Post, grid_, il, field, this);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -566,6 +588,17 @@ void Ghost::PutGhost_Wait(Field* field, const sid_t ida) {
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
+    // finish the access epochs for the exposure epoch to be over
+    MPI_Win_complete(mirrors_window_);
+    // wait for the exposure epoch to be over
+    MPI_Win_wait(mirrors_window_);
+    m_log("transfert is noooow completed!!");
+    // we now have all the information needed for the refinement
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Wait, grid_, il, field, this);
+    }
+    LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
+
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -588,13 +621,14 @@ void Ghost::PutGhost_Wait(Field* field, const sid_t ida) {
 void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
     //-------------------------------------------------------------------------
     // get the current lists
-    ListGBLocal*  bchildren = block_children_[qid->cid];
-    ListGBLocal*  bsibling  = block_sibling_[qid->cid];
-    ListGBLocal*  bparent   = block_parent_[qid->cid];
-    ListGBMirror* gchildren = ghost_children_[qid->cid];
-    ListGBMirror* gsibling  = ghost_sibling_[qid->cid];
-    ListGBMirror* gparent   = ghost_parent_[qid->cid];
-    listGBPhysic* phys      = phys_[qid->cid];
+    ListGBLocal*  bsibling   = block_sibling_[qid->cid];
+    ListGBLocal*  bparent    = block_parent_[qid->cid];
+    ListGBLocal*  bparent_rv = block_parent_reverse_[qid->cid];
+    ListGBMirror* gchildren  = ghost_children_[qid->cid];
+    ListGBMirror* gsibling   = ghost_sibling_[qid->cid];
+    ListGBMirror* gparent    = ghost_parent_[qid->cid];
+    ListGBMirror* gparent_rv = ghost_parent_reverse_[qid->cid];
+    listGBPhysic* phys       = phys_[qid->cid];
 
     //................................................
     // allocate the ghost pointer
@@ -617,6 +651,22 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
     p8est_mesh_t*  mesh   = grid_->mesh();
     p8est_ghost_t* ghost  = grid_->ghost();
 
+    //................................................
+    // get the number of ghost and the min/max of a block
+    sid_t  nghost_front[3], nghost_back[3];
+    lid_t  block_min[3], block_max[3];
+    real_t block_len[3];
+    real_t coarse_hgrid[3];
+    for (sid_t id = 0; id < 3; id++) {
+        // set the number of ghost to compute
+        nghost_front[id] = interp_->nghost_front();
+        nghost_back[id]  = interp_->nghost_back();
+        block_min[id]    = -nghost_front[id];
+        block_max[id]    = M_N + nghost_back[id];
+        block_len[id]    = m_quad_len(block->level());
+        coarse_hgrid[id] = m_quad_len(block->level()) / M_HN;
+    }
+
     for (sid_t ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
         //................................................
 #pragma omp critical
@@ -629,16 +679,6 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             p8est_mesh_get_neighbors(forest, ghost, mesh, qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
         }
         const iblock_t nghosts = ngh_enc->elem_count;
-
-        //................................................
-        // get the number of ghost:
-        sid_t nghost_front[3];
-        sid_t nghost_back[3];
-        for (sid_t id = 0; id < 3; id++) {
-            // set the number of ghost to compute
-            nghost_front[id] = interp_->nghost_front();
-            nghost_back[id]  = interp_->nghost_back();
-        }
 
         //................................................
         // no ghosts? then is a physical BC
@@ -685,59 +725,91 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 // we override the position if a replacement is needed only
                 ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
             }
+            // get the hgrid
+            real_t ngh_len[3]   = {m_quad_len(nghq->level), m_quad_len(nghq->level), m_quad_len(nghq->level)};
+            real_t ngh_hgrid[3] = {m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N};
 
             //................................................
             // create the new block and push back
             if (!isghost) {
-                // create the new local block
-                GBLocal* gb = new GBLocal(block, nghq->level, ngh_pos, nghost_front, nghost_back, true);
-
                 // associate the corresponding neighboring block
                 GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
-                gb->data_src(ngh_block);
 
                 // register the gb in a list
-                if (gb->dlvl() == 0) {
+                if (nghq->level == block->level()) {
+                    // sibling: source = neighbor GridBlock, target = me
+                    GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
+                                              /* traget */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), -1);
+                    gb->data_src(ngh_block);
 #pragma omp critical
                     bsibling->push_back(gb);
-                } else if (gb->dlvl() == -1) {
+                } else if (nghq->level < block->level()) {
+                    // TODO: change this to the coarse block to avoid any cast afterwards...
+                    // parent: source = neighbor, target = me
+                    GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
+                                              /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), -1);
+                    gb->data_src(ngh_block);
 #pragma omp critical
                     bparent->push_back(gb);
-                    // get my contribution to the ghost of my parent neighbor
-                    GBLocal* invert_gb = new GBLocal(block, nghq->level, ngh_pos, nghost_front, nghost_back, false);
+                    // the children: the source = the coarse myself, target = my neighbor
+                    GBLocal* invert_gb = new GBLocal(/* source */ block->level() - 1, block->xyz(), coarse_hgrid, block_len,
+                                                     /* target */ ngh_block->level(), ngh_pos, ngh_hgrid, block_min, block_max, block->gs(), block->stride(), -1);
                     invert_gb->data_src(ngh_block);
 #pragma omp critical
-                    bchildren->push_back(invert_gb);
+                    bparent_rv->push_back(invert_gb);
                 } else {
-                    m_assert(gb->dlvl() == 1, "The delta level is not correct: %d", gb->dlvl());
-                    delete gb;
+                    m_assert((nghq->level - block->level()) == 1, "The delta level is not correct: %d - %d", nghq->level, block->level());
                 }
-            } else {
+            }
+            //................................................
+            else {
                 // get the local number in the remote rank and the remote rank
                 rank_t ngh_local_id = nghq->p.piggy3.local_num;
                 rank_t ngh_rank     = p4est_GetOwnerFromGhost(forest, nghq);
                 m_assert(ngh_rank > -1, "p4est unable to recover the rank... baaaad news");
 
-                // create the new mirror block
-                GBMirror* gb = new GBMirror(block, nghq->level, ngh_pos, nghost_front, nghost_back, true, ngh_rank);
-                // ask the displacement (will be available later, when completing the call
-                MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
-
                 // register the ghost block in a list
-                if (gb->dlvl() == 0) {
+                //................................................
+                if (nghq->level == block->level()) {
+                    // create the new mirror block
+                    // GBMirror* gb = new GBMirror(block->level(), block->xyz(), block->hgrid(), nghq->level, ngh_pos, ngh_block->hgrid(), block_len, block_min, block_max, block->gs(), block->stride(), ngh_rank);
+                    // sibling: source = neighbor GridBlock, target = me
+                    GBMirror* gb = new GBMirror(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
+                                                /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
+                    // ask the displacement (will be available later, when completing the call
+                    MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 #pragma omp critical
                     gsibling->push_back(gb);
-                } else if (gb->dlvl() == -1) {
+                }
+                //................................................
+                else if (nghq->level < block->level()) {
+                    // TODO: change this to the coarse block to avoid any cast afterwards...
+                    // parent: source = neighbor, target = me
+                    GBMirror* gb = new GBMirror(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
+                                                /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
+                    // ask the displacement (will be available later, when completing the call
+                    MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 #pragma omp critical
                     gparent->push_back(gb);
-                    // get my contribution to the ghost of my parent neighbor
-                    GBLocal* invert_gb = new GBLocal(block, nghq->level, ngh_pos, nghost_front, nghost_back, false, ngh_rank);
+                    // the children represent my contribution to my neighbor ghost points
+                    GBMirror* invert_gb = new GBMirror(/* source */ block->level() - 1, block->xyz(), coarse_hgrid, block_len,
+                                                       /* target */ nghq->level, ngh_pos, ngh_hgrid, block_min, block_max, block->gs(), block->stride(), ngh_rank);
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 #pragma omp critical
-                    bchildren->push_back(invert_gb);
-                } else {
-                    m_assert(gb->dlvl() == 1, "The delta level is not correct: %d", gb->dlvl());
-                    delete gb;
+                    gparent_rv->push_back(invert_gb);
+                }
+                //................................................
+                else if(nghq->level > block->level()) {
+                    real_t ngh_hgrid_coarse[3] = {ngh_len[0] / M_HN, ngh_len[1] / M_HN, ngh_len[2] / M_HN};
+                    // children: source = coarse version of my neighbor, target = myself
+                    GBMirror* gb = new GBMirror(/* source */ nghq->level - 1, ngh_pos, ngh_hgrid_coarse, ngh_len,
+                                                /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
+#pragma omp critical
+                    gchildren->push_back(gb);
+                }
+                //................................................
+                else {
+                    m_assert(false, "The delta level is not correct: %d - %d", nghq->level, block->level());
                 }
             }
         }
@@ -765,6 +837,58 @@ void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
 }
 
+void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
+    m_assert(ida_ >= 0, "the current working dimension has to be correct");
+    m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
+    //-------------------------------------------------------------------------
+    real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
+    real_p data   = block->data(fid, ida_);
+    // data should be aligned
+    // m_assume_aligned(mirror); -> waiting for a feedback on my submitted issus (https://github.com/open-mpi/ompi/issues/7955)
+    m_assume_aligned(data);
+
+    for (auto gblock : (*ghost_children_[qid->cid])) {
+        m_log("Kikouuuu from block %d", qid->cid);
+        const lid_t  start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
+        const lid_t  end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
+        MPI_Datatype dtype    = ToMPIDatatype(start, end, block->gs(), block->stride(), 1);
+
+        m_log("taking data from %d %d %d to %d %d %d", start[0], start[1], start[2], end[0], end[1], end[2]);
+
+        for (int i2 = 14; i2 < 18; i2++) {
+            for (int i1 = 0; i1 < 8; i1++) {
+                printf("(%d:%d,%d,%d)",14,17,i1,i2);
+                for (int i0 = 14; i0 < 18; i0++) {
+                    printf("%f ", *(mirror + m_zeroidx(0, block) + m_midx(i0, i1, i2, 0, block)));
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+
+        real_t* data_src = mirror + m_zeroidx(0, block) + m_midx(start[0], start[1], start[2], 0, block);
+        real_t* data_trg = data + m_midx(start[0], start[1], start[2], 0, block);
+
+        // copy the value = sendrecv to myself to the correct spot
+        MPI_Status status;
+        MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
+
+        int size;
+        MPI_Type_size(dtype, &size);
+        m_log("wanna take %d bytes", size);
+        real_t* tmp = reinterpret_cast<real_t*>(m_calloc(size));
+        MPI_Sendrecv(data_src, 1, dtype, 0, 0, tmp, size / sizeof(real_t), M_MPI_REAL, 0, 0, MPI_COMM_SELF, &status);
+        for (int iu = 0; iu < size / sizeof(real_t); iu++) {
+            printf("%f ", tmp[iu]);
+        }
+        printf("\n ");
+        m_free(tmp);
+
+        MPI_Type_free(&dtype);
+    }
+    //-------------------------------------------------------------------------
+}
+
 void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     // get the working array given the thread
@@ -785,16 +909,16 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
 
         // get the missing part from my ghost neighbors
         Compute4Block_GetRma2Coarse_(ghost_sibling_[qid->cid], fid, block, tmp);
+        if (qid->cid == 1) {
+            m_log("-----------------------");
+            m_log("QID = %d", qid->cid);
+        }
         Compute4Block_GetRma2Coarse_(ghost_parent_[qid->cid], fid, block, tmp);
 
         // from my parents
         Compute4Block_Copy2Coarse_(block_sibling_[qid->cid], fid, block, tmp);
         Compute4Block_Copy2Coarse_(block_parent_[qid->cid], fid, block, tmp);
-    }
-    // we need to compute the physics BEFORE interpolating on the coarse block, but after having the transfert started!
-    // the physics on the coarse does not overwrite the first point
-    Compute4Block_Phys2Myself_(qid, block, fid);
-    if (do_coarse) {
+
         // also do the info from myself, while waiting for the comm
         Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
     }
@@ -807,9 +931,26 @@ void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) 
     real_p tmp = block->ptr_ghost();
     // determine if we have to use the coarse representation
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
-
     // now that the copy are over, I can compute the refinement
+    if (qid->cid == 1) {
+        m_log("after RMA:");
+        for (int i1 = 4; i1 < 6; i1++) {
+            for (int i2 = 0; i2 < 5; i2++) {
+                printf("(%d:%d,%d,%d)\t", 0, 5, i1 - 1, i2 - 1);
+                for (int i0 = 0; i0 < 5; i0++) {
+                    printf("%f ", tmp[m_sidx(i0, i1, i2, 0, CoarseStride(interp_))]);
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+        m_log("--------------------");
+    }
+
     if (do_coarse) {
+        if (qid->cid == 1) {
+            m_log("refiiiiining");
+        }
         Compute4Block_Refine_(block_parent_[qid->cid], tmp, block->data(fid, ida_));
         Compute4Block_Refine_(ghost_parent_[qid->cid], tmp, block->data(fid, ida_));
     }
@@ -817,8 +958,74 @@ void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) 
 }
 
 void Ghost::PutGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) {
+    //-------------------------------------------------------------------------
+    const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
+    if (do_coarse) {
+        // reset the tmp to use for the put operations
+        real_p tmp = block->ptr_ghost();
+        memset(tmp, 0, CoarseMemSize(interp_));
+        // apply the physics to the best of my knowledge
+        Compute4Block_Phys2Myself_(qid, block, fid);
+        // get the coarse representation
+        Compute4Block_Coarsen2Coarse_(block->data(fid, ida_), tmp);
+
+        // if (qid->cid == 5) {
+        //     real_t* data = block->data(fid,ida_);
+        //     m_log("my parent is now");
+        //     for (int i2 = -2; i2 < 18; i2++) {
+        //         for (int i1 = 8; i1 < 12; i1++) {
+        //             printf("(:,%d,%d)\t", i1, i2);
+        //             for (int i0 = -2; i0 < 18; i0++) {
+        //                 printf("%f ", data[m_sidx(i0, i1, i2, 0, block->stride())]);
+        //             }
+        //             printf("\n");
+        //         }
+        //         printf("\n");
+        //     }
+
+        //     m_log("puting to parent, before that, the coarse:");
+        //     for (int i2 = 0; i2 < 10; i2++) {
+        //         for (int i1 = 4; i1 < 6; i1++) {
+        //             printf("(:,%d,%d)\t", i1, i2);
+        //             for (int i0 = 0; i0 < 10; i0++) {
+        //                 printf("%f ", tmp[m_sidx(i0, i1, i2, 0, CoarseStride(interp_))]);
+        //             }
+        //             printf("\n");
+        //         }
+        //         printf("\n");
+        //     }
+        // }
+
+        if (qid->cid == 1) {
+            m_log("goooooooooooooooooooooooo");
+            m_log("the coarse:");
+            for (int i2 = 0; i2 < 2; i2++) {
+                for (int i1 = 0; i1 < 10; i1++) {
+                    printf("(:,%d,%d)\t", i1, i2);
+                    for (int i0 = 0; i0 < 2; i0++) {
+                        printf("%f ", tmp[m_sidx(i0, i1, i2, 0, CoarseStride(interp_))]);
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+            }
+        }
+
+        // start the put commands
+        Compute4Block_PutRma2Parent_(ghost_parent_reverse_[qid->cid], tmp, fid);
+        Compute4Block_Copy2Parent_(block_parent_reverse_[qid->cid], tmp, fid);
+
+        if (qid->cid == 1) {
+            m_log("finiiiiiiiiiiiiiiiiiiiiiiii");
+        }
+    }
+    //-------------------------------------------------------------------------
 }
 void Ghost::PutGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) {
+    //-------------------------------------------------------------------------
+    // I need to apply the phyics one last time in case I received updates from finer neighbors
+    Compute4Block_Phys2Myself_(qid, block, fid);
+    //-------------------------------------------------------------------------
 }
 
 //*************************************************************************************************************************************
@@ -1008,8 +1215,8 @@ void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur_block,
         // reset the coarse block and get the correct memory location
         coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         real_p data_trg = ptr_trg + m_zeroidx(0, coarse_block);
-        m_verb("doing phyyysiiiics in dir %d from %d %d %d to %d %d %d", dir, gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
-        m_verb("doing phyyysiiiics in dir %d from %d %d %d to %d %d %d", dir, coarse_block->start(0), coarse_block->start(1), coarse_block->start(2), coarse_block->end(0), coarse_block->end(1), coarse_block->end(2));
+        m_log("doing coarse phyyysiiiics in dir %d from %d %d %d to %d %d %d", dir, gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
+        m_log("doing coarse phyyysiiiics in dir %d from %d %d %d to %d %d %d", dir, coarse_block->start(0), coarse_block->start(1), coarse_block->start(2), coarse_block->end(0), coarse_block->end(1), coarse_block->end(2));
         // get the correct face_start
         if (bctype == M_BC_EVEN) {
             EvenBoundary_4 bc = EvenBoundary_4();
@@ -1079,9 +1286,73 @@ void Ghost::Compute4Block_Refine_(const ListGBMirror* ghost_list, real_t* ptr_sr
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
         // interpolate, the level is 1 coarser and the shift is unchanged
+        m_log("entering interpolator with shift = %d %d %d", shift[0], shift[1], shift[2]);
+        m_log("entering interpolator with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
+        m_log("entering interpolator with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
+        m_log("entering interpolator with trgstart = %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2));
+        m_log("entering interpolator with trgend = %d %d %d", gblock->end(0), gblock->end(1), gblock->end(2));
         interp_->Interpolate(-1, shift, block_src, data_src, gblock, data_trg);
     }
+    delete block_src;
+    //-------------------------------------------------------------------------
+}
 
+inline void Ghost::Compute4Block_Coarsen2Coarse_(real_t* data_src, real_t* ptr_trg) {
+    //-------------------------------------------------------------------------
+    // the target block is the full coarse tmp
+    const lid_t shift[3]     = {0, 0, 0};
+    const lid_t trg_start[3] = {0, 0, 0};
+    const lid_t trg_end[3]   = {M_HN, M_HN, M_HN};
+    MemLayout*  block_trg    = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), trg_start, trg_end);
+    real_t*     data_trg     = ptr_trg + m_zeroidx(0, block_trg);
+
+    // the source block is the ghost extended block
+    const lid_t src_start[3] = {-nghost_[0], -nghost_[0], -nghost_[0]};
+    const lid_t src_end[3]   = {M_N + nghost_[1], M_N + nghost_[1], M_N + nghost_[1]};
+    MemLayout*  block_src    = new SubBlock(M_GS, M_STRIDE, src_start, src_end);
+
+    // interpolate, the level is 1 coarser and the shift is unchanged
+    interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg);
+    delete block_trg;
+    //-------------------------------------------------------------------------
+}
+
+inline void Ghost::Compute4Block_Copy2Parent_(const ListGBLocal* ghost_list, real_t* ptr_src, Field* fid) {
+    //-------------------------------------------------------------------------
+    // the source block is always the same
+    lid_t      coarse_start[3] = {0, 0, 0};
+    lid_t      coarse_end[3]   = {M_HN, M_HN, M_HN};
+    MemLayout* block_src       = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    real_p     data_src        = ptr_src + m_zeroidx(0, block_src);
+
+    // loop on the ghost list
+    for (const auto gblock : (*ghost_list)) {
+        GridBlock* ngh_block = gblock->data_src();
+        real_t*    data_trg  = ngh_block->data(fid, ida_);
+        // interpolate, the level is 1 coarser and the shift is unchanged
+        m_assert(gblock->dlvl() == 0, "we must have a level 0, here %d", gblock->dlvl());
+        interp_->Copy(gblock->dlvl(), gblock->shift(), block_src, data_src, gblock, data_trg);
+    }
+    delete block_src;
+    //-------------------------------------------------------------------------
+}
+inline void Ghost::Compute4Block_PutRma2Parent_(const ListGBMirror* ghost_list, real_t* ptr_src, Field* fid) {
+    //-------------------------------------------------------------------------
+    // the source block is always the same
+    lid_t      coarse_start[3] = {0, 0, 0};
+    lid_t      coarse_end[3]   = {M_HN, M_HN, M_HN};
+    MemLayout* block_src       = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+
+    m_log("I have %d blocks to do", (*ghost_list).size());
+
+    // loop on the ghost list
+    for (const auto gblock : (*ghost_list)) {
+        MPI_Aint disp_trg = gblock->data_src();
+        rank_t   trg_rank = gblock->rank();
+        // interpolate, the level is 1 coarser and the shift is unchanged
+        m_assert(gblock->dlvl() == 0, "we must have a level 0, here %d", gblock->dlvl());
+        interp_->PutRma(gblock->dlvl(), gblock->shift(), block_src, ptr_src, gblock, disp_trg, trg_rank, mirrors_window_);
+    }
     delete block_src;
     //-------------------------------------------------------------------------
 }

@@ -1,60 +1,6 @@
 #include "interpolator.hpp"
 
 /**
- * @brief
- * 
- * @note see exemple 4.13, page 123 of the MPI standard 3.1
- * 
- * @param start 
- * @param end 
- * @param gs 
- * @param stride 
- * @param scale 
- * @return MPI_Datatype 
- */
-static inline MPI_Datatype ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t gs, const lid_t stride, const lid_t scale) {
-    m_begin;
-    m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
-    //-------------------------------------------------------------------------
-    // convert the
-    lid_t        start_g[3] = {(start[0] + gs), (start[1] + gs), (start[2] + gs)};
-    lid_t        end_g[3]   = {(end[0] + gs), (end[1] + gs), (end[2] + gs)};
-    MPI_Datatype x_type, xy_type, xyz_type;
-    //................................................
-    // do x type
-    int      count_x  = (end_g[0] - start_g[0]);
-    MPI_Aint stride_x = sizeof(real_t);
-    m_assert(count_x > 0, "we at least need to take 1 element");
-    m_assert(count_x <= stride, "we cannot take more element than the stride");
-    m_log("we take %d elems with a stide of %ld", count_x / scale, stride_x * scale);
-    MPI_Type_create_hvector(count_x / scale, 1, stride_x * scale, M_MPI_REAL, &x_type);
-    //................................................
-    // do y type
-    int      count_y  = (end_g[1] - start_g[1]);
-    MPI_Aint stride_y = stride_x * stride;
-    m_assert(count_y > 0, "we at least need to take 1 element");
-    m_assert(count_y <= stride, "we cannot take more element than the stride");
-    m_log("we take %d elems with a stide of %ld", count_y / scale, stride_y * scale);
-    MPI_Type_create_hvector(count_y / scale, 1, stride_y * scale, x_type, &xy_type);
-    //................................................
-    // do z type
-    int      count_z  = (end_g[2] - start_g[2]);
-    MPI_Aint stride_z = stride_y * stride;
-    m_assert(count_z > 0, "we at least need to take 1 element");
-    m_assert(count_z <= stride, "we cannot take more element than the stride");
-    m_log("we take %d elems with a stide of %ld", count_z / scale, stride_z * scale);
-    MPI_Type_create_hvector(count_z / scale, 1, stride_z * scale, xy_type, &xyz_type);
-    MPI_Type_commit(&xyz_type);
-    //................................................
-    // free the useless types and return
-    MPI_Type_free(&x_type);
-    MPI_Type_free(&xy_type);
-    return xyz_type;
-    //-------------------------------------------------------------------------
-    m_end;
-};
-
-/**
  * @brief copy the data from data_src to data_trg but downsampling the data if the levels do not match
  * 
  * @param dlvl the difference of level: level_src - level_trg, only a a positive difference is possible
@@ -64,7 +10,7 @@ static inline MPI_Datatype ToMPIDatatype(const lid_t start[3], const lid_t end[3
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void Interpolator::Copy(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg) {
+void Interpolator::Copy(const level_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg) {
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, true, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
@@ -79,7 +25,7 @@ void Interpolator::Copy(const sid_t dlvl, const lid_t shift[3], MemLayout *block
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg) {
+void Interpolator::Interpolate(const level_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg) {
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
@@ -97,7 +43,7 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg, const real_t alpha, real_p data_cst) {
+void Interpolator::Interpolate(const level_t dlvl, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg, const real_t alpha, real_p data_cst) {
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
@@ -116,7 +62,7 @@ void Interpolator::Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Interpolator::DoMagic_(const sid_t dlvl,const bool force_copy, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg, const real_t alpha, real_p data_cst)
+void Interpolator::DoMagic_(const level_t dlvl,const bool force_copy, const lid_t shift[3], MemLayout *block_src, real_p data_src, MemLayout *block_trg, real_p data_trg, const real_t alpha, real_p data_cst)
 {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
@@ -132,7 +78,7 @@ void Interpolator::DoMagic_(const sid_t dlvl,const bool force_copy, const lid_t 
     // m_log("entering interpolator with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
 
     // get memory details
-    for (int id = 0; id < 3; id++) {
+    for (sid_t id = 0; id < 3; id++) {
         // the src starting and ending is place form the target point of view
 #ifndef NDEBUG
         // for the target point of view, the start of the source is is in start - shift, same for the end
@@ -171,10 +117,12 @@ void Interpolator::DoMagic_(const sid_t dlvl,const bool force_copy, const lid_t 
 /**
  * @brief copy the value of the source memory to the target memory
  * 
- * @param 
+ * @param dlvl the difference of level between the source and the target
  * @param ctx the interpolation context
  */
-void Interpolator::Copy_(const sid_t dlvl, const interp_ctx_t* ctx) {
+void Interpolator::Copy_(const level_t dlvl, const interp_ctx_t* ctx) {
+    m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
+    m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     //-------------------------------------------------------------------------
     // ensure alignment for target, constant and source
     // m_assume_aligned(ctx->tdata);
@@ -207,16 +155,18 @@ void Interpolator::Copy_(const sid_t dlvl, const interp_ctx_t* ctx) {
 }
 
 /**
- * @brief copy the data from data_src to data_trg but downsampling the data if the levels do not match using MPI RMA calls
+ * @brief use the MPI RMA Get function to copy the data from the disp_src to data_trg
  * 
- * @param dlvl the difference of level: level_src - level_trg, only a a positive difference is possible
- * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
- * @param block_src description of data_src memory layout 
- * @param data_src the 0-position of the src memory, i.e. the memory location of (0,0,0) for the source
- * @param block_trg descripiton of data_trg
- * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
+ * @param dlvl the level gap = source level - target level (must be 0 or 1)
+ * @param shift the shift, i.e. the position of the (0,0,0) of the target in the source framework (and resolution!)
+ * @param block_src the memory layout corresponding to the source layout, only the ghost size and the stride are used
+ * @param disp_src the displacement wrt to the target's window base pointer (the units are given by the disp_unit provided at the creation of the window on the target rank)
+ * @param block_trg the memory layout corresponding to the target layout
+ * @param data_trg the data memory pointer, i.e. the memory position of (0,0,0)
+ * @param src_rank the rank of the source memory
+ * @param win the window to use for the RMA calls
  */
-void Interpolator::GetRma(const sid_t dlvl, const lid_t shift[3], MemLayout *block_src, MPI_Aint disp_src, MemLayout *block_trg, real_t *data_trg, int src_rank, MPI_Win win) {
+void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], MemLayout *block_src, MPI_Aint disp_src, MemLayout *block_trg, real_t *data_trg, rank_t src_rank, MPI_Win win) {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
@@ -236,7 +186,7 @@ void Interpolator::GetRma(const sid_t dlvl, const lid_t shift[3], MemLayout *blo
     // m_verb("the trg = %d %d %d to %d %d %d", trg_start[0], trg_start[1], trg_start[2], trg_end[0], trg_end[1], trg_end[2]);
 
     //................................................
-    // get the corresponding MPI_Datatype for the target
+    // get the corresponding MPI_Datatype for the source
     const lid_t  scale        = (lid_t)pow(2, dlvl);
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
@@ -255,6 +205,66 @@ void Interpolator::GetRma(const sid_t dlvl, const lid_t shift[3], MemLayout *blo
     MPI_Aint disp      = disp_src + m_zeroidx(0, block_src) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src);
 #pragma omp critical
     MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
+
+    // free the types
+    MPI_Type_free(&dtype_trg);
+    MPI_Type_free(&dtype_src);
+    //-------------------------------------------------------------------------
+}
+
+void Interpolator::PutRma(const level_t dlvl, const lid_t shift[3], MemLayout *block_src, real_t *ptr_src, MemLayout *block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) {
+    m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
+    m_assert(dlvl >= 0, "we cannot handle a level coarse ");
+    m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
+    //-------------------------------------------------------------------------
+    m_log("----------------- PUT RMA");
+    m_log("entering interpolator with shift = %d %d %d", shift[0], shift[1], shift[2]);
+    m_log("entering interpolator with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
+    m_log("entering interpolator with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
+    m_log("entering interpolator with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
+    m_log("entering interpolator with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
+    //................................................
+    // get the corresponding MPI_Datatype for the target
+    const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
+    const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
+    MPI_Datatype dtype_trg    = ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1);
+    m_log("the trg = %d %d %d to %d %d %d", trg_start[0], trg_start[1], trg_start[2], trg_end[0], trg_end[1], trg_end[2]);
+
+    //................................................
+    // get the corresponding MPI_Datatype for the source
+    const lid_t  scale        = (lid_t)pow(2, dlvl);
+    const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
+    const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
+    MPI_Datatype dtype_src    = ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale);
+    m_log("the src = %d %d %d to %d %d %d", src_start[0], src_start[1], src_start[2], src_end[0], src_end[1], src_end[2]);
+
+    m_log("put to mirror num %d in rank %d",disp_trg/m_blockmemsize(1),trg_rank);
+
+    //................................................
+#ifndef NDEBUG
+    int size_trg, size_src;
+    MPI_Type_size(dtype_src, &size_src);
+    MPI_Type_size(dtype_trg, &size_trg);
+    // m_verb("src size = %d and the trg size = %d", size_src, size_trg);
+    m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
+#endif
+    real_t * local_src = ptr_src + m_zeroidx(0, block_src) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src);
+    MPI_Aint disp      = disp_trg + m_zeroidx(0, block_trg) + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg);
+#pragma omp critical
+    // MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
+    MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
+
+    int size;
+    MPI_Type_size(dtype_src, &size);
+    m_log("wanna take %d bytes", size);
+    real_t *tmp = reinterpret_cast<real_t *>(m_calloc(size));
+    MPI_Status status;
+    MPI_Sendrecv(local_src, 1, dtype_src, 0, 0, tmp, size / sizeof(real_t), M_MPI_REAL, 0, 0, MPI_COMM_SELF, &status);
+    for (int iu = 0; iu < size / sizeof(real_t); iu++) {
+        printf("%f ", tmp[iu]);
+    }
+    printf("\n ");
+    m_free(tmp);
 
     // free the types
     MPI_Type_free(&dtype_trg);

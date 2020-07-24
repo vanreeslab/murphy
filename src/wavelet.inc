@@ -124,9 +124,9 @@ template <int N, int Nt>
 void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
     //-------------------------------------------------------------------------
     // assure alignment for the target, the source, the constant and the temp data
-    m_assume_aligned(ctx->tdata);
+    // m_assume_aligned(ctx->tdata);
     // m_assume_aligned(ctx->sdata);
-    m_assume_aligned(ctx->cdata);
+    // m_assume_aligned(ctx->cdata);
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   gs_lim = (len_gs_ / 2) - 1;
