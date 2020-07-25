@@ -154,11 +154,6 @@ void CallPutGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid, Gho
 void CallPutGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid, Ghost* ghost) {
     ghost->PutGhost4Block_Wait(qid, block, fid);
 }
-// void CallGhostPullFromGhost(const qid_t* qid, GridBlock* block, Field* fid, Ghost* ghost) {
-//     //-------------------------------------------------------------------------
-//     ghost->PullFromGhost4Block(qid, block, fid);
-//     //-------------------------------------------------------------------------
-// }
 
 
 
@@ -234,37 +229,13 @@ Ghost::~Ghost() {
     //-------------------------------------------------------------------------
     FreeList_();
     FreeComm_();
-
-    // // end the requests
-    // for (int ir = 0; ir < n_send_request_; ir++) {
-    //     MPI_Request_free(mirror_send_ + ir);
-    // }
-    // m_free(mirror_send_);
-    // for (int ir = 0; ir < n_recv_request_; ir++) {
-    //     MPI_Request_free(ghost_recv_ + ir);
-    // }
-    // m_free(ghost_recv_);
-
-    // // free the memory bylevel
-    // m_free(local_to_mirrors);
-    // m_free(ghost_to_local_);
-
-    // // free the temp memory
-    // int nthreads = omp_get_max_threads();
-    // for (int it = 0; it < nthreads; it++) {
-    //     m_free(coarse_tmp_[it]);
-    // }
-    // m_free(coarse_tmp_);
-
-    // // free the data memory
-    // m_free(mirrors_);
-    // m_free(ghosts_);
     //-------------------------------------------------------------------------
     m_end;
 }
 
 void Ghost::InitList_() {
     m_begin;
+    m_log("Ghost lists initialization started...");
     //-------------------------------------------------------------------------
     // allocate the lists for the corresponding quads
     // block_children_ = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
@@ -302,15 +273,15 @@ void Ghost::InitList_() {
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_active_quad_ * sizeof(MPI_Aint);
-    m_log("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
     MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
     MPI_Info_free(&info);
+    m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
 
     for (iblock_t ib = 0; ib < n_active_quad_; ib++) {
         local2disp_[ib] = -1;
     }
+    // make sure everything is done
     MPI_Win_fence(0, local2disp_window_);
-    m_log("local_disp window initiated");
 
     //................................................
     // compute the number of admissible local mirros and store their reference in the array
@@ -326,13 +297,7 @@ void Ghost::InitList_() {
             local2disp_[local_id] = (count++) * m_blockmemsize(1);
         }
     }
-    printf("my array of ghosts is:");
-    for (iblock_t ib = 0; ib < forest->local_num_quadrants; ib++) {
-        printf("%ld ", local2disp_[ib]);
-    }
-    printf("\n");
-
-    m_log("filling local2disp has been done");
+    // make sure everybody did it
     MPI_Win_fence(0, local2disp_window_);
 
     //................................................
@@ -349,15 +314,14 @@ void Ghost::InitList_() {
 
     // complete the access epoch and wait for the exposure one
     MPI_Win_complete(local2disp_window_);
-    m_log("access are over, now waiting for the exposure to finish");
     MPI_Win_wait(local2disp_window_);
 
     //................................................
     // local2disp_ = nullptr;
     MPI_Win_free(&local2disp_window_);
     local2disp_window_ = MPI_WIN_NULL;
-    m_log("done with the local2disp window");
     //-------------------------------------------------------------------------
+    m_log("Ghost lists initialization is done!");
     m_end;
 }
 
@@ -366,10 +330,6 @@ void Ghost::FreeList_() {
     //-------------------------------------------------------------------------
     // clear the lists
     for (lid_t ib = 0; ib < n_active_quad_; ib++) {
-        // free the blocks
-        // for (auto biter : (*block_children_[ib])) {
-        //     delete biter;
-        // }
         for (auto biter : (*ghost_children_[ib])) {
             delete biter;
         }
@@ -522,26 +482,31 @@ void Ghost::FreeComm_() {
 }
 
 /**
- * @brief step 1: post the exchange for the coarse and sibling ghost information
+ * @brief Post the RMA call: get the values of siblings and coarse neighbors
  * 
  * @param field 
  * @param ida 
  */
-void Ghost::GetGhost_Post(Field* field, const sid_t ida) {
+void Ghost::PullGhost_Post(Field* field, const sid_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current dimension
     ida_ = ida;
+
+     //................................................
     // fill the Window memory with the Mirror information
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
+
+     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
-    m_verb("posting the exposure and access");
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
-    // start what can be done = sibling and parents copy
+
+     //................................................
+    // start what can be done = sibling and parents local copy + physical BC + myself copy
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Post, grid_, il, field, this);
     }
@@ -549,53 +514,44 @@ void Ghost::GetGhost_Post(Field* field, const sid_t ida) {
     m_end;
 }
 
-void Ghost::GetGhost_Wait(Field* field, const sid_t ida) {
+/**
+ * @brief Wait for the RMA calls to finish and update the coarser neighbor's ghosting points
+ * 
+ * @param field the field on which to operate
+ * @param ida the dimemsion inside the field
+ */
+void Ghost::PullGhost_Wait(Field* field, const sid_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-    m_verb("closing the RMA access");
+
+    //................................................
     // finish the access epochs for the exposure epoch to be over
     MPI_Win_complete(mirrors_window_);
-    // wait for the exposure epoch to be over
     MPI_Win_wait(mirrors_window_);
-    // we now have all the information needed for the refinement
+
+    // we now have all the information needed to compute the ghost points in coarser blocks
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
     }
-    //-------------------------------------------------------------------------
-    m_end;
-}
 
-void Ghost::PutGhost_Post(Field* field, const sid_t ida) {
-    m_begin;
-    m_assert(ida >= 0, "the ida must be >=0!");
-    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
-    //-------------------------------------------------------------------------
-    // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
-    m_verb("posting the exposure and access");
+    //................................................
+    // post exposure and access epochs for to put the values to my neighbors
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
-    // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+
+    //................................................
     // start what can be done = sibling and parents copy
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Post, grid_, il, field, this);
     }
-    //-------------------------------------------------------------------------
-    m_end;
-}
 
-void Ghost::PutGhost_Wait(Field* field, const sid_t ida) {
-    m_begin;
-    m_assert(ida >= 0, "the ida must be >=0!");
-    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
-    //-------------------------------------------------------------------------
     // finish the access epochs for the exposure epoch to be over
     MPI_Win_complete(mirrors_window_);
-    // wait for the exposure epoch to be over
     MPI_Win_wait(mirrors_window_);
-    m_log("transfert is noooow completed!!");
-    // we now have all the information needed for the refinement
+
+    // we now have all the information needed to 
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Wait, grid_, il, field, this);
     }
@@ -605,9 +561,6 @@ void Ghost::PutGhost_Wait(Field* field, const sid_t ida) {
     m_end;
 }
 
-//*************************************************************************************************************************************
-// BLOCK FUNCTIONS
-//*************************************************************************************************************************************
 
 /**
  * @brief setup the ghosting lists, for the considered block
@@ -825,76 +778,68 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Push the local mirrors to the window's associated memory
+ * 
+ * @param qid the quarant id considered
+ * @param block the grid block considered
+ * @param fid the field ID
+ */
 void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
     real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
     real_p data   = block->pointer(fid, ida_);
-    // data should be aligned
     m_assume_aligned(mirror);
     m_assume_aligned(data);
-    // copy the data
     memcpy(mirror, data, m_blockmemsize(1) * sizeof(real_t));
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Pull the local information to the local block, only for the needed ghost points
+ * 
+ * @param qid the quarant ID considered
+ * @param block the gridblock considered
+ * @param fid the field id
+ */
 void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
     real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
     real_p data   = block->data(fid, ida_);
-    // data should be aligned
     m_assume_aligned(mirror);
     m_assume_aligned(data);
 
     for (auto gblock : (*ghost_children_[qid->cid])) {
-        m_log("Kikouuuu from block %d", qid->cid);
-        const lid_t  start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
-        const lid_t  end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
-        MPI_Datatype dtype    = ToMPIDatatype(start, end, block->gs(), block->stride(), 1);
-
-        m_log("taking data from %d %d %d to %d %d %d", start[0], start[1], start[2], end[0], end[1], end[2]);
-
-        for (int i2 = 14; i2 < 18; i2++) {
-            for (int i1 = 0; i1 < 8; i1++) {
-                printf("(%d:%d,%d,%d)",14,17,i1,i2);
-                for (int i0 = 14; i0 < 18; i0++) {
-                    printf("%f ", *(mirror + m_zeroidx(0, block) + m_midx(i0, i1, i2, 0, block)));
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
+        const lid_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
+        const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
         real_t* data_src = mirror + m_zeroidx(0, block) + m_midx(start[0], start[1], start[2], 0, block);
         real_t* data_trg = data + m_midx(start[0], start[1], start[2], 0, block);
 
         // copy the value = sendrecv to myself to the correct spot
-        MPI_Status status;
+        MPI_Status   status;
+        MPI_Datatype dtype = ToMPIDatatype(start, end, block->gs(), block->stride(), 1);
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
-
-        int size;
-        MPI_Type_size(dtype, &size);
-        real_t* tmp = reinterpret_cast<real_t*>(m_calloc(size));
-        MPI_Sendrecv(data_src, 1, dtype, 0, 0, tmp, size / sizeof(real_t), M_MPI_REAL, 0, 0, MPI_COMM_SELF, &status);
-        for (int iu = 0; iu < size / sizeof(real_t); iu++) {
-            printf("%f ", tmp[iu]);
-        }
-        printf("\n ");
-        m_free(tmp);
-
         MPI_Type_free(&dtype);
     }
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief get the memory from the mirrors and myself (+bc!) to my ghost points and to the coarse myself
+ * 
+ * @param qid the quarant ID considered
+ * @param block the gridblock considered
+ * @param fid the field id
+ */
 void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     // get the working array given the thread
-    real_p tmp = block->ptr_ghost();
-    // determine if we have to use the coarse representation
+    real_p     tmp       = block->ptr_ghost();
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
 
     //................................................
@@ -903,61 +848,50 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
     Compute4Block_Copy2Myself_(block_sibling_[qid->cid], fid, block, block->data(fid, ida_));
 
     //................................................
-    // get the contribution of my parents
+    // if I need contributions from my parents
     if (do_coarse) {
         // reset the coarse memory
         memset(tmp, 0, CoarseMemSize(interp_));
 
         // get the missing part from my ghost neighbors
         Compute4Block_GetRma2Coarse_(ghost_sibling_[qid->cid], fid, block, tmp);
-        if (qid->cid == 1) {
-            m_log("-----------------------");
-            m_log("QID = %d", qid->cid);
-        }
         Compute4Block_GetRma2Coarse_(ghost_parent_[qid->cid], fid, block, tmp);
 
-        // from my parents
+        // get the missing part from my local neighbors
         Compute4Block_Copy2Coarse_(block_sibling_[qid->cid], fid, block, tmp);
         Compute4Block_Copy2Coarse_(block_parent_[qid->cid], fid, block, tmp);
 
-        // also do the info from myself, while waiting for the comm
+        // also do the info from myself, while waiting for the comm + do the bc on the coarse myself
         Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
     }
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief once the communication is over, compute the refined ghost points for the missing areas
+ * 
+ * @param qid the quarant ID considered
+ * @param block the gridblock considered
+ * @param fid the field id
+ */
 void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
-    // get the working array given the thread
-    real_p tmp = block->ptr_ghost();
-    // determine if we have to use the coarse representation
+    real_p     tmp       = block->ptr_ghost();
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
-    // now that the copy are over, I can compute the refinement
-    if (qid->cid == 1) {
-        m_log("after RMA:");
-        for (int i1 = 4; i1 < 6; i1++) {
-            for (int i2 = 0; i2 < 5; i2++) {
-                printf("(%d:%d,%d,%d)\t", 0, 5, i1 - 1, i2 - 1);
-                for (int i0 = 0; i0 < 5; i0++) {
-                    printf("%f ", tmp[m_sidx(i0, i1, i2, 0, CoarseStride(interp_))]);
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
-        m_log("--------------------");
-    }
-
     if (do_coarse) {
-        if (qid->cid == 1) {
-            m_log("refiiiiining");
-        }
         Compute4Block_Refine_(block_parent_[qid->cid], tmp, block->data(fid, ida_));
         Compute4Block_Refine_(ghost_parent_[qid->cid], tmp, block->data(fid, ida_));
     }
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief locally compute the ghost points of my coarser neighbors and post the copy/put calls
+ * 
+ * @param qid the quarant ID considered
+ * @param block the gridblock considered
+ * @param fid the field id
+ */
 void Ghost::PutGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
@@ -969,69 +903,28 @@ void Ghost::PutGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid) 
         Compute4Block_Phys2Myself_(qid, block, fid);
         // get the coarse representation
         Compute4Block_Coarsen2Coarse_(block->data(fid, ida_), tmp);
-
-        // if (qid->cid == 5) {
-        //     real_t* data = block->data(fid,ida_);
-        //     m_log("my parent is now");
-        //     for (int i2 = -2; i2 < 18; i2++) {
-        //         for (int i1 = 8; i1 < 12; i1++) {
-        //             printf("(:,%d,%d)\t", i1, i2);
-        //             for (int i0 = -2; i0 < 18; i0++) {
-        //                 printf("%f ", data[m_sidx(i0, i1, i2, 0, block->stride())]);
-        //             }
-        //             printf("\n");
-        //         }
-        //         printf("\n");
-        //     }
-
-        //     m_log("puting to parent, before that, the coarse:");
-        //     for (int i2 = 0; i2 < 10; i2++) {
-        //         for (int i1 = 4; i1 < 6; i1++) {
-        //             printf("(:,%d,%d)\t", i1, i2);
-        //             for (int i0 = 0; i0 < 10; i0++) {
-        //                 printf("%f ", tmp[m_sidx(i0, i1, i2, 0, CoarseStride(interp_))]);
-        //             }
-        //             printf("\n");
-        //         }
-        //         printf("\n");
-        //     }
-        // }
-
-        if (qid->cid == 1) {
-            m_log("goooooooooooooooooooooooo");
-            m_log("the coarse:");
-            for (int i2 = 0; i2 < 2; i2++) {
-                for (int i1 = 0; i1 < 10; i1++) {
-                    printf("(:,%d,%d)\t", i1, i2);
-                    for (int i0 = 0; i0 < 2; i0++) {
-                        printf("%f ", tmp[m_sidx(i0, i1, i2, 0, CoarseStride(interp_))]);
-                    }
-                    printf("\n");
-                }
-                printf("\n");
-            }
-        }
-
         // start the put commands
         Compute4Block_PutRma2Parent_(ghost_parent_reverse_[qid->cid], tmp, fid);
         Compute4Block_Copy2Parent_(block_parent_reverse_[qid->cid], tmp, fid);
-
-        if (qid->cid == 1) {
-            m_log("finiiiiiiiiiiiiiiiiiiiiiiii");
-        }
     }
     //-------------------------------------------------------------------------
 }
+
+/**
+ * @brief Finally apply the physical BC once everything is done
+ * 
+ * @param qid 
+ * @param block 
+ * @param fid 
+ */
 void Ghost::PutGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
-    // I need to apply the phyics one last time in case I received updates from finer neighbors
+    // reapply the boundary conditions from the latests updates I received
     Compute4Block_Phys2Myself_(qid, block, fid);
     //-------------------------------------------------------------------------
 }
 
-//*************************************************************************************************************************************
-// COMPUTE4BLOCK FUNCTIONS
-//*************************************************************************************************************************************
+
 void Ghost::Compute4Block_Copy2Myself_(const ListGBLocal* ghost_list, Field* fid, GridBlock* block_trg, real_t* data_trg) {
     //-------------------------------------------------------------------------
     // the source block is always the same

@@ -269,14 +269,12 @@ void Grid::ResetFields(const map<string, Field*>* fields) {
 }
 
 /**
- * @brief Pull ghost points (take the values from the neighbors): start to obtain the ghost points from coarser and same level neighbors
- * 
- * @warning you have to call the @ref GhostPull_CoarseEnd() before making any other communication
+ * @brief Pull the ghost points (take values from neighbors to fill my ghost points) - start the comm
  * 
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPull_CoarseStart(Field* field, const sid_t ida) {
+void Grid::GhostPull_Post(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
@@ -284,21 +282,21 @@ void Grid::GhostPull_CoarseStart(Field* field, const sid_t ida) {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        m_profStart(prof_,"ghostpull_coarse_start");
-        ghost_->GetGhost_Post(field,ida);
-        m_profStop(prof_,"ghostpull_coarse_start");
+        m_profStart(prof_, "ghostpull_post");
+        ghost_->PullGhost_Post(field, ida);
+        m_profStop(prof_, "ghostpull_post");
     }
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Pull ghost points (take the values from the neighbors): end to obtain the ghost points from coarser and same level neighbors
+ * @brief Pull the ghost points (take values from neighbors to fill my ghost points) - end the comm
  * 
  * @param field the considered field
  * @param ida the received dimension
  */
-void Grid::GhostPull_CoarseEnd(Field* field, const sid_t ida) {
+void Grid::GhostPull_Wait(Field* field, const sid_t ida) {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(field != nullptr, "the source field cannot be null");
@@ -306,57 +304,57 @@ void Grid::GhostPull_CoarseEnd(Field* field, const sid_t ida) {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        m_profStart(prof_, "ghostpull_coarse_end");
-        ghost_->GetGhost_Wait(field, ida);
-        m_profStop(prof_, "ghostpull_coarse_end");
+        m_profStart(prof_, "ghostpull_wait");
+        ghost_->PullGhost_Wait(field, ida);
+        m_profStop(prof_, "ghostpull_wait");
     }
     //-------------------------------------------------------------------------
     m_end;
 }
 
-/**
- * @brief Pull ghost points (take the values from the neighbors): start to obtain the ghost points from finer neighbors
- * 
- * @param field the considered field
- * @param ida the received dimension
- */
-void Grid::GhostPull_FineStart(Field* field, const sid_t ida) {
-    m_begin;
-    m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
-    m_assert(field != nullptr, "the source field cannot be null");
-    m_assert(IsAField(field), "the field does not belong to this grid");
-    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-    //-------------------------------------------------------------------------
-    if (!field->ghost_status()) {
-        m_profStart(prof_, "ghostpull_fine_start");
-        ghost_->PutGhost_Post(field, ida);
-        m_profStop(prof_, "ghostpull_fine_start");
-    }
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// /**
+//  * @brief Pull ghost points (take the values from the neighbors): start to obtain the ghost points from finer neighbors
+//  *
+//  * @param field the considered field
+//  * @param ida the received dimension
+//  */
+// void Grid::GhostPull_FineStart(Field* field, const sid_t ida) {
+//     m_begin;
+//     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
+//     m_assert(field != nullptr, "the source field cannot be null");
+//     m_assert(IsAField(field), "the field does not belong to this grid");
+//     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
+//     //-------------------------------------------------------------------------
+//     if (!field->ghost_status()) {
+//         m_profStart(prof_, "ghostpull_fine_start");
+//         ghost_->PutGhost_Post(field, ida);
+//         m_profStop(prof_, "ghostpull_fine_start");
+//     }
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
-/**
- * @brief Pull ghost points (take the values from the neighbors): end to obtain the ghost points from finer neighbors
- * 
- * @param field the considered field
- * @param ida the filled dimension
- */
-void Grid::GhostPull_FineEnd(Field* field, const sid_t ida) {
-    m_begin;
-    m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
-    m_assert(field != nullptr, "the source field cannot be null");
-    m_assert(IsAField(field), "the field does not belong to this grid");
-    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-    //-------------------------------------------------------------------------
-    if (!field->ghost_status()) {
-        m_profStart(prof_, "ghostpull_fine_start");
-        ghost_->PutGhost_Wait(field, ida);
-        m_profStop(prof_, "ghostpull_fine_start");
-    }
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// /**
+//  * @brief Pull ghost points (take the values from the neighbors): end to obtain the ghost points from finer neighbors
+//  * 
+//  * @param field the considered field
+//  * @param ida the filled dimension
+//  */
+// void Grid::GhostPull_FineEnd(Field* field, const sid_t ida) {
+//     m_begin;
+//     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
+//     m_assert(field != nullptr, "the source field cannot be null");
+//     m_assert(IsAField(field), "the field does not belong to this grid");
+//     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
+//     //-------------------------------------------------------------------------
+//     if (!field->ghost_status()) {
+//         m_profStart(prof_, "ghostpull_fine_start");
+//         ghost_->PutGhost_Wait(field, ida);
+//         m_profStop(prof_, "ghostpull_fine_start");
+//     }
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 /**
  * @brief Pull the ghost points (take the values from the neighbors): after this function, the ghost status of the field is set as up-to-date
@@ -370,10 +368,10 @@ void Grid::GhostPull(Field* field) {
     //-------------------------------------------------------------------------
     // start the send in the first dimension
     for (int ida = 0; ida < field->lda(); ida++) {
-        GhostPull_CoarseStart(field, ida);
-        GhostPull_CoarseEnd(field, ida);
-        GhostPull_FineStart(field, ida);
-        GhostPull_FineEnd(field, ida);
+        GhostPull_Post(field, ida);
+        GhostPull_Wait(field, ida);
+        // GhostPull_FineStart(field, ida);
+        // GhostPull_FineEnd(field, ida);
     }
     // // set that everything is ready for the field
     field->ghost_status(true);

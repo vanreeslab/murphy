@@ -52,49 +52,28 @@ class Ghost {
     sid_t    ida_           = -1;                  //!< current ghosting dimension
     level_t  min_level_     = -1;                  //!< minimum active level, min_level included
     level_t  max_level_     = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
-    iblock_t n_active_quad_ = -1;                   //!< the number of quadrant that needs to have ghost informations
+    iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
     sid_t    nghost_[2]     = {0, 0};              //!< the number of ghost (front,back) that are actually needed
 
-    // information that tracks which block is involved
-    iblock_t  n_mirror_to_send_ = 0;        //!< get how many mirrors to send
-    iblock_t  n_ghost_to_recv_  = 0;        //!< get how many ghosts to recv
-    iblock_t *local_to_mirrors  = nullptr;  //!< for each registered mirror to send, stores the p4est mirror id
-    iblock_t *ghost_to_local_   = nullptr;  //!< for each p4est ghost block stores the local id of the ghost to recv
+    MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors
+    MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be targeted by my RMA calls to access mirrors
+    iblock_t  n_mirror_to_send_    = 0;               //!< get how many mirrors to send
+    MPI_Win   mirrors_window_      = MPI_WIN_NULL;    //!< MPI Window for the RMA communication
+    real_t *  mirrors_             = nullptr;         //!< memory space for the mirror blocks, computed using n_mirror_to_send_
+    MPI_Win   local2disp_window_   = MPI_WIN_NULL;    //!< MPI Window for the RMA communication (non null only during the initlist function)
+    MPI_Aint *local2disp_          = nullptr;         //!< for each quadrant, indicate its corresponding mirror ID (non null only during the initlist function)
 
-    lid_t        n_send_request_ = 0;        //!< the number of send requests by level
-    lid_t        n_recv_request_ = 0;        //!< the number of receive requests by level
-    MPI_Request *mirror_send_    = nullptr;  //!< the send requests for the mirrors
-    MPI_Request *ghost_recv_     = nullptr;  //!< the receive requests for the ghosts
+    ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
+    Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
 
-    //---------------
-    // RMA
-    MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit a RMA to access my mirrors
-    MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be target by my RMA calls to access mirrors
-
-    // acess to the mirror data
-    MPI_Win mirrors_window_;     //!< MPI Window for the RMA communication
-    real_t *mirrors_ = nullptr;  //!< memory space for the mirror blocks, computed using n_mirror_to_send_
-
-    // access to the mirror displacement -> non null only during the initlist function
-    MPI_Win   local2disp_window_;     //!< MPI Window for the RMA communication
-    MPI_Aint *local2disp_ = nullptr;  //!< for each quadrant, indicate its corresponding mirror ID
-
-    //---------------
-
-    real_t *ghosts_ = nullptr;  //!< memory space for the ghost blocks
-
-    ForestGrid *  grid_;        //!< pointer to the associated @ref ForestGrid, shared, not owned
-    real_p *      coarse_tmp_;  //!< working memory that contains a coarse version of the current block, one per thread
-    Interpolator *interp_;      //!< pointer to the associated @ref Interpolator, shared, not owned
-
-    ListGBLocal ** block_sibling_;         //!<  list of blocks that are on the  same resolution
-    ListGBLocal ** block_parent_;          //!<  list of blocks that are coarser
-    ListGBLocal ** block_parent_reverse_;  //!<
-    ListGBMirror **ghost_sibling_;         //!<  list of ghosts that are on the same resolution
-    ListGBMirror **ghost_children_;        //!<  list of ghosts that are on the same resolution
-    ListGBMirror **ghost_parent_;          //!<  list of ghosts that are coarser
-    ListGBMirror **ghost_parent_reverse_;   //!<
-    listGBPhysic **phys_;                  //!<  physical blocks
+    ListGBLocal ** block_sibling_;         //!<  list of local block on my resolution
+    ListGBLocal ** block_parent_;          //!<  list of local block coarser (neighbors to me)
+    ListGBLocal ** block_parent_reverse_;  //!<  list of local block coarser (me to neighbors)
+    ListGBMirror **ghost_sibling_;         //!<  list of mirror ghosts on my resolution
+    ListGBMirror **ghost_children_;        //!<  list of mirror ghosts finer than me
+    ListGBMirror **ghost_parent_;          //!<  list of mirror ghost coarser (neighbors to me)
+    ListGBMirror **ghost_parent_reverse_;  //!<  list of mirror ghost coarser (neighbors to me)
+    listGBPhysic **phys_;                  //!<  physical boundary condition
 
    public:
     Ghost(ForestGrid *grid, Interpolator *interp);
@@ -102,37 +81,25 @@ class Ghost {
     ~Ghost();
 
     /**
-     * @name RMA-based ghosting -- divided in 4 steps (order matters!)
+     * @name RMA-based high-level ghosting - post and wait
      * @{
      */
-    void GetGhost_Post(Field *field, const sid_t ida);  // step 1
-    void GetGhost_Wait(Field *field, const sid_t ida);  // step 2
-    void PutGhost_Post(Field *field, const sid_t ida);  // step 3
-    void PutGhost_Wait(Field *field, const sid_t ida);  // step 4
-    // block functions
-    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);  // step 1
-    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);  // step 2
-    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);  // step 3
-    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);  // step 4
+    void PullGhost_Post(Field *field, const sid_t ida);
+    void PullGhost_Wait(Field *field, const sid_t ida);
     /** @}*/
 
-    void PushToMirror(Field *field, const sid_t ida);
-    void MirrorToGhostSend(Prof *prof);
-    void MirrorToGhostRecv(Prof *prof);
-    void PullFromGhost(Field *field, const sid_t ida);
-
     /**
-     *  @name Execute on each block
-     * 
-     *  @{
+     * @name RMA-based low-level ghosting - get and put the values
+     * @{
      */
     void InitList4Block(const qid_t *qid, GridBlock *block);
     void PushToWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
+    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);
+    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);
+    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);
+    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);
     void PullFromWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
-
-    void PushToMirror4Block(const qid_t *qid, GridBlock *block, Field *fid);
-    void PullFromGhost4Block(const qid_t *qid, GridBlock *cur_block, Field *fid);
-    /** @} */
+    /** @}*/
 
    protected:
     // void InitComm_();

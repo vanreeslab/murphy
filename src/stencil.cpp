@@ -32,7 +32,7 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     //-------------------------------------------------------------------------
     for (int ida = 0; ida < field_src->lda(); ida++) {
         // start the send of the coarse
-        grid->GhostPull_CoarseStart(field_src, ida);
+        grid->GhostPull_Post(field_src, ida);
 
         // compute the stencil on the outer side
         m_profStart(grid->profiler(), "stencil_outer");
@@ -43,10 +43,7 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         m_profStop(grid->profiler(), "stencil_outer");
 
         // get the coarse representation back
-        grid->GhostPull_CoarseEnd(field_src, ida);
-        // get the fine representation
-        grid->GhostPull_FineStart(field_src, ida);
-        grid->GhostPull_FineEnd(field_src, ida);
+        grid->GhostPull_Wait(field_src, ida);
 
         // finalize the outer
         if (field_trg != nullptr) {
