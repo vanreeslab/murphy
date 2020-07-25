@@ -446,12 +446,14 @@ void Ghost::InitComm_() {
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_mirror_to_send_ * m_blockmemsize(1) * sizeof(real_t);
-    m_log("mirror window: size = %ld, disp = %ld",win_mem_size,sizeof(real_t));
-    MPI_Win_allocate(win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_, &mirrors_window_);
-    // -> waiting for a feedback on my submitted issus (https://github.com/open-mpi/ompi/issues/7955)
-    // m_assert(m_isaligned(mirrors_),"the mirror temp array is not aligned: his alignment is %ld",((uintptr_t)mirrors_)%M_ALIGNMENT);
-    m_assert(mirrors_window_!= MPI_WIN_NULL,"the MPI window created is null, which is not a good news");
+    mirrors_ = reinterpret_cast<real_t*>(m_calloc(win_mem_size));
+    MPI_Win_create(mirrors_,win_mem_size,sizeof(real_t),info,mpi_comm,&mirrors_window_);
     MPI_Info_free(&info);
+    // because of alignement issues (https://github.com/open-mpi/ompi/issues/7955), cannot use this one
+    // MPI_Win_allocate(win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_, &mirrors_window_);
+    m_assert(m_isaligned(mirrors_),"the mirror temp array is not aligned: his alignment is %ld",((uintptr_t)mirrors_)%M_ALIGNMENT);
+    m_assert(mirrors_window_!= MPI_WIN_NULL,"the MPI window created is null, which is not a good news");
+    
 
     //................................................
     // get the list of ranks that will generate a call to access my mirrors
@@ -830,7 +832,7 @@ void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, Field* fid) {
     real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
     real_p data   = block->pointer(fid, ida_);
     // data should be aligned
-    // m_assume_aligned(mirror); -> waiting for a feedback on my submitted issus (https://github.com/open-mpi/ompi/issues/7955)
+    m_assume_aligned(mirror);
     m_assume_aligned(data);
     // copy the data
     memcpy(mirror, data, m_blockmemsize(1) * sizeof(real_t));
@@ -844,7 +846,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, Field* fid)
     real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
     real_p data   = block->data(fid, ida_);
     // data should be aligned
-    // m_assume_aligned(mirror); -> waiting for a feedback on my submitted issus (https://github.com/open-mpi/ompi/issues/7955)
+    m_assume_aligned(mirror);
     m_assume_aligned(data);
 
     for (auto gblock : (*ghost_children_[qid->cid])) {
@@ -875,7 +877,6 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, Field* fid)
 
         int size;
         MPI_Type_size(dtype, &size);
-        m_log("wanna take %d bytes", size);
         real_t* tmp = reinterpret_cast<real_t*>(m_calloc(size));
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, tmp, size / sizeof(real_t), M_MPI_REAL, 0, 0, MPI_COMM_SELF, &status);
         for (int iu = 0; iu < size / sizeof(real_t); iu++) {
