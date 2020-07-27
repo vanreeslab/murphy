@@ -56,7 +56,7 @@ class Boundary {
      * @param block the sub-block on which we apply it
      * @param data the data pointer that refers to the (0,0,0) location associated to the subblock.
      */
-    virtual void operator()(const sid_t iface, const lid_t fstart[3], const real_t hgrid[3], const real_t boundary_condition, SubBlock* block, real_p data) {
+    virtual void operator()(const sid_t iface, const lid_t fstart[3], const real_t hgrid[3], const real_t boundary_condition, SubBlock* block, data_ptr data) {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         //-------------------------------------------------------------------------
         // get the face direction and a boolean array with it

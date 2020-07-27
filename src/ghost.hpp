@@ -29,7 +29,7 @@ class Ghost;
 /**
  * @brief pointer to an member function of the class @ref Ghost
  */
-using gop_t = void (Ghost::*)(const qid_t *qid, GridBlock *block, Field *fid);
+using gop_t = void (Ghost::*)(const qid_t *qid, GridBlock *block,const Field *fid);
 
 /**
  * @brief given an associated grid, performs the ghost update for a given field, in a given component
@@ -83,13 +83,13 @@ class Ghost {
      * @name RMA-based low-level ghosting - get and put the values
      * @{
      */
-    void InitList4Block(const qid_t *qid, GridBlock *block);
-    void PushToWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
-    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);
-    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);
-    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, Field *fid);
-    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, Field *fid);
-    void PullFromWindow4Block(const qid_t *qid, GridBlock *block, Field *fid);
+    void InitList4Block(const qid_t *qid,       GridBlock *block);
+    void PushToWindow4Block(const qid_t *qid,   GridBlock *block, const Field *fid);
+    void GetGhost4Block_Post(const qid_t *qid,  GridBlock *block, const Field *fid);
+    void GetGhost4Block_Wait(const qid_t *qid,  GridBlock *block, const Field *fid);
+    void PutGhost4Block_Post(const qid_t *qid,  GridBlock *block, const Field *fid);
+    void PutGhost4Block_Wait(const qid_t *qid,  GridBlock *block, const Field *fid);
+    void PullFromWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid);
     /** @}*/
 
    protected:
@@ -108,20 +108,20 @@ class Ghost {
      * @name Different operations needed on the block itself, given a ghost list
      * @{
      */
-    inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
-    inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
-    inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
-    inline void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
-    inline void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
-    inline void Compute4Block_Refine_(const ListGBLocal *ghost_list, real_t *ptr_src, real_t *data_trg);
-    inline void Compute4Block_Refine_(const ListGBMirror *ghost_list, real_t *ptr_src, real_t *data_trg);
-    inline void Compute4Block_Coarsen2Coarse_(real_t *data_src, real_t *ptr_trg);
-    inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, real_t *ptr_src, Field *fid);
-    inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, real_t *ptr_src, Field *fid);
-    inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid);
+    inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, const Field *fid, mem_ptr ptr_trg);
+    inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, const Field *fid, data_ptr data_trg);
+    inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, const Field *fid, mem_ptr ptr_trg);
+    inline void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, const Field *fid, data_ptr data_trg);
+    inline void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, const Field *fid, mem_ptr ptr_trg);
+    inline void Compute4Block_Refine_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, data_ptr data_trg);
+    inline void Compute4Block_Refine_(const ListGBMirror *ghost_list, const mem_ptr ptr_src, data_ptr data_trg);
+    inline void Compute4Block_Coarsen2Coarse_(data_ptr data_src, data_ptr ptr_trg);
+    inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, const Field *fid);
+    inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, const mem_ptr ptr_src);
+    inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, const Field *fid);
     /** @}*/
 
-    void LoopOnMirrorBlock_(const gop_t op, Field *field);
+    void LoopOnMirrorBlock_(const gop_t op, const Field *field);
 };
 
 #endif  // SRC_GHOST_HPP_

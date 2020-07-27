@@ -38,8 +38,8 @@
  */
 #define m_isaligned(a)                      \
     ({                                      \
-        const void* _a = (a);               \
-        ((uintptr_t)_a) % M_ALIGNMENT == 0; \
+        const void* a_ = (void*)(a);              \
+        ((uintptr_t)a_) % M_ALIGNMENT == 0; \
     })
 
 #if defined(__INTEL_COMPILER)
@@ -62,9 +62,6 @@
         _mm_free((void*)data_);          \
     })
 #else  //defined(__GNUC__)
-/**
- * @brief shortcuts the memory alignement assumption and check if it can be done
- */
 #define m_assume_aligned(a)                                  \
     ({                                                       \
         __typeof__(a) a_ = (a);                              \
@@ -103,9 +100,9 @@
  */
 #define m_max(a, b)             \
     ({                          \
-        __typeof__(a) _a = (a); \
-        __typeof__(b) _b = (b); \
-        _a > _b ? _a : _b;      \
+        __typeof__(a) a_ = (a); \
+        __typeof__(b) b_ = (b); \
+        a_ > b_ ? a_ : b_;      \
     })
 
 /**
@@ -114,9 +111,9 @@
  */
 #define m_min(a, b)             \
     ({                          \
-        __typeof__(a) _a = (a); \
-        __typeof__(b) _b = (b); \
-        _a < _b ? _a : _b;      \
+        __typeof__(a) a_ = (a); \
+        __typeof__(b) b_ = (b); \
+        a_ < b_ ? a_ : b_;      \
     })
 
 /**
@@ -148,13 +145,13 @@
  */
 #define m_pos(pos, i0, i1, i2, hgrid, xyz) \
     ({                                     \
-        __typeof__(i0) _i0 = (i0);         \
-        __typeof__(i1) _i1 = (i1);         \
-        __typeof__(i2) _i2 = (i2);         \
+        __typeof__(i0) i0_ = (i0);         \
+        __typeof__(i1) i1_ = (i1);         \
+        __typeof__(i2) i2_ = (i2);         \
                                            \
-        pos[0] = _i0 * hgrid[0] + xyz[0];  \
-        pos[1] = _i1 * hgrid[1] + xyz[1];  \
-        pos[2] = _i2 * hgrid[2] + xyz[2];  \
+        pos[0] = i0_ * hgrid[0] + xyz[0];  \
+        pos[1] = i1_ * hgrid[1] + xyz[1];  \
+        pos[2] = i2_ * hgrid[2] + xyz[2];  \
     })
 
 /**
@@ -169,13 +166,13 @@
  */
 #define m_pos_relative(offset, i0, i1, i2, hgrid) \
     ({                                            \
-        __typeof__(i0) _i0 = (i0);                \
-        __typeof__(i1) _i1 = (i1);                \
-        __typeof__(i2) _i2 = (i2);                \
+        __typeof__(i0) i0_ = (i0);                \
+        __typeof__(i1) i1_ = (i1);                \
+        __typeof__(i2) i2_ = (i2);                \
                                                   \
-        offset[0] = _i0 * hgrid[0];               \
-        offset[1] = _i1 * hgrid[1];               \
-        offset[2] = _i2 * hgrid[2];               \
+        offset[0] = i0_ * hgrid[0];               \
+        offset[1] = i1_ * hgrid[1];               \
+        offset[2] = i2_ * hgrid[2];               \
     })
 
 /**
@@ -184,8 +181,8 @@
  */
 #define m_blockmemsize(lda)                             \
     ({                                                  \
-        __typeof__(lda) _lda = (lda);                   \
-        (size_t)(lda * M_STRIDE * M_STRIDE * M_STRIDE); \
+        __typeof__(lda) lda_ = (lda);                   \
+        (size_t)(lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
     })
 
 /**
@@ -327,16 +324,22 @@
  * @brief entry and exit of functions, enabled if VERBOSE is enabled
  * 
  */
+#ifdef VERBOSE
 #define m_begin                                                                             \
     m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
-    double def_idajfl_T0 = MPI_Wtime();                                                     \
+    double m_def_T0 = MPI_Wtime();                                                          \
     m_verb("----- entering %s", __func__);
-
 #define m_end                                                                               \
     m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
-    double def_idajfl_T1 = MPI_Wtime();                                                     \
-    m_verb("----- leaving %s after %lf [s]", __func__, (def_idajfl_T1) - (def_idajfl_T0));
-    
+    double m_def_T1 = MPI_Wtime();                                                          \
+    m_verb("----- leaving %s after %lf [s]", __func__, (m_def_T1) - (m_def_T0));
+#else
+#define m_begin \
+    { ((void)0); }
+#define m_end \
+    { ((void)0); }
+#endif
+
 /** @} */
 
 // #if defined(__INTEL_COMPILER)

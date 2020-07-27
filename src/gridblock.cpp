@@ -63,14 +63,14 @@ void GridBlock::AllocatePtrGhost(const size_t memsize) {
  * @param fid 
  * @return real_p 
  */
-real_p GridBlock::data(Field* fid) {
+data_ptr GridBlock::data(const Field* fid) {
     //-------------------------------------------------------------------------
 #ifndef NDEBUG
     // check the field validity
-    datamap_t::iterator it = data_map_.find(fid->name());
+    const auto it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
     // check the alignment in memory
-    real_p data = it->second + m_zeroidx(0, this);
+    data_ptr data = it->second + m_zeroidx(0, this);
     m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
     return data;
 #else
@@ -89,14 +89,14 @@ real_p GridBlock::data(Field* fid) {
  * @param ida the required dimension
  * @return real_p the memory adress, we ensure its alignement
  */
-real_p GridBlock::data(const Field* fid, const sid_t ida) {
+data_ptr GridBlock::data(const Field* fid, const sid_t ida) {
     //-------------------------------------------------------------------------
 #ifndef NDEBUG
     // check the field validity
     auto it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     // check the alignment in memory
-    real_p data = it->second + m_zeroidx(ida, this);
+    data_ptr data = it->second + m_zeroidx(ida, this);
     m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
     return data;
 #else
@@ -105,26 +105,26 @@ real_p GridBlock::data(const Field* fid, const sid_t ida) {
     //-------------------------------------------------------------------------
 }
 
-/**
- * @brief  returns the constant (aligned!) pointer for read access that corresponds to the first point in the block, i.e. (0,0,0), for the given dimension.
- * You must use either @ref m_sidx, @ref m_midx or @ref m_idx to access any point in the memory
- * 
- * @warning this is not the same pointer as the memory pointers, because the ghost blocks are considered as negative numbers, see @ref MemLayout
- * 
- * @param fid 
- * @return const real_p the pointer is const
- */
-real_p GridBlock::data(const Field* fid) const {
-#ifndef NDEBUG
-    datamap_t::const_iterator it = data_map_.find(fid->name());
-    m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
-    real_p data = it->second + m_zeroidx(0, this);
-    m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
-    return data;
-#else
-    return data_map_.at(fid->name()) + m_zeroidx(0, this);
-#endif
-}
+// /**
+//  * @brief  returns the constant (aligned!) pointer for read access that corresponds to the first point in the block, i.e. (0,0,0), for the given dimension.
+//  * You must use either @ref m_sidx, @ref m_midx or @ref m_idx to access any point in the memory
+//  * 
+//  * @warning this is not the same pointer as the memory pointers, because the ghost blocks are considered as negative numbers, see @ref MemLayout
+//  * 
+//  * @param fid 
+//  * @return const real_p the pointer is const
+//  */
+// real_p GridBlock::data(const Field* fid) const {
+// #ifndef NDEBUG
+//     datamap_t::const_iterator it = data_map_.find(fid->name());
+//     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
+//     real_p data = it->second + m_zeroidx(0, this);
+//     m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
+//     return data;
+// #else
+//     return data_map_.at(fid->name()) + m_zeroidx(0, this);
+// #endif
+// }
 
 /**
  * @brief returns the (aligned!) pointer for write access that corresponds to the actual data pointer, for the first dimension.
@@ -134,13 +134,13 @@ real_p GridBlock::data(const Field* fid) const {
  * @param fid 
  * @return real_p 
  */
-real_p GridBlock::pointer(Field* fid) {
+mem_ptr GridBlock::pointer(const Field* fid) {
 #ifndef NDEBUG
     // check the field validity
     datamap_t::iterator it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
     // check the alignment in memory
-    real_p data = it->second;
+    mem_ptr data = it->second;
     m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
     return data;
 #else
@@ -156,13 +156,13 @@ real_p GridBlock::pointer(Field* fid) {
  * @param ida the required dimension
  * @return real_p the memory adress
  */
-real_p GridBlock::pointer(const Field* fid, const sid_t ida) {
+mem_ptr GridBlock::pointer(const Field* fid, const sid_t ida) {
 #ifndef NDEBUG
     // check the field validity
     auto it = data_map_.find(fid->name());
     m_assert(it != data_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     // check the alignment in memory
-    real_p data = it->second + m_blockmemsize(ida);
+    mem_ptr data = it->second + m_blockmemsize(ida);
     m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
     return data;
 #else
@@ -170,25 +170,25 @@ real_p GridBlock::pointer(const Field* fid, const sid_t ida) {
 #endif
 }
 
-/**
- * @brief  returns the constant (aligned!) pointer for read access that corresponds to the actual data pointer, for the given dimension
- * 
- * @warning do not confuse with @ref data() functions
- * 
- * @param fid 
- * @return the memory adress
- */
-real_p GridBlock::pointer(const Field* fid) const {
-#ifndef NDEBUG
-    datamap_t::const_iterator it = data_map_.find(fid->name());
-    m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
-    real_p data = it->second;
-    m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
-    return data;
-#else
-    return data_map_.at(fid->name());
-#endif
-}
+// /**
+//  * @brief  returns the constant (aligned!) pointer for read access that corresponds to the actual data pointer, for the given dimension
+//  * 
+//  * @warning do not confuse with @ref data() functions
+//  * 
+//  * @param fid 
+//  * @return the memory adress
+//  */
+// real_p GridBlock::pointer(const Field* fid) const {
+// #ifndef NDEBUG
+//     datamap_t::const_iterator it = data_map_.find(fid->name());
+//     m_assert(it != data_map_.end(), "the field %s does not exist in this block", fid->name().c_str());
+//     real_p data = it->second;
+//     m_assert(m_isaligned(data), "M_GS and M_N have to be chosen so that (0,0,0) is aligned in memory");
+//     return data;
+// #else
+//     return data_map_.at(fid->name());
+// #endif
+// }
 
 /**
  * @brief adds a field to the block if it doesn't exist already

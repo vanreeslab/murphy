@@ -34,9 +34,9 @@ typedef struct interp_ctx_t {
      * They both refer the position (0,0,0) of the target, hence the ghostsize is assumed to be zero
      * @{
      */
-    real_p sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
-    real_p cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
-    real_p tdata;  //!< refers the (0,0,0) location of the target memory
+    data_ptr sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
+    data_ptr cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
+    data_ptr tdata;  //!< refers the (0,0,0) location of the target memory
     /** @} */
 } interp_ctx_t;
 
@@ -57,11 +57,11 @@ class Interpolator {
     * @name accessible interpolating functions
     * @{
     */
-    virtual void Copy(const level_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
-    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
-    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst);
-    virtual void GetRma(const level_t dlvl, const lid_t shift[3], MemLayout* block_src, MPI_Aint disp_src, MemLayout* block_trg, real_t* data_trg, rank_t src_rank, MPI_Win win);
-    virtual void PutRma(const level_t dlvl, const lid_t shift[3], MemLayout* block_src, real_t* ptr_src, MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win);
+    virtual void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg);
+    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg);
+    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, data_ptr data_cst);
+    virtual void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win);
+    virtual void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win);
     /** @} */
 
     virtual real_t Criterion(MemLayout* block, real_p data) = 0;
@@ -89,7 +89,7 @@ class Interpolator {
 
    protected:
     // call Copy_, Coarsen_ or Refine_
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg, const real_t alpha, real_p data_cst);
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst);
 
     // to be implemented functions
     virtual void Coarsen_(const interp_ctx_t* ctx) = 0;

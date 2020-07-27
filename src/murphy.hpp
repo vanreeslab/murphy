@@ -27,10 +27,11 @@ typedef p4est_locidx_t iblock_t;  //!< datatype to index blocks, ghosts and quad
  * @{
  */
 typedef double real_t;              //!< data subtype
-typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
-typedef real_t* __restrict data_p;  //!< data pointer type = root of the data, i.e. point (0,0,0)
+typedef real_t* __restrict mem_ptr;  //!< pointer type = root of the memory allocation
+typedef real_t* __restrict data_ptr;  //!< data pointer type = root of the data, i.e. point (0,0,0)
 /**@}*/
 
+typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
 typedef std::map<std::string, real_p> datamap_t;
 
 typedef p8est_quadrant_t qdrt_t;

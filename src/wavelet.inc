@@ -650,7 +650,6 @@ void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) 
     //-------------------------------------------------------------------------
     m_assume_aligned(ctx->tdata);
 
-    const real_t  alpha  = ctx->alpha;
     const sid_t   ga_lim = len_ga_ / 2;
     const real_t* ga     = ga_ + ga_lim;
 

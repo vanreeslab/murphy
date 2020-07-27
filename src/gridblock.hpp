@@ -50,9 +50,9 @@ class GridBlock : public MemLayout {
      * @name handle the ghost data pointer
      * @{
      */
-    real_p ptr_ghost() const { return ptr_ghost_; }
-    void   ptr_ghost(real_p ptr) { ptr_ghost_ = ptr; }
-    void   AllocatePtrGhost(const size_t memsize);
+    mem_ptr ptr_ghost() const { return ptr_ghost_; }
+    void    ptr_ghost(real_p ptr) { ptr_ghost_ = ptr; }
+    void    AllocatePtrGhost(const size_t memsize);
     /**@} */
 
     /**
@@ -61,13 +61,13 @@ class GridBlock : public MemLayout {
      * @{
      */
     // data = memory address of (0,0,0)
-    real_p data(Field* fid);
-    real_p data(const Field* fid, const sid_t ida);
-    real_p data(const Field* fid) const;
+    data_ptr data(const Field* fid);
+    data_ptr data(const Field* fid, const sid_t ida);
+    // data_ptr data(const Field* fid) const;
     // pointer = raw data pointe
-    real_p pointer(Field* fid);
-    real_p pointer(const Field* fid, const sid_t ida);
-    real_p pointer(const Field* fid) const;
+    mem_ptr pointer(const Field* fid);
+    mem_ptr pointer(const Field* fid, const sid_t ida);
+    // mem_ptr pointer(const Field* fid) const;
     /** @} */
 
     /**

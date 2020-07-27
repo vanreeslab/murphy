@@ -31,8 +31,8 @@ class Field {
     inline sid_t     lda() const { return lda_; }
     inline string    name() const { return name_; }
     inline bool      ghost_status() const { return ghost_status_; }
-    inline bctype_t  bctype(const sid_t ida, const sid_t iface) { return bctype_[iface][ida]; }
-    inline bctype_t* bctype(const sid_t iface) { return bctype_[iface]; }
+    inline bctype_t  bctype(const sid_t ida, const sid_t iface) const { return bctype_[iface][ida]; }
+    inline bctype_t* bctype(const sid_t iface) const { return bctype_[iface]; }
     /** @} */
 
     /**
