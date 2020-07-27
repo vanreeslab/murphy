@@ -952,7 +952,7 @@ inline void Ghost::Compute4Block_Copy2Myself_(const ListGBLocal* ghost_list, con
     // the source block is always the same
     const lid_t src_start[3] = {0, 0, 0};
     const lid_t src_end[3]   = {M_N, M_N, M_N};
-    MemLayout*  block_src    = new SubBlock(M_GS, M_STRIDE, src_start, src_end);
+    SubBlock    block_src(M_GS, M_STRIDE, src_start, src_end);
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
@@ -961,9 +961,8 @@ inline void Ghost::Compute4Block_Copy2Myself_(const ListGBLocal* ghost_list, con
         MemLayout* block_trg = gblock;
         data_ptr   data_src  = ngh_block->data(fid, ida_);
         // copy the information
-        interp_->Copy(gblock->dlvl(), gblock->shift(), block_src, data_src, block_trg, data_trg);
+        interp_->Copy(gblock->dlvl(), gblock->shift(), &block_src, data_src, block_trg, data_trg);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -975,7 +974,7 @@ inline void Ghost::Compute4Block_Copy2Coarse_(const ListGBLocal* ghost_list, con
     // the source block is always the same
     const lid_t src_start[3] = {0, 0, 0};
     const lid_t src_end[3]   = {M_N, M_N, M_N};
-    MemLayout*  block_src    = new SubBlock(M_GS, M_STRIDE, src_start, src_end);
+    SubBlock    block_src(M_GS, M_STRIDE, src_start, src_end);
 
     // the coarse block is computed later
     lid_t coarse_start[3];
@@ -989,16 +988,13 @@ inline void Ghost::Compute4Block_Copy2Coarse_(const ListGBLocal* ghost_list, con
             coarse_start[id] = CoarseFromBlock(gblock->start(id), interp_);
             coarse_end[id]   = CoarseFromBlock(gblock->end(id), interp_);
         }
-        MemLayout* block_trg = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-        real_p     data_src  = ngh_block->data(fid, ida_);
-        real_p     data_trg  = ptr_trg + m_zeroidx(0, block_trg);
+        SubBlock block_trg(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+        real_p   data_src = ngh_block->data(fid, ida_);
+        real_p   data_trg = ptr_trg + m_zeroidx(0, &block_trg);
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert((gblock->dlvl() + 1) == 1 || (gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
-        interp_->Copy(gblock->dlvl() + 1, gblock->shift(), block_src, data_src, block_trg, data_trg);
-
-        delete block_trg;
+        interp_->Copy(gblock->dlvl() + 1, gblock->shift(), &block_src, data_src, &block_trg, data_trg);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -1010,7 +1006,7 @@ inline void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list,c
     // the source block is always the same
     const lid_t src_start[3] = {0, 0, 0};
     const lid_t src_end[3]   = {M_N, M_N, M_N};
-    MemLayout*  block_src    = new SubBlock(M_GS, M_STRIDE, src_start, src_end);
+    SubBlock  block_src(M_GS, M_STRIDE, src_start, src_end);
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
@@ -1018,9 +1014,8 @@ inline void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list,c
         rank_t     disp_rank = gblock->rank();
         MemLayout* block_trg = gblock;
         // copy the information
-        interp_->GetRma(gblock->dlvl(), gblock->shift(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
+        interp_->GetRma(gblock->dlvl(), gblock->shift(), &block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -1034,7 +1029,7 @@ inline void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, 
     // the source block is always the same
     const lid_t src_start[3] = {0, 0, 0};
     const lid_t src_end[3]   = {M_N, M_N, M_N};
-    MemLayout*  block_src    = new SubBlock(M_GS, M_STRIDE, src_start, src_end);
+    SubBlock    block_src(M_GS, M_STRIDE, src_start, src_end);
 
     // the coarse block is computed later
     lid_t coarse_start[3];
@@ -1050,16 +1045,13 @@ inline void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, 
             coarse_start[id] = CoarseFromBlock(gblock->start(id), interp_);
             coarse_end[id]   = CoarseFromBlock(gblock->end(id), interp_);
         }
-        MemLayout* block_trg = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-        data_ptr     data_trg  = ptr_trg + m_zeroidx(0, block_trg);
+        SubBlock block_trg(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+        data_ptr data_trg = ptr_trg + m_zeroidx(0, &block_trg);
 
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert((gblock->dlvl() + 1) == 1 || (gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 or 0");
-        interp_->GetRma((gblock->dlvl() + 1), gblock->shift(), block_src, disp_src, block_trg, data_trg, disp_rank, mirrors_window_);
-
-        delete block_trg;
+        interp_->GetRma((gblock->dlvl() + 1), gblock->shift(), &block_src, disp_src, &block_trg, data_trg, disp_rank, mirrors_window_);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -1111,13 +1103,13 @@ inline void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur
         coarse_start[id] = 0;
         coarse_end[id]   = M_HN;
     }
-    SubBlock* coarse_block = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    SubBlock coarse_block(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     // get memory details
     const lid_t      shift[3]  = {0, 0, 0};
     const MemLayout* block_src = cur_block;
     const data_ptr   data_src  = cur_block->data(fid, ida_);
-    const MemLayout* block_trg = coarse_block;
-    data_ptr         data_trg  = ptr_trg + m_zeroidx(0, coarse_block);
+    const MemLayout* block_trg = &coarse_block;
+    data_ptr         data_trg  = ptr_trg + m_zeroidx(0, &coarse_block);
     // interpolate
     interp_->Copy(1, shift, block_src, data_src, block_trg, data_trg);
 
@@ -1139,33 +1131,32 @@ inline void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur
             fstart[(dir + id) % 3]       = CoarseFromBlock(face_start[gblock->iface()][(dir + id) % 3], interp_);
         }
         // reset the coarse block and get the correct memory location
-        coarse_block->Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-        data_ptr data_trg = ptr_trg + m_zeroidx(0, coarse_block);
+        coarse_block.Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+        data_ptr data_trg = ptr_trg + m_zeroidx(0, &coarse_block);
         // get the correct face_start
         if (bctype == M_BC_EVEN) {
             EvenBoundary_4 bc = EvenBoundary_4();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
+            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_ODD) {
             OddBoundary_4 bc = OddBoundary_4();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
+            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_EXTRAP_3) {
             ExtrapBoundary_3 bc = ExtrapBoundary_3();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
+            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_EXTRAP_4) {
             ExtrapBoundary_4 bc = ExtrapBoundary_4();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
+            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_EXTRAP_5) {
             ExtrapBoundary_5 bc = ExtrapBoundary_5();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
+            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_ZERO) {
             ZeroBoundary bc = ZeroBoundary();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, coarse_block, data_trg);
+            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else {
             m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
         }
         //-------------------------------------------------------------------------
     }
-    delete coarse_block;
 }
 
 /**
@@ -1180,16 +1171,15 @@ inline void Ghost::Compute4Block_Refine_(const ListGBLocal* ghost_list, const me
         coarse_start[id] = -CoarseNGhostFront(interp_);
         coarse_end[id]   = CoarseStride(interp_) - CoarseNGhostFront(interp_);
     }
-    MemLayout* block_src = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-    data_ptr   data_src  = ptr_src + m_zeroidx(0, block_src);
-    lid_t      shift[3]  = {0, 0, 0};
+    SubBlock block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    data_ptr data_src = ptr_src + m_zeroidx(0, &block_src);
+    lid_t    shift[3] = {0, 0, 0};
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
         // interpolate, the level is 1 coarser and the shift is unchanged
-        interp_->Interpolate(-1, shift, block_src, data_src, gblock, data_trg);
+        interp_->Interpolate(-1, shift, &block_src, data_src, gblock, data_trg);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -1205,16 +1195,15 @@ inline void Ghost::Compute4Block_Refine_(const ListGBMirror* ghost_list, const m
         coarse_start[id] = -CoarseNGhostFront(interp_);
         coarse_end[id]   = CoarseStride(interp_) - CoarseNGhostFront(interp_);
     }
-    MemLayout* block_src = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-    real_p     data_src  = ptr_src + m_zeroidx(0, block_src);
-    lid_t      shift[3]  = {0, 0, 0};
+    SubBlock block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    real_p   data_src = ptr_src + m_zeroidx(0, &block_src);
+    lid_t    shift[3] = {0, 0, 0};
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
         // interpolate, the level is 1 coarser and the shift is unchanged
-        interp_->Interpolate(-1, shift, block_src, data_src, gblock, data_trg);
+        interp_->Interpolate(-1, shift, &block_src, data_src, gblock, data_trg);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -1227,19 +1216,18 @@ inline void Ghost::Compute4Block_Coarsen2Coarse_(const data_ptr data_src, mem_pt
     const lid_t shift[3]     = {0, 0, 0};
     const lid_t trg_start[3] = {0, 0, 0};
     const lid_t trg_end[3]   = {M_HN, M_HN, M_HN};
-    MemLayout*  block_trg    = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), trg_start, trg_end);
-    data_ptr    data_trg     = ptr_trg + m_zeroidx(0, block_trg);
+    SubBlock    block_trg(CoarseNGhostFront(interp_), CoarseStride(interp_), trg_start, trg_end);
+    data_ptr    data_trg = ptr_trg + m_zeroidx(0, &block_trg);
 
     // the source block is the ghost extended block
     lid_t       nghost_front = interp_->nghost_front();
     lid_t       nghost_back  = interp_->nghost_back();
     const lid_t src_start[3] = {-nghost_front, -nghost_front, -nghost_front};
     const lid_t src_end[3]   = {M_N + nghost_back, M_N + nghost_back, M_N + nghost_back};
-    MemLayout*  block_src    = new SubBlock(M_GS, M_STRIDE, src_start, src_end);
+    SubBlock    block_src(M_GS, M_STRIDE, src_start, src_end);
 
     // interpolate, the level is 1 coarser and the shift is unchanged
-    interp_->Interpolate(1, shift, block_src, data_src, block_trg, data_trg);
-    delete block_trg;
+    interp_->Interpolate(1, shift, &block_src, data_src, &block_trg, data_trg);
     //-------------------------------------------------------------------------
 }
 
@@ -1249,10 +1237,10 @@ inline void Ghost::Compute4Block_Coarsen2Coarse_(const data_ptr data_src, mem_pt
 inline void Ghost::Compute4Block_Copy2Parent_(const ListGBLocal* ghost_list, const mem_ptr ptr_src, const Field* fid) {
     //-------------------------------------------------------------------------
     // the source block is always the same
-    lid_t      coarse_start[3] = {0, 0, 0};
-    lid_t      coarse_end[3]   = {M_HN, M_HN, M_HN};
-    MemLayout* block_src       = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-    data_ptr   data_src        = ptr_src + m_zeroidx(0, block_src);
+    lid_t    coarse_start[3] = {0, 0, 0};
+    lid_t    coarse_end[3]   = {M_HN, M_HN, M_HN};
+    SubBlock block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    data_ptr data_src = ptr_src + m_zeroidx(0, &block_src);
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
@@ -1260,9 +1248,8 @@ inline void Ghost::Compute4Block_Copy2Parent_(const ListGBLocal* ghost_list, con
         data_ptr   data_trg  = ngh_block->data(fid, ida_);
         // interpolate, the level is 1 coarser and the shift is unchanged
         m_assert(gblock->dlvl() == 0, "we must have a level 0, here %d", gblock->dlvl());
-        interp_->Copy(gblock->dlvl(), gblock->shift(), block_src, data_src, gblock, data_trg);
+        interp_->Copy(gblock->dlvl(), gblock->shift(), &block_src, data_src, gblock, data_trg);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 
@@ -1274,7 +1261,7 @@ inline void Ghost::Compute4Block_PutRma2Parent_(const ListGBMirror* ghost_list, 
     // the source block is always the same
     lid_t      coarse_start[3] = {0, 0, 0};
     lid_t      coarse_end[3]   = {M_HN, M_HN, M_HN};
-    MemLayout* block_src       = new SubBlock(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    SubBlock block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {
@@ -1282,9 +1269,8 @@ inline void Ghost::Compute4Block_PutRma2Parent_(const ListGBMirror* ghost_list, 
         rank_t   trg_rank = gblock->rank();
         // interpolate, the parent's mirror have been created to act on the tmp
         m_assert(gblock->dlvl() == 0, "we must have a level 0, here %d", gblock->dlvl());
-        interp_->PutRma(gblock->dlvl(), gblock->shift(), block_src, ptr_src, gblock, disp_trg, trg_rank, mirrors_window_);
+        interp_->PutRma(gblock->dlvl(), gblock->shift(), &block_src, ptr_src, gblock, disp_trg, trg_rank, mirrors_window_);
     }
-    delete block_src;
     //-------------------------------------------------------------------------
 }
 

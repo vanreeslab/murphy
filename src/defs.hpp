@@ -14,7 +14,7 @@
  * @{
  */
 #define M_N 16          //!< size of one block (M_N x M_N x M_N)
-#define M_GS 2          //!< number of ghost points
+#define M_GS 4          //!< number of ghost points
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 /** @} */
 
@@ -38,7 +38,7 @@
  */
 #define m_isaligned(a)                      \
     ({                                      \
-        const void* a_ = (void*)(a);              \
+        const void* a_ = (void*)(a);        \
         ((uintptr_t)a_) % M_ALIGNMENT == 0; \
     })
 
@@ -179,9 +179,9 @@
  * @brief returns the size (in elements) of one block
  * 
  */
-#define m_blockmemsize(lda)                             \
-    ({                                                  \
-        __typeof__(lda) lda_ = (lda);                   \
+#define m_blockmemsize(lda)                              \
+    ({                                                   \
+        __typeof__(lda) lda_ = (lda);                    \
         (size_t)(lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
     })
 
@@ -191,9 +191,10 @@
  */
 #define m_zeroidx(ida, mem)                                        \
     ({                                                             \
-        sid_t  ida_ = (ida);                                       \
-        lid_t  gs_  = (mem->gs());                                 \
-        size_t str_ = (size_t)(mem->stride());                     \
+        __typeof__(mem) mem_ = (mem);                              \
+        sid_t  ida_          = (ida);                              \
+        lid_t  gs_           = (mem_->gs());                       \
+        size_t str_          = (size_t)(mem_->stride());           \
         (size_t)(gs_ + str_ * (gs_ + str_ * (gs_ + str_ * ida_))); \
     })
 
@@ -245,7 +246,6 @@
     })
 
 /** @} */
-
 
 /**
  * @name logs and verbosity 
@@ -339,12 +339,6 @@
 #define m_end \
     { ((void)0); }
 #endif
-
 /** @} */
-
-// #if defined(__INTEL_COMPILER)
-// #define m_pragma_ivdep #pragma ivdep
-// #else
-// #define m_pragma_ivdep #pragma GCC ivdep
 
 #endif  // SRC_DEFS_HPP_
