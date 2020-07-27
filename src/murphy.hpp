@@ -11,15 +11,26 @@
 typedef int32_t lid_t;
 typedef int8_t  sid_t;
 
-//function oriented data types
-typedef int8_t         iface_t;
+/**
+ * @name typename for indexes
+ * @{
+ */
+typedef int8_t         iface_t;  //!< face index type (0->26)
+typedef int8_t         lda_t;    //!< leading dimension array type
 typedef int8_t         level_t;  //!< data type for a level
-typedef int            rank_t;   //!< rank data types
-typedef double         real_t;
+typedef int            rank_t;   //!< rank data type
 typedef p4est_locidx_t iblock_t;  //!< datatype to index blocks, ghosts and quadrants
+/**@}*/
 
+/**
+ * @name typename for data pointers
+ * @{
+ */
+typedef double real_t;              //!< data subtype
+typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
+typedef real_t* __restrict data_p;  //!< data pointer type = root of the data, i.e. point (0,0,0)
+/**@}*/
 
-typedef real_t* __restrict real_p;
 typedef std::map<std::string, real_p> datamap_t;
 
 typedef p8est_quadrant_t qdrt_t;

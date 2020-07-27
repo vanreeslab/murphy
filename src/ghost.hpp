@@ -3,12 +3,12 @@
 
 #include <list>
 
+#include "doop.hpp"
 #include "field.hpp"
 #include "forestgrid.hpp"
 #include "ghostblock.hpp"
 #include "interpolator.hpp"
 #include "murphy.hpp"
-#include "doop.hpp"
 #include "physblock.hpp"
 #include "prof.hpp"
 
@@ -32,28 +32,19 @@ class Ghost;
 using gop_t = void (Ghost::*)(const qid_t *qid, GridBlock *block, Field *fid);
 
 /**
- * @brief performs the ghost update of a given grid field, in one dimension
+ * @brief given an associated grid, performs the ghost update for a given field, in a given component
  * 
- * For some description of the p4est library related to the ghost management, see @ref doc/p4est.md
- * 
- * Ghosting relies on two structures, the blocks (local leafs) and the ghosts (other rank's leafs).
- * Only the non-local ghosts will have to be received. In the origin tree, they are called mirrors.
- * It means that a mirror is a ghost for one or multiple rank and a ghost is the block once received.
- * Then we interpolate (or copy) the information to the correct spot.
- * 
- * For the moment, all the block is being send/received. One optimisation is to only send an inner layer of points in each direction.
- * 
+ * This class is highly linked to our use of the wavelet, please have a look at @ref doc/ghost.md
+ *  
  * @warning the procedure assumes that the grid is correctly balanced!
  * 
  */
-
 class Ghost {
    protected:
-    sid_t    ida_           = -1;                  //!< current ghosting dimension
+    lda_t    ida_           = -1;                  //!< current ghosting dimension
     level_t  min_level_     = -1;                  //!< minimum active level, min_level included
     level_t  max_level_     = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
     iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
-    sid_t    nghost_[2]     = {0, 0};              //!< the number of ghost (front,back) that are actually needed
 
     MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors
     MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be targeted by my RMA calls to access mirrors
@@ -84,8 +75,8 @@ class Ghost {
      * @name RMA-based high-level ghosting - post and wait
      * @{
      */
-    void PullGhost_Post(Field *field, const sid_t ida);
-    void PullGhost_Wait(Field *field, const sid_t ida);
+    void PullGhost_Post(Field *field, const lda_t ida);
+    void PullGhost_Wait(Field *field, const lda_t ida);
     /** @}*/
 
     /**
@@ -102,12 +93,21 @@ class Ghost {
     /** @}*/
 
    protected:
-    // void InitComm_();
+
+    /**
+     * @name Init and free the comm/list
+     * @{
+     */
     void InitComm_();
     void FreeComm_();
     void InitList_();
     void FreeList_();
+    /** @}*/
 
+    /**
+     * @name Different operations needed on the block itself, given a ghost list
+     * @{
+     */
     inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, Field *fid, real_t *ptr_trg);
     inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *data_trg);
     inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, Field *fid, GridBlock *block_trg, real_t *ptr_trg);
@@ -119,25 +119,9 @@ class Ghost {
     inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, real_t *ptr_src, Field *fid);
     inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, real_t *ptr_src, Field *fid);
     inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid);
-
-    // void Compute4Block_Sibling_(const list<GhostBlock *> *ghost_list, const bool do_coarse, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
-    // void Compute4Block_FromParent_(const list<GhostBlock *> *ghost_list, InterpFunction *copy, GridBlock *cur_block, Field *fid, real_t *coarse_mem);
+    /** @}*/
 
     void LoopOnMirrorBlock_(const gop_t op, Field *field);
-    void LoopOnGhostBlock_(const gop_t op, Field *field);
-
-    // void PullFromGhost4Block_Children(const qid_t *qid, GridBlock *cur_block, Field *fid,
-    //                                  const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    // void PullFromGhost4Block_Sibling_(const qid_t *qid, GridBlock *cur_block, Field *fid,
-    //                                   const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_FromParent_(const qid_t *qid, GridBlock *cur_block, Field *fid,
-                                        const bool do_coarse, SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_Myself_(const qid_t *qid, GridBlock *cur_block, Field *fid, SubBlock *coarse_block, real_t *coarse_mem);
-    void PullFromGhost4Block_ToParent_(const qid_t *qid, GridBlock *cur_block, Field *fid,
-                                      SubBlock *ghost_block, SubBlock *coarse_block, real_t *coarse_mem);
-    // void PullFromGhost4Block_Physics(const qid_t *qid, GridBlock *cur_block, PhysBlock *gblock, Field *fid, real_t hgrid[3], real_t *data);
-
-    // void CreateOnLevels_(ForestGrid *grid, Interpolator *interp, const level_t min_level, const level_t max_level);
 };
 
 #endif  // SRC_GHOST_HPP_

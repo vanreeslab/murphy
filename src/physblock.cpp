@@ -8,7 +8,8 @@
  * @param iface the face ID (0 <= iface < 6)
  * @param block the block on which we act
  */
-PhysBlock::PhysBlock(const sid_t iface, MemLayout* block, const sid_t nghost_front[3], const sid_t nghost_back[3]) {
+PhysBlock::PhysBlock(const iface_t iface, const MemLayout* block, const lid_t nghost_front[3], const lid_t nghost_back[3]) {
+    m_assert(0 <= iface && iface < 6, "iface must be 0<= iface < 6");
     //-------------------------------------------------------------------------
     // remember the block origin
     gs_     = block->gs();
@@ -21,10 +22,9 @@ PhysBlock::PhysBlock(const sid_t iface, MemLayout* block, const sid_t nghost_fro
 
     // store the face ID
     iface_ = iface;
-    m_assert(0 <= iface && iface < 6, "iface must be 0<= iface < 6");
     // overwrite in the face direction
-    const sid_t dir  = iface_ / 2;
-    const sid_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus
+    const iface_t dir  = iface_ / 2;
+    const iface_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus
 
     // update the needed coordinates in the dir direction (we overwrite the first info if we go minus)
     start_[dir] = (sign == 0) ? start_[dir] : M_N;

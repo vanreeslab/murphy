@@ -78,11 +78,6 @@ class Grid : public ForestGrid {
     void GhostPull(Field* field);
     void GhostPull_Post(Field* field, const sid_t ida);
     void GhostPull_Wait(Field* field, const sid_t ida);
-    // void GhostPullFill(Field* field, const sid_t ida);
-    // void GhostPull_CoarseStart(Field* field, const sid_t ida);
-    // void GhostPull_CoarseEnd(Field* field, const sid_t ida);
-    // void GhostPull_FineStart(Field* field, const sid_t ida);
-    // void GhostPull_FineEnd(Field* field, const sid_t ida);
     /**@}*/
 
     /**
