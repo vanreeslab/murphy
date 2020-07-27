@@ -11,17 +11,38 @@ using std::pow;
 /**
  * @brief return the biggest detail coefficient as a refinement/coarsening criterion
  * 
+ * The max/min is computed on an extension of the Memory Layout (by gs_len/2).
+ * The reason for that comes from the refinement of a block.
+ * To refine a block, we have to assume that all the detail coefficients involved in the refinement are 0.0.
+ * Taking this way of thinking in the opposite direction, we may discard a block, only if the detail coefficients involved in its refinement are 0.0.
+ * Practically, it means that the lifting step, i.e. the contribution of the detail coefficients to my scaling coeff are 0.0.
+ * 
+ * The lifting step is driven by the lifting coefficient, whose total length is (2*Nt-1).
+ * in front, I need to ensure that the details from my neighbor are 0.0, which means (2*Nt-1)/2 detail are zero
+ * at the back, I need to ensure (2*Nt-1)/2 -1 details are 0 (as the last point is a detail)
+ * 
+ * 
  * @tparam order 
  * @param block 
  * @param data 
  * @return real_t 
  */
 template <int N, int Nt>
-real_t Wavelet<N, Nt>::Criterion(MemLayout* block, real_p data) {
+real_t Wavelet<N, Nt>::Criterion(MemLayout* block, data_ptr data) {
     //-------------------------------------------------------------------------
+    // get the extended memory layout
+    const lid_t lift_len = (2 * Nt - 1);
+    lid_t       start[3];
+    lid_t       end[3];
+    for (lda_t id = 0; id < 3; id++) {
+        start[id] = block->start(id) - (lift_len / 2);
+        start[id] = block->end(id) + (lift_len / 2) - 1;
+    }
+    SubBlock extended_block(block->gs(), block->stride(), start, end);
+
+    // get the detail coefficients
     real_t details_max[8] = {0};
-    // get memory details
-    Details(block, data, details_max);
+    Details(&extended_block, data, details_max);
 
     // get the max out of all the details
     real_t criterion = 0.0;
@@ -41,7 +62,7 @@ real_t Wavelet<N, Nt>::Criterion(MemLayout* block, real_p data) {
  * @param details_max an array of size 8 that will contain the detail coefficients: dx, dy, dz, dxy, dyz, dxz, dxyz, mean
  */
 template <int N, int Nt>
-void Wavelet<N, Nt>::Details(MemLayout* block, real_p data, real_t* details_max) {
+void Wavelet<N, Nt>::Details(MemLayout* block, data_ptr data, real_t* details_max) {
     //-------------------------------------------------------------------------
     interp_ctx_t ctx;
     // get memory details
@@ -83,7 +104,7 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx) {
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   ha_lim = len_ha_ / 2;
-    const real_t* ha     = ha_ + ha_lim;
+    const mem_ptr ha     = ha_ + ha_lim;
 
     for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
@@ -93,9 +114,9 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx) {
                 m_assert(((ik1 - ha_lim) >= (ctx->srcstart[1])) && ((ik1 + ha_lim) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - ha_lim, ctx->srcstart[1], ik1 + ha_lim, ctx->srcend[1]);
                 m_assert(((ik2 - ha_lim) >= (ctx->srcstart[2])) && ((ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - ha_lim, ctx->srcstart[2], ik2 + ha_lim, ctx->srcend[2]);
                 //get the local adress of the source, the target and the constant
-                real_p       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
 
                 // add the constant
                 ltdata[0] = alpha * lcdata[0];
@@ -130,7 +151,7 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
 
     const real_t  alpha  = ctx->alpha;
     const sid_t   gs_lim = (len_gs_ / 2) - 1;
-    const real_t* gs     = gs_ + gs_lim;
+    const mem_ptr gs     = gs_ + gs_lim;
 
     // m_log("gslim = %d", gs_lim);
 
@@ -139,9 +160,9 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
     // m_assert((ctx->trgstart[0]%2==0) && (ctx->trgend[0]%2==0),"the starting %d and ending %d location must be even in dir %d",ctx->trgstart[0],ctx->trgend[0],0);
     // m_assert((ctx->trgstart[1]%2==0) && (ctx->trgend[1]%2==0),"the starting %d and ending %d location must be even in dir %d",ctx->trgstart[1],ctx->trgend[1],1);
     // m_assert((ctx->trgstart[2]%2==0) && (ctx->trgend[2]%2==0),"the starting %d and ending %d location must be even in dir %d",ctx->trgstart[2],ctx->trgend[2],2);
-    m_assert((ctx->trgstart[0]%2==0),"the starting location = %d must be even in dir %d",ctx->trgstart[0],0);
-    m_assert((ctx->trgstart[1]%2==0),"the starting location = %d must be even in dir %d",ctx->trgstart[1],1);
-    m_assert((ctx->trgstart[2]%2==0),"the starting location = %d must be even in dir %d",ctx->trgstart[2],2);
+    m_assert((ctx->trgstart[0] % 2 == 0), "the starting location = %d must be even in dir %d", ctx->trgstart[0], 0);
+    m_assert((ctx->trgstart[1] % 2 == 0), "the starting location = %d must be even in dir %d", ctx->trgstart[1], 1);
+    m_assert((ctx->trgstart[2] % 2 == 0), "the starting location = %d must be even in dir %d", ctx->trgstart[2], 2);
 
     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
@@ -150,9 +171,9 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
                 m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -195,9 +216,9 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
                 m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -222,15 +243,15 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
             }
         }
         // I cannot go in y=1
-        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < (ctx->trgend[1]+1) / 2; ik1++) {
+        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < (ctx->trgend[1] + 1) / 2; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
                 m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
                 // m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -273,9 +294,9 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
                 m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -301,16 +322,16 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
         }
     }
     // I cannot go to z=1
-    for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < (ctx->trgend[2]+1) / 2; ik2++) {
+    for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < (ctx->trgend[2] + 1) / 2; ik2++) {
         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
                 m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
                 m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 // m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -353,9 +374,9 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
                 m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 // m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -380,15 +401,15 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
             }
         }
         // I cannot go in y=1
-        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < (ctx->trgend[1]+1) / 2; ik1++) {
+        for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < (ctx->trgend[1] + 1) / 2; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
                 m_assert(((ik0 - gs_lim) >= ctx->srcstart[0]) && ((ik0 + gs_lim + 1) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
                 // m_assert(((ik1 - gs_lim) >= ctx->srcstart[1]) && ((ik1 + gs_lim + 1) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
                 // m_assert(((ik2 - gs_lim) >= ctx->srcstart[2]) && ((ik2 + gs_lim + 1) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
                 //get the local adress of the arrays
-                real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-                const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
+                data_ptr       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
 
                 // reset to the constant
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
@@ -461,182 +482,6 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
 
     //-------------------------------------------------------------------------
 }
-// template <int N, int Nt>
-// void Wavelet<N, Nt>::RefineGhost_(const interp_ctx_t* ctx) {
-//     m_assert(n_ghost_[M_WFRONT] % 2 == 0 & n_ghost_[M_WBACK] % 2 == 1, "we used this simplification throughout this function");
-//     //-------------------------------------------------------------------------
-//     // assure alignment for the target, the source, the constant and the temp data
-//     m_assume_aligned(ctx->tdata);
-//     m_assume_aligned(ctx->sdata);
-//     m_assume_aligned(ctx->cdata);
-
-//     const real_t alpha     = ctx->alpha;
-//     const sid_t*  normal = ctx->normal;
-
-//     // we have to choose the direction that will do the cross ones in case of
-
-//     // // given the normal, get the correct gs filter: the regular, the front or the back
-//     // real_t** gs_g[3];
-//     // sid_t    gs_xshift[3]; // shift to apply to reach the correct X values for the filter
-//     // // sid_t    gs_lim[3];
-//     // // filter for the fine points
-//     // real_t** gx_g[3];
-//     // sid_t    gx_xshift[3];  // the shift to apply to reach the correct X (!) values for the filter
-//     // sid_t    gx_lim;
-//     // // sid_t    gx_lim_r[3];
-
-//     m_log("processing normal = %d %d %d", normal[0], normal[1], normal[2]);
-
-//     /**
-//      * ```
-//      *                     n_ghost        |                           |        n_ghost
-//      *            |<--------------------->|                           |<--------------------->|
-//      *            o-----x-----o-----x-----|-----x-----x               o-----x-----o-----x-----|
-//      *            |           |           |                           |           |           |
-//      *            |           |           |                           |           |           |
-//      * o----------o-----------o-----------|                           o-----------o-----------o-----------|
-//      * |<-------->|<--------------------->|                           |<--------->|<--------------------->|
-//      * | gs_shift         gs_lim          |                           | gs_shift         gs_lim           |
-//      * |<-------------------------------->|                           |<--------------------------------->|
-//      *              n_info                |                           |            n_info
-//      * ```
-//      **/
-
-//     const sid_t   gs_lim = (len_gs_ / 2) - 1;
-//     const real_t* gs     = gs_ + gs_lim;
-
-//     // for (sid_t id = 0; id < 3; id++) {
-//     //     // x coarse - the exact quantities depend on the ghost point considered
-//     //     gs_xshift[id] = (normal[id] == 0) ? -gs_lim : (normal[id] == -1) ? -(len_gs_ / 2 - 1) : 0;
-//     //     gs_lim[id]    = (normal[id] == 0) ? (len_gs_) : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WCOAR]) : (n_info_[M_WBACK][M_WCOAR]);
-//     //     // x fine -  the quantities are fixed for any ghost point, except the filter coefficients
-//     //     gx_g[id]      = (normal[id] == 0) ? &(gs_) : (normal[id] == -1) ? gs_g_[M_WFRONT][M_WFINE] : gs_g_[M_WBACK][M_WFINE];
-//     //     gx_xshift[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? n_ghost_[M_WFRONT] : -(n_info_[M_WBACK][M_WFINE] + 1);
-//     //     gx_lim[id]    = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (n_info_[M_WFRONT][M_WFINE]) : (n_info_[M_WBACK][M_WFINE]);
-//     // }
-
-//     real_t* temp = temp_[omp_get_num_threads()] + (gs_lim + len_gs_ * (gs_lim + len_gs_ * gs_lim));
-
-//     for (lid_t ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
-//         for (lid_t ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
-//             for (lid_t ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
-//                 // m_assert((ik0 - gs_lim + 1 >= ctx->srcstart[0]) && (ik0 + gs_lim < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
-//                 // m_assert((ik1 - gs_lim + 1 >= ctx->srcstart[1]) && (ik1 + gs_lim < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
-//                 // m_assert((ik2 - gs_lim + 1 >= ctx->srcstart[2]) && (ik2 + gs_lim < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
-//                 //get the local adress of the arrays
-//                 real_p       ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-//                 const real_p lcdata = ctx->cdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
-//                 const real_p lsdata = ctx->sdata + m_sidx(ik0, ik1, ik2, 0, ctx->srcstr);
-
-//                 sid_t gc_lim_l[3];
-//                 sid_t gc_lim_r[3];
-//                 sid_t gf_lim_l[3];
-//                 sid_t gf_lim_r[3];
-//                 // sid_t x_shift[3];
-
-//                 lid_t ik[3] = {ik0, ik1, ik2};
-//                 for (sid_t id = 0; id < 3; id++) {
-//                     gc_lim_l[id] = (normal[id] == +1) ? (ik[id] - ctx->trgstart[id] / 2) : (-gs_lim);
-//                     gc_lim_r[id] = (normal[id] == -1) ? (ctx->trgend[id] / 2 - ik[id]) : (gs_lim+2);
-//                     gf_lim_l[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? gc_lim_r[id] : (-gs_lim);
-//                     gf_lim_r[id] = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (gs_lim+2) : gc_lim_l[id];
-//                     // x_shift[id]  = (normal[id] == 0) ? 0 : (normal[id] == -1) ? (gc_lim_r[id] * 2) : (gc_lim_l[id] * 2);
-//                 }
-
-//                 // m_log(gs_lim)
-//                 // m_log("gc_lim_l = %d %d %d -> gc_lim_r = %d %d %d",gc_lim_l[0],gc_lim_l[1],gc_lim_l[2],gc_lim_r[0],gc_lim_r[1],gc_lim_r[2]);
-//                 // m_log("gf_lim_l = %d %d %d -> gf_lim_r = %d %d %d",gf_lim_l[0],gf_lim_l[1],gf_lim_l[2],gf_lim_r[0],gf_lim_r[1],gf_lim_r[2]);
-//                 // m_log("x_shift = %d %d %d", x_shift[0], x_shift[1], x_shift[2]);
-
-//                 // to avoid the splitting all the loops, we gather everything under the same memory entity
-//                 for (sid_t id2 = gc_lim_l[2]; id2 < gc_lim_r[2]; id2++) {
-//                     for (sid_t id1 = gc_lim_l[1]; id1 < gc_lim_r[1]; id1++) {
-//                         for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
-//                         }
-//                         for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
-//                         }
-//                     }
-//                     for (sid_t id1 = gf_lim_l[1]; id1 < gf_lim_r[1]; id1++) {
-//                         for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
-//                         }
-//                         for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
-//                         }
-//                     }
-//                 }
-//                 for (sid_t id2 = gf_lim_l[2]; id2 < gf_lim_r[2]; id2++) {
-//                     for (sid_t id1 = gc_lim_l[1]; id1 < gc_lim_r[1]; id1++) {
-//                         for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
-//                         }
-//                         for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
-//                         }
-//                     }
-//                     for (sid_t id1 = gf_lim_l[1]; id1 < gf_lim_r[1]; id1++) {
-//                         for (sid_t id0 = gc_lim_l[0]; id0 < gc_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
-//                         }
-//                         for (sid_t id0 = gf_lim_l[0]; id0 < gf_lim_r[0]; id0++) {
-//                             temp[id0 + len_gs_ * (id1 + len_gs_ * id2)] = ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
-//                         }
-//                     }
-//                 }
-
-//                 // for (sid_t id2 = -gs_lim; id2 <= (gs_lim + 1); id2++) {
-//                 //     for (sid_t id1 = -gs_lim; id1 <= (gs_lim + 1); id1++) {
-//                 //         for (sid_t id0 = -gs_lim; id0 <= (gs_lim + 1); id0++) {
-//                 //             printf("%f ",temp[id0 + len_gs_ * (id1 + len_gs_ * id2)]);
-//                 //         }
-//                 //         printf("\t");
-//                 //     }
-//                 //     printf("\n");
-//                 // }
-
-//                 // reset to the constant
-//                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 0, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 0, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 1, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 1, 1, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 0, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 0, 1, 0, ctx->trgstr)];
-//                 ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(1, 1, 1, 0, ctx->trgstr)];
-
-//                 // point (0,0,0) -> straightforward
-//                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += lsdata[m_sidx(0, 0, 0, 0, ctx->srcstr)];
-
-//                 //--------------
-//                 // DX, DY, DZ
-//                 for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
-//                     ltdata[m_sidx(1, 0, 0, 0, ctx->trgstr)] += gs[id0] * temp[id0 + len_gs_ * (0 + len_gs_ * 0)];
-//                     ltdata[m_sidx(0, 1, 0, 0, ctx->trgstr)] += gs[id0] * temp[0 + len_gs_ * (id0 + len_gs_ * 0)];
-//                     ltdata[m_sidx(0, 0, 1, 0, ctx->trgstr)] += gs[id0] * temp[0 + len_gs_ * (0 + len_gs_ * id0)];
-//                 }
-//                 // DXY, DYZ, DXZ
-//                 for (sid_t id1 = -gs_lim; id1 <= gs_lim + 1; id1++) {
-//                     for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
-//                         ltdata[m_sidx(1, 1, 0, 0, ctx->trgstr)] += gs[id0] * gs[id1] * temp[id0 + len_gs_ * (id1 + len_gs_ * 0)];
-//                         ltdata[m_sidx(0, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * temp[0 + len_gs_ * (id0 + len_gs_ * id1)];
-//                         ltdata[m_sidx(1, 0, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * temp[id1 + len_gs_ * (0 + len_gs_ * id0)];
-//                     }
-//                 }
-//                 // DYZ
-//                 for (sid_t id2 = -gs_lim; id2 <= gs_lim + 1; id2++) {
-//                     for (sid_t id1 = -gs_lim; id1 <= gs_lim + 1; id1++) {
-//                         for (sid_t id0 = -gs_lim; id0 <= gs_lim + 1; id0++) {
-//                             ltdata[m_sidx(1, 1, 1, 0, ctx->trgstr)] += gs[id0] * gs[id1] * gs[id2] * temp[id0 + len_gs_ * (id1 + len_gs_ * id2)];
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     //-------------------------------------------------------------------------
-// }
 
 /**
  * @brief gets the detail coefficients of the wavelet. This approximates the local slope of the data
@@ -646,19 +491,19 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
  * @param details_inf_norm the maximum of the local detail coefficients: (d_x,d_y,d_z,d_xy,d_yz,d_xz,d_xyz,mean)
  */
 template <int N, int Nt>
-void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) {
+void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, mem_ptr details_inf_norm) {
     //-------------------------------------------------------------------------
     m_assume_aligned(ctx->tdata);
 
     const sid_t   ga_lim = len_ga_ / 2;
-    const real_t* ga     = ga_ + ga_lim;
+    const mem_ptr ga     = ga_ + ga_lim;
 
     // for each of the data for the considered children
     for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
         for (int ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
             for (int ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
                 // get the current data
-                real_p ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                data_ptr ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 m_assume_aligned(ltdata);
 
                 // init the details
