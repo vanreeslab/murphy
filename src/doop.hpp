@@ -51,7 +51,7 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
     p8est_mesh_t* mesh    = grid->mesh();
     const lid_t   nqlocal = mesh->local_num_quadrants;  // number of trees * number of elem/tree
 
-#pragma omp parallel for firstprivate(data)
+//#pragma omp parallel for firstprivate(data)
     for (lid_t bid = 0; bid < nqlocal; bid++) {
         // get the tree
         p8est_tree_t* tree;
@@ -96,7 +96,7 @@ void DoOp_F_(const O op, ForestGrid* grid, const level_t lvl, F... field, T data
     p8est_mesh_t*  mesh    = grid->mesh();
     const iblock_t nqlocal = p4est_NumQuadOnLevel(mesh, lvl);
 
-#pragma omp parallel for firstprivate(data)
+//#pragma omp parallel for firstprivate(data)
     for (iblock_t lid = 0; lid < nqlocal; lid++) {
         // get the corresponding id of the quadrant
         const iblock_t bid = p4est_GetQuadIdOnLevel(mesh, lvl, lid);

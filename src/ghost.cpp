@@ -615,7 +615,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
     sc_array_t* ngh_qid;   // give the ID of the quad or ghost
     sc_array_t* ngh_enc;   // get the status
 
-#pragma omp critical
+//#pragma omp critical
     {
         ngh_quad = sc_array_new(sizeof(qdrt_t*));
         ngh_enc  = sc_array_new(sizeof(int));
@@ -644,7 +644,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
 
     for (iface_t ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
         //................................................
-#pragma omp critical
+//#pragma omp critical
         {
             // get the neighboring quadrant
             sc_array_reset(ngh_quad);
@@ -661,7 +661,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             // we only apply the physics to entire faces
             if (ibidule < 6) {
                 PhysBlock* pb = new PhysBlock(ibidule, block, nghost_front, nghost_back);
-#pragma omp critical
+//#pragma omp critical
                 phys->push_back(pb);
             }
             // else, the edges and corners will be filled through the face
@@ -716,7 +716,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                               /* traget */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), -1);
                     gb->data_src(ngh_block);
-#pragma omp critical
+//#pragma omp critical
                     bsibling->push_back(gb);
                 } else if (nghq->level < block->level()) {
                     // TODO: change this to the coarse block to avoid any cast afterwards...
@@ -724,13 +724,13 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                               /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), -1);
                     gb->data_src(ngh_block);
-#pragma omp critical
+//#pragma omp critical
                     bparent->push_back(gb);
                     // the children: the source = the coarse myself, target = my neighbor
                     GBLocal* invert_gb = new GBLocal(/* source */ block->level() - 1, block->xyz(), coarse_hgrid, block_len,
                                                      /* target */ ngh_block->level(), ngh_pos, ngh_hgrid, block_min, block_max, block->gs(), block->stride(), -1);
                     invert_gb->data_src(ngh_block);
-#pragma omp critical
+//#pragma omp critical
                     bparent_rv->push_back(invert_gb);
                 } else {
                     m_assert((nghq->level - block->level()) == 1, "The delta level is not correct: %d - %d", nghq->level, block->level());
@@ -753,7 +753,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                                                 /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
                     // ask the displacement (will be available later, when completing the call
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
-#pragma omp critical
+//#pragma omp critical
                     gsibling->push_back(gb);
                 }
                 //................................................
@@ -764,13 +764,13 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                                                 /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
                     // ask the displacement (will be available later, when completing the call
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
-#pragma omp critical
+//#pragma omp critical
                     gparent->push_back(gb);
                     // the children represent my contribution to my neighbor ghost points
                     GBMirror* invert_gb = new GBMirror(/* source */ block->level() - 1, block->xyz(), coarse_hgrid, block_len,
                                                        /* target */ nghq->level, ngh_pos, ngh_hgrid, block_min, block_max, block->gs(), block->stride(), ngh_rank);
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
-#pragma omp critical
+//#pragma omp critical
                     gparent_rv->push_back(invert_gb);
                 }
                 //................................................
@@ -779,7 +779,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     // children: source = coarse version of my neighbor, target = myself
                     GBMirror* gb = new GBMirror(/* source */ nghq->level - 1, ngh_pos, ngh_hgrid_coarse, ngh_len,
                                                 /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
-#pragma omp critical
+//#pragma omp critical
                     gchildren->push_back(gb);
                 }
                 //................................................
@@ -789,7 +789,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
             }
         }
     }
-#pragma omp critical
+//#pragma omp critical
     {
         sc_array_destroy(ngh_quad);
         sc_array_destroy(ngh_enc);
@@ -1290,7 +1290,7 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, const Field* field) {
     p8est_ghost_t* ghost  = grid_->ghost();
     // const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
 
-#pragma omp parallel for
+//#pragma omp parallel for
     for (lid_t bid = 0; bid < n_mirror_to_send_; bid++) {
         // get the mirror quad, this is an empty quad (just a piggy3 struct)
         // p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, local_to_mirrors[bid]);

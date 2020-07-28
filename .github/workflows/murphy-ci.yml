@@ -66,23 +66,23 @@ jobs:
         run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
 
   #----------------------------------------------------------------------------
-  run-test-OpenMP:
-    needs: build-test
-    #indicate to run on the beast using the correct docker
-    runs-on: beast-tower
-    timeout-minutes: 20
-    container:
-      image: vanreeslab/murphy:v1.4
-    # define the steps
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: murphy_test
-      - name: fix permission
-        run: chmod +x murphy_test
-      # do the build
-      - name: build
-        run: OMP_NUM_THREADS=5 mpirun --allow-run-as-root -n 1 ./murphy_test
+  # run-test-OpenMP:
+  #   needs: build-test
+  #   #indicate to run on the beast using the correct docker
+  #   runs-on: beast-tower
+  #   timeout-minutes: 20
+  #   container:
+  #     image: vanreeslab/murphy:v1.4
+  #   # define the steps
+  #   steps:
+  #     - uses: actions/download-artifact@v2
+  #       with:
+  #         name: murphy_test
+  #     - name: fix permission
+  #       run: chmod +x murphy_test
+  #     # do the build
+  #     - name: build
+  #       run: OMP_NUM_THREADS=5 mpirun --allow-run-as-root -n 1 ./murphy_test
   
   #----------------------------------------------------------------------------
   run-test-MPI:

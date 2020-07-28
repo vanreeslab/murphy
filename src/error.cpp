@@ -97,10 +97,10 @@ void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const F
         }
     }
     // add the result
-#pragma omp atomic update
+//#pragma omp atomic update
     error_2_ += e2 * (hgrid[0] * hgrid[1] * hgrid[2]);
 
-#pragma omp critical
+//#pragma omp critical
     { // no max atomic in OpenMP
         error_i_ = m_max(error_i_, ei);
     }
