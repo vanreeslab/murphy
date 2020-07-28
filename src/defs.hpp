@@ -5,6 +5,7 @@
 #include <mpi.h>
 #include <omp.h>
 #include <p8est.h>
+#include "hdf5.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -33,7 +34,8 @@
  * @name memory management
  * @{
  */
-#define M_MPI_REAL MPI_DOUBLE  //!< type used for the MPI communication (double by default)
+#define M_MPI_REAL MPI_DOUBLE          //!< type used for the MPI communication (double by default)
+#define M_HDF5_REAL H5T_NATIVE_DOUBLE  //!< type used for the MPI communication (double by default)
 
 /**
  * @brief returns true if the memory is aligned
@@ -198,6 +200,18 @@
         sid_t  ida_          = (ida);                              \
         lid_t  gs_           = (mem_->gs());                       \
         size_t str_          = (size_t)(mem_->stride());           \
+        (size_t)(gs_ + str_ * (gs_ + str_ * (gs_ + str_ * ida_))); \
+    })
+
+/**
+ * @brief returns the memory offset of the first block element: (0,0,0)
+ * 
+ */
+#define m_szeroidx(ida, gs, str)                                   \
+    ({                                                             \
+        __typeof__(gs) gs_   = (gs);                               \
+        __typeof__(str) str_ = (str);                              \
+        __typeof__(ida) ida_ = (ida);                              \
         (size_t)(gs_ + str_ * (gs_ + str_ * (gs_ + str_ * ida_))); \
     })
 

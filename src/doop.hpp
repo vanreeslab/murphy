@@ -101,16 +101,14 @@ void DoOp_F_(const O op, ForestGrid* grid, const level_t lvl, F... field, T data
         // get the corresponding id of the quadrant
         const iblock_t bid = p4est_GetQuadIdOnLevel(mesh, lvl, lid);
         // get the tree
-        p8est_tree_t* tree;
-        tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
+        p8est_tree_t* tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
         // get the id
         qid_t myid;
         myid.cid = bid;
         myid.qid = bid - tree->quadrants_offset;
         myid.tid = mesh->quad_to_tree[bid];
         // the quadrants can be from differents trees -> get the correct one
-        p8est_quadrant_t* quad;
-        quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+        p8est_quadrant_t* quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
 
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task

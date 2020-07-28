@@ -8,33 +8,33 @@
 
 #include "defs.hpp"
 
-typedef int32_t lid_t;
-typedef int8_t  sid_t;
-
 /**
  * @name typename for indexes
  * @{
  */
-typedef int8_t         iface_t;  //!< face index type (0->26)
-typedef int8_t         lda_t;    //!< leading dimension array type
-typedef int8_t         level_t;  //!< data type for a level
-typedef int            rank_t;   //!< rank data type
-typedef p4est_locidx_t iblock_t;  //!< datatype to index blocks, ghosts and quadrants
+using iface_t  = int8_t;          //!< face index type (0->26)
+using lda_t    = int8_t;          //!< leading dimension array type
+using level_t  = int8_t;          //!< data type for a level
+using rank_t   = int;             //!< rank data type
+using iblock_t = p4est_locidx_t;  //!< datatype to index blocks, ghosts and quadrants
+using qdrt_t   = p8est_quadrant_t;
 /**@}*/
 
 /**
  * @name typename for data pointers
  * @{
  */
-typedef double real_t;              //!< data subtype
-typedef real_t* __restrict mem_ptr;  //!< pointer type = root of the memory allocation
-typedef real_t* __restrict data_ptr;  //!< data pointer type = root of the data, i.e. point (0,0,0)
+using real_t   = double;              //!< data subtype
+using mem_ptr  = real_t* __restrict;  //!< pointer type = root of the memory allocation
+using data_ptr = real_t* __restrict;  //!< data pointer type = root of the data, i.e. point (0,0,0)
 /**@}*/
 
+// must be removed from the code
+
+typedef int32_t lid_t;
+typedef int8_t  sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
 typedef std::map<std::string, real_p> datamap_t;
-
-typedef p8est_quadrant_t qdrt_t;
 
 /**
  * @brief id of a quadrant
