@@ -179,7 +179,8 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
     // get the corresponding MPI_Datatype for the target
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
-    MPI_Datatype dtype_trg    = ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1);
+    MPI_Datatype dtype_trg;
+    ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1, &dtype_trg);
     // m_verb("the trg = %d %d %d to %d %d %d", trg_start[0], trg_start[1], trg_start[2], trg_end[0], trg_end[1], trg_end[2]);
 
     //................................................
@@ -187,7 +188,8 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  scale        = (lid_t)pow(2, dlvl);
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
-    MPI_Datatype dtype_src    = ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale);
+    MPI_Datatype dtype_src;
+    ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale, &dtype_src);
     // m_verb("the src = %d %d %d to %d %d %d", src_start[0], src_start[1], src_start[2], src_end[0], src_end[1], src_end[2]);
 
     //................................................
@@ -199,7 +201,7 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
 #endif
     data_ptr local_trg = data_trg + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg);
     MPI_Aint disp      = disp_src + m_zeroidx(0, block_src) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src);
-#pragma omp critical
+// //#pragma omp critical
     MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
 
     // free the types
@@ -213,27 +215,20 @@ void Interpolator::PutRma(const level_t dlvl, const lid_t shift[3], const MemLay
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
     //-------------------------------------------------------------------------
-    // m_log("----------------- PUT RMA");
-    // m_log("entering interpolator with shift = %d %d %d", shift[0], shift[1], shift[2]);
-    // m_log("entering interpolator with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
-    // m_log("entering interpolator with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
-    // m_log("entering interpolator with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
-    // m_log("entering interpolator with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
     //................................................
     // get the corresponding MPI_Datatype for the target
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
-    MPI_Datatype dtype_trg    = ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1);
-    // m_log("the trg = %d %d %d to %d %d %d", trg_start[0], trg_start[1], trg_start[2], trg_end[0], trg_end[1], trg_end[2]);
+    MPI_Datatype dtype_trg;
+    ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
     const lid_t  scale        = (lid_t)pow(2, dlvl);
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
-    MPI_Datatype dtype_src    = ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale);
-    // m_log("the src = %d %d %d to %d %d %d", src_start[0], src_start[1], src_start[2], src_end[0], src_end[1], src_end[2]);
-    // m_log("put to mirror num %d in rank %d",disp_trg/m_blockmemsize(1),trg_rank);
+    MPI_Datatype dtype_src;
+    ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale, &dtype_src);
 
     //................................................
 #ifndef NDEBUG
@@ -245,7 +240,7 @@ void Interpolator::PutRma(const level_t dlvl, const lid_t shift[3], const MemLay
 #endif
     data_ptr local_src = ptr_src + m_zeroidx(0, block_src) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src);
     MPI_Aint disp      = disp_trg + m_zeroidx(0, block_trg) + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg);
-#pragma omp critical
+//#pragma omp critical
     MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
 
     // free the types

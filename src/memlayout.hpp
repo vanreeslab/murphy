@@ -61,14 +61,14 @@ class MemLayout {
  * @param scale the scaling coefficient (1 or 2). If 2, we take one points out of 2 in each direction
  * @return MPI_Datatype the corresponding datattype
  */
-static inline MPI_Datatype ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t gs, const lid_t stride, const lid_t scale) {
+inline void ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t gs, const lid_t stride, const lid_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
     //-------------------------------------------------------------------------
     // convert the
     lid_t        start_g[3] = {(start[0] + gs), (start[1] + gs), (start[2] + gs)};
     lid_t        end_g[3]   = {(end[0] + gs), (end[1] + gs), (end[2] + gs)};
-    MPI_Datatype x_type, xy_type, xyz_type;
+    MPI_Datatype x_type, xy_type;
     //................................................
     // do x type
     lid_t    count_x  = (end_g[0] - start_g[0]);
@@ -89,13 +89,12 @@ static inline MPI_Datatype ToMPIDatatype(const lid_t start[3], const lid_t end[3
     MPI_Aint stride_z = stride_y * stride;
     m_assert(count_z > 0, "we at least need to take 1 element");
     m_assert(count_z <= stride, "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_z / scale, 1, stride_z * scale, xy_type, &xyz_type);
-    MPI_Type_commit(&xyz_type);
+    MPI_Type_create_hvector(count_z / scale, 1, stride_z * scale, xy_type, xyz_type);
+    MPI_Type_commit(xyz_type);
     //................................................
     // free the useless types and return
     MPI_Type_free(&x_type);
     MPI_Type_free(&xy_type);
-    return xyz_type;
     //-------------------------------------------------------------------------
     m_end;
 };
