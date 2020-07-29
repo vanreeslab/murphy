@@ -154,8 +154,6 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
         iblock_t n_block_level = p4est_NumQuadOnLevel(mesh, il);
         local_max_lvl          = (n_block_level > 0) ? il : local_max_lvl;
         local_min_lvl          = (n_block_level == 0 && (local_min_lvl + 1) >= il) ? il : local_min_lvl;
-
-        m_log("found %d blocks on level %d -> min = %d, max = %d", n_block_level, il, local_min_lvl, local_max_lvl);
     }
     local_min_lvl++;  // the min_lvl = the first non-zero
     m_assert(sizeof(level_t) == 1, "please change the reduce datatype!");
@@ -211,9 +209,6 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
         // remember if I am the last cpu + small correction on the block offset
         const bool is_last = (n_block_offset == n_block_global) && (n_block_global > 0);
         n_block_offset -= n_block_local;
-
-        m_log("my offset = %d / %d blocks", n_block_offset, n_block_global);
-        m_log("is last = %d",is_last);
 
         //................................................
         // the datas
@@ -276,9 +271,9 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
             block_box[lbid * 6 + 0] = (int)(block->xyz(0) / block->hgrid(0)) - (int)((dump_ghost_) ? M_GS : 0);
             block_box[lbid * 6 + 1] = (int)(block->xyz(1) / block->hgrid(1)) - (int)((dump_ghost_) ? M_GS : 0);
             block_box[lbid * 6 + 2] = (int)(block->xyz(2) / block->hgrid(2)) - (int)((dump_ghost_) ? M_GS : 0);
-            block_box[lbid * 6 + 3] = block_box[lbid * 6 + 0] + (int)(block_stride);
-            block_box[lbid * 6 + 4] = block_box[lbid * 6 + 1] + (int)(block_stride);
-            block_box[lbid * 6 + 5] = block_box[lbid * 6 + 2] + (int)(block_stride);
+            block_box[lbid * 6 + 3] = block_box[lbid * 6 + 0] + (int)(block_stride) - 1;
+            block_box[lbid * 6 + 4] = block_box[lbid * 6 + 1] + (int)(block_stride) - 1;
+            block_box[lbid * 6 + 5] = block_box[lbid * 6 + 2] + (int)(block_stride) - 1;
             // m_log("box = %d %d %d %d %d %d", block_box[lbid * 6 + 0], block_box[lbid * 6 + 1], block_box[lbid * 6 + 2], block_box[lbid * 6 + 3], block_box[lbid * 6 + 4], block_box[lbid * 6 + 5]);
         }
         if (is_last) {
@@ -472,7 +467,8 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
         grp = H5Gcreate(fid, level_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         m_assert(grp >= 0, "error while writting in the hdf5 file");
 
-        int ratio = (int)pow(2, il - min_lvl);
+        // the ref_ratio is given by the ratio between the end point of 2 successive levels
+        int ratio = 1;  //(int)pow(2, il - min_lvl);
         HDF5_AttributeInt(grp, "ref_ratio", 1, &ratio);
 
         real_t cellsizes[3];
@@ -495,7 +491,7 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
         int domain[6];
         for (lda_t id = 0; id < 3; ++id) {
             domain[id]     = 0;
-            domain[id + 3] = (int)(L[id] / cellsizes[id]);
+            domain[id + 3] = (int)(L[id] / cellsizes[id]) - 1;
         }
 
         hid_t aid         = H5Screate(H5S_SCALAR);
@@ -505,15 +501,15 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
         H5Sclose(aid);
 
         // the type of the domain is cartesian  in every direction
-        int type[3] = {0,0,0};
+        int type[3] = {0, 0, 0};
         HDF5_AttributeInt(grp, "domain_type", 3, type);
 
         // the level step is set to 0 (wtf is that?)
         int level_steps = 0;
         HDF5_AttributeInt(grp, "steps", 1, &level_steps);
 
-         // again, wtf it that?
-        int ngrow = 1;
+        // again, wtf it that?
+        int ngrow = 0;
         HDF5_AttributeInt(grp, "ngrow", 1, &ngrow);
 
         // we only IO one grid at the current time
