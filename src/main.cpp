@@ -38,11 +38,11 @@ int main(int argc, char** argv) {
         list<Patch> patch;
         real_t      origin[3] = {0.5, 0.0, 0.0};
         real_t      length[3] = {0.5, 1.0, 1.0};
-        // patch.push_back(Patch(origin, length, 2));
+        patch.push_back(Patch(origin, length, 2));
         grid->Adapt(&patch);
         // grid->Adapt(&argument.patch_);
         // create a field
-        Field* vort = new Field("vorticity", 3);
+        Field* vort = new Field("vorticity", 1);
         // Field* psi  = new Field("psi", 3);
         // Field* res  = new Field("residual", 3);
         // // register the field to the grid
@@ -50,8 +50,8 @@ int main(int argc, char** argv) {
         // grid->AddField(psi);
         // grid->AddField(res);
         // // get some values for the polynomial
-        real_t     dir[3]  = {1.0, 1.0, 1.0};
-        lid_t      deg[3]  = {2, 2, 2};
+        real_t     dir[3]  = {1.0, 0.0, 0.0};
+        lid_t      deg[3]  = {1, 1, 1};
         SetPolynom polynom = SetPolynom(deg, dir);
         polynom(grid, vort);
         // real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
@@ -59,25 +59,24 @@ int main(int argc, char** argv) {
         // SetSinus sinus = SetSinus(length,freq);
         // sinus(grid,vort);
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        vort->bctype(M_BC_ODD);
+        // vort->bctype(M_BC_ODD);
+        vort->bctype(M_BC_EXTRAP_4);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
+
+        IOHDF5 dump_test = IOHDF5("data");
+        dump_test(grid, vort);
 
         grid->GhostPull(vort);
 
         IOH5 dump = IOH5("data");
-        dump(grid,vort);
+        dump(grid, vort);
 
-        IOHDF5 dump_test = IOHDF5("data");
-        dump_test(grid,vort);
-
-        
         dump.dump_ghost(true);
-        dump(grid,vort);
+        dump(grid, vort);
 
         // init the MG solver
         // Multigrid* poisson = new Multigrid(grid, 0, vort, psi, res);
-
 
         // poisson->Solve();
 

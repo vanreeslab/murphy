@@ -143,19 +143,24 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
     p8est_t*      forest = grid->forest();
 
     // given the dump_ghost status, get how much is 1 block:
-    hsize_t block_stride = ((dump_ghost_) ? (M_STRIDE) : (M_N));
-    hsize_t block_mem    = block_stride * block_stride * block_stride * field->lda();
+    const hsize_t block_stride = ((dump_ghost_) ? (M_STRIDE) : (M_N));
+    const hsize_t block_mem    = block_stride * block_stride * block_stride;
+    const hsize_t field_lda    = (hsize_t)field->lda();
 
     //................................................
     // create the file and write the metadata
-    level_t max_lvl = 0, min_lvl = 0;
-    level_t local_max_lvl = 0, local_min_lvl = 0;
+    level_t  max_lvl, min_lvl;
+    level_t  local_max_lvl = -1, local_min_lvl = P8EST_MAXLEVEL;
+    iblock_t n_block_old_level = 0;
     for (level_t il = 0; il < P8EST_MAXLEVEL; ++il) {
-        iblock_t n_block_level = p4est_NumQuadOnLevel(mesh, il);
-        local_max_lvl          = (n_block_level > 0) ? il : local_max_lvl;
-        local_min_lvl          = (n_block_level == 0 && (local_min_lvl + 1) >= il) ? il : local_min_lvl;
+        iblock_t n_block_curr_level = p4est_NumQuadOnLevel(mesh, il);
+        // increment the max if we have ghost and the min if we had nothing and we now have blocks
+        local_max_lvl     = (n_block_curr_level > 0) ? il : local_max_lvl;
+        local_min_lvl     = (n_block_curr_level > 0 && n_block_old_level == 0) ? il : local_min_lvl;
+        n_block_old_level = n_block_curr_level;
+        m_log("I have %d block on level %d -> %d to %d", n_block_curr_level, il, local_min_lvl, local_max_lvl);
     }
-    local_min_lvl++;  // the min_lvl = the first non-zero
+    // local_min_lvl++;  // the min_lvl = the first non-zero
     m_assert(sizeof(level_t) == 1, "please change the reduce datatype!");
     MPI_Allreduce(&local_min_lvl, &min_lvl, 1, MPI_INT8_T, MPI_MIN, MPI_COMM_WORLD);
     MPI_Allreduce(&local_max_lvl, &max_lvl, 1, MPI_INT8_T, MPI_MAX, MPI_COMM_WORLD);
@@ -192,6 +197,31 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
     m_assert(hdf5_file >= 0, "error while opening hdf5 file %s", filename_.c_str());
 
     //................................................
+    // create the needed block dataspace as a single 1D vector, which is always the same
+    // memory layout, no space needed, it's the memory layout, define one line as the mem is not always continuous
+    hsize_t memsize      = m_blockmemsize(field_lda);
+    hid_t   memdataspace = H5Screate_simple(1, &memsize, NULL);
+    // set the selected space to empty
+    herr_t status;
+    status = H5Sselect_none(memdataspace);
+    m_assert(status >= 0, "failed to empty the dataspace");
+    // get the needed memory layout
+    const hsize_t memstride = M_STRIDE;      // distance between two blocks
+    const hsize_t memblock  = block_stride;  // size of 1 block
+    const hsize_t memcount  = block_stride;  // number of blocks
+    for (lda_t ida = 0; ida < field_lda; ++ida) {
+        for (lid_t id2 = 0; id2 < block_stride; id2++) {
+            // this is the offset in Z, computed based on the full stride, not the block one
+            const hsize_t memoffset = memstride * memstride * (id2 + memstride * ida);
+            // select the correct hyperslab
+            status = H5Sselect_hyperslab(memdataspace, H5S_SELECT_OR, &memoffset, &memstride, &memcount, &memblock);
+            m_assert(status >= 0, "failed to select the memory hyperslab");
+        }
+    }
+    // store the shift in memory
+    const size_t local_mem_offset = (dump_ghost_) ? 0 : m_szeroidx(0, M_GS, M_STRIDE);
+
+    //................................................
     // every cpu has to go through every level, not only the local ones because all the metadata MUST be globally created
     for (level_t il = min_lvl; il <= max_lvl; ++il) {
         // everybody opens the level group
@@ -210,26 +240,19 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
         const bool is_last = (n_block_offset == n_block_global) && (n_block_global > 0);
         n_block_offset -= n_block_local;
 
+        // complete the metadatas
+        int ngrid = 1;
+        HDF5_AttributeInt(grp, "ngrid", 1, &ngrid);
+
         //................................................
-        // the datas
-        string  dataname("data:datatype=0");
-        hsize_t level_size = n_block_global * block_mem;
-        hid_t   dataspace  = H5Screate_simple(1, &level_size, NULL);
-        hid_t   dataset    = H5Dcreate(grp, dataname.c_str(), H5T_NATIVE_FLOAT, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-        // memory layout, no space needed, it's the memory layout, define one line as the mem is not always continuous
-        hsize_t memsize      = (hsize_t)(field->lda() * M_STRIDE * M_STRIDE * M_STRIDE);  // full memory
-        hid_t   memdataspace = H5Screate_simple(1, &memsize, NULL);
-
-        // select the usefull part of the memory and the file
-        const hsize_t memstride = M_STRIDE;                                           // stride between two blocks
-        const hsize_t memblock  = block_stride;                                       // block size
-        const hsize_t memcount  = block_stride * block_stride * field->lda();         // number of blocks
-        const hsize_t memoffset = (dump_ghost_) ? 0 : m_szeroidx(0, M_GS, M_STRIDE);  // offset given dump_ghost
-
-        const hsize_t filestride = block_stride;                                // stride between two blocks
-        const hsize_t fileblock  = block_stride;                                // block size
-        const hsize_t filecount  = block_stride * block_stride * field->lda();  // number of blocks
+        // the datas, setup to the global size of the level
+        string        dataname("data:datatype=0");
+        const hsize_t level_size = n_block_global * block_mem * field_lda;
+        hid_t         dataspace  = H5Screate_simple(1, &level_size, NULL);
+        hid_t         dataset    = H5Dcreate(grp, dataname.c_str(), H5T_NATIVE_FLOAT, dataspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        const hsize_t filestride = block_mem * field_lda;  // stride between two blocks
+        const hsize_t fileblock  = block_mem * field_lda;  // block size
+        const hsize_t filecount  = 1;                      // number of blocks
 
         // init the offsets etc
         const int block_offset_len = n_block_local + is_last;
@@ -241,7 +264,6 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
 
         //................................................
         // do the data and get info for the offsets, centers and box
-        herr_t status;
         for (iblock_t lbid = 0; lbid < n_block_local; ++lbid) {
             // get the associated GridBlock
             const iblock_t bid   = p4est_GetQuadIdOnLevel(mesh, il, lbid);
@@ -249,16 +271,14 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
             qdrt_t*        quad  = p8est_quadrant_array_index(&tree->quadrants, (bid - tree->quadrants_offset));
             GridBlock*     block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
 
-            // move the filehyperslab forward
-            const hsize_t fileoffset = (n_block_offset + lbid) * block_mem;
-            // select the hyperslab
-            status = H5Sselect_hyperslab(memdataspace, H5S_SELECT_SET, &memoffset, &memstride, &memcount, &memblock);
-            m_assert(status >= 0, "failed to select the memory hyperslab: block = %d, level = %d", lbid, il);
+            // move the file hyperslab forward
+            const hsize_t fileoffset = (n_block_offset + lbid) * block_mem * field_lda;
             status = H5Sselect_hyperslab(dataspace, H5S_SELECT_SET, &fileoffset, &filestride, &filecount, &fileblock);
             m_assert(status >= 0, "failed to select the file hyperslab: block = %d, level = %d", lbid, il);
+
             // copy
-            mem_ptr local_data = block->pointer(field);
-            status             = H5Dwrite(dataset, M_HDF5_REAL, memdataspace, dataspace, dxpl, local_data);
+            mem_ptr local_data = block->pointer(field) + local_mem_offset;
+            status = H5Dwrite(dataset, M_HDF5_REAL, memdataspace, dataspace, dxpl, local_data);
             m_assert(status >= 0, "issue while writting the data: block = %d, level = %d", lbid, il);
 
             // store the offsets stuffs etc
@@ -271,13 +291,12 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
             block_box[lbid * 6 + 0] = (int)(block->xyz(0) / block->hgrid(0)) - (int)((dump_ghost_) ? M_GS : 0);
             block_box[lbid * 6 + 1] = (int)(block->xyz(1) / block->hgrid(1)) - (int)((dump_ghost_) ? M_GS : 0);
             block_box[lbid * 6 + 2] = (int)(block->xyz(2) / block->hgrid(2)) - (int)((dump_ghost_) ? M_GS : 0);
-            block_box[lbid * 6 + 3] = block_box[lbid * 6 + 0] + (int)(block_stride) - 1;
-            block_box[lbid * 6 + 4] = block_box[lbid * 6 + 1] + (int)(block_stride) - 1;
-            block_box[lbid * 6 + 5] = block_box[lbid * 6 + 2] + (int)(block_stride) - 1;
-            // m_log("box = %d %d %d %d %d %d", block_box[lbid * 6 + 0], block_box[lbid * 6 + 1], block_box[lbid * 6 + 2], block_box[lbid * 6 + 3], block_box[lbid * 6 + 4], block_box[lbid * 6 + 5]);
+            block_box[lbid * 6 + 3] = block_box[lbid * 6 + 0] + (int)(block_stride)-1;
+            block_box[lbid * 6 + 4] = block_box[lbid * 6 + 1] + (int)(block_stride)-1;
+            block_box[lbid * 6 + 5] = block_box[lbid * 6 + 2] + (int)(block_stride)-1;
         }
         if (is_last) {
-            block_offset[n_block_local] = (n_block_offset + n_block_local) * block_mem;
+            block_offset[n_block_local] = (n_block_offset + n_block_local) * block_mem * field_lda;
         }
 
         // create the datasets of the group
@@ -302,7 +321,7 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
         H5Sclose(boxdataspace);
         H5Dclose(boxdataset);
         m_free(block_box);
-        
+
         //................................................
         // the offsets - create the dataset/space
         string  odsname("data:offsets=0");
@@ -345,7 +364,6 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
 
         //................................................
         // close everything for the current level
-        H5Sclose(memdataspace);
         H5Sclose(dataspace);
         H5Dclose(dataset);
         H5Gclose(grp);
@@ -353,6 +371,7 @@ void IOHDF5::operator()(ForestGrid* grid, Field* field, string name) {
 
     //................................................
     // close the life
+    H5Sclose(memdataspace);
     H5Tclose(center_id);
     H5Tclose(babox_id);
     H5Pclose(fapl);
@@ -413,7 +432,7 @@ void IOHDF5::hdf5_write_header_(const ForestGrid* grid, const Field* field, cons
 
 void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t min_lvl, const level_t max_lvl, const real_t L[3]) {
     //-------------------------------------------------------------------------
-    HDF5_AttributeString(fid, "version_name", "murphy");
+    HDF5_AttributeString(fid, "version_name", "HyperClaw-V1.1");
     HDF5_AttributeString(fid, "plotfile_type", "VanillaHDF5");
 
     // setup the field name
@@ -435,7 +454,7 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
     HDF5_AttributeReal(fid, "time", 1, &cur_time);
 
     // setup the level
-    int finest = (int)(max_lvl-min_lvl);
+    int finest = (int)(max_lvl - min_lvl);
     HDF5_AttributeInt(fid, "finest_level", 1, &finest);
 
     // setup the coordinate system, from AMReX_CoordSys 0 = cartesian, 2 = spherical
@@ -452,7 +471,7 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
     H5Gclose(grp);
 
     // get the bounding box type ready
-    hid_t comp_dtype = H5Tcreate (H5T_COMPOUND, 6 * sizeof(int));
+    hid_t comp_dtype = H5Tcreate(H5T_COMPOUND, 6 * sizeof(int));
     H5Tinsert(comp_dtype, "lo_i", 0 * sizeof(int), H5T_NATIVE_INT);
     H5Tinsert(comp_dtype, "lo_j", 1 * sizeof(int), H5T_NATIVE_INT);
     H5Tinsert(comp_dtype, "lo_k", 2 * sizeof(int), H5T_NATIVE_INT);
@@ -467,8 +486,8 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
         grp = H5Gcreate(fid, level_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         m_assert(grp >= 0, "error while writting in the hdf5 file");
 
-        // the ref_ratio is given by the ratio between the end point of 2 successive levels
-        int ratio = 1;  //(int)pow(2, il - min_lvl);
+        // the ref_ratio is given by the ratio between the # of point of 2 successive levels
+        int ratio = m_min(max_lvl - il + 1, 2);  // (int)pow(2, max_lvl - il);
         HDF5_AttributeInt(grp, "ref_ratio", 1, &ratio);
 
         real_t cellsizes[3];
@@ -513,8 +532,8 @@ void IOHDF5::HDF5_WriteMetaData_(hid_t fid, const Field* field, const level_t mi
         HDF5_AttributeInt(grp, "ngrow", 1, &ngrow);
 
         // we only IO one grid at the current time
-        int ngrid = 1;
-        HDF5_AttributeInt(grp, "ngrid", 1, &ngrid);
+        // int ngrid = 1;
+        // HDF5_AttributeInt(grp, "ngrid", 1, &ngrid);
         HDF5_AttributeReal(grp, "time", 1, &cur_time);
 
         H5Gclose(grp);

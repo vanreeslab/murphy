@@ -258,9 +258,11 @@ void SetPolynom::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
 
-                    data[m_idx(i0, i1, i2)] = dir_[0] / (deg_[0] + 1.0) * (pow(pos[0] + hgrid[0] * 0.5, deg_[0] + 1.0) - pow(pos[0] - hgrid[0] * 0.5, deg_[0] + 1.0)) / hgrid[0] +
-                                              dir_[1] / (deg_[1] + 1.0) * (pow(pos[1] + hgrid[1] * 0.5, deg_[1] + 1.0) - pow(pos[1] - hgrid[1] * 0.5, deg_[1] + 1.0)) / hgrid[1] +
-                                              dir_[2] / (deg_[2] + 1.0) * (pow(pos[2] + hgrid[2] * 0.5, deg_[2] + 1.0) - pow(pos[2] - hgrid[2] * 0.5, deg_[2] + 1.0)) / hgrid[2];
+                    // data[m_idx(i0, i1, i2)] = dir_[0] / (deg_[0] + 1.0) * (pow(pos[0] + hgrid[0] * 0.5, deg_[0] + 1.0) - pow(pos[0] - hgrid[0] * 0.5, deg_[0] + 1.0)) / hgrid[0] +
+                    //                           dir_[1] / (deg_[1] + 1.0) * (pow(pos[1] + hgrid[1] * 0.5, deg_[1] + 1.0) - pow(pos[1] - hgrid[1] * 0.5, deg_[1] + 1.0)) / hgrid[1] +
+                    //                           dir_[2] / (deg_[2] + 1.0) * (pow(pos[2] + hgrid[2] * 0.5, deg_[2] + 1.0) - pow(pos[2] - hgrid[2] * 0.5, deg_[2] + 1.0)) / hgrid[2];
+
+                    data[m_idx(i0, i1, i2)] = dir_[0] * pow(pos[0], deg_[0]) + dir_[1] * pow(pos[1], deg_[1]) + dir_[2] * pow(pos[2], deg_[2]);
                 }
             }
         }
