@@ -126,7 +126,20 @@ class SetErf : public OperatorF {
     void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetErf(real_t center[3], real_t sigma[3],real_t alpha);
+    SetErf(real_t center[3], real_t sigma[3], real_t alpha);
+};
+
+class SetVortexRing : public OperatorF {
+   protected:
+    lda_t  normal_    = 0;                //!< the direction normal to the ring, i.e. the z direction
+    real_t sigma_     = 0.0;              //!< the direction normal to the ring, i.e. the z direction
+    real_t radius_    = 0.0;              //!< the direction normal to the ring, i.e. the z direction
+    real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
+
+    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
 };
 
 // /**

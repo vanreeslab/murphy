@@ -21,10 +21,10 @@
  */
 class IOH5 : public ConstOperatorF {
    protected:
-    bool    dump_ghost_   = false;  //!< true if we io the ghost points with us
-    hsize_t block_stride_ = 0;
+    bool    dump_ghost_     = false;  //!< true if we io the ghost points with us
+    hsize_t block_stride_   = 0;
     hsize_t block_shift_    = 0;
-    hsize_t block_offset_ = 0;
+    hsize_t block_offset_   = 0;
     hsize_t n_block_global_ = 0;
 
     string folder_;
@@ -37,14 +37,15 @@ class IOH5 : public ConstOperatorF {
     hid_t hdf5_memspace_;
 
     MPI_File xmf_file_;
-    size_t len_per_quad_;
+    size_t   len_per_quad_;
+    size_t   footer_offset_;
 
     // headers
-    void hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_global, const hsize_t lda);
-    void xmf_write_header_(const ForestGrid* grid, const lda_t lda);
+    void hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_global, const lda_t lda);
+    void xmf_write_header_(const ForestGrid* grid, const hsize_t n_block_global, const lda_t lda);
 
     // footers
-    void xmf_write_footer_(const ForestGrid* grid);
+    void xmf_write_footer_(const ForestGrid* grid, const size_t n_block_global);
     void hdf5_write_footer_(const ForestGrid* grid);
     // blocks
     void xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid);

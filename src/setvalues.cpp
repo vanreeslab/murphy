@@ -316,7 +316,7 @@ void SetExponential::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 SetErf::SetErf(real_t center[3], real_t sigma[3], real_t alpha) {
     m_begin;
     //-------------------------------------------------------------------------
-    for (int id = 0; id < 3; id++) {
+    for (lda_t id = 0; id < 3; id++) {
         center_[id] = center[id];
         sigma_[id]  = sigma[id];
     }
@@ -352,6 +352,62 @@ void SetErf::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
                     const real_t rho        = sqrt(rho2);
                     data[m_idx(i0, i1, i2)] = fact / rho * std::erf(rho * oo_sqrt2);
                 }
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    normal_ = normal;
+    sigma_  = sigma;
+    radius_ = radius;
+    for (lda_t id = 0; id < 3; ++id) {
+        center_[id] = center[id];
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void SetVortexRing::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+    //-------------------------------------------------------------------------
+    real_t        pos[3];
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
+
+    const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
+    const real_t oo_pisigma2 = 1.0 / (M_PI * sigma_ * sigma_);
+
+    // compute the normal direction as being the z one and the two other as x and y
+    const lda_t idx = (normal_ + 1) % 3;
+    const lda_t idy = (normal_ + 2) % 3;
+    const lda_t idz = normal_;
+    // get the pointers correct
+    data_ptr wx = block->data(fid, idx);
+    data_ptr wy = block->data(fid, idy);
+    data_ptr wz = block->data(fid, idz);
+
+    for (int i2 = (-M_GS); i2 < (M_N + M_GS); i2++) {
+        for (int i1 = (-M_GS); i1 < (M_N + M_GS); i1++) {
+            for (int i0 = (-M_GS); i0 < (M_N + M_GS); i0++) {
+                // get the position
+                m_pos(pos, i0, i1, i2, hgrid, xyz);
+                // wrt to the center
+                const real_t alpha = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
+                const real_t x     = pos[idx] - (center_[idx] + radius_ * cos(alpha));
+                const real_t y     = pos[idy] - (center_[idy] + radius_ * sin(alpha));
+                const real_t z     = pos[idz] - (center_[idz]);
+                // get the local coords
+
+                // const real_t r_plane = sqrt(x * x + y * y) - radius_;
+                const real_t r    = sqrt(x * x + y * y + z * z);
+                const real_t vort = oo_pisigma2 * exp(-r * oo_sigma2);
+
+                wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
+                wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
+                wz[m_idx(i0, i1, i2)] = 0.0;
             }
         }
     }
