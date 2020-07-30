@@ -15,30 +15,34 @@
 
 #define M_IOH5_LINE_LEN 128
 
-using std::string;
-
 /**
- * @brief define the I/O opertion
- *
- * The current I/O relies on a common XMF file, written by everybody and a sequential hdf5 I/O, i.e. one file per proc.
- * This is NOT a long term solution and it has to change, hence a restricted documentation is provided
+ * @brief define the I/O using HDF5 and XDMF
  * 
  */
 class IOH5 : public ConstOperatorF {
    protected:
-    int  mpirank_    = 0;
-    bool dump_ghost_ = false;
+    bool    dump_ghost_   = false;  //!< true if we io the ghost points with us
+    hsize_t block_stride_ = 0;
+    hsize_t block_shift_    = 0;
+    hsize_t block_offset_ = 0;
+    hsize_t n_block_global_ = 0;
 
     string folder_;
-    string filename_;
+    string filename_hdf5_;
+    string filename_xdmf_;
 
-    hid_t        hdf5_file_;
-    MPI_File     xmf_file_;
-    MPI_Datatype line_type_;
+    hid_t hdf5_file_;
+    hid_t hdf5_dataset_;
+    hid_t hdf5_dataspace_;
+    hid_t hdf5_memspace_;
+
+    MPI_File xmf_file_;
+    size_t len_per_quad_;
 
     // headers
-    void xmf_write_header_(const ForestGrid* grid);
-    void hdf5_write_header_(const ForestGrid* grid);
+    void hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_global, const hsize_t lda);
+    void xmf_write_header_(const ForestGrid* grid, const lda_t lda);
+
     // footers
     void xmf_write_footer_(const ForestGrid* grid);
     void hdf5_write_footer_(const ForestGrid* grid);
@@ -48,7 +52,7 @@ class IOH5 : public ConstOperatorF {
     // write a block
 
    public:
-    IOH5(string folder);
+    explicit IOH5(string folder);
     ~IOH5();
 
     void dump_ghost(const bool dump_ghost);
@@ -57,6 +61,9 @@ class IOH5 : public ConstOperatorF {
 
     void operator()(ForestGrid* grid, Field* field, string name);
     void operator()(ForestGrid* grid, Field* field) override;
+
+    protected:
+    size_t xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, char* msg);
 };
 
 #endif

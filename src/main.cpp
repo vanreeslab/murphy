@@ -30,9 +30,10 @@ int main(int argc, char** argv) {
     //-------------------------------------------------------------------------
     for (int i = 0; i < argument.n_repeat_; i++) {
         // create a grid
-        m_log("init level? %d",argument.init_lvl_);
-        m_log("number of roots? %d %d %d",argument.length_[0],argument.length_[1],argument.length_[2]);
-        m_log("periodic? %d %d %d",argument.period_[0],argument.period_[1],argument.period_[2]);
+        // argument.init_lvl_ = 1;
+        m_log("init level? %d", argument.init_lvl_);
+        m_log("number of roots? %d %d %d", argument.length_[0], argument.length_[1], argument.length_[2]);
+        m_log("periodic? %d %d %d", argument.period_[0], argument.period_[1], argument.period_[2]);
         Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
         // get an refined and adapted grid given the patch
         list<Patch> patch;
@@ -40,9 +41,9 @@ int main(int argc, char** argv) {
         real_t      length[3] = {0.5, 1.0, 1.0};
         patch.push_back(Patch(origin, length, 2));
         grid->Adapt(&patch);
-        // grid->Adapt(&argument.patch_);
+        grid->Adapt(&argument.patch_);
         // create a field
-        Field* vort = new Field("vorticity", 1);
+        Field* vort = new Field("vorticity", 3);
         // Field* psi  = new Field("psi", 3);
         // Field* res  = new Field("residual", 3);
         // // register the field to the grid
@@ -50,8 +51,8 @@ int main(int argc, char** argv) {
         // grid->AddField(psi);
         // grid->AddField(res);
         // // get some values for the polynomial
-        real_t     dir[3]  = {1.0, 0.0, 0.0};
-        lid_t      deg[3]  = {1, 1, 1};
+        real_t     dir[3]  = {0.0, 1.0, 0.0};
+        lid_t      deg[3]  = {0, 1, 0};
         SetPolynom polynom = SetPolynom(deg, dir);
         polynom(grid, vort);
         // real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
         // sinus(grid,vort);
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         // vort->bctype(M_BC_ODD);
-        vort->bctype(M_BC_EXTRAP_4);
+        vort->bctype(M_BC_EXTRAP_5);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
 
