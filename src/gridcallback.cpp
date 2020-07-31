@@ -152,7 +152,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 }
 
 /**
- * @brief reply that we should refine the block if the output of @ref Interpolator::Criterion() is bigger than the tolerance (we use the interpolator from the @ref Grid)
+ * @brief refine a block if @ref Interpolator::Criterion() is bigger than @ref Grid::rtol()
  * 
  * @param forest 
  * @param which_tree 
@@ -169,25 +169,36 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     bool   refine = false;
     Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
 
+    // if the block is locked, I cannot touch it anymore
+    if (block->locked()) {
+        return false;
+    }
+
+    // if we are not locked, we are available for refinement
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
         m_log("refine? %e >? %e", norm, grid->rtol());
-        // refine the whole grid if one dimension needs to be refined
+        // refine the block if one dimension needs to be refined
         if (refine) {
-            break;
+            // lock the block indicate that it cannot be changed in res anymore
+            block->lock();
+            // return to refine
+            return true;
         }
     }
-    // refine if the criterion is bigger than the tolerance
-    return refine;
+    // if we reached here, we do not need to refine
+    return false;
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief reply that we should coarsen the block if the output of the @ref Interpolator::Criterion() is bigger than the tolerance (we use the interpolator from the @ref Grid)
+ * @brief reply that we should coarsen the group of 8 blocks if @ref Interpolator::Criterion() is lower than @ref Grid::ctol() for everyblock.
+ * 
+ * We do NOT coarsen if one of the block does not match the criterion
  * 
  * @param forest 
  * @param which_tree 
@@ -199,29 +210,38 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     Interpolator* interp = grid->interp();
+    Field*        fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+
     // for each of the children
-    bool   coarsen = false;
-    Field* fid     = reinterpret_cast<Field*>(grid->tmp_ptr());
+    bool coarsen = true;
     for (int id = 0; id < P8EST_CHILDREN; id++) {
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
+
+        // if one of the 8 block is locked, I cannot change it, neither the rest of the group
+        if (block->locked()) {
+            return false;
+        }
+
+        // check if I can coarsen
         for (int ida = 0; ida < fid->lda(); ida++) {
             real_p data = block->data(fid, ida);
             real_t norm = interp->Criterion(block, data);
-            // coarsen if the norm is bigger
+            // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
             m_log("coarsen? %e <? %e", norm, grid->ctol());
-            // coarsen the whole grid if one dimension needs to be coarsened
-            if (coarsen) {
-                break;
+
+            // if I cannot coarsen, I can give up on the whole group, so return false
+            if (!coarsen) {
+                return false;
             }
         }
-        // coarsen the whole grid if one block needs to be coarsened
-        if (coarsen) {
-            break;
-        }
     }
-    // refine if the criterion is bigger than the tolerance
-    return coarsen;
+    // if I arrived here, I can coarsen the whole group, so lock them and return true
+    for (int id = 0; id < P8EST_CHILDREN; id++) {
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
+        block->lock();
+    }
+    return true;
     //-------------------------------------------------------------------------
     m_end;
 }

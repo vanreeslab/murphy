@@ -389,6 +389,9 @@ void Grid::Refine(const sid_t delta_level) {
     //-------------------------------------------------------------------------
     // we create the new blocks
     for (int id = 0; id < delta_level; id++) {
+        // unlock all the blocks
+        LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             GhostPull(fid->second);
@@ -439,6 +442,8 @@ void Grid::Coarsen(const sid_t delta_level) {
     //-------------------------------------------------------------------------
     // we create the new blocks
     for (int id = 0; id < delta_level; id++) {
+        // unlock all the blocks
+        LoopOnGridBlock_(&GridBlock::unlock, nullptr);
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             // set the working field before entering the callback
@@ -452,7 +457,7 @@ void Grid::Coarsen(const sid_t delta_level) {
         forest_->user_pointer = reinterpret_cast<void*>(this);
 
         // do the p4est interpolation by callback
-        m_profStart(prof_,"p4est_refcoarse");
+        m_profStart(prof_, "p4est_refcoarse");
         p8est_coarsen_ext(forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
         m_profStop(prof_,"p4est_refcoarse");
         
@@ -507,6 +512,9 @@ void Grid::Adapt(Field* field) {
     m_begin;
     m_log("--> grid adaptation started... (interpolator: %s)", interp_->Identity().c_str());
     //-------------------------------------------------------------------------
+    // unlock all the blocks
+    LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+
     // store the criterion field
     tmp_ptr_ = reinterpret_cast<void*>(field);
 
@@ -570,6 +578,8 @@ void Grid::Adapt(list<Patch>* patches) {
     if (patches->size() == 0) {
         return;
     }
+    // unlock all the blocks
+    LoopOnGridBlock_(&GridBlock::unlock, nullptr);
     // store the criterion patch list
     tmp_ptr_ = reinterpret_cast<void*>(patches);
     // no ghost is computed as no interpolation will be done
@@ -682,7 +692,7 @@ void Grid::LoopOnGridBlock_(const gbop_t op, Field* field) const {
         p8est_tree_t* tree    = p8est_tree_array_index(forest_->trees, it);
         const size_t  nqlocal = tree->quadrants.elem_count;
 
-//#pragma omp parallel for firstprivate(field)
+        //#pragma omp parallel for firstprivate(field)
         for (size_t bid = 0; bid < nqlocal; bid++) {
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
             GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
@@ -690,7 +700,9 @@ void Grid::LoopOnGridBlock_(const gbop_t op, Field* field) const {
             (block->*op)(field);
         }
         // downgrade the ghost status since we changed its value
-        field->ghost_status(false);
+        if (field != nullptr) {
+            field->ghost_status(false);
+        }
         //-------------------------------------------------------------------------
         m_end;
     }

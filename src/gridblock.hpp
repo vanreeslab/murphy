@@ -19,6 +19,7 @@ using std::numeric_limits;
  */
 class GridBlock : public MemLayout {
    protected:
+    bool      lock_;      //!< lock the block, indicating that no refinement/coarsening can happen
     level_t   level_;     //!< the level of the block
     real_t    xyz_[3];    //!< the origin of the block
     real_t    hgrid_[3];  //!< the grid spacing of the block
@@ -45,6 +46,18 @@ class GridBlock : public MemLayout {
     inline real_t hgrid(const int id) const { return hgrid_[id]; }
     const real_t* hgrid() const { return hgrid_; }
     const real_t* xyz() const { return xyz_; }
+
+    /**
+     * @name Lock management
+     * 
+     * @{ */
+    inline void lock() { lock_ = true; }
+    inline bool locked() const { return lock_; }
+    inline void unlock(Field* fid) {
+        m_assert(fid == nullptr, "this should be null");
+        lock_ = false;
+    }
+    /**@} */
 
     /**
      * @name handle the ghost data pointer

@@ -204,7 +204,7 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid, const size_t n_block_globa
 
     //................................................
     // create the huuuge dataspace for all the blocks:
-    hsize_t block_size[3] = {n_block_global * lda * block_stride_, block_stride_, block_stride_};
+    hsize_t block_size[3] = {(hsize_t)(n_block_global * lda * block_stride_), (hsize_t)(block_stride_), (hsize_t)(block_stride_)};
     hdf5_dataspace_       = H5Screate_simple(3, block_size, NULL);
     m_assert(hdf5_dataspace_ >= 0, "error creating the dataspace");
     hdf5_dataset_ = H5Dcreate(hdf5_file_, "blocks", H5T_NATIVE_FLOAT, hdf5_dataspace_, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -217,10 +217,10 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid, const size_t n_block_globa
     m_assert(hdf5_memspace_ >= 0, "error while creating the memory space");
 
     // get the needed hyperslab
-    const hsize_t memstride[3] = {block_stride_, block_stride_, block_stride_};  // distance between two blocks
-    const hsize_t memblock[3]  = {block_stride_, block_stride_, block_stride_};  // size of 1 block
-    const hsize_t memcount[3]  = {1, 1, 1};                                      // number of blocks
-    const hsize_t memoffset[3] = {block_shift_, block_shift_, block_shift_};     // number of blocks
+    const hsize_t memstride[3] = {(hsize_t)block_stride_, (hsize_t)block_stride_, (hsize_t)block_stride_};  // distance between two blocks
+    const hsize_t memblock[3]  = {(hsize_t)block_stride_, (hsize_t)block_stride_, (hsize_t)block_stride_};  // size of 1 block
+    const hsize_t memcount[3]  = {1, 1, 1};                                                                 // number of blocks
+    const hsize_t memoffset[3] = {(hsize_t)block_shift_, (hsize_t)block_shift_, (hsize_t)block_shift_};     // number of blocks
 
     // get the hyperslab
     herr_t status = H5Sselect_hyperslab(hdf5_memspace_, H5S_SELECT_SET, memoffset, memstride, memcount, memblock);
@@ -247,9 +247,9 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
 
     //................................................
     // set the constant file hyperslab params -> first index = slower rotating index
-    const hsize_t filecount[3]  = {1, 1, 1};                                      // number of block
-    const hsize_t filestride[3] = {block_stride_, block_stride_, block_stride_};  // stride between two blocks
-    const hsize_t fileblock[3]  = {block_stride_, block_stride_, block_stride_};  // dimension of one block
+    const hsize_t filecount[3]  = {1, 1, 1};                                                                 // number of block
+    const hsize_t filestride[3] = {(hsize_t)block_stride_, (hsize_t)block_stride_, (hsize_t)block_stride_};  // stride between two blocks
+    const hsize_t fileblock[3]  = {(hsize_t)block_stride_, (hsize_t)block_stride_, (hsize_t)block_stride_};  // dimension of one block
 
     //looping over the vector components.
     for (lda_t ida = 0; ida < fid->lda(); ++ida) {
@@ -352,8 +352,10 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
 #ifndef NDEBUG
     size_t len;
     MPI_Allreduce(&pos_end, &len, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+    m_assert(sizeof(len) == sizeof(unsigned long), "this must be true");
+    m_assert(sizeof(pos_end) == sizeof(unsigned long), "this must be true");
     if (rank == 0) {
-        m_assert(len == (footer_offset_), "the length do not match: %ld vs %ld", len, footer_offset_);
+        m_assert(len == (footer_offset_), "the length do not match: %ld vs %lld", len, footer_offset_);
     }
 #endif
 

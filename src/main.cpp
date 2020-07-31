@@ -69,23 +69,23 @@ int main(int argc, char** argv) {
         const real_t  radius    = 0.25;
         SetVortexRing vr_init(normal, center, sigma, radius);
         vr_init(grid, vort);
-        
+
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         // vort->bctype(M_BC_ODD);
         vort->bctype(M_BC_EXTRAP_3);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
-        grid->SetTol(1e-2, 1e-4);
+        grid->SetTol(5e-1, 1e-1);
         grid->Adapt(vort);
         vr_init(grid, vort);
         grid->Adapt(vort);
         vr_init(grid, vort);
         grid->Adapt(vort);
-        // vr_init(grid, vort);
-        // grid->Adapt(vort);
+        vr_init(grid, vort);
+        grid->Adapt(vort);
 
-        // grid->GhostPull(vort);
-        vr_init(grid, vort);
+        grid->GhostPull(vort);
+        // vr_init(grid, vort);
 
         
         dump(grid, vort);
