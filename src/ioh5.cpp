@@ -287,7 +287,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const hsize_t n_block_globa
     char msg[4096];
     memset(msg, 0, 4096);
     real_t zero[3] = {0.0, 0.0, 0.0};
-    len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0, msg);
+    len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0,1, msg);
 
     // need to compute the shift of everybody
     size_t quad_len = grid->forest()->local_num_quadrants * len_per_quad_;
@@ -354,7 +354,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     memset(msg, 0, 4096);
     size_t offset        = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
     size_t stride_global = n_block_global_ * fid->lda() * block_stride_;
-    size_t len           = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global, msg);
+    size_t len           = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global,block->level(), msg);
     m_assert(len == len_per_quad_, "the len has changed, hence the file will be corrupted: now %ld vs stored %ld", len, len_per_quad_);
     // write the header
     MPI_Status status;
@@ -362,7 +362,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     //
 }
 
-size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, char* msg) {
+size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg) {
     //-------------------------------------------------------------------------
     // we need an extra space for the final character
     char line[256];
@@ -436,6 +436,7 @@ size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t*
         sprintf(line, "              </Attribute>\n");
         strcat(msg, line);
     }
+#ifndef NDEBUG
     // - L17
     sprintf(line, "              <Attribute Name=\"rank\" AttributeType=\"Scalar\" Center=\"Grid\">\n");
     strcat(msg, line);
@@ -459,6 +460,21 @@ size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t*
     strcat(msg, line);
     // - L24
     sprintf(line, "                      %10.10d\n", tid);
+    strcat(msg, line);
+    // - L25
+    sprintf(line, "                  </DataItem>\n");
+    strcat(msg, line);
+    // - L26
+    sprintf(line, "              </Attribute>\n");
+    strcat(msg, line);
+#endif
+    sprintf(line, "              <Attribute Name=\"level\" AttributeType=\"Scalar\" Center=\"Grid\">\n");
+    strcat(msg, line);
+    // - L23
+    sprintf(line, "                  <DataItem Dimensions=\"1\" NumberType=\"UInt\" Format=\"XML\">\n");
+    strcat(msg, line);
+    // - L24
+    sprintf(line, "                      %10.10d\n", level);
     strcat(msg, line);
     // - L25
     sprintf(line, "                  </DataItem>\n");

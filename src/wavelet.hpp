@@ -358,10 +358,10 @@ class Wavelet : public Interpolator {
     * @{
     */
    public:
-    void Details(MemLayout* block, real_p data, real_t* criterion);
+    void Details(MemLayout* block, real_p data, real_t* details_max);
 
    protected:
-    void Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm);
+    void Detail_(const interp_ctx_t* ctx, real_t* details_max);
 
     /* @}*/
 

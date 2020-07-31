@@ -522,8 +522,7 @@ void Grid::Adapt(Field* field) {
     forest_->user_pointer = reinterpret_cast<void*>(this);
     m_profStart(prof_, "p4est_refcoarse");
     m_log("check for coarsening");
-    // p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
-    m_log("check for refinement");
+    p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
     p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
     m_profStop(prof_, "p4est_refcoarse");
     // balance the partition

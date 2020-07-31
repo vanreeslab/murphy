@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
         list<Patch> patch;
         real_t      origin[3] = {0.5, 0.0, 0.0};
         real_t      length[3] = {0.5, 1.0, 1.0};
-        patch.push_back(Patch(origin, length, 2));
+        // patch.push_back(Patch(origin, length, 2));
         grid->Adapt(&patch);
         grid->Adapt(&argument.patch_);
         // create a field
@@ -61,13 +61,15 @@ int main(int argc, char** argv) {
         // SetSinus sinus = SetSinus(length,freq);
         // sinus(grid,vort);
 
-        const real_t  center[3] = {argument.length_[0] / 2.0+0.01, argument.length_[1] / 2.0+0.01, argument.length_[2] / 2.0+0.01};
+        IOH5 dump = IOH5("data");
+
+        const real_t  center[3] = {argument.length_[0] / 2.0, argument.length_[1] / 2.0, argument.length_[2] / 2.0};
         const lda_t   normal    = 2;
         const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
         SetVortexRing vr_init(normal, center, sigma, radius);
         vr_init(grid, vort);
-
+        
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         // vort->bctype(M_BC_ODD);
         vort->bctype(M_BC_EXTRAP_3);
@@ -75,17 +77,20 @@ int main(int argc, char** argv) {
         // res->bctype(M_BC_ODD);
         grid->SetTol(1e-2, 1e-4);
         grid->Adapt(vort);
+        vr_init(grid, vort);
         grid->Adapt(vort);
+        vr_init(grid, vort);
         grid->Adapt(vort);
+        // vr_init(grid, vort);
+        // grid->Adapt(vort);
 
         // grid->GhostPull(vort);
         vr_init(grid, vort);
 
-        IOH5 dump = IOH5("data");
+        
         dump(grid, vort);
 
-        
-        // dump.dump_ghost(true);
+                // dump.dump_ghost(true);
         // dump(grid, vort);
 
         // init the MG solver

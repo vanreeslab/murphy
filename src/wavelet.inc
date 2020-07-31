@@ -41,16 +41,16 @@ real_t Wavelet<N, Nt>::Criterion(MemLayout* block, data_ptr data) {
     SubBlock extended_block(block->gs(), block->stride(), start, end);
 
     // get the detail coefficients
-    real_t details_max[8] = {0};
-    Details(&extended_block, data, details_max);
+    real_t details_max = 0.0;
+    Details(&extended_block, data, &details_max);
 
     // get the max out of all the details
-    real_t criterion = 0.0;
-    for (lda_t id = 0; id < 7; id++) {
-        criterion = m_max(criterion, details_max[id]);
-    }
-    m_log("hello the details: %f %f %f %f %f %f %f", details_max[0], details_max[1], details_max[2], details_max[3], details_max[4], details_max[5], details_max[6]);
-    return criterion;
+    // real_t criterion = 0.0;
+    // for (lda_t id = 0; id < 7; id++) {
+    //     criterion = m_max(criterion, details_max[id]);
+    // }
+    // m_log("hello the details: %f %f %f %f %f %f %f", details_max[0], details_max[1], details_max[2], details_max[3], details_max[4], details_max[5], details_max[6]);
+    return details_max;
     //-------------------------------------------------------------------------
 }
 
@@ -489,62 +489,82 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
  * 
  * @tparam order 
  * @param ctx only the trgdata information are used, the source is considered empty
- * @param details_inf_norm the maximum of the local detail coefficients: (d_x,d_y,d_z,d_xy,d_yz,d_xz,d_xyz,mean)
+ * @param details_inf_norm the maximum of the local detail coefficients
  */
 template <int N, int Nt>
-void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) {
+void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_max) {
     //-------------------------------------------------------------------------
     m_assume_aligned(ctx->tdata);
 
     const sid_t   ga_lim = len_ga_ / 2;
     const mem_ptr ga     = ga_ + ga_lim;
+    m_assert(ga[0] == 1.0, "this is annoying as the looping procedure is based on that assumption");
 
-    m_log("doing from %d %d %d to %d %d %d", ctx->trgstart[0] / 2, ctx->trgstart[1] / 2, ctx->trgstart[2] / 2, ctx->trgend[0] / 2, ctx->trgend[1] / 2, ctx->trgend[2] / 2);
+    const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+
+    (*details_max) = 0.0;
 
     // for each of the data for the considered children
-    for (lid_t ik2 = (ctx->trgstart[2] / 2); ik2 < (ctx->trgend[2] / 2); ++ik2) {
-        for (lid_t ik1 = (ctx->trgstart[1] / 2); ik1 < (ctx->trgend[1] / 2); ++ik1) {
-            for (lid_t ik0 = (ctx->trgstart[0] / 2); ik0 < (ctx->trgend[0] / 2); ++ik0) {
+    for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
+        for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
+            for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
                 // get the current data
-                data_ptr ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
+                data_ptr ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 m_assume_aligned(ltdata);
 
-                // init the details
-                real_t detail[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+                const lda_t ix = ik0 % 2;
+                const lda_t iy = ik0 % 2;
+                const lda_t iz = ik0 % 2;
 
-                // detail(0,0,0) = scaling!
-                detail[0] = ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
-
-                // point (1,0,0) and (0,1,0) and (0,0,1)
-                for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
-                    detail[1] += ga[id0] * ltdata[m_sidx(1 + id0, 0, 0, 0, ctx->trgstr)];
-                    detail[2] += ga[id0] * ltdata[m_sidx(0, 1 + id0, 0, 0, ctx->trgstr)];
-                    detail[3] += ga[id0] * ltdata[m_sidx(0, 0, 1 + id0, 0, ctx->trgstr)];
-                }
-                // point (1,1,0) and (0,1,1) and (1,0,1)
-                for (sid_t id1 = -ga_lim; id1 <= ga_lim; id1++) {
-                    for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
-                        detail[4] += ga[id0] * ga[id1] * ltdata[m_sidx(1 + id0, 1 + id1, 0, 0, ctx->trgstr)];
-                        detail[5] += ga[id0] * ga[id1] * ltdata[m_sidx(0, 1 + id0, 1 + id1, 0, ctx->trgstr)];
-                        detail[6] += ga[id0] * ga[id1] * ltdata[m_sidx(1 + id0, 0, 1 + id1, 0, ctx->trgstr)];
-                    }
-                }
-                // point (1,1,1)
-                for (sid_t id2 = -ga_lim; id2 <= ga_lim; id2++) {
-                    for (sid_t id1 = -ga_lim; id1 <= ga_lim; id1++) {
-                        for (sid_t id0 = -ga_lim; id0 <= ga_lim; id0++) {
-                            detail[7] += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(1 + id0, 1 + id1, 1 + id2, 0, ctx->trgstr)];
+                // if one dim is even, id = 0, -> ga = 1 and that's it
+                // if one dim is odd, id=1, -> we loop on ga, business as usual
+                real_t detail = 0.0;
+                for (sid_t id2 = -(ga_lim * iz); id2 <= (ga_lim * iz); ++id2) {
+                    for (sid_t id1 = -(ga_lim * iy); id1 <= (ga_lim * iy); ++id1) {
+                        for (sid_t id0 = -(ga_lim * ix); id0 <= (ga_lim * ix); ++id0) {
+                            detail += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(1 + id0, 1 + id1, 1 + id2, 0, ctx->trgstr)];
                         }
                     }
                 }
-                // store the max, relatively to the current value
-                for (int id = 1; id < 8; id++) {
-                    details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
-                }
+                // update the max detail if needed
+                (*details_max) = m_max(std::fabs(detail), (*details_max));
+
+                // // init the details
+                // real_t detail[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+                // // detail(0,0,0) = scaling!
+                // detail[0] = ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
+
+                // // point (1,0,0) and (0,1,0) and (0,0,1)
+                // for (sid_t id0 = -ga_lim; id0 <= ga_lim; ++id0) {
+                //     detail[1] += ga[id0] * ltdata[m_sidx(1 + id0, 0, 0, 0, ctx->trgstr)];
+                //     detail[2] += ga[id0] * ltdata[m_sidx(0, 1 + id0, 0, 0, ctx->trgstr)];
+                //     detail[3] += ga[id0] * ltdata[m_sidx(0, 0, 1 + id0, 0, ctx->trgstr)];
+                // }
+                // // point (1,1,0) and (0,1,1) and (1,0,1)
+                // for (sid_t id1 = -ga_lim; id1 <= ga_lim; ++id1) {
+                //     for (sid_t id0 = -ga_lim; id0 <= ga_lim; ++id0) {
+                //         detail[4] += ga[id0] * ga[id1] * ltdata[m_sidx(1 + id0, 1 + id1, 0, 0, ctx->trgstr)];
+                //         detail[5] += ga[id0] * ga[id1] * ltdata[m_sidx(0, 1 + id0, 1 + id1, 0, ctx->trgstr)];
+                //         detail[6] += ga[id0] * ga[id1] * ltdata[m_sidx(1 + id0, 0, 1 + id1, 0, ctx->trgstr)];
+                //     }
+                // }
+                // // point (1,1,1)
+                // for (sid_t id2 = -ga_lim; id2 <= ga_lim; ++id2) {
+                //     for (sid_t id1 = -ga_lim; id1 <= ga_lim; ++id1) {
+                //         for (sid_t id0 = -ga_lim; id0 <= ga_lim; ++id0) {
+                //             detail[7] += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(1 + id0, 1 + id1, 1 + id2, 0, ctx->trgstr)];
+                //         }
+                //     }
+                // }
+                // // store the max, relatively to the current value
+                // for (int id = 1; id < 8; id++) {
+                //     details_inf_norm[id] = m_max(std::fabs(detail[id]), details_inf_norm[id]);
+                // }
             }
         }
     }
-    m_log("hello the details: %f %f %f %f %f %f %f", details_inf_norm[0], details_inf_norm[1], details_inf_norm[2], details_inf_norm[3], details_inf_norm[4], details_inf_norm[5], details_inf_norm[6]);
     //-------------------------------------------------------------------------
 }
 

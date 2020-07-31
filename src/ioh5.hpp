@@ -64,7 +64,7 @@ class IOH5 : public ConstOperatorF {
     void operator()(ForestGrid* grid, Field* field) override;
 
     protected:
-    size_t xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, char* msg);
+    size_t xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global,const level_t level, char* msg);
 };
 
 #endif

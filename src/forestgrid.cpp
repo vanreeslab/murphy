@@ -39,7 +39,8 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
     // create the forest at a given level, the associated ghost and mesh object
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-    forest_ = p8est_new_ext(comm, connect, -1, ilvl, 1, datasize, nullptr, nullptr);
+    int min_quad = ((int)pow(2, 3 * ilvl)) / comm_size;
+    forest_      = p8est_new_ext(comm, connect, min_quad, 0, 1, datasize, nullptr, nullptr);
     // forest_ - p8est_new(comm,connect,datasize,nullptr,nullptr);
     // set the pointer to null
     forest_->user_pointer = nullptr;

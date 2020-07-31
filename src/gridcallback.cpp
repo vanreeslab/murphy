@@ -169,9 +169,6 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     bool   refine = false;
     Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
 
-
-    m_log("entering refinement check Interpolator");
-
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
@@ -183,8 +180,6 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
             break;
         }
     }
-
-    m_log("dooon, we should refine? %d",refine);
     // refine if the criterion is bigger than the tolerance
     return refine;
     //-------------------------------------------------------------------------
@@ -206,7 +201,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Interpolator* interp = grid->interp();
     // for each of the children
     bool   coarsen = false;
-    Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+    Field* fid     = reinterpret_cast<Field*>(grid->tmp_ptr());
     for (int id = 0; id < P8EST_CHILDREN; id++) {
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
         for (int ida = 0; ida < fid->lda(); ida++) {
