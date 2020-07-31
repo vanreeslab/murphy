@@ -490,6 +490,7 @@ void Grid::Coarsen(const sid_t delta_level) {
  */
 void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_begin;
+    m_assert(refine_tol > coarsen_tol, "the refinement tolerance must be > the coarsening tolerance");
     //-------------------------------------------------------------------------
     rtol_ = refine_tol;
     ctol_ = coarsen_tol;
@@ -520,7 +521,9 @@ void Grid::Adapt(Field* field) {
     // set the grid in the forest for the callback
     forest_->user_pointer = reinterpret_cast<void*>(this);
     m_profStart(prof_, "p4est_refcoarse");
-    p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
+    m_log("check for coarsening");
+    // p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
+    m_log("check for refinement");
     p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
     m_profStop(prof_, "p4est_refcoarse");
     // balance the partition

@@ -402,8 +402,9 @@ void SetVortexRing::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
                 // get the local coords
 
                 // const real_t r_plane = sqrt(x * x + y * y) - radius_;
-                const real_t r    = sqrt(x * x + y * y + z * z);
-                const real_t vort = oo_pisigma2 * exp(-r * oo_sigma2);
+                const real_t r2 = (x * x + y * y + z * z);
+                const real_t vort = oo_pisigma2 * exp(-r2 * oo_sigma2);
+                // const real_t vort = oo_pisigma2 * exp(1.0 - 1.0 / (1.0 - r2 * oo_sigma2));
 
                 wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
                 wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);

@@ -37,7 +37,10 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
     is_connect_owned_             = true;
     p8est_connectivity_t* connect = p8est_connectivity_new_brick(l[0], l[1], l[2], isper[0], isper[1], isper[2]);
     // create the forest at a given level, the associated ghost and mesh object
-    forest_ = p8est_new_ext(comm, connect, 0, ilvl, 1, datasize, nullptr, nullptr);
+    int comm_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    forest_ = p8est_new_ext(comm, connect, -1, ilvl, 1, datasize, nullptr, nullptr);
+    // forest_ - p8est_new(comm,connect,datasize,nullptr,nullptr);
     // set the pointer to null
     forest_->user_pointer = nullptr;
     // store the domain periodicity and domain size

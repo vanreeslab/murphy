@@ -61,25 +61,30 @@ int main(int argc, char** argv) {
         // SetSinus sinus = SetSinus(length,freq);
         // sinus(grid,vort);
 
-        const real_t  center[3] = {0.5, 0.5, 0.5};
+        const real_t  center[3] = {argument.length_[0] / 2.0+0.01, argument.length_[1] / 2.0+0.01, argument.length_[2] / 2.0+0.01};
         const lda_t   normal    = 2;
-        const real_t  sigma     = 0.2;
+        const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
         SetVortexRing vr_init(normal, center, sigma, radius);
         vr_init(grid, vort);
 
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         // vort->bctype(M_BC_ODD);
-        vort->bctype(M_BC_EXTRAP_5);
+        vort->bctype(M_BC_EXTRAP_3);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
+        grid->SetTol(1e-2, 1e-4);
+        grid->Adapt(vort);
+        grid->Adapt(vort);
+        grid->Adapt(vort);
+
+        // grid->GhostPull(vort);
+        vr_init(grid, vort);
 
         IOH5 dump = IOH5("data");
         dump(grid, vort);
 
-        // grid->Adapt(vort);
-
-        // grid->GhostPull(vort);
+        
         // dump.dump_ghost(true);
         // dump(grid, vort);
 

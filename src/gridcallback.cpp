@@ -168,17 +168,23 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     // get the field and check each dimension
     bool   refine = false;
     Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+
+
+    m_log("entering refinement check Interpolator");
+
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
-        m_verb("refine? %e vs %e", norm, grid->rtol());
+        m_log("refine? %e >? %e", norm, grid->rtol());
         // refine the whole grid if one dimension needs to be refined
         if (refine) {
             break;
         }
     }
+
+    m_log("dooon, we should refine? %d",refine);
     // refine if the criterion is bigger than the tolerance
     return refine;
     //-------------------------------------------------------------------------
@@ -208,6 +214,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
             real_t norm = interp->Criterion(block, data);
             // coarsen if the norm is bigger
             coarsen = (norm < grid->ctol());
+            m_log("coarsen? %e <? %e", norm, grid->ctol());
             // coarsen the whole grid if one dimension needs to be coarsened
             if (coarsen) {
                 break;
@@ -250,9 +257,10 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     Interpolator*         interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    if (grid->HasProfiler()) {
-        grid->profiler()->Start("cback_interpolate");
-    }
+    // m_log("prof callback");
+    m_profStart(grid->profiler(),"cback_interpolate");
+
+    // m_log("interpolate callback");
 
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
@@ -275,11 +283,6 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // if only one is entering, it means we coarse -> dlvl = +1
     const sid_t dlvl = (num_outgoing == 1) ? -1 : 1;
 
-    // create an empty SubBlock representing the valid GP
-    lid_t     full_start[3] = {0, 0, 0};
-    lid_t     full_end[3]   = {0, 0, 0};
-    SubBlock* mem_block     = new SubBlock(M_GS, M_STRIDE, full_start, full_end);
-
     // do the required iterpolation
     for (sid_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = *(reinterpret_cast<GridBlock**>(outgoing[iout]->p.user_data));
@@ -293,17 +296,12 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
             // if we refine
             if (num_outgoing == 1) {
                 // get the shift given the child id
-                lid_t shift[3];
-                shift[0] = M_HN * ((childid % 2));      // x corner index = (ic%4)%2
-                shift[1] = M_HN * ((childid % 4) / 2);  // y corner index
-                shift[2] = M_HN * ((childid / 4));      // z corner index
-                // we create a subblock with the correct memory representation for the target
-                // no nned to redefine the target zone, we can use the standard 0 -> M_N
-                for (int id = 0; id < 3; id++) {
-                    full_start[id] = shift[id] - M_GS;
-                    full_end[id]   = shift[id] + M_HN + M_GS;
-                }
-                mem_block->Reset(M_GS, M_STRIDE, full_start, full_end);
+                const lid_t shift[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
+
+                // we create a subblock with the correct memory representation for the source = parent
+                const lid_t src_start[3] = {shift[0] - M_GS, shift[1] - M_GS, shift[2] - M_GS};
+                const lid_t src_end[3]   = {shift[0] + M_HN + M_GS, shift[1] + M_HN + M_GS, shift[2] + M_HN + M_GS};
+                SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
 
                 // for every field, we interpolate it
                 for (auto fid = f_start; fid != f_end; fid++) {
@@ -311,24 +309,21 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(dlvl, shift, mem_block, block_out->data(current_field, ida), block_in, block_in->data(current_field, ida));
+                        interp->Interpolate(dlvl, shift, &mem_src, block_out->data(current_field, ida), block_in, block_in->data(current_field, ida));
                     }
                 }
             } else if (num_incoming == 1) {
                 // get the shift
-                lid_t shift[3];
-                shift[0] = -M_N * ((childid % 2));      // x corner index = (ic%4)%2
-                shift[1] = -M_N * ((childid % 4) / 2);  // y corner index
-                shift[2] = -M_N * ((childid / 4));      // z corner index
-                // we create a subblock with the correct memory representation for the source
-                // no nned to redefine the source zone, we can use the standard 0 -> M_N
-                full_start[0] = M_HN * ((childid % 2));      // x corner index = (ic%4)%2
-                full_start[1] = M_HN * ((childid % 4) / 2);  // y corner index
-                full_start[2] = M_HN * ((childid / 4));      // z corner index
-                for (int id = 0; id < 3; id++) {
-                    full_end[id] = full_start[id] + M_HN;
-                }
-                mem_block->Reset(M_GS, M_STRIDE, full_start, full_end);
+                const lid_t shift[3] = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
+
+                // we create a subblock with the correct memory representation for the target
+                const lid_t trg_start[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
+                const lid_t trg_end[3]   = {trg_start[0] + M_HN, trg_start[1] + M_HN, trg_start[2] + M_HN};
+                SubBlock    mem_trg(M_GS, M_STRIDE, trg_start, trg_end);
+                // and an extended source block
+                const lid_t src_start[3] = {-M_GS, -M_GS, -M_GS};
+                const lid_t src_end[3]   = {M_N + M_GS, M_N + M_GS, M_N + M_GS};
+                SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
 
                 // for every field, we interpolate it
                 for (auto fid = f_start; fid != f_end; fid++) {
@@ -336,14 +331,12 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(dlvl, shift, block_out, block_out->data(current_field, ida), mem_block, block_in->data(current_field, ida));
+                        interp->Interpolate(dlvl, shift, &mem_src, block_out->data(current_field, ida), &mem_trg, block_in->data(current_field, ida));
                     }
                 }
             }
         }
     }
-
-    delete (mem_block);
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
@@ -352,9 +345,10 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    if (grid->HasProfiler()) {
-        grid->profiler()->Stop("cback_interpolate");
-    }
+
+    // m_log("exit interpolate callback");
+    m_profStop(grid->profiler(), "cback_interpolate");
+    // m_log("exit prof callback");
     //-------------------------------------------------------------------------
     m_end;
 }

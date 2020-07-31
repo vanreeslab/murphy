@@ -36,7 +36,7 @@ real_t Wavelet<N, Nt>::Criterion(MemLayout* block, data_ptr data) {
     lid_t       end[3];
     for (lda_t id = 0; id < 3; id++) {
         start[id] = block->start(id) - (lift_len / 2);
-        start[id] = block->end(id) + (lift_len / 2) - 1;
+        end[id]   = block->end(id) + (lift_len / 2) - 1;
     }
     SubBlock extended_block(block->gs(), block->stride(), start, end);
 
@@ -46,9 +46,10 @@ real_t Wavelet<N, Nt>::Criterion(MemLayout* block, data_ptr data) {
 
     // get the max out of all the details
     real_t criterion = 0.0;
-    for (int id = 0; id < 7; id++) {
+    for (lda_t id = 0; id < 7; id++) {
         criterion = m_max(criterion, details_max[id]);
     }
+    m_log("hello the details: %f %f %f %f %f %f %f", details_max[0], details_max[1], details_max[2], details_max[3], details_max[4], details_max[5], details_max[6]);
     return criterion;
     //-------------------------------------------------------------------------
 }
@@ -110,9 +111,9 @@ void Wavelet<N, Nt>::Coarsen_(const interp_ctx_t* ctx) {
         for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
             for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
                 // do some checks
-                m_assert(((ik0 - ha_lim) >= (ctx->srcstart[0])) && ((ik0 + ha_lim) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - ha_lim, ctx->srcstart[0], ik0 + ha_lim, ctx->srcend[0]);
-                m_assert(((ik1 - ha_lim) >= (ctx->srcstart[1])) && ((ik1 + ha_lim) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - ha_lim, ctx->srcstart[1], ik1 + ha_lim, ctx->srcend[1]);
-                m_assert(((ik2 - ha_lim) >= (ctx->srcstart[2])) && ((ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - ha_lim, ctx->srcstart[2], ik2 + ha_lim, ctx->srcend[2]);
+                m_assert(((2 * ik0 - ha_lim) >= (ctx->srcstart[0])) && ((2 * ik0 + ha_lim) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", 2 * ik0 - ha_lim, ctx->srcstart[0], 2 * ik0 + ha_lim, ctx->srcend[0]);
+                m_assert(((2 * ik1 - ha_lim) >= (ctx->srcstart[1])) && ((2 * ik1 + ha_lim) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", 2 * ik1 - ha_lim, ctx->srcstart[1], 2 * ik1 + ha_lim, ctx->srcend[1]);
+                m_assert(((2 * ik2 - ha_lim) >= (ctx->srcstart[2])) && ((2 * ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * ik2 - ha_lim, ctx->srcstart[2], 2 * ik2 + ha_lim, ctx->srcend[2]);
                 //get the local adress of the source, the target and the constant
                 data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
@@ -491,17 +492,19 @@ void Wavelet<N, Nt>::Refine_(const interp_ctx_t* ctx) {
  * @param details_inf_norm the maximum of the local detail coefficients: (d_x,d_y,d_z,d_xy,d_yz,d_xz,d_xyz,mean)
  */
 template <int N, int Nt>
-void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, mem_ptr details_inf_norm) {
+void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) {
     //-------------------------------------------------------------------------
     m_assume_aligned(ctx->tdata);
 
     const sid_t   ga_lim = len_ga_ / 2;
     const mem_ptr ga     = ga_ + ga_lim;
 
+    m_log("doing from %d %d %d to %d %d %d", ctx->trgstart[0] / 2, ctx->trgstart[1] / 2, ctx->trgstart[2] / 2, ctx->trgend[0] / 2, ctx->trgend[1] / 2, ctx->trgend[2] / 2);
+
     // for each of the data for the considered children
-    for (int ik2 = ctx->trgstart[2] / 2; ik2 < ctx->trgend[2] / 2; ik2++) {
-        for (int ik1 = ctx->trgstart[1] / 2; ik1 < ctx->trgend[1] / 2; ik1++) {
-            for (int ik0 = ctx->trgstart[0] / 2; ik0 < ctx->trgend[0] / 2; ik0++) {
+    for (lid_t ik2 = (ctx->trgstart[2] / 2); ik2 < (ctx->trgend[2] / 2); ++ik2) {
+        for (lid_t ik1 = (ctx->trgstart[1] / 2); ik1 < (ctx->trgend[1] / 2); ++ik1) {
+            for (lid_t ik0 = (ctx->trgstart[0] / 2); ik0 < (ctx->trgend[0] / 2); ++ik0) {
                 // get the current data
                 data_ptr ltdata = ctx->tdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->trgstr);
                 m_assume_aligned(ltdata);
@@ -541,6 +544,7 @@ void Wavelet<N, Nt>::Detail_(const interp_ctx_t* ctx, mem_ptr details_inf_norm) 
             }
         }
     }
+    m_log("hello the details: %f %f %f %f %f %f %f", details_inf_norm[0], details_inf_norm[1], details_inf_norm[2], details_inf_norm[3], details_inf_norm[4], details_inf_norm[5], details_inf_norm[6]);
     //-------------------------------------------------------------------------
 }
 
