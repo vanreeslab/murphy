@@ -5,7 +5,15 @@
 using std::numeric_limits;
 using std::to_string;
 
-// inspired from AMRex
+/**
+ * @brief add a string attribute to the loc hdf5 object
+ * 
+ * @note this function is inspired from AMReX
+ * 
+ * @param loc the object to add the attribute to
+ * @param name the name of the attribute
+ * @param data the string itself
+ */
 static void HDF5_AttributeString(hid_t loc, const char* name, const char* data) {
     hid_t  attr, atype, space;
     herr_t ret;
@@ -28,7 +36,7 @@ static void HDF5_AttributeString(hid_t loc, const char* name, const char* data) 
 /**
  * @brief Construct a new IOH5 given a folder. Any successive operator()() calls will dump into this folder
  * 
- * @param folder 
+ * @param folder the folder where the I/O will be performed
  */
 IOH5::IOH5(string folder) {
     m_begin;
@@ -39,6 +47,10 @@ IOH5::IOH5(string folder) {
     m_end;
 }
 
+/**
+ * @brief Destroy the IOH5 object
+ * 
+ */
 IOH5::~IOH5() {
     m_begin;
     //-------------------------------------------------------------------------
@@ -47,10 +59,12 @@ IOH5::~IOH5() {
 }
 
 /**
- * @brief dump the field in the predefined folder, using the name fo the field for the filename
+ * @brief dump the field (xdmf+h5) in the predefined folder, using the name fo the field for the filename
  * 
- * @param grid 
- * @param field 
+ * A prefix `g_` is added ot the filename if the ghosts are dumped as well
+ * 
+ * @param grid the grid supporting the field
+ * @param field the field to dump, the file will be named after using @ref Field::name()
  */
 void IOH5::operator()(ForestGrid* grid, Field* field) {
     m_begin;
@@ -61,15 +75,20 @@ void IOH5::operator()(ForestGrid* grid, Field* field) {
 }
 
 /**
- * @brief dump the field in the predefined folder, using the given name for the filename and reset the dump_ghost_ variable to false
+ * @brief dump the field (xdmf+h5) in the predefined folder, using the given name
  * 
- * @param grid the grid on which the field lives
+ * A prefix `g_` is added ot the filename if the ghosts are dumped as well
+ * 
+ * @warning the ghosts of the field must be up to date as we IO min (M_N+1)^3 points, so that paraview handles it nicely
+ * 
+ * @param grid the grid supporting the field
  * @param field the field to dump
- * @param name the filename to use (`name.xmf`, `name/name_ranki.hdf5`)
+ * @param name the filename to use
  */
 void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     m_begin;
     //-------------------------------------------------------------------------
+    m_assert(field->ghost_status(), "the field has outdated ghosts, please update them, even if dump ghost is false");
     m_log("dumping field %s to disk (ghost = %d)", name.c_str(), dump_ghost_);
     // get the field name
     rank_t mpirank = grid->mpirank();
@@ -97,16 +116,19 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     block_shift_  = (dump_ghost_) ? 0 : M_GS;
 
     // get the block offset and the number of global blocks
-    hsize_t local_n_block = (hsize_t)(grid->forest()->local_num_quadrants);
-    MPI_Scan(&local_n_block, &block_offset_, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&local_n_block, &n_block_global_, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    size_t n_block_global = 0;
+    size_t local_n_block  = (size_t)(grid->forest()->local_num_quadrants);
+    MPI_Scan(&local_n_block, &block_offset_, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_n_block, &n_block_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
     block_offset_ -= local_n_block;
-    m_assert(sizeof(hsize_t) == sizeof(unsigned long long), "the type used for the MPI Scan is not correct anymore");
+    m_assert(sizeof(local_n_block) == sizeof(unsigned long), "the type used for the MPI Scan is not correct anymore");
+    m_assert(sizeof(block_offset_) == sizeof(unsigned long), "the type used for the MPI Scan is not correct anymore");
+    m_assert(sizeof(n_block_global) == sizeof(unsigned long), "the type used for the MPI Scan is not correct anymore");
 
     //................................................
     // print the header
-    xmf_write_header_(grid, n_block_global_, field->lda());
-    hdf5_write_header_(grid, n_block_global_, field->lda());
+    xmf_write_header_(grid, n_block_global, field->lda());
+    hdf5_write_header_(grid, n_block_global, field->lda());
 
     //................................................
     // call the standard operator
@@ -114,7 +136,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 
     //................................................
     // print the footer
-    xmf_write_footer_(grid, n_block_global_);
+    xmf_write_footer_(grid);
     hdf5_write_footer_(grid);
     // reset the dump_ghost to false for next dump
     dump_ghost_ = false;
@@ -131,6 +153,13 @@ void IOH5::dump_ghost(const bool dump_ghost) {
     dump_ghost_ = dump_ghost;
 }
 
+/**
+ * @brief definition of the operator applied to the block, dump the xmf and hdf5 part
+ * 
+ * @param qid the quadrant ID
+ * @param block the block to be dumped
+ * @param fid the field
+ */
 void IOH5::ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) {
     //-------------------------------------------------------------------------
     xmf_write_block_(qid, block, fid);
@@ -138,7 +167,14 @@ void IOH5::ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) {
     //-------------------------------------------------------------------------
 }
 
-void IOH5::hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_global, const lda_t lda) {
+/**
+ * @brief write the hdf5 header: create the file and initiate the datasets to contain the blocks (file and memory)
+ * 
+ * @param grid the grid
+ * @param n_block_global the total number of block (global on the comm) to dump
+ * @param lda the total dimension of the array to dump
+ */
+void IOH5::hdf5_write_header_(const ForestGrid* grid, const size_t n_block_global, const lda_t lda) {
     m_begin;
     //-------------------------------------------------------------------------
     //................................................
@@ -169,7 +205,7 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_glob
     //................................................
     // create the huuuge dataspace for all the blocks:
     hsize_t block_size[3] = {n_block_global * lda * block_stride_, block_stride_, block_stride_};
-    hdf5_dataspace_ = H5Screate_simple(3, block_size, NULL);
+    hdf5_dataspace_       = H5Screate_simple(3, block_size, NULL);
     m_assert(hdf5_dataspace_ >= 0, "error creating the dataspace");
     hdf5_dataset_ = H5Dcreate(hdf5_file_, "blocks", H5T_NATIVE_FLOAT, hdf5_dataspace_, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     m_assert(hdf5_dataset_ >= 0, "error creating the dataset");
@@ -180,15 +216,11 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_glob
     hdf5_memspace_     = H5Screate_simple(3, memsize, NULL);
     m_assert(hdf5_memspace_ >= 0, "error while creating the memory space");
 
-    // set the memspace to empty
-    // herr_t status = H5Sselect_none(hdf5_memspace_);
-    // m_assert(status >= 0, "failed to empty the dataspace");
-
     // get the needed hyperslab
     const hsize_t memstride[3] = {block_stride_, block_stride_, block_stride_};  // distance between two blocks
     const hsize_t memblock[3]  = {block_stride_, block_stride_, block_stride_};  // size of 1 block
     const hsize_t memcount[3]  = {1, 1, 1};                                      // number of blocks
-    const hsize_t memoffset[3] = {block_shift_, block_shift_, block_shift_};                          // number of blocks
+    const hsize_t memoffset[3] = {block_shift_, block_shift_, block_shift_};     // number of blocks
 
     // get the hyperslab
     herr_t status = H5Sselect_hyperslab(hdf5_memspace_, H5S_SELECT_SET, memoffset, memstride, memcount, memblock);
@@ -199,12 +231,10 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid, const hsize_t n_block_glob
 }
 
 /**
- * @brief 
+ * @brief write down the block do the dataset
  * 
- * @warning In the dataspace, the last index must be the index of the vector 
- * component (requirement from xdmf). However, in memory, the index of the
- * vector component is the first one. We will thus need to fill the file 
- * with the data, component by component, and using a stride of lda.
+ * @warning the indexes, as used by hdf5, idx[3] are such that the first index (idx[0]) is the slowest rotating index
+ * and the last one (idx[2]) is the fastest rotating index
  * 
  * @param qid 
  * @param block 
@@ -216,7 +246,7 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
     const hsize_t field_lda = fid->lda();
 
     //................................................
-    // set the constant file hyperslab params
+    // set the constant file hyperslab params -> first index = slower rotating index
     const hsize_t filecount[3]  = {1, 1, 1};                                      // number of block
     const hsize_t filestride[3] = {block_stride_, block_stride_, block_stride_};  // stride between two blocks
     const hsize_t fileblock[3]  = {block_stride_, block_stride_, block_stride_};  // dimension of one block
@@ -238,7 +268,11 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
 
     //-------------------------------------------------------------------------
 }
-
+/**
+ * @brief write the footer of hdf5: close the spaces and the file
+ * 
+ * @param grid 
+ */
 void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -250,14 +284,21 @@ void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
     m_end;
 }
 
-void IOH5::xmf_write_header_(const ForestGrid* grid, const hsize_t n_block_global, const lda_t lda) {
+/**
+ * @brief write the header of the xmf + compute the offset of every rank in the file
+ * 
+ * @param grid 
+ * @param n_block_global the global number of block (total on the comm) involved in the IO
+ * @param lda 
+ */
+void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global, const lda_t lda) {
     m_begin;
     //-------------------------------------------------------------------------
     rank_t rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     // fopen the xmf, every proc
     string filename = folder_ + string("/") + filename_xdmf_;
-    int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
+    int    err      = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
     m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, the file may be corrupted", filename.c_str());
     // the current position of current proc
     MPI_Offset offset = 0;
@@ -287,11 +328,11 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const hsize_t n_block_globa
     char msg[4096];
     memset(msg, 0, 4096);
     real_t zero[3] = {0.0, 0.0, 0.0};
-    len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0,1, msg);
+    len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0, 1, msg);
 
     // need to compute the shift of everybody
     size_t quad_len = grid->forest()->local_num_quadrants * len_per_quad_;
-    size_t pos_end = header_count + quad_len;
+    size_t pos_end  = header_count + quad_len;
 
     // gt count, the position of proc i (in lines!!) as the sum of the position of procs 0 -> (i-1)
     size_t pos_curr = 0;
@@ -305,6 +346,9 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const hsize_t n_block_globa
     // compute the footer offset
     footer_offset_ = n_block_global * len_per_quad_ + header_count;
 
+    // compute the length of the hdf5 file
+    stride_global_ = n_block_global * lda * block_stride_;
+
 #ifndef NDEBUG
     size_t len;
     MPI_Allreduce(&pos_end, &len, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -317,7 +361,13 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const hsize_t n_block_globa
     m_end;
 }
 
-void IOH5::xmf_write_footer_(const ForestGrid* grid, const size_t n_block_global) {
+/**
+ * @brief write the xdmf footer using the precomputed @ref footer_offset_
+ * 
+ * @param grid 
+ * @param n_block_global 
+ */
+void IOH5::xmf_write_footer_(const ForestGrid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     // we have to wait that everybody has finished before writting the footer
@@ -353,8 +403,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     char msg[4096];
     memset(msg, 0, 4096);
     size_t offset        = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
-    size_t stride_global = n_block_global_ * fid->lda() * block_stride_;
-    size_t len           = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global,block->level(), msg);
+    size_t len           = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global_, block->level(), msg);
     m_assert(len == len_per_quad_, "the len has changed, hence the file will be corrupted: now %ld vs stored %ld", len, len_per_quad_);
     // write the header
     MPI_Status status;
@@ -366,7 +415,7 @@ size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t*
     //-------------------------------------------------------------------------
     // we need an extra space for the final character
     char line[256];
-    memset(line,0,256);
+    memset(line, 0, 256);
     // - L1
     sprintf(line, "\n<!-- tree num %10.10d, quad num %10.10d for %10.10d -->\n", tid, qid, rank);
     strcat(msg, line);
