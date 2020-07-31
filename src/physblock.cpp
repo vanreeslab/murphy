@@ -17,7 +17,8 @@ PhysBlock::PhysBlock(const iface_t iface, const MemLayout* block, const lid_t ng
 
     for (int id = 0; id < 3; id++) {
         start_[id] = -nghost_front[id];
-        end_[id]   = block->stride() - nghost_front[id];
+        end_[id]   = M_N + nghost_back[id];
+        m_assert((end_[id] - start_[id]) <= stride_, "the face is too big for the stride");
     }
 
     // store the face ID

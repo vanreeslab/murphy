@@ -74,6 +74,7 @@ class Boundary {
             end[id]   = block->end(id) - fstart[id];
         }
 
+        m_log("doing the phys block from %d %d %d to %d %d %d", start[0], start[1], start[2], end[0], end[1], end[2]);
         // m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2], block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
         // let's goooo
         for (lid_t i2 = start[2]; i2 < end[2]; i2++) {
