@@ -393,7 +393,6 @@ TEST_F(valid_Wavelet, coarsen_order_4_0) {
         // ASSERT_NEAR(mom_coarse[1], mom_fine[1], DOUBLE_TOL);
         // ASSERT_NEAR(mom_coarse[2], mom_fine[2], DOUBLE_TOL);
         // ASSERT_NEAR(mom_coarse[3], mom_fine[3], DOUBLE_TOL);
-        delete (interp);
     }
 }
 // test the wavelets + moments
@@ -500,7 +499,6 @@ TEST_F(valid_Wavelet, refine_order_4_0) {
         // ASSERT_NEAR(mom_coarse[1], mom_fine[1], DOUBLE_TOL);
         // ASSERT_NEAR(mom_coarse[2], mom_fine[2], DOUBLE_TOL);
         // ASSERT_NEAR(mom_coarse[3], mom_fine[3], DOUBLE_TOL);
-        delete (interp);
     }
 }
 

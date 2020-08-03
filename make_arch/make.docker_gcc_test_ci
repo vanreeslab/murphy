@@ -2,7 +2,8 @@ CXX = mpic++
 CC = mpicc
 
 # CXXFLAGS := -O3 -g --debug -DVERBOSE -Wno-format-security -fopenmp
-CXXFLAGS := -O3 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage -DLOG_MUTE
+CXXFLAGS := -O0 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage
+# -DLOG_MUTE
 #  -DLOG_ALLRANKS
 LDFLAGS += -fopenmp -lstdc++ -lm -fprofile-arcs -ftest-coverage 
 
