@@ -93,13 +93,13 @@ TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
 
 ################################################################################
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
 
 $(TEST_DIR)/$(OBJ_DIR)/%.o : $(TEST_DIR)/$(SRC_DIR)/%.cpp $(THEAD)
-	$(CXX) $(CXXFLAGS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
 
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -E $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -E $< -o $@
 
 ################################################################################
 default: $(TARGET)
@@ -134,7 +134,8 @@ destroy:
 info: logo
 	$(info prefix = $(PREFIX)/lib )
 	$(info compiler = $(shell $(CXX) --version))
-	$(info compil. flags = $(CXXFLAGS) $(INC) $(DEF) -fPIC -MMD)
+	$(info compil. options = $(OPTS))
+	$(info compil. flags = $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -fPIC -MMD)
 	$(info linker flags = -shared $(LDFLAGS))
 	$(info using arch file = $(ARCH_FILE) )
 	$(info LGF path = $(LGF_PATH) )
