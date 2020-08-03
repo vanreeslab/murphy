@@ -16,16 +16,13 @@
 #include "patch.hpp"
 #include "prof.hpp"
 
-using std::list;
-using std::numeric_limits;
-
 /**
  * @brief implements the grid management and the related responsabilities on top of ForestGrid
  * 
  */
 class Grid : public ForestGrid {
    protected:
-    map<string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
     Prof*         prof_     = nullptr;  //!< the profiler to use, may stay null
     Ghost*        ghost_    = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -61,13 +58,13 @@ class Grid : public ForestGrid {
      */
     lid_t NField() const { return (lid_t)(fields_.size()); }
 
-    map<string, Field*>::const_iterator FieldBegin() const { return fields_.begin(); }
-    map<string, Field*>::const_iterator FieldEnd() const { return fields_.end(); }
+    map<std::string, Field*>::const_iterator FieldBegin() const { return fields_.begin(); }
+    map<std::string, Field*>::const_iterator FieldEnd() const { return fields_.end(); }
 
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
     void DeleteField(Field* field);
-    void ResetFields(const map<string, Field*>* fields);
+    void ResetFields(const map<std::string, Field*>* fields);
     /**@}*/
 
     /**
@@ -93,7 +90,7 @@ class Grid : public ForestGrid {
     void Refine(const sid_t delta_level);
     void Coarsen(const sid_t delta_level);
     void Adapt(Field* field);
-    void Adapt(list<Patch>* patches);
+    void Adapt(std::list<Patch>* patches);
     /**@}*/
 
    private:

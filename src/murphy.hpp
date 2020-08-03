@@ -24,9 +24,10 @@ using qdrt_t   = p8est_quadrant_t;
  * @name typename for data pointers
  * @{
  */
-using real_t   = double;              //!< data subtype
-using mem_ptr  = real_t* __restrict;  //!< pointer type = root of the memory allocation
-using data_ptr = real_t* __restrict;  //!< data pointer type = root of the data, i.e. point (0,0,0)
+using real_t        = double;                    //!< data subtype
+using data_ptr      = real_t* __restrict__;        //!< data pointer type = root of the data, i.e. point (0,0,0)
+using mem_ptr       = real_t* __restrict__;        //!< pointer type = root of the memory allocation
+using const_mem_ptr = const real_t* __restrict__;  //!< pointer type = root of the memory allocation with the const
 /**@}*/
 
 // must be removed from the code

@@ -40,12 +40,15 @@ typedef struct interp_ctx_t {
     /** @} */
 } interp_ctx_t;
 
-using std::string;
-
 /**
- * @brief defines a set of function used to interpolate
+ * @brief defines the most basic interpolator, define function to be implemented: Refine and Coarsen
  * 
- * The memory description relies on the MemLayout object and they are working on one dimension at a time.
+ * The target field is computed as alpha * constant field + interpolation(source field).
+ * The interpolation procedure is one of the following:
+ * - a copy
+ * - a get/put RMA operation on an already activated window
+ * - a refinement (to be provided by the child class)
+ * - a coarsening (to be provided by the child class)
  * 
  */
 class Interpolator {
@@ -54,7 +57,7 @@ class Interpolator {
     virtual ~Interpolator(){};
 
     /**
-    * @name accessible interpolating functions
+    * @name basic implemented interpolating functions
     * @{
     */
     virtual void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg);
@@ -64,8 +67,8 @@ class Interpolator {
     virtual void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win);
     /** @} */
 
-    virtual real_t Criterion(MemLayout* block, real_p data) = 0;
-    virtual string Identity() const                         = 0;
+    virtual real_t      Criterion(MemLayout* block, real_p data) = 0;
+    virtual std::string Identity() const                         = 0;
 
     /**
      * @name filter length - to be implemented
@@ -80,7 +83,7 @@ class Interpolator {
     /** @} */
 
     /**
-     * @name ghost length, worst case of everyfilter
+     * @name ghost length, worst case of each filter
      * @{
      */
     virtual lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
@@ -91,9 +94,13 @@ class Interpolator {
     // call Copy_, Coarsen_ or Refine_
     virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst);
 
-    // to be implemented functions
+    /**
+     * @name Interpolation functions, to be implemented
+     * @{
+     */
     virtual void Coarsen_(const interp_ctx_t* ctx) = 0;
     virtual void Refine_(const interp_ctx_t* ctx)  = 0;
+    /** @} */
 
     // defined function -- might be overriden
     virtual void Copy_(const level_t dlvl, const interp_ctx_t* ctx);

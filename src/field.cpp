@@ -1,5 +1,7 @@
 #include "field.hpp"
 
+using std::string;
+
 /**
  * @brief Construct a new Field given a unique name and a dimension
  * 

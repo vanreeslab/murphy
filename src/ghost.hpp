@@ -12,17 +12,15 @@
 #include "physblock.hpp"
 #include "prof.hpp"
 
-using std::list;
-
 // #define M_NGHOST (M_N * M_N * M_N)
 
 // alias boring names
 using GBLocal      = GhostBlock<GridBlock *>;
 using GBMirror     = GhostBlock<MPI_Aint>;
 using GBPhysic     = PhysBlock;
-using ListGBLocal  = list<GBLocal *>;
-using ListGBMirror = list<GBMirror *>;
-using listGBPhysic = list<GBPhysic *>;
+using ListGBLocal  = std::list<GBLocal *>;
+using ListGBMirror = std::list<GBMirror *>;
+using listGBPhysic = std::list<GBPhysic *>;
 
 class Ghost;
 

@@ -1,9 +1,12 @@
 #include "interpolator.hpp"
 
 /**
- * @brief copy the data from data_src to data_trg but downsampling the data if the levels do not match
+ * @brief copy the data from data_src to data_trg
  * 
- * @param dlvl the difference of level: level_src - level_trg, only a a positive difference is possible
+ * @warning we downsample the data if the levels do not match
+ * this is a wrapper to the @ref Interpolator::DoMagic_() function.
+ * 
+ * @param dlvl the difference of level: level_src - level_trg, only a difference of o or 1 is possible
  * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
  * @param block_src description of data_src memory layout 
  * @param data_src the 0-position of the src memory, i.e. the memory location of (0,0,0) for the source
@@ -11,12 +14,16 @@
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
 void Interpolator::Copy(const level_t dlvl, const lid_t shift[3],const MemLayout* block_src,const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg){
+    m_assert(dlvl==0 || dlvl==1,"only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, true, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
 
 /**
- * @brief interpolates the data from data_src to data_trg
+ * @brief interpolates (refine, coarsen or copy) the data from data_src to data_trg
+ * 
+ * This is a wrapper to the @ref Interpolator::DoMagic_() function.
+ * The interpolation operation depends on the level difference.
  * 
  * @param dlvl the difference of level: level_src - level_trg, i.e. > 0 means coarsening, = 0 means copy and < 0 means refinement
  * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
@@ -32,6 +39,9 @@ void Interpolator::Interpolate(const level_t dlvl, const lid_t shift[3], const M
 
 /**
  * @brief interpolates the data from data_src and sum with the data_cst to data_trg: data_trg = alpha * data_cst + interp(data_src)
+ * 
+ * This is a wrapper to the @ref Interpolator::DoMagic_() function.
+ * The interp() operation depends on the level difference.
  * 
  * @param dlvl the difference of level: level_src - level_trg, i.e. > 0 means coarsening, = 0 means copy and < 0 means refinement
  * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
@@ -50,6 +60,9 @@ void Interpolator::Interpolate(const level_t dlvl, const lid_t shift[3], const M
 
 /**
  * @brief interpolates the data from data_src and sum with the data_cst to data_trg: data_trg = alpha * data_cst + interp(data_src)
+ * 
+ * The interp() operation depends on the level difference.
+ * This is a wrapper to the @ref Interpolator::DoMagic_() function.
  * 
  * @param dlvl the difference of level: level_src - level_trg, i.e. > 0 means coarsening, = 0 means copy and < 0 means refinement
  * @param force_copy if true, a copy is done instead of an interpolation, downsampling the data if necessary (then dlvl>0 is needed)
@@ -181,7 +194,6 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
     ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1, &dtype_trg);
-    // m_verb("the trg = %d %d %d to %d %d %d", trg_start[0], trg_start[1], trg_start[2], trg_end[0], trg_end[1], trg_end[2]);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
@@ -190,7 +202,6 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
     MPI_Datatype dtype_src;
     ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale, &dtype_src);
-    // m_verb("the src = %d %d %d to %d %d %d", src_start[0], src_start[1], src_start[2], src_end[0], src_end[1], src_end[2]);
 
     //................................................
 #ifndef NDEBUG

@@ -10,6 +10,9 @@
 #include "mgfamily.hpp"
 #include "multigrid.hpp"
 
+using std::string;
+using std::list;
+
 /**
  * @brief initiate a new block and store its adress in the p4est quad
  * 

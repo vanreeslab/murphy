@@ -12,6 +12,7 @@
 
 using std::map;
 using std::numeric_limits;
+using std::string;
 
 /**
  * @brief implements a @ref Block that is used as a leaf for the tree

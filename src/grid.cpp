@@ -7,6 +7,7 @@
 #include "partitioner.hpp"
 #include "wavelet.hpp"
 
+using std::list;
 using std::string;
 
 /**
@@ -18,7 +19,7 @@ Grid::Grid() : ForestGrid() {
     prof_     = nullptr;
     ghost_    = nullptr;
     // create a default interpolator
-    interp_ = new Wavelet<M_WAVELET_N, M_WAVELET_NT>();
+    interp_ = new Wavelet();
     //-------------------------------------------------------------------------
 };
 
@@ -59,7 +60,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
         prof->Create("stencil_outer");
     }
     // create a default interpolator
-    interp_ = new Wavelet<M_WAVELET_N, M_WAVELET_NT>();
+    interp_ = new Wavelet();
     // create the associated blocks
     p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
     // partition the grid to have compatible grid
@@ -312,50 +313,6 @@ void Grid::GhostPull_Wait(Field* field, const sid_t ida) {
     m_end;
 }
 
-// /**
-//  * @brief Pull ghost points (take the values from the neighbors): start to obtain the ghost points from finer neighbors
-//  *
-//  * @param field the considered field
-//  * @param ida the received dimension
-//  */
-// void Grid::GhostPull_FineStart(Field* field, const sid_t ida) {
-//     m_begin;
-//     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
-//     m_assert(field != nullptr, "the source field cannot be null");
-//     m_assert(IsAField(field), "the field does not belong to this grid");
-//     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-//     //-------------------------------------------------------------------------
-//     if (!field->ghost_status()) {
-//         m_profStart(prof_, "ghostpull_fine_start");
-//         ghost_->PutGhost_Post(field, ida);
-//         m_profStop(prof_, "ghostpull_fine_start");
-//     }
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
-// /**
-//  * @brief Pull ghost points (take the values from the neighbors): end to obtain the ghost points from finer neighbors
-//  * 
-//  * @param field the considered field
-//  * @param ida the filled dimension
-//  */
-// void Grid::GhostPull_FineEnd(Field* field, const sid_t ida) {
-//     m_begin;
-//     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
-//     m_assert(field != nullptr, "the source field cannot be null");
-//     m_assert(IsAField(field), "the field does not belong to this grid");
-//     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-//     //-------------------------------------------------------------------------
-//     if (!field->ghost_status()) {
-//         m_profStart(prof_, "ghostpull_fine_start");
-//         ghost_->PutGhost_Wait(field, ida);
-//         m_profStop(prof_, "ghostpull_fine_start");
-//     }
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
-
 /**
  * @brief Pull the ghost points (take the values from the neighbors): after this function, the ghost status of the field is set as up-to-date
  * 
@@ -370,8 +327,6 @@ void Grid::GhostPull(Field* field) {
     for (int ida = 0; ida < field->lda(); ida++) {
         GhostPull_Post(field, ida);
         GhostPull_Wait(field, ida);
-        // GhostPull_FineStart(field, ida);
-        // GhostPull_FineEnd(field, ida);
     }
     // // set that everything is ready for the field
     field->ghost_status(true);
