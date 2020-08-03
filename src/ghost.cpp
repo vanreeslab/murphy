@@ -1170,10 +1170,11 @@ inline void Ghost::Compute4Block_Refine_(const ListGBLocal* ghost_list, const me
     lid_t coarse_end[3];
     for (lda_t id = 0; id < 3; id++) {
         coarse_start[id] = -CoarseNGhostFront(interp_);
-        coarse_end[id]   = CoarseStride(interp_) - CoarseNGhostFront(interp_);
+        coarse_end[id]   = M_HN + CoarseNGhostBack(interp_);
+        m_assert((coarse_end[id] - coarse_start[id]) == CoarseStride(interp_), "the total length of the ghost must match the stride");
     }
     SubBlock block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
-    data_ptr data_src = ptr_src + m_zeroidx(0, &block_src);
+    const data_ptr data_src = ptr_src + m_zeroidx(0, &block_src);
     lid_t    shift[3] = {0, 0, 0};
 
     // loop on the ghost list

@@ -161,19 +161,24 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
                 const lda_t iz = ik2 % 2;
 
                 // get the filter, depending on if I am odd or even
-                const_mem_ptr gs_x   = (ix == 1) ? (gs) : (&one);
-                const_mem_ptr gs_y   = (iy == 1) ? (gs) : (&one);
-                const_mem_ptr gs_z   = (iz == 1) ? (gs) : (&one);
-                const sid_t   lim[3] = {gs_lim * ix, gs_lim * iy, gs_lim * iz};
+                const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
+                const_mem_ptr gs_y         = (iy == 1) ? (gs) : (&one);
+                const_mem_ptr gs_z         = (iz == 1) ? (gs) : (&one);
+                const sid_t   lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+                const sid_t   lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+
+                m_assert(((ik0 / 2 - lim_start[0]) >= ctx->srcstart[0]) && ((ik0 / 2 + lim_end[0]) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);
+                m_assert(((ik1 / 2 - lim_start[1]) >= ctx->srcstart[1]) && ((ik1 / 2 + lim_end[1]) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1 - gs_lim, ctx->srcstart[1], ik1 + gs_lim, ctx->srcend[1]);
+                m_assert(((ik2 / 2 - lim_start[2]) >= ctx->srcstart[2]) && ((ik2 / 2 + lim_end[2]) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
 
                 // add the constant array
                 ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] = alpha * lcdata[m_sidx(0, 0, 0, 0, ctx->trgstr)];
 
                 // if one dim is even, id = 0, -> gs[0] = 1 and that's it
                 // if one dim is odd, id = 1, -> we loop on gs, business as usual
-                for (sid_t id2 = -lim[2]; id2 <= (lim[2] + 1); ++id2) {
-                    for (sid_t id1 = -lim[1]; id1 <= (lim[1] + 1); ++id1) {
-                        for (sid_t id0 = -lim[0]; id0 <= (lim[0] + 1); ++id0) {
+                for (sid_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+                    for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+                        for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                             const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
                             ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
                         }
