@@ -15,11 +15,13 @@
  * @{
  */
 #define M_N 16          //!< size of one block (M_N x M_N x M_N)
-#define M_GS 4         //!< number of ghost points
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
-#define M_WAVELET_N 2
-#define M_WAVELET_NT 2
+#ifndef BLOCK_GS
+#define M_GS 4  //!< number of ghost points
+#else
+#define M_GS BLOCK_GS
+#endif
 /** @} */
 
 /**
