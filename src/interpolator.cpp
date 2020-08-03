@@ -78,6 +78,8 @@ void Interpolator::Interpolate(const level_t dlvl, const lid_t shift[3], const M
 void Interpolator::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout *block_src, const data_ptr data_src, const MemLayout *block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
+    m_assert(nghost_back() <= M_GS, "the number of BLOCK_GS is too low, should be at least %d, here %d", nghost_back(), M_GS);
+    m_assert(nghost_front() <= M_GS, "the number of BLOCK_GS is too low, should be at least %d, here %d", nghost_front(), M_GS);
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;

@@ -46,8 +46,8 @@ void GridBlock::AllocatePtrGhost(const size_t memsize) {
     //-------------------------------------------------------------------------
     if (ptr_ghost_ == nullptr) {
         MPI_Alloc_mem(memsize, MPI_INFO_NULL, &ptr_ghost_);
-        m_verb("allocating the ghost ptr of size %ld, @ %p", ptr_size_, ptr_ghost_)
-            m_assert(ptr_ghost_ != nullptr, "the pointer is still null, not possible");
+        m_verb("allocating the ghost ptr of size %ld, @ %p", memsize, ptr_ghost_);
+        m_assert(ptr_ghost_ != nullptr, "the pointer is still null, not possible");
     } else {
         m_verb("no ghost ptr allocated, already present");
     }

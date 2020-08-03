@@ -153,7 +153,7 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
                 //get the local adress of the arrays
                 data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const data_ptr lsdata = ctx->sdata + m_sidx(ik0 / 2, ik1 / 2, ik2 / 2, 0, ctx->srcstr);
+                const data_ptr lsdata = ctx->sdata + m_sidx((ik0 / 2), (ik1 / 2), (ik2 / 2), 0, ctx->srcstr);
 
                 // get the needed filters and the loop lim
                 const lda_t ix = ik0 % 2;
@@ -171,9 +171,9 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
 
                 // if one dim is even, id = 0, -> gs[0] = 1 and that's it
                 // if one dim is odd, id = 1, -> we loop on gs, business as usual
-                for (sid_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
-                    for (sid_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
-                        for (sid_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
+                for (sid_t id2 = -lim[2]; id2 <= (lim[2] + 1); ++id2) {
+                    for (sid_t id1 = -lim[1]; id1 <= (lim[1] + 1); ++id1) {
+                        for (sid_t id0 = -lim[0]; id0 <= (lim[0] + 1); ++id0) {
                             const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
                             ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
                         }
@@ -194,18 +194,17 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
  */
 void Wavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max) {
     //-------------------------------------------------------------------------
-    // m_assume_aligned(ctx->tdata);
+    const sid_t   ga_lim   = len_ga_ / 2;
+    const_mem_ptr ga       = Wavelet::ga_ + ga_lim;
+    const real_t  zero     = 0.0;
+    const lid_t   start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    const lid_t   end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
-    const sid_t   ga_lim = len_ga_ / 2;
-    const_mem_ptr ga     = Wavelet::ga_ + ga_lim;
-    m_assert(ga[0] == 1.0, "this is annoying as the looping procedure is based on that assumption");
-
-    const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-    const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-
-    (*details_max) = 0.0;
+    // do a small sanity check
+    m_assert(ga[0] == 1.0, "we need that to ensure a correct result bellow");
 
     // for each of the data for the considered children
+    (*details_max) = 0.0;
     for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
         for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
             for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
@@ -217,17 +216,21 @@ void Wavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max) {
                 const lda_t iy = ik1 % 2;
                 const lda_t iz = ik2 % 2;
 
+                // get the filter, depending on if I am odd or even
+                const sid_t lim[3] = {ga_lim * ix, ga_lim * iy, ga_lim * iz};
+
                 // if one dim is even, id = 0, -> ga = 1 and that's it
                 // if one dim is odd, id=1, -> we loop on ga, business as usual
                 real_t detail = 0.0;
-                for (sid_t id2 = -(ga_lim * iz); id2 <= (ga_lim * iz); ++id2) {
-                    for (sid_t id1 = -(ga_lim * iy); id1 <= (ga_lim * iy); ++id1) {
-                        for (sid_t id0 = -(ga_lim * ix); id0 <= (ga_lim * ix); ++id0) {
-                            detail += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(1 + id0, 1 + id1, 1 + id2, 0, ctx->trgstr)];
+                for (sid_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
+                    for (sid_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
+                        for (sid_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
+                            detail += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(id0, id1, id2, 0, ctx->trgstr)];
                         }
                     }
                 }
-                // update the max detail if needed
+                // update the max detail if needed and set the detail to 0.0 if we are even everywhere
+                detail         = ((ix + iy + iz) > 0) ? (detail) : (0.0);
                 (*details_max) = m_max(std::fabs(detail), (*details_max));
             }
         }

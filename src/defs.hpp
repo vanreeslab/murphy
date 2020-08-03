@@ -18,7 +18,7 @@
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 4  //!< number of ghost points
+#define M_GS 2  //!< number of ghost points
 #else
 #define M_GS BLOCK_GS
 #endif

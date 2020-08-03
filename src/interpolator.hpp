@@ -53,6 +53,7 @@ typedef struct interp_ctx_t {
  */
 class Interpolator {
    public:
+    explicit Interpolator(){};
     // need to define the destructor as virtual to be sure to pass by by the wavelet destructor
     virtual ~Interpolator(){};
 
