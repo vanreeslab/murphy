@@ -79,22 +79,22 @@ class Prof {
     void Disp(const std::string ref);
 };
 
-#define m_profStart(prof, name)    \
-    ({                             \
-        Prof*  prof_ = (prof);     \
-        string name_ = (name);     \
-        if ((prof_) != nullptr) {  \
-            (prof_)->Start(name_); \
-        }                          \
+#define m_profStart(prof, name)                            \
+    ({                                                     \
+        Prof*  m_profStart_prof_ = (Prof*)(prof);          \
+        std::string m_profStart_name_ = (std::string)(name);         \
+        if ((m_profStart_prof_) != nullptr) {              \
+            (m_profStart_prof_)->Start(m_profStart_name_); \
+        }                                                  \
     })
 
-#define m_profStop(prof, name)    \
-    ({                            \
-        Prof*  prof_ = (prof);    \
-        string name_ = (name);    \
-        if ((prof_) != nullptr) { \
-            (prof_)->Stop(name_); \
-        }                         \
+#define m_profStop(prof, name)                          \
+    ({                                                  \
+        Prof*  m_profStop_prof_ = (Prof*)(prof);        \
+        std::string m_profStop_name_ = (std::string)(name);       \
+        if ((m_profStop_prof_) != nullptr) {            \
+            (m_profStop_prof_)->Stop(m_profStop_name_); \
+        }                                               \
     })
 
 #endif  // SRC_PROF_HPP_
