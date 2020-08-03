@@ -47,7 +47,7 @@ jobs:
       #     path: murphy_test
 
   #----------------------------------------------------------------------------
-  runtests_sequential_wavelet2.2:
+  runtests_sequential_wavelet_2_2:
     needs: build-test build-debug
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
@@ -72,7 +72,7 @@ jobs:
       - name: build
         run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
   #----------------------------------------------------------------------------
-  runtests_sequential_wavelet4.0:
+  runtests_sequential_wavelet_4_0:
     needs: build-test build-debug
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
@@ -98,7 +98,7 @@ jobs:
         run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
 
   #----------------------------------------------------------------------------
-  runtests_sequential_wavelet4.2:
+  runtests_sequential_wavelet_4_2:
     needs: build-test build-debug
     #indicate to run on the beast using the correct docker
     runs-on: beast-tower
