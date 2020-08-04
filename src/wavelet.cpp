@@ -149,19 +149,26 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
     for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
         for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
             for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
-                // get the current data
-                //get the local adress of the arrays
-                data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const data_ptr lsdata = ctx->sdata + m_sidx((ik0 / 2), (ik1 / 2), (ik2 / 2), 0, ctx->srcstr);
-
-                // get the needed filters and the loop lim
-                const lda_t iy = std::fabs(ik1 % 2);
-                const lda_t ix = std::fabs(ik0 % 2);
-                const lda_t iz = std::fabs(ik2 % 2);
+                // get 0 if odd, 1 if even (even if negative!!)
+                const lda_t iy = m_sign(ik1) * (ik1 % 2);
+                const lda_t ix = m_sign(ik0) * (ik0 % 2);
+                const lda_t iz = m_sign(ik2) * (ik2 % 2);
                 m_assert(ix == 0 || ix == 1, "this are the two possible values");
                 m_assert(iy == 0 || iy == 1, "this are the two possible values");
                 m_assert(iz == 0 || iz == 1, "this are the two possible values");
+
+                // get the target location
+                data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+                const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+
+                //get the local adress of the source, a bit more complicated to handle the negative numbers
+                const lid_t    ik0_s  = (ik0 - ix) / 2;
+                const lid_t    ik1_s  = (ik1 - iy) / 2;
+                const lid_t    ik2_s  = (ik2 - iz) / 2;
+                const data_ptr lsdata = ctx->sdata + m_sidx(ik0_s, ik1_s, ik2_s, 0, ctx->srcstr);
+                m_assert((ik0_s * 2) <= ik0, "if not, we made something wrong...: source = %d, target = %d", ik0_s, ik0);
+                m_assert((ik1_s * 2) <= ik1, "if not, we made something wrong...: source = %d, target = %d", ik1_s, ik1);
+                m_assert((ik2_s * 2) <= ik2, "if not, we made something wrong...: source = %d, target = %d", ik2_s, ik2);
 
                 // get the filter, depending on if I am odd or even
                 const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
@@ -219,10 +226,11 @@ void Wavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max) {
                 // get the current data
                 data_ptr ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 // m_assume_aligned(ltdata);
-
-                const lda_t iy = std::fabs(ik1 % 2);
-                const lda_t ix = std::fabs(ik0 % 2);
-                const lda_t iz = std::fabs(ik2 % 2);
+                
+                // get 0 if odd, 1 if even (even if negative!!)
+                const lda_t iy = m_sign(ik1) * (ik1 % 2);
+                const lda_t ix = m_sign(ik0) * (ik0 % 2);
+                const lda_t iz = m_sign(ik2) * (ik2 % 2);
                 m_assert(ix == 0 || ix == 1, "this are the two possible values");
                 m_assert(iy == 0 || iy == 1, "this are the two possible values");
                 m_assert(iz == 0 || iz == 1, "this are the two possible values");
