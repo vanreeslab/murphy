@@ -95,33 +95,34 @@ class SetLaplaCosinus : public OperatorF {
  */
 class SetPolynom : public OperatorF {
    protected:
+    bool   extend_ = false;            //!< indicate if we need to fill the ghosts or not
     lid_t  deg_[3] = {0, 0, 0};        //!< the degree of the polynomial
     real_t dir_[3] = {0.0, 0.0, 0.0};  //!< the direction concerned: 1.0 means involved, 0.0 means not involved
 
     void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetPolynom(lid_t degree[3], real_t direction[3]);
+    SetPolynom(const lid_t degree[3], const real_t direction[3]);
+    SetPolynom(const lid_t degree[3], const real_t direction[3],const bool extend);
 };
-
 
 class SetExponential : public OperatorF {
    protected:
     real_t center_[3] = {0.0, 0.0, 0.0};
     real_t sigma_[3]  = {0.0, 0.0, 0.0};
-    real_t alpha_ = 1.0;
+    real_t alpha_     = 1.0;
 
     void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetExponential(real_t center[3], real_t sigma[3],real_t alpha);
+    SetExponential(real_t center[3], real_t sigma[3], real_t alpha);
 };
 
 class SetErf : public OperatorF {
    protected:
     real_t center_[3] = {0.0, 0.0, 0.0};
     real_t sigma_[3]  = {0.0, 0.0, 0.0};
-    real_t alpha_ = 1.0;
+    real_t alpha_     = 1.0;
 
     void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
 

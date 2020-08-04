@@ -44,11 +44,11 @@ int main(int argc, char** argv) {
         grid->Adapt(&patch);
         grid->Adapt(&argument.patch_);
         // create a field
-        Field* vort = new Field("vorticity", 3);
+        Field vort("vorticity", 3);
         // Field* psi  = new Field("psi", 3);
         // Field* res  = new Field("residual", 3);
         // // register the field to the grid
-        grid->AddField(vort);
+        grid->AddField(&vort);
         // grid->AddField(psi);
         // grid->AddField(res);
         // // get some values for the polynomial
@@ -68,29 +68,29 @@ int main(int argc, char** argv) {
         const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
         SetVortexRing vr_init(normal, center, sigma, radius);
-        vr_init(grid, vort);
+        vr_init(grid,&vort);
 
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         // vort->bctype(M_BC_ODD);
-        vort->bctype(M_BC_EXTRAP_3);
+        vort.bctype(M_BC_EXTRAP_3);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
         grid->SetTol(1e-1, 1e-3);
-        grid->Adapt(vort);
-        vr_init(grid, vort);
-        grid->Adapt(vort);
-        vr_init(grid, vort);
+        grid->Adapt(&vort);
+        vr_init(grid, &vort);
+        grid->Adapt(&vort);
+        vr_init(grid, &vort);
         // grid->Adapt(vort);
         // vr_init(grid, vort);
         // grid->Adapt(vort);
 
-        grid->GhostPull(vort);
+        grid->GhostPull(&vort);
         // vr_init(grid, vort);
 
-        dump(grid, vort);
+        dump(grid, &vort);
 
         dump.dump_ghost(true);
-        dump(grid, vort);
+        dump(grid, &vort);
 
         // init the MG solver
         // Multigrid* poisson = new Multigrid(grid, 0, vort, psi, res);
@@ -98,10 +98,6 @@ int main(int argc, char** argv) {
         // poisson->Solve();
 
         // and destroy the grid and the field
-        delete (vort);
-        // delete (psi);
-        // delete (res);
-        // delete (poisson);
         delete (grid);
     }
     // display the profiler

@@ -716,7 +716,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                               /* traget */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), -1);
                     gb->data_src(ngh_block);
-//#pragma omp critical
+                    //#pragma omp critical
                     bsibling->push_back(gb);
                 } else if (nghq->level < block->level()) {
                     // TODO: change this to the coarse block to avoid any cast afterwards...
@@ -724,13 +724,13 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                               /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), -1);
                     gb->data_src(ngh_block);
-//#pragma omp critical
+                    //#pragma omp critical
                     bparent->push_back(gb);
                     // the children: the source = the coarse myself, target = my neighbor
                     GBLocal* invert_gb = new GBLocal(/* source */ block->level() - 1, block->xyz(), coarse_hgrid, block_len,
                                                      /* target */ ngh_block->level(), ngh_pos, ngh_hgrid, block_min, block_max, block->gs(), block->stride(), -1);
                     invert_gb->data_src(ngh_block);
-//#pragma omp critical
+                    //#pragma omp critical
                     bparent_rv->push_back(invert_gb);
                 } else {
                     m_assert((nghq->level - block->level()) == 1, "The delta level is not correct: %d - %d", nghq->level, block->level());
@@ -895,7 +895,7 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field*
  * @param block the gridblock considered
  * @param fid the field id
  */
-void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block,const Field* fid) {
+void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field* fid) {
     //-------------------------------------------------------------------------
     real_p     tmp       = block->ptr_ghost();
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
@@ -1173,9 +1173,9 @@ inline void Ghost::Compute4Block_Refine_(const ListGBLocal* ghost_list, const me
         coarse_end[id]   = M_HN + CoarseNGhostBack(interp_);
         m_assert((coarse_end[id] - coarse_start[id]) == CoarseStride(interp_), "the total length of the ghost must match the stride");
     }
-    SubBlock block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
+    SubBlock       block_src(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
     const data_ptr data_src = ptr_src + m_zeroidx(0, &block_src);
-    lid_t    shift[3] = {0, 0, 0};
+    lid_t          shift[3] = {0, 0, 0};
 
     // loop on the ghost list
     for (const auto gblock : (*ghost_list)) {

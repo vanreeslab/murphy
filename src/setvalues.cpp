@@ -133,9 +133,8 @@ SetSinus::SetSinus(real_t length[3], real_t freq[3]) {
 void SetSinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz     = block->xyz();
+    const real_t* xyz   = block->xyz();
     const real_t* hgrid   = block->hgrid();
-    const real_t  vol     = 1.0 / (hgrid[0] * hgrid[1] * hgrid[2]);
     const real_t  fact[3] = {2.0 * M_PI * freq_[0] / length_[0], 2.0 * M_PI * freq_[1] / length_[1], 2.0 * M_PI * freq_[2] / length_[2]};
 
     for (sid_t ida = 0; ida < fid->lda(); ida++) {
@@ -147,9 +146,7 @@ void SetSinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
 
-                    data[m_idx(i0, i1, i2)] = vol * ((-cos((pos[0] + hgrid[0] * 0.5) * fact[0]) + cos((pos[0] - hgrid[0] * 0.5) * fact[0])) / fact[0] *
-                                                     (-cos((pos[1] + hgrid[1] * 0.5) * fact[1]) + cos((pos[1] - hgrid[1] * 0.5) * fact[1])) / fact[1] *
-                                                     (-cos((pos[2] + hgrid[2] * 0.5) * fact[2]) + cos((pos[2] - hgrid[2] * 0.5) * fact[2])) / fact[2]);
+                    data[m_idx(i0, i1, i2)] = sin(pos[0] * fact[0]) * sin(pos[1] * fact[1]) * sin(pos[2] * fact[2]);
                 }
             }
         }
@@ -233,9 +230,18 @@ void SetLaplaCosinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
 }
 
-SetPolynom::SetPolynom(lid_t degree[3], real_t direction[3]) {
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3]) : SetPolynom(degree, direction, false) {
     m_begin;
     //-------------------------------------------------------------------------
+    // do nothing
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const bool extend) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    extend_ = extend;
     for (int id = 0; id < 3; id++) {
         deg_[id] = degree[id];
         dir_[id] = direction[id];
@@ -249,18 +255,17 @@ void SetPolynom::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
     const real_t* xyz   = block->xyz();
     const real_t* hgrid = block->hgrid();
 
+    const lid_t start = (extend_) ? (-M_GS) : (0);
+    const lid_t end   = (extend_) ? (M_N + M_GS) : (M_N);
+
     for (sid_t ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
 
-        for (int i2 = 0; i2 < M_N; i2++) {
-            for (int i1 = 0; i1 < M_N; i1++) {
-                for (int i0 = 0; i0 < M_N; i0++) {
+        for (int i2 = start; i2 < end; i2++) {
+            for (int i1 = start; i1 < end; i1++) {
+                for (int i0 = start; i0 < end; i0++) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
-
-                    // data[m_idx(i0, i1, i2)] = dir_[0] / (deg_[0] + 1.0) * (pow(pos[0] + hgrid[0] * 0.5, deg_[0] + 1.0) - pow(pos[0] - hgrid[0] * 0.5, deg_[0] + 1.0)) / hgrid[0] +
-                    //                           dir_[1] / (deg_[1] + 1.0) * (pow(pos[1] + hgrid[1] * 0.5, deg_[1] + 1.0) - pow(pos[1] - hgrid[1] * 0.5, deg_[1] + 1.0)) / hgrid[1] +
-                    //                           dir_[2] / (deg_[2] + 1.0) * (pow(pos[2] + hgrid[2] * 0.5, deg_[2] + 1.0) - pow(pos[2] - hgrid[2] * 0.5, deg_[2] + 1.0)) / hgrid[2];
 
                     data[m_idx(i0, i1, i2)] = dir_[0] * pow(pos[0], deg_[0]) + dir_[1] * pow(pos[1], deg_[1]) + dir_[2] * pow(pos[2], deg_[2]);
                 }

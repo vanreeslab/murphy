@@ -72,9 +72,11 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    void GhostPull(Field* field);
-    void GhostPull_Post(Field* field, const sid_t ida);
-    void GhostPull_Wait(Field* field, const sid_t ida);
+    inline lid_t NGhostFront() const { return interp_->nghost_front(); }
+    inline lid_t NGhostBack() const { return interp_->nghost_back(); }
+    void         GhostPull(Field* field);
+    void         GhostPull_Post(Field* field, const sid_t ida);
+    void         GhostPull_Wait(Field* field, const sid_t ida);
     /**@}*/
 
     /**

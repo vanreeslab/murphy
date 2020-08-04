@@ -1,296 +1,176 @@
 
-// #include "wavelet.hpp"
+#include <mpi.h>
 
-// #include "error.hpp"
-// #include "gtest/gtest.h"
-// #include "murphy.hpp"
-// #include "subblock.hpp"
+#include "doop.hpp"
+#include "error.hpp"
+#include "grid.hpp"
+#include "gtest/gtest.h"
+#include "ioh5.hpp"
+#include "murphy.hpp"
+#include "setvalues.hpp"
+#include "subblock.hpp"
+#include "wavelet.hpp"
 
-// #define DOUBLE_TOL 1e-13
+#define DOUBLE_TOL 1e-10
 
-// class valid_Wavelet_Ghost : public ::testing::Test {
-//    protected:
-//     SubBlock* block_coarse_;
-//     SubBlock* block_fine_;
-//     real_p    data_coarse_;
-//     real_p    data_fine_;
-//     real_t    hcoarse_;
-//     real_t    hfine_;
+using std::list;
 
-//     lid_t coarse_start_[3];
-//     lid_t coarse_end_[3];
-//     lid_t fine_start_[3];
-//     lid_t fine_end_[3];
+// define a mask on the edge and corner ghosts
+class MaskPhysBC : public OperatorF {
+   protected:
+    real_t L_[3];
+    void   ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override {
+        //-------------------------------------------------------------------------
+        real_t pos[3];
 
-//     void SetUp() override {
-//         data_fine_   = (real_t*)m_calloc(20 * 20 * 20 * sizeof(real_t));
-//         data_coarse_ = (real_t*)m_calloc(20 * 20 * 20 * sizeof(real_t));
+        for (lda_t ida = 0; ida < fid->lda(); ida++) {
+            data_ptr data = block->data(fid, ida);
+            for (int i2 = (-M_GS); i2 < (M_N + M_GS); i2++) {
+                for (int i1 = (-M_GS); i1 < (M_N + M_GS); i1++) {
+                    for (int i0 = (-M_GS); i0 < (M_N + M_GS); i0++) {
+                        // get the position
+                        real_t pos[3];
+                        m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
 
-//         for (int id = 0; id < 3; id++) {
-//             coarse_start_[id] = 0;
-//             coarse_end_[id]   = M_N;
-//             fine_start_[id]   = -M_GS;
-//             fine_end_[id]     = 0;
-//         }
-//         block_coarse_ = new SubBlock(M_GS, M_STRIDE, coarse_start_, coarse_end_);
-//         block_fine_   = new SubBlock(M_GS, M_STRIDE, fine_start_, fine_end_);
+                        const bool is_out_0 = (pos[0] < 0.0) || (pos[0] >= L_[0]);
+                        const bool is_out_1 = (pos[1] < 0.0) || (pos[1] >= L_[0]);
+                        const bool is_out_2 = (pos[2] < 0.0) || (pos[2] >= L_[0]);
 
-//         hcoarse_ = 1.0 / (M_N);
-//         hfine_   = 0.5 / (M_N);
-//     };
-//     void TearDown() override {
-//         m_free(data_fine_);
-//         m_free(data_coarse_);
+                        const bool to_trash = ((is_out_0 + is_out_1 + is_out_2) > 0);
 
-//         delete (block_coarse_);
-//         delete (block_fine_);
-//     };
-// };
+                        data[m_idx(i0, i1, i2)] = data[m_idx(i0, i1, i2)] * (!to_trash);
+                    }
+                }
+            }
+        }
+        //-------------------------------------------------------------------------
+    };
 
-// //==============================================================================================================================
-// static double poly_1(const double x) {
-//     return M_PI_2 * x + M_SQRT2;
-// }
-// // test the wavelet + moments
-// TEST_F(valid_Wavelet_Ghost, ghost_order_2_2) {
-//     real_t* data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
-//     real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
-//     for (int id = 0; id < 3; id++) {
-//         coarse_start_[id] = 0;
-//         coarse_end_[id]   = M_N;
-//         fine_start_[id]   = 0;
-//         fine_end_[id]     = M_N;
-//     }
-//     fine_start_[0] = -M_GS;
-//     fine_end_[0]   = 0;
-//     fine_end_[1]   = M_N - 2;
-//     fine_end_[2]   = M_N - 2;
+   public:
+    MaskPhysBC(const lid_t L[3]) {
+        m_begin;
+        //-------------------------------------------------------------------------
+        for (lda_t id = 0; id < 3; ++id) {
+            L_[id] = (real_t)L[id];
+        }
+        //-------------------------------------------------------------------------
+        m_end;
+    };
+};
 
-//     block_coarse_->Reset(M_GS, M_STRIDE, coarse_start_, coarse_end_);
-//     block_fine_->Reset(M_GS, M_STRIDE, fine_start_, fine_end_);
+class test_Wavelet_Ghost : public ::testing::Test {
+   protected:
+    void SetUp() override{};
+    void TearDown() override{};
+};
 
-//     for (int id = 0; id < 3; id++) {
-//         real_t mom_coarse[4] = {0.0, 0.0, 0.0, 0.0};
-//         real_t mom_fine[4]   = {0.0, 0.0, 0.0, 0.0};
-//         real_t vol_fine      = (hfine_ * hfine_ * hfine_);
-//         real_t vol_coarse    = (hcoarse_ * hcoarse_ * hcoarse_);
+//==============================================================================================================================
+#if (WAVELET_N == 2)
+TEST_F(test_Wavelet_Ghost, ghost_order_2_2) {
+    for (lda_t id = 0; id < 3; id++) {
+        bool  period[3] = {false, false, false};
+        lid_t L[3]      = {1, 1, 1};
+        L[id]           = 3;
+        Grid grid(0, period, L, MPI_COMM_WORLD, nullptr);
 
-//         real_t shift_fine[3]   = {1.0, 0.0, 0.0};
-//         real_t shift_coarse[3] = {0.0, 0.0, 0.0};
+        // create the patch refinement to refine the middle tree
+        real_t origin[3]      = {0.0, 0.0, 0.0};
+        origin[id]            = 1.0;
+        real_t      length[3] = {1.0, 1.0, 1.0};
+        Patch       p1(origin, length, 1);
+        list<Patch> patch{p1};
+        grid.Adapt(&patch);
 
-//         // fill the fine block
-//         for (int i2 = 0; i2 < M_N; i2++) {
-//             for (int i1 = 0; i1 < M_N; i1++) {
-//                 for (int i0 = 0; i0 < M_N; i0++) {
-//                     real_t x      = shift_fine[0] + i0 * hfine_;
-//                     real_t y      = shift_fine[1] + i1 * hfine_;
-//                     real_t z      = shift_fine[2] + i2 * hfine_;
-//                     real_t pos[3] = {x, y, z};
+        Field test("test", 1);
+        grid.AddField(&test);
+        test.bctype(M_BC_EXTRAP_3);
 
-//                     data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_1(pos[id]);
-//                 }
-//             }
-//         }
-//         // fill the coarse block
-//         for (int i2 = 0; i2 < M_N; i2++) {
-//             for (int i1 = 0; i1 < M_N; i1++) {
-//                 for (int i0 = 0; i0 < M_N; i0++) {
-//                     real_t x      = shift_coarse[0] + i0 * hcoarse_;
-//                     real_t y      = shift_coarse[1] + i1 * hcoarse_;
-//                     real_t z      = shift_coarse[2] + i2 * hcoarse_;
-//                     real_t pos[3] = {x, y, z};
+        // create the initial field
+        const lid_t  deg[3] = {1, 1, 1};
+        const real_t dir[3] = {M_SQRT2, M_PI, -M_E};
+        SetPolynom   field_init(deg, dir);
+        field_init(&grid, &test);
 
-//                     data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)] = poly_1(pos[id]);
-//                 }
-//             }
-//         }
-//         // do the refinement
-//         Wavelet<2, 2>* interp    = new Wavelet<2, 2>();
-//         lid_t          shift[3]  = {M_N, 0, 0};
-//         sid_t          normal[3] = {-1, 0, 0};
-//         interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine, normal);
+        // pull the ghosts
+        grid.GhostPull(&test);
 
-//         //check the result
-//         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-//             for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-//                 for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-//                     real_t x      = shift_fine[0] + i0 * hfine_;
-//                     real_t y      = shift_fine[1] + i1 * hfine_;
-//                     real_t z      = shift_fine[2] + i2 * hfine_;
-//                     real_t pos[3] = {x, y, z};
+        // IOH5 io("data_test");
+        // io(&grid, &test);
+        // io.dump_ghost(true);
+        // io(&grid, &test);
 
-//                     real_t val = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
-//                     ASSERT_NEAR(val, poly_1(pos[id]), DOUBLE_TOL) << "in" << i0 << " " << i1 << " " << i2 << " while testing direction " << id;
-//                 }
-//             }
-//         }
-//         delete (interp);
-//     }
-// }
+        // create the solution field
+        Field sol("sol", 1);
+        grid.AddField(&sol);
+        SetPolynom field_sol(deg, dir, true);
+        field_sol(&grid, &sol);
 
+        // mask both the sol and the result
+        MaskPhysBC mask(L);
+        mask(&grid, &test);
+        mask(&grid, &sol);
 
-// //==============================================================================================================================
-// static double poly_3(const double x) {
-//     return M_PI_2 * pow(x, 3) + M_SQRT2 * pow(x, 2) + M_PI * x + sqrt(3);
-// }
-// // test the wavelet + moments
-// TEST_F(valid_Wavelet_Ghost, ghost_order_4_0) {
-//     real_t* data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
-//     real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
-//     for (int id = 0; id < 3; id++) {
-//         coarse_start_[id] = 0;
-//         coarse_end_[id]   = M_N;
-//         fine_start_[id]   = 0;
-//         fine_end_[id]     = M_N;
-//     }
-//     fine_start_[0] = -M_GS;
-//     fine_start_[1] = 4;
-//     fine_start_[2] = 4;
-//     fine_end_[0]   = 0;
-//     fine_end_[1]   = M_N - 4;
-//     fine_end_[2]   = M_N - 4;
+        // now, we need to check
+        real_t          norm2, normi;
+        ErrorCalculator error(&grid);
+        error.Norms(&grid, &test, &sol, &norm2, &normi);
 
-//     for (int id = 0; id < 3; id++) {
-//         for (sid_t side = 0; side < 2; side++) {
-//             fine_start_[0] = (side == 0) ? (-M_GS) : M_N;
-//             fine_end_[0]   = (side == 0) ? 0 : M_N + M_GS;
+        ASSERT_NEAR(normi, 0.0, DOUBLE_TOL) << "the inf-norm is " << normi << " in id = " << id;
+        ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL) << "the 2-norm is " << norm2 << " in id = " << id;
+    }
+}
+#elif (WAVELET_N == 4)
+TEST_F(test_Wavelet_Ghost, ghost_order_4_2) {
+    for (lda_t id = 0; id < 3; id++) {
+        bool  period[3] = {false, false, false};
+        lid_t L[3]      = {1, 1, 1};
+        L[id]           = 3;
+        Grid grid(0, period, L, MPI_COMM_WORLD, nullptr);
 
-//             block_coarse_->Reset(M_GS, M_STRIDE, coarse_start_, coarse_end_);
-//             block_fine_->Reset(M_GS, M_STRIDE, fine_start_, fine_end_);
+        // create the patch refinement to refine the middle tree
+        real_t origin[3]      = {0.0, 0.0, 0.0};
+        origin[id]            = 1.0;
+        real_t      length[3] = {1.0, 1.0, 1.0};
+        Patch       p1(origin, length, 1);
+        list<Patch> patch{p1};
+        grid.Adapt(&patch);
 
-//             real_t mom_coarse[4] = {0.0, 0.0, 0.0, 0.0};
-//             real_t mom_fine[4]   = {0.0, 0.0, 0.0, 0.0};
-//             real_t vol_fine      = (hfine_ * hfine_ * hfine_);
-//             real_t vol_coarse    = (hcoarse_ * hcoarse_ * hcoarse_);
+        Field test("test", 1);
+        grid.AddField(&test);
+        test.bctype(M_BC_EXTRAP_4);
 
-//             real_t shift_fine[3]   = {(side == 0) ? 1.0 : (-1.0), 0.0, 0.0};
-//             real_t shift_coarse[3] = {0.0, 0.0, 0.0};
+        // create the initial field
+        const lid_t  deg[3] = {3, 3, 3};
+        const real_t dir[3] = {M_SQRT2, M_PI, -M_E};
+        SetPolynom   field_init(deg, dir);
+        field_init(&grid, &test);
 
-//             // fill the fine block
-//             for (int i2 = 0; i2 < M_N; i2++) {
-//                 for (int i1 = 0; i1 < M_N; i1++) {
-//                     for (int i0 = 0; i0 < M_N; i0++) {
-//                         real_t x      = shift_fine[0] + i0 * hfine_;
-//                         real_t y      = shift_fine[1] + i1 * hfine_;
-//                         real_t z      = shift_fine[2] + i2 * hfine_;
-//                         real_t pos[3] = {x, y, z};
+        // pull the ghosts
+        grid.GhostPull(&test);
 
-//                         data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_3(pos[id]);
-//                     }
-//                 }
-//             }
-//             // fill the coarse block
-//             for (int i2 = 0; i2 < M_N; i2++) {
-//                 for (int i1 = 0; i1 < M_N; i1++) {
-//                     for (int i0 = 0; i0 < M_N; i0++) {
-//                         real_t x      = shift_coarse[0] + i0 * hcoarse_;
-//                         real_t y      = shift_coarse[1] + i1 * hcoarse_;
-//                         real_t z      = shift_coarse[2] + i2 * hcoarse_;
-//                         real_t pos[3] = {x, y, z};
+        // IOH5 io("data_test");
+        // io(&grid, &test);
+        // io.dump_ghost(true);
+        // io(&grid, &test);
 
-//                         data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)] = poly_3(pos[id]);
-//                     }
-//                 }
-//             }
-//             // do the refinement
-//             Wavelet<4, 0>* interp    = new Wavelet<4, 0>();
-//             lid_t          shift[3]  = {M_N, 0, 0};
-//             sid_t          normal[3] = {-1, 0, 0};
-//             interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine, normal);
+        // create the solution field
+        Field sol("sol", 1);
+        grid.AddField(&sol);
+        SetPolynom field_sol(deg, dir, true);
+        field_sol(&grid, &sol);
 
-//             //check the result
-//             for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-//                 for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-//                     for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-//                         real_t x      = shift_fine[0] + i0 * hfine_;
-//                         real_t y      = shift_fine[1] + i1 * hfine_;
-//                         real_t z      = shift_fine[2] + i2 * hfine_;
-//                         real_t pos[3] = {x, y, z};
-//                         real_t val    = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
-//                         ASSERT_NEAR(val, poly_3(pos[id]), DOUBLE_TOL) << "in" << i0 << " " << i1 << " " << i2 << " while testing direction " << id;
-//                     }
-//                 }
-//             }
-//             delete (interp);
-//         }
-//     }
-// }
+        // mask both the sol and the result
+        MaskPhysBC mask(L);
+        mask(&grid, &test);
+        mask(&grid, &sol);
 
-// // test the wavelet + moments
-// TEST_F(valid_Wavelet_Ghost, ghost_order_4_2) {
-//     real_t* data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
-//     real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
-//     for (int id = 0; id < 3; id++) {
-//         coarse_start_[id] = 0;
-//         coarse_end_[id]   = M_N;
-//         fine_start_[id]   = 0;
-//         fine_end_[id]     = M_N;
-//     }
-//     fine_start_[0] = -M_GS;
-//     fine_start_[1] = 4;
-//     fine_start_[2] = 4;
-//     fine_end_[0]   = 0;
-//     fine_end_[1]   = M_N - 4;
-//     fine_end_[2]   = M_N - 4;
+        // now, we need to check
+        real_t          norm2, normi;
+        ErrorCalculator error(&grid);
+        error.Norms(&grid, &test, &sol, &norm2, &normi);
 
-//     block_coarse_->Reset(M_GS, M_STRIDE, coarse_start_, coarse_end_);
-//     block_fine_->Reset(M_GS, M_STRIDE, fine_start_, fine_end_);
-
-//     for (int id = 0; id < 3; id++) {
-//         real_t mom_coarse[4] = {0.0, 0.0, 0.0, 0.0};
-//         real_t mom_fine[4]   = {0.0, 0.0, 0.0, 0.0};
-//         real_t vol_fine      = (hfine_ * hfine_ * hfine_);
-//         real_t vol_coarse    = (hcoarse_ * hcoarse_ * hcoarse_);
-
-//         real_t shift_fine[3]   = {1.0, 0.0, 0.0};
-//         real_t shift_coarse[3] = {0.0, 0.0, 0.0};
-
-//         // fill the fine block
-//         for (int i2 = 0; i2 < M_N; i2++) {
-//             for (int i1 = 0; i1 < M_N; i1++) {
-//                 for (int i0 = 0; i0 < M_N; i0++) {
-//                     real_t x      = shift_fine[0] + i0 * hfine_;
-//                     real_t y      = shift_fine[1] + i1 * hfine_;
-//                     real_t z      = shift_fine[2] + i2 * hfine_;
-//                     real_t pos[3] = {x, y, z};
-
-//                     data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly_3(pos[id]);
-//                 }
-//             }
-
-//         }
-//         // fill the coarse block
-//         for (int i2 = 0; i2 < M_N; i2++) {
-//             for (int i1 = 0; i1 < M_N; i1++) {
-//                 for (int i0 = 0; i0 < M_N; i0++) {
-//                     real_t x      = shift_coarse[0] + i0 * hcoarse_;
-//                     real_t y      = shift_coarse[1] + i1 * hcoarse_;
-//                     real_t z      = shift_coarse[2] + i2 * hcoarse_;
-//                     real_t pos[3] = {x, y, z};
-
-//                     data_coarse[m_midx(i0, i1, i2, 0, block_coarse_)] = poly_3(pos[id]);
-//                 }
-//             }
-//         }
-//         // do the refinement
-//         Wavelet<4, 2>* interp    = new Wavelet<4, 2>();
-//         lid_t          shift[3]  = {M_N, 0, 0};
-//         sid_t          normal[3] = {-1, 0, 0};
-//         interp->Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine, normal);
-
-//         //check the result
-//         for (int i2 = fine_start_[2]; i2 < fine_end_[2]; i2++) {
-//             for (int i1 = fine_start_[1]; i1 < fine_end_[1]; i1++) {
-//                 for (int i0 = fine_start_[0]; i0 < fine_end_[0]; i0++) {
-//                     real_t x      = shift_fine[0] + i0 * hfine_;
-//                     real_t y      = shift_fine[1] + i1 * hfine_;
-//                     real_t z      = shift_fine[2] + i2 * hfine_;
-//                     real_t pos[3] = {x, y, z};
-//                     real_t val = data_fine[m_midx(i0, i1, i2, 0, block_fine_)];
-//                     ASSERT_NEAR(val, poly_3(pos[id]), DOUBLE_TOL) << "in" << i0 << " " << i1 << " " << i2 << " while testing direction " << id;
-//                 }
-//             }
-//         }
-//         delete (interp);
-//     }
-// }
+        ASSERT_NEAR(normi, 0.0, DOUBLE_TOL) << "the inf-norm is " << normi << " in id = " << id;
+        ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL) << "the 2-norm is " << norm2 << " in id = " << id;
+    }
+}
+#endif

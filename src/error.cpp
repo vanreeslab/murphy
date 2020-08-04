@@ -2,6 +2,18 @@
 
 #include "gridblock.hpp"
 
+ErrorCalculator::ErrorCalculator() : ErrorCalculator(nullptr) {
+}
+
+ErrorCalculator::ErrorCalculator(const Grid* grid) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    start_ = (grid == nullptr) ? 0 : (-grid->NGhostFront());
+    end_   = (grid == nullptr) ? M_N : (M_N + grid->NGhostBack());
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
 /**
  * @brief returns the infinite norm of the error, see @ref ErrorCalculator::Norms()
  * 
@@ -74,7 +86,7 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
  */
 void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
-    const real_t* hgrid   = block->hgrid();
+    const real_t* hgrid = block->hgrid();
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
@@ -86,9 +98,13 @@ void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const F
         m_assume_aligned(data_field);
         m_assume_aligned(data_sol);
         // get the correct place given the current thread and the dimension
-        for (lid_t i2 = 0; i2 < M_N; i2++) {
-            for (lid_t i1 = 0; i1 < M_N; i1++) {
-                for (lid_t i0 = 0; i0 < M_N; i0++) {
+        for (lid_t i2 = start_; i2 < end_; i2++) {
+            for (lid_t i1 = start_; i1 < end_; i1++) {
+                for (lid_t i0 = start_; i0 < end_; i0++) {
+                    real_t pos[3];
+                    m_pos(pos, i0, i1, i2, hgrid, block->xyz());
+                    // we need to discard the physical BC for the edges
+
                     real_t error = data_field[m_idx(i0, i1, i2)] - data_sol[m_idx(i0, i1, i2)];
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
@@ -97,11 +113,11 @@ void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const F
         }
     }
     // add the result
-//#pragma omp atomic update
+    //#pragma omp atomic update
     error_2_ += e2 * (hgrid[0] * hgrid[1] * hgrid[2]);
 
-//#pragma omp critical
-    { // no max atomic in OpenMP
+    //#pragma omp critical
+    {  // no max atomic in OpenMP
         error_i_ = m_max(error_i_, ei);
     }
     //-------------------------------------------------------------------------

@@ -23,8 +23,8 @@ class valid_Wavelet : public ::testing::Test {
     lid_t fine_end_[3];
 
     void SetUp() override {
-        data_fine_   = (real_t*)m_calloc(20 * 20 * 20 * sizeof(real_t));
-        data_coarse_ = (real_t*)m_calloc(20 * 20 * 20 * sizeof(real_t));
+        data_fine_   = (real_t*)m_calloc(M_STRIDE * M_STRIDE * M_STRIDE * sizeof(real_t));
+        data_coarse_ = (real_t*)m_calloc(M_STRIDE * M_STRIDE * M_STRIDE * sizeof(real_t));
 
         for (int id = 0; id < 3; id++) {
             coarse_start_[id] = -M_GS;
