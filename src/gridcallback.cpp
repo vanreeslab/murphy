@@ -252,6 +252,8 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 /**
  * @brief Interpolate one block to his children or 8 children to their parent, using the Interpolator of the @ref Grid.
  * 
+ * If one of the outgoing block(s) is locked, then I lock the incomming block(s)
+ * 
  * @param forest 
  * @param which_tree 
  * @param num_outgoing 
@@ -313,6 +315,12 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
 
             // if we refine
             if (num_outgoing == 1) {
+                // check if the parent is locked and lock the child if this is the case
+                // this may happen if the parent has been tagged for refinement
+                if (block_out->locked()) {
+                    block_in->lock();
+                }
+
                 // get the shift given the child id
                 const lid_t shift[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
 
@@ -331,6 +339,12 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     }
                 }
             } else if (num_incoming == 1) {
+                // check if the child is locked and lock the parent if this is the case
+                // this may happen if the parent has been tagged for refinement
+                if (block_out->locked()) {
+                    block_in->lock();
+                }
+
                 // get the shift
                 const lid_t shift[3] = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
 

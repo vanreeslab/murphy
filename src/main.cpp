@@ -75,22 +75,22 @@ int main(int argc, char** argv) {
         vort->bctype(M_BC_EXTRAP_3);
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
-        grid->SetTol(5.0e+1, 1.0);
+        grid->SetTol(1e-1, 1e-3);
         grid->Adapt(vort);
         vr_init(grid, vort);
         grid->Adapt(vort);
         vr_init(grid, vort);
-        grid->Adapt(vort);
-        vr_init(grid, vort);
-        grid->Adapt(vort);
+        // grid->Adapt(vort);
+        // vr_init(grid, vort);
+        // grid->Adapt(vort);
 
         grid->GhostPull(vort);
         // vr_init(grid, vort);
 
         dump(grid, vort);
 
-        // dump.dump_ghost(true);
-        // dump(grid, vort);
+        dump.dump_ghost(true);
+        dump(grid, vort);
 
         // init the MG solver
         // Multigrid* poisson = new Multigrid(grid, 0, vort, psi, res);

@@ -39,8 +39,8 @@ real_t Wavelet::Criterion(MemLayout* block, data_ptr data) {
     lid_t           start[3];
     lid_t           end[3];
     for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - (lift_len / 2);
-        end[id]   = block->end(id) + (lift_len / 2) - 1;
+        start[id] = block->start(id) - m_max(lift_len / 2, 0);
+        end[id]   = block->end(id) + m_max((lift_len / 2) - 1, 0);
     }
     SubBlock extended_block(block->gs(), block->stride(), start, end);
 
