@@ -156,9 +156,12 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
                 const data_ptr lsdata = ctx->sdata + m_sidx((ik0 / 2), (ik1 / 2), (ik2 / 2), 0, ctx->srcstr);
 
                 // get the needed filters and the loop lim
-                const lda_t ix = ik0 % 2;
-                const lda_t iy = ik1 % 2;
-                const lda_t iz = ik2 % 2;
+                const lda_t iy = std::fabs(ik1 % 2);
+                const lda_t ix = std::fabs(ik0 % 2);
+                const lda_t iz = std::fabs(ik2 % 2);
+                m_assert(ix == 0 || ix == 1, "this are the two possible values");
+                m_assert(iy == 0 || iy == 1, "this are the two possible values");
+                m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
                 // get the filter, depending on if I am odd or even
                 const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
@@ -217,9 +220,12 @@ void Wavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max) {
                 data_ptr ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 // m_assume_aligned(ltdata);
 
-                const lda_t ix = ik0 % 2;
-                const lda_t iy = ik1 % 2;
-                const lda_t iz = ik2 % 2;
+                const lda_t iy = std::fabs(ik1 % 2);
+                const lda_t ix = std::fabs(ik0 % 2);
+                const lda_t iz = std::fabs(ik2 % 2);
+                m_assert(ix == 0 || ix == 1, "this are the two possible values");
+                m_assert(iy == 0 || iy == 1, "this are the two possible values");
+                m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
                 // get the filter, depending on if I am odd or even
                 const sid_t lim[3] = {ga_lim * ix, ga_lim * iy, ga_lim * iz};
