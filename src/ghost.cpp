@@ -572,11 +572,13 @@ void Ghost::PullGhost_Wait(Field* field, const lda_t ida) {
     MPI_Win_complete(mirrors_window_);
     MPI_Win_wait(mirrors_window_);
 
-    // we now have all the information needed to
+    // we copy back the missing info
+    LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
+
+    // we now have all the information needed, we finish with a physbc
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Wait, grid_, il, field, this);
     }
-    LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -881,9 +883,6 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field*
         // get the missing part from my local neighbors
         Compute4Block_Copy2Coarse_(block_sibling_[qid->cid], fid, tmp);
         Compute4Block_Copy2Coarse_(block_parent_[qid->cid], fid, tmp);
-
-        // also do the info from myself, while waiting for the comm + do the bc on the coarse myself
-        Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
     }
     //-------------------------------------------------------------------------
 }
@@ -900,6 +899,9 @@ void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field*
     real_p     tmp       = block->ptr_ghost();
     const bool do_coarse = (block_parent_[qid->cid]->size() + ghost_parent_[qid->cid]->size()) > 0;
     if (do_coarse) {
+        // now that everything has arrived, I can compute myself and the phys boundaries
+        Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
+        // refine the parents from the up-to-date coarse block
         Compute4Block_Refine_(block_parent_[qid->cid], tmp, block->data(fid, ida_));
         Compute4Block_Refine_(ghost_parent_[qid->cid], tmp, block->data(fid, ida_));
     }

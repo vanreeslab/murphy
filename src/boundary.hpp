@@ -65,17 +65,15 @@ class Boundary {
         const real_t* fsign     = face_sign[iface];
         m_assert((fsign[0] + fsign[1] + fsign[2] == -1) || (fsign[0] + fsign[1] + fsign[2] == +1), "only 1 component of face_sign must be non null: %f %f %f ", fsign[0], fsign[1], fsign[2]);
 
-        // shift the data to the correct spot, along the face
-        real_p ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);
-        lid_t  start[3];
-        lid_t  end[3];
-        for (sid_t id = 0; id < 3; ++id) {
-            start[id] = block->start(id) - fstart[id];
-            end[id]   = block->end(id) - fstart[id];
-        }
+        // shift the data to compute the region on the left or on the right of fstart
+        const lid_t start[3] = {block->start(0) - fstart[0], block->start(1) - fstart[1], block->start(2) - fstart[2]};
+        const lid_t end[3]   = {block->end(0) - fstart[0], block->end(1) - fstart[1], block->end(2) - fstart[2]};
 
-        // m_log("doing the phys block from %d %d %d to %d %d %d", start[0], start[1], start[2], end[0], end[1], end[2]);
-        // m_log("doing the phys block from %d %d %d to %d %d %d", block->start(0) + fstart[0], block->start(1) + fstart[1], block->start(2) + fstart[2], block->end(0) + fstart[0], block->end(1) + fstart[1], block->end(2) + fstart[2]);
+        // move the data around fstart
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        data_ptr ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);
         // let's goooo
         for (lid_t i2 = start[2]; i2 < end[2]; i2++) {
             for (lid_t i1 = start[1]; i1 < end[1]; i1++) {
@@ -85,9 +83,7 @@ class Boundary {
                     for (sid_t ip = 0; ip < npoint; ip++) {
                         // if the direction is not physics, just consider the current ID,
                         // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
-                        // const lid_t idx0 = (!isphys[0]) * i0 - (ip+1 * (lid_t)fsign[0] * isphys[0];
-                        // const lid_t idx1 = (!isphys[1]) * i1 - (ip+1 * (lid_t)fsign[1] * isphys[1];
-                        // const lid_t idx2 = (!isphys[2]) * i2 - (ip+1 * (lid_t)fsign[2] * isphys[2];
+                        // these are local increments on the source which is already in position fstart
                         const lid_t idx0 = (!isphys[0]) ? i0 : (-(ip + 1) * fsign[0]);
                         const lid_t idx1 = (!isphys[1]) ? i1 : (-(ip + 1) * fsign[1]);
                         const lid_t idx2 = (!isphys[2]) ? i2 : (-(ip + 1) * fsign[2]);
@@ -96,7 +92,6 @@ class Boundary {
                         m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
                         m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
                         m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
-
                         // check the specific isphys direction
                         m_assert((((fstart[0] + idx0) * isphys[0]) >= 0) && ((fstart[0] + idx0) * isphys[0]) < (block->stride() - block->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
                         m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block->stride() - block->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
@@ -107,8 +102,6 @@ class Boundary {
                     // get the ghost point position
                     real_t pos[3];
                     m_pos_relative(pos, i0, i1, i2, hgrid);
-                    // if we have a negative normal, simply the position of the indexes
-                    // if we have a positive normal, we need to substract 1
 
                     // get the ghost value
                     ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, pos[dir], hgrid[dir], fsign[dir], boundary_condition);
