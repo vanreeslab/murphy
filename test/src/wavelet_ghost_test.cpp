@@ -11,52 +11,55 @@
 #include "subblock.hpp"
 #include "wavelet.hpp"
 
-#define DOUBLE_TOL 1e-10
+#define DOUBLE_TOL 1e-12
 
 using std::list;
 
-// define a mask on the edge and corner ghosts
-class MaskPhysBC : public OperatorF {
-   protected:
-    real_t L_[3];
-    void   ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override {
-        //-------------------------------------------------------------------------
-        real_t pos[3];
+// // define a mask on the edge and corner ghosts
+// class MaskPhysBC : public OperatorF {
+//    protected:
+//     real_t L_[3];
+//     void   ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override {
+//         //-------------------------------------------------------------------------
+//         real_t pos[3];
 
-        for (lda_t ida = 0; ida < fid->lda(); ida++) {
-            data_ptr data = block->data(fid, ida);
-            for (int i2 = (-M_GS); i2 < (M_N + M_GS); i2++) {
-                for (int i1 = (-M_GS); i1 < (M_N + M_GS); i1++) {
-                    for (int i0 = (-M_GS); i0 < (M_N + M_GS); i0++) {
-                        // get the position
-                        real_t pos[3];
-                        m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+//         for (lda_t ida = 0; ida < fid->lda(); ida++) {
+//             data_ptr data = block->data(fid, ida);
+//             for (int i2 = (-M_GS); i2 < (M_N + M_GS); i2++) {
+//                 for (int i1 = (-M_GS); i1 < (M_N + M_GS); i1++) {
+//                     for (int i0 = (-M_GS); i0 < (M_N + M_GS); i0++) {
+//                         // get the position
+//                         real_t pos[3];
+//                         m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
 
-                        const bool is_out_0 = (pos[0] < 0.0) || (pos[0] >= L_[0]);
-                        const bool is_out_1 = (pos[1] < 0.0) || (pos[1] >= L_[0]);
-                        const bool is_out_2 = (pos[2] < 0.0) || (pos[2] >= L_[0]);
+//                         // const bool is_out_0 = (pos[0] < 0.0) || (pos[0] >= L_[0]);
+//                         // const bool is_out_1 = (pos[1] < 0.0) || (pos[1] >= L_[1]);
+//                         // const bool is_out_2 = (pos[2] < 0.0) || (pos[2] >= L_[2]);
+//                         const bool is_out_0 = (pos[0] < 0.0) || (pos[0] >= L_[0]);
+//                         const bool is_out_1 = (pos[1] < 0.0) || (pos[1] >= L_[0]);
+//                         const bool is_out_2 = (pos[2] < 0.0) || (pos[2] >= L_[0]);
 
-                        const bool to_trash = ((is_out_0 + is_out_1 + is_out_2) > 0);
+//                         const bool to_trash = ((is_out_0 + is_out_1 + is_out_2) > 0);
 
-                        data[m_idx(i0, i1, i2)] = data[m_idx(i0, i1, i2)] * (!to_trash);
-                    }
-                }
-            }
-        }
-        //-------------------------------------------------------------------------
-    };
+//                         // data[m_idx(i0, i1, i2)] = data[m_idx(i0, i1, i2)] * (!to_trash);
+//                     }
+//                 }
+//             }
+//         }
+//         //-------------------------------------------------------------------------
+//     };
 
-   public:
-    MaskPhysBC(const lid_t L[3]) {
-        m_begin;
-        //-------------------------------------------------------------------------
-        for (lda_t id = 0; id < 3; ++id) {
-            L_[id] = (real_t)L[id];
-        }
-        //-------------------------------------------------------------------------
-        m_end;
-    };
-};
+//    public:
+//     MaskPhysBC(const lid_t L[3]) {
+//         m_begin;
+//         //-------------------------------------------------------------------------
+//         for (lda_t id = 0; id < 3; ++id) {
+//             L_[id] = (real_t)L[id];
+//         }
+//         //-------------------------------------------------------------------------
+//         m_end;
+//     };
+// };
 
 class test_Wavelet_Ghost : public ::testing::Test {
    protected:
@@ -105,10 +108,10 @@ TEST_F(test_Wavelet_Ghost, ghost_order_2_2) {
         SetPolynom field_sol(deg, dir, true);
         field_sol(&grid, &sol);
 
-        // mask both the sol and the result
-        MaskPhysBC mask(L);
-        mask(&grid, &test);
-        mask(&grid, &sol);
+        // // mask both the sol and the result
+        // MaskPhysBC mask(L);
+        // mask(&grid, &test);
+        // mask(&grid, &sol);
 
         // now, we need to check
         real_t          norm2, normi;
@@ -159,10 +162,10 @@ TEST_F(test_Wavelet_Ghost, ghost_order_4_2) {
         SetPolynom field_sol(deg, dir, true);
         field_sol(&grid, &sol);
 
-        // mask both the sol and the result
-        MaskPhysBC mask(L);
-        mask(&grid, &test);
-        mask(&grid, &sol);
+        // // mask both the sol and the result
+        // MaskPhysBC mask(L);
+        // mask(&grid, &test);
+        // mask(&grid, &sol);
 
         // now, we need to check
         real_t          norm2, normi;
