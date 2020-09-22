@@ -24,7 +24,7 @@ Grid::Grid() : ForestGrid() {
 };
 
 /**
- * @brief Construct a new Grid a a uniform grid, distributed among the cpus
+ * @brief Construct a new Grid as a uniform grid, distributed among the cpus
  * 
  * Initialize the ForestGrid, the interpolator, the profiler, the ghosts and the grid blocks.
  * The grid is defined as a set of l[0]xl[1]xl[2] octrees, each of them refined up to level ilvl.
@@ -42,23 +42,19 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     // profiler
     prof_ = prof;
     // init the profiler tracking
-    if (prof_ != nullptr) {
-        // ghost
-        prof->Create("ghost_init");
-        prof->Create("ghost_comm");
-        prof->Create("ghost_cmpt");
-        prof->Create("ghost_comm_start", "ghost_comm");
-        prof->Create("ghost_comm_wait", "ghost_comm");
-        // p4est calls
-        prof->Create("p4est_refcoarse");
-        prof->Create("p4est_balance");
-        prof->Create("p4est_partition_init");
-        prof->Create("p4est_partition_comm");
-        prof->Create("cback_interpolate","p4est_refcoarse");
-        // stencils
-        prof->Create("stencil_inner");
-        prof->Create("stencil_outer");
-    }
+    m_profCreate(prof_, "ghost_init");
+    m_profCreate(prof_, "ghost_comm");
+    m_profCreate(prof_, "ghost_cmpt");
+    m_profCreate(prof_, "p4est_refcoarse");
+    m_profCreate(prof_, "p4est_balance");
+    m_profCreate(prof_, "p4est_partition_init");
+    m_profCreate(prof_, "p4est_partition_comm");
+    m_profCreate(prof_, "stencil_inner");
+    m_profCreate(prof_, "stencil_outer");
+    m_profCreateParent(prof_, "ghost_comm", "ghost_comm_start");
+    m_profCreateParent(prof_, "ghost_comm", "ghost_comm_wait");
+    m_profCreateParent(prof_, "p4est_refcoarse", "cback_interpolate");
+
     // create a default interpolator
     interp_ = new Wavelet();
     // create the associated blocks
@@ -68,6 +64,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     part.Start(&fields_,M_FORWARD);
     part.End(&fields_,M_FORWARD);
     // setup the ghost stuctures as the mesh will not change anymore
+    m_log("The grid is partitioned -> let's build the ghost now");
     SetupGhost();
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());

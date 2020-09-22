@@ -181,6 +181,7 @@ void CallPutGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid, Gho
  */
 Ghost::Ghost(ForestGrid* grid, Interpolator* interp) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp) {
     //-------------------------------------------------------------------------
+    // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp)
     //-------------------------------------------------------------------------
 }
 
@@ -255,6 +256,7 @@ void Ghost::InitList_() {
     m_log("Ghost lists initialization started...");
     //-------------------------------------------------------------------------
     // allocate the lists for the corresponding quads
+    m_assert(n_active_quad_ >= 0, "the number of active quad must be >= 0");
     // block_children_ = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
     block_sibling_        = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
     block_parent_         = (ListGBLocal**)m_calloc(n_active_quad_ * sizeof(ListGBLocal*));
@@ -284,12 +286,20 @@ void Ghost::InitList_() {
     p8est_t*       forest   = grid_->forest();
     p8est_ghost_t* ghost    = grid_->ghost();
 
+    // sanity checks
+    m_assert(mpi_comm == MPI_COMM_WORLD, "the comm should be a comm world");
+
     // allocate the array to link the local_id to the mirror displacement and init it
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_active_quad_ * sizeof(MPI_Aint);
-    MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
+    // check the size
+    m_assert(win_mem_size >= 0, "the memory size should be >=0");
+    // allocate the array and thw window
+    local2disp_ = reinterpret_cast<MPI_Aint*>(m_calloc(win_mem_size));
+    MPI_Win_create(local2disp_, win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
+    // MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
     MPI_Info_free(&info);
     m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
 
@@ -334,6 +344,7 @@ void Ghost::InitList_() {
 
     //................................................
     MPI_Win_free(&local2disp_window_);
+    m_free(local2disp_);
     local2disp_window_ = MPI_WIN_NULL;
     local2disp_        = nullptr;
 

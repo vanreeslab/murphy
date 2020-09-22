@@ -16,7 +16,7 @@ using std::list;
 /**
  * @brief initiate a new block and store its adress in the p4est quad
  * 
- * no memory allocation is done at this point!
+ * @warning no memory allocation is done at this point!
  */
 void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     m_begin;

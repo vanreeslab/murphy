@@ -18,10 +18,9 @@ using std::string;
 
 class TimerBlock {
    protected:
-    bool   is_root_ = true;
-    lid_t  count_   = 0;
-    size_t memsize_ = 0;
-
+    bool   is_root_  = true;
+    lid_t  count_    = 0;
+    size_t memsize_  = 0;
     real_t t0_       = 0.0;
     real_t t1_       = 0.0;
     real_t time_acc_ = 0.0;
@@ -30,7 +29,7 @@ class TimerBlock {
 
     string name_ = "noname";
 
-    TimerBlock*              parent_ = nullptr;
+    TimerBlock *parent_ = nullptr;
     map<string, TimerBlock*> children_;
 
    public:
@@ -79,22 +78,41 @@ class Prof {
     void Disp(const std::string ref);
 };
 
-#define m_profStart(prof, name)                            \
-    ({                                                     \
-        Prof*  m_profStart_prof_ = (Prof*)(prof);          \
-        std::string m_profStart_name_ = (std::string)(name);         \
-        if ((m_profStart_prof_) != nullptr) {              \
-            (m_profStart_prof_)->Start(m_profStart_name_); \
-        }                                                  \
+#define m_profStart(prof, name)                              \
+    ({                                                       \
+        Prof*       m_profStart_prof_ = (Prof*)(prof);       \
+        std::string m_profStart_name_ = (std::string)(name); \
+        if ((m_profStart_prof_) != nullptr) {                \
+            (m_profStart_prof_)->Start(m_profStart_name_);   \
+        }                                                    \
     })
 
-#define m_profStop(prof, name)                          \
-    ({                                                  \
-        Prof*  m_profStop_prof_ = (Prof*)(prof);        \
-        std::string m_profStop_name_ = (std::string)(name);       \
-        if ((m_profStop_prof_) != nullptr) {            \
-            (m_profStop_prof_)->Stop(m_profStop_name_); \
-        }                                               \
+#define m_profStop(prof, name)                              \
+    ({                                                      \
+        Prof*       m_profStop_prof_ = (Prof*)(prof);       \
+        std::string m_profStop_name_ = (std::string)(name); \
+        if ((m_profStop_prof_) != nullptr) {                \
+            (m_profStop_prof_)->Stop(m_profStop_name_);     \
+        }                                                   \
+    })
+
+#define m_profCreate(prof, name)                              \
+    ({                                                        \
+        Prof*       m_profCreate_prof_ = (Prof*)(prof);       \
+        std::string m_profCreate_name_ = (std::string)(name); \
+        if ((m_profCreate_prof_) != nullptr) {                \
+            (m_profCreate_prof_)->Create(m_profCreate_name_); \
+        }                                                     \
+    })
+
+#define m_profCreateParent(prof, name_parent, name_child)                                                        \
+    ({                                                                                                           \
+        Prof*       m_profCreateParent_prof_        = (Prof*)(prof);                                             \
+        std::string m_profCreateParent_name_parent_ = (std::string)(name_parent);                                \
+        std::string m_profCreateParent_name_child_  = (std::string)(name_child);                                 \
+        if ((m_profCreateParent_prof_) != nullptr) {                                                             \
+            (m_profCreateParent_prof_)->Create(m_profCreateParent_name_child_,m_profCreateParent_name_parent_); \
+        }                                                                                                        \
     })
 
 #endif  // SRC_PROF_HPP_

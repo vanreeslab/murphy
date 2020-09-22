@@ -24,9 +24,9 @@ class Grid : public ForestGrid {
    protected:
     map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
-    Prof*         prof_     = nullptr;  //!< the profiler to use, may stay null
-    Ghost*        ghost_    = nullptr;  //!< the ghost structure that handles one dimension of a field
-    Interpolator* interp_   = nullptr;  //!< the interpolator to use for all the multilevel operations
+    Prof*         prof_   = nullptr;  //!< the profiler to use, may stay null
+    Ghost*        ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
+    Interpolator* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
 
     real_t rtol_ = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_ = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
@@ -34,7 +34,7 @@ class Grid : public ForestGrid {
     void* tmp_ptr_ = nullptr;  //!< temporary pointer, needed by the adaptation of the grid
 
    public:
-       explicit Grid();
+    explicit Grid();
     Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof);
     ~Grid();
 
@@ -44,8 +44,8 @@ class Grid : public ForestGrid {
 
     Interpolator* interp() { return interp_; }
 
-    Prof*    profiler() { return prof_; }
-    bool     HasProfiler() { return prof_ != nullptr; }
+    Prof* profiler() { return prof_; }
+    bool  HasProfiler() { return prof_ != nullptr; }
 
     void CopyFrom(Grid* grid);
     void SetupGhost();
@@ -72,11 +72,17 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    inline lid_t NGhostFront() const { return interp_->nghost_front(); }
-    inline lid_t NGhostBack() const { return interp_->nghost_back(); }
-    void         GhostPull(Field* field);
-    void         GhostPull_Post(Field* field, const sid_t ida);
-    void         GhostPull_Wait(Field* field, const sid_t ida);
+    inline lid_t NGhostFront() const {
+        m_assert(interp_ != nullptr, "interp cannot be null");
+        return interp_->nghost_front();
+    }
+    inline lid_t NGhostBack() const {
+        m_assert(interp_ != nullptr, "interp cannot be null");
+        return interp_->nghost_back();
+    }
+    void GhostPull(Field* field);
+    void GhostPull_Post(Field* field, const sid_t ida);
+    void GhostPull_Wait(Field* field, const sid_t ida);
     /**@}*/
 
     /**
@@ -86,7 +92,7 @@ class Grid : public ForestGrid {
      */
     real_t rtol() const { return rtol_; }
     real_t ctol() const { return ctol_; }
-    void* tmp_ptr() const { return tmp_ptr_; }
+    void*  tmp_ptr() const { return tmp_ptr_; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void Refine(const sid_t delta_level);
