@@ -19,6 +19,7 @@ class ErrorCalculator : public ConstOperatorFF {
     void Norm2(Grid* grid, Field* field, Field* sol, real_t* norm_2);
     void Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2, real_t* norm_i);
 
+    // override the ConstOperatorFF function
     void ApplyConstOpFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) override;
 };
 

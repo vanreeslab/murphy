@@ -296,10 +296,16 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     //-------------------------------------------------------------------------
     rank_t rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // check that the file name doesn't already exists
+    struct stat st       = {0};
+    string      filename = folder_ + string("/") + filename_xdmf_;
+    m_assert(stat(filename.c_str(), &st) != 0, "ERROR while opening  <%s>, the file already exists", filename.c_str());
     // fopen the xmf, every proc
-    string filename = folder_ + string("/") + filename_xdmf_;
-    int    err      = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
-    m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, the file may be corrupted", filename.c_str());
+    int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
+    // if something went wrong, check if the file already exist of something else was baaad
+    m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, MPI_File_open failed (error = %d)", filename.c_str(),err);
+
     // the current position of current proc
     MPI_Offset offset = 0;
     MPI_File_seek(xmf_file_, offset, MPI_SEEK_SET);

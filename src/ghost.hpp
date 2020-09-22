@@ -50,7 +50,7 @@ class Ghost {
     MPI_Win   mirrors_window_      = MPI_WIN_NULL;    //!< MPI Window for the RMA communication
     real_t *  mirrors_             = nullptr;         //!< memory space for the mirror blocks, computed using n_mirror_to_send_
     MPI_Win   local2disp_window_   = MPI_WIN_NULL;    //!< MPI Window for the RMA communication (non null only during the initlist function)
-    MPI_Aint *local2disp_          = nullptr;         //!< for each quadrant, indicate its corresponding mirror ID (non null only during the initlist function)
+    MPI_Aint *local2disp_          = nullptr;         //!< for each quadrant, indicate its corresponding displacement ID (non null !only! during the initlist function, reset afterwards)
 
     ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
     Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned

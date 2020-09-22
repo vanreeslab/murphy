@@ -22,6 +22,22 @@ class GhostBlock : public SubBlock {
     T       data_src_;  //!< provide a mean to access the source data (in practice a GridBlock* or a displacement MPI_Aint)
 
    public:
+   /**
+    * @brief Construct a new Ghost Block object
+    * 
+    * @param src_lvl the level of the source block
+    * @param src_pos the position of the source block
+    * @param src_hgrid the grid spacing of the source block
+    * @param src_len the length (in the physical domain) of the source block
+    * @param trg_lvl the level of the target block
+    * @param trg_pos the position of the target block
+    * @param trg_hgrid the grid spacing of the target block
+    * @param trg_min the minimun position of the target block
+    * @param trg_max the max position of the target
+    * @param trg_gs the ghost size of the target block
+    * @param trg_stride the stide of the target block
+    * @param rank_rma the rank needed for RMA calls
+    */
     GhostBlock(const level_t src_lvl, const real_t src_pos[3], const real_t src_hgrid[3], const real_t src_len[3],
                const level_t trg_lvl, const real_t trg_pos[3], const real_t trg_hgrid[3],
                const lid_t trg_min[3], const lid_t trg_max[3], const lid_t trg_gs, const lid_t trg_stride, const rank_t rank_rma) {
@@ -49,56 +65,6 @@ class GhostBlock : public SubBlock {
         m_assert(start_[2] < end_[2], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
         //-------------------------------------------------------------------------
     }
-
-    // GhostBlock(GridBlock* me, const sid_t ngh_level, const real_t ngh_pos[3], const sid_t nghost_front[3], const sid_t nghost_back[3], const bool ngh_to_me, const rank_t rank_src) {
-    //     //-------------------------------------------------------------------------
-    //     // store the source rank
-    //     rank_src_ = rank_src;
-
-    //     // get the ghost size and the
-    //     gs_     = me->gs();
-    //     stride_ = me->stride();
-
-    //     // compute the lenght of a quadrant at the neighbor's level
-    //     real_t len_ngh = m_quad_len(ngh_level);
-    //     real_t len_me  = m_quad_len(me->level());
-
-    //     if (ngh_to_me) {
-    //         // set the level gap > 0 if the neighbor if finer
-    //         dlvl_ = ngh_level - me->level();
-    //         for (int id = 0; id < 3; id++) {
-    //             // the shift = (my position - the neighbor position) expressed in the number of point in my neighbor
-    //             real_t shift_pos = me->xyz(id) - ngh_pos[id];
-    //             shift_[id]       = (lid_t)(shift_pos / len_ngh * M_N);
-    //             // the start = the position of my neighbor in my frame, bounded to 0
-    //             lid_t start_idx = (lid_t)((ngh_pos[id] - me->xyz(id)) / me->hgrid(id));
-    //             start_[id]      = m_max(start_idx, -nghost_front[id]);
-    //             // the end = min of how many my nieghbor can give to me and how many I can receive
-    //             lid_t end_idx = (lid_t)((ngh_pos[id] + len_ngh - me->xyz(id)) / me->hgrid(id));
-    //             end_[id]      = m_min(end_idx, me->end(id) + nghost_back[id]);
-    //         }
-    //     } else {
-    //         // set the level gap > 0 if the I am finer
-    //         dlvl_ = me->level() - ngh_level;
-    //         for (int id = 0; id < 3; id++) {
-    //             // the shift = (the neighbor position - my position) expressed in my number of point
-    //             real_t shift_pos = ngh_pos[id] - me->xyz(id);
-    //             shift_[id]       = (lid_t)(shift_pos / me->hgrid(id));
-    //             // the start = the position of me in my neighbor's frame, bounded to 0
-    //             lid_t start_idx = (lid_t)((me->xyz(id) - ngh_pos[id]) / len_ngh * M_N);
-    //             start_[id]      = m_max(start_idx, -nghost_front[id]);
-    //             // the end = min of how many my neighbor can give to me and how many I can receive
-    //             lid_t end_idx = (lid_t)((me->xyz(id) + len_me - ngh_pos[id]) / len_ngh * M_N);
-    //             end_[id]      = m_min(end_idx, me->end(id) + nghost_back[id]);
-    //         }
-    //     }
-    //     m_assert(start_[0] < end_[0], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the pos = %f, me = %f", start_[0], end_[0], shift_[0], ngh_pos[0], me->xyz(0));
-    //     m_assert(start_[1] < end_[1], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the pos = %f, me = %f", start_[1], end_[1], shift_[1], ngh_pos[1], me->xyz(1));
-    //     m_assert(start_[2] < end_[2], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the pos = %f, me = %f", start_[2], end_[2], shift_[2], ngh_pos[2], me->xyz(2));
-    //     //-------------------------------------------------------------------------
-    // }
-
-    // GhostBlock(GridBlock * me, const sid_t ngh_level, const real_t ngh_pos[3], const sid_t nghost_front[3], const sid_t nghost_back[3], const bool ngh_to_me) : GhostBlock(me, ngh_level, ngh_pos, nghost_front, nghost_back, ngh_to_me, -1) {}
 
     // return arguments
     sid_t        dlvl() const { return dlvl_; }

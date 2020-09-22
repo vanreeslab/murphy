@@ -64,28 +64,28 @@ class MemLayout {
 inline void ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t gs, const lid_t stride, const lid_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
+    m_assert(start[0] < end[0],"the end = %d is smaller than the start = %d",end[0],start[0]);
+    m_assert(start[1] < end[1],"the end = %d is smaller than the start = %d",end[1],start[1]);
+    m_assert(start[2] < end[2],"the end = %d is smaller than the start = %d",end[2],start[2]);
     //-------------------------------------------------------------------------
-    // convert the
-    lid_t        start_g[3] = {(start[0] + gs), (start[1] + gs), (start[2] + gs)};
-    lid_t        end_g[3]   = {(end[0] + gs), (end[1] + gs), (end[2] + gs)};
     MPI_Datatype x_type, xy_type;
     //................................................
     // do x type
-    lid_t    count_x  = (end_g[0] - start_g[0]);
+    lid_t    count_x  = (end[0] - start[0]);
     MPI_Aint stride_x = sizeof(real_t);
     m_assert(count_x > 0, "we at least need to take 1 element");
     m_assert(count_x <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_x / scale, 1, stride_x * scale, M_MPI_REAL, &x_type);
     //................................................
     // do y type
-    lid_t    count_y  = (end_g[1] - start_g[1]);
+    lid_t    count_y  = (end[1] - start[1]);
     MPI_Aint stride_y = stride_x * stride;
     m_assert(count_y > 0, "we at least need to take 1 element");
     m_assert(count_y <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_y / scale, 1, stride_y * scale, x_type, &xy_type);
     //................................................
     // do z type
-    lid_t    count_z  = (end_g[2] - start_g[2]);
+    lid_t    count_z  = (end[2] - start[2]);
     MPI_Aint stride_z = stride_y * stride;
     m_assert(count_z > 0, "we at least need to take 1 element");
     m_assert(count_z <= stride, "we cannot take more element than the stride");

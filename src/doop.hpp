@@ -58,9 +58,9 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
         tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
         // get the id
         qid_t myid;
-        myid.cid = bid;
-        myid.qid = bid - tree->quadrants_offset;
-        myid.tid = mesh->quad_to_tree[bid];
+        myid.cid = bid;                           // cummulative id
+        myid.qid = bid - tree->quadrants_offset;  // quadrant id
+        myid.tid = mesh->quad_to_tree[bid];       // tree id
         // the quadrants can be from differents trees -> get the correct one
         p8est_quadrant_t* quad;
         quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);

@@ -5,11 +5,17 @@
 ErrorCalculator::ErrorCalculator() : ErrorCalculator(nullptr) {
 }
 
+/**
+ * @brief Construct a new Error Calculator, if the grid is not nullptr, compute the error on the ghost points as well
+ * 
+ * @param grid the grid to use to get the number of actual ghost points, if nullptr, no ghost point is taken into account
+ */
 ErrorCalculator::ErrorCalculator(const Grid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     start_ = (grid == nullptr) ? 0 : (-grid->NGhostFront());
     end_   = (grid == nullptr) ? M_N : (M_N + grid->NGhostBack());
+
     //-------------------------------------------------------------------------
     m_end;
 }

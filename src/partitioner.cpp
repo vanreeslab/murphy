@@ -90,7 +90,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
         }
     }
 
-    //-------------------------------------------------------------------------
+    //................................................
     m_log("current status: %d quads locally", forest->local_num_quadrants);
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, true, NULL);
@@ -115,7 +115,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
 
         m_verb("except the self (= %d blocks), I lose %d blocks and gain %d blocks", q_nself, opart_n, cpart_n);
 
-        //-------------------------------------------------------------------------
+        //................................................
         // init the send
         if (opart_n > 0) {
             // the send buffer is used to copy the current blocks as they are not continuous to memory
@@ -186,7 +186,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
             m_verb("No blocks to send");
         }
 
-        //-------------------------------------------------------------------------
+        //................................................
         // init the reception
         if (cpart_n > 0) {
             // store the new quadrant adress, to create a new block if needed
@@ -293,6 +293,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
     }
     m_free(oldpart);
 
+    //................................................
     // reset the field list in the grid if we didn't conserve everything
     if (!destructive_) {
         grid->ResetFields(fields);

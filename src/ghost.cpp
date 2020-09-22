@@ -248,7 +248,7 @@ Ghost::~Ghost() {
 }
 
 /**
- * @brief initialize the lists of ghost blocks
+ * @brief initialize the list of ghost blocks: every block knows where to find the ghosts afterwards
  * 
  */
 void Ghost::InitList_() {
@@ -296,13 +296,13 @@ void Ghost::InitList_() {
     MPI_Aint win_mem_size = n_active_quad_ * sizeof(MPI_Aint);
     // check the size
     m_assert(win_mem_size >= 0, "the memory size should be >=0");
-    // allocate the array and thw window
+    // allocate the array and the window with the offsets
     local2disp_ = reinterpret_cast<MPI_Aint*>(m_calloc(win_mem_size));
     MPI_Win_create(local2disp_, win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
     // MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
     MPI_Info_free(&info);
     m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
-
+    // initiate the 
     for (iblock_t ib = 0; ib < n_active_quad_; ib++) {
         local2disp_[ib] = -1;
     }
@@ -310,7 +310,7 @@ void Ghost::InitList_() {
     MPI_Win_fence(0, local2disp_window_);
 
     //................................................
-    // compute the number of admissible local mirros and store their reference in the array
+    // compute the number of admissible local mirrors and store their reference in the array
     iblock_t count = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
@@ -406,6 +406,12 @@ void Ghost::FreeList_() {
     m_end;
 }
 
+/**
+ * @brief Initialize the communication pattern: init the windows for RMA access
+ * 
+ * We initiate the window mirrors_window_ and the associated groups: mirror_origin_group_ & mirror_target_group_
+ * 
+ */
 void Ghost::InitComm_() {
     m_begin;
     m_assert(n_active_quad_ >= 0, "the number of active quads must be computed beforehand");
@@ -422,7 +428,7 @@ void Ghost::InitComm_() {
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
         level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
-        // update the counters if the mirror is admissible
+        // update the counters if the mirror is admissible (i.e. it satisfies the requirements)
         // we need to have called the function p4est_balance()!!
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             n_mirror_to_send_++;
@@ -445,9 +451,10 @@ void Ghost::InitComm_() {
     //................................................
     // get the list of ranks that will generate a call to access my mirrors
     rank_t  n_in_group  = 0;
+    // over allocate the array to its max size and fill it only partially... not great
     rank_t* group_ranks = reinterpret_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
     for (rank_t ir = 0; ir < mpi_size; ir++) {
-        // for every mirror send to that precise rank
+        // for every mirror send to the current
         iblock_t send_first = ghost->mirror_proc_offsets[ir];
         iblock_t send_last  = ghost->mirror_proc_offsets[ir + 1];
         for (iblock_t bid = send_first; bid < send_last; bid++) {
@@ -461,28 +468,30 @@ void Ghost::InitComm_() {
             }
         }
     }
-    // get the RMA mirror group ready
+    // get the RMA mirror group ready - the group that will need my info
     MPI_Group win_group;
     MPI_Win_get_group(mirrors_window_, &win_group);
     MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_origin_group_);
 
+    //................................................
     // get the list of ranks that will received a call from me to access their mirrors
     n_in_group = 0;
     for (rank_t ir = 0; ir < mpi_size; ir++) {
-        // for every mirror send to that precise rank
+        // for the current rank, determine if I have ghosts to him
         iblock_t recv_first = ghost->proc_offsets[ir];
         iblock_t recv_last  = ghost->proc_offsets[ir + 1];
         for (iblock_t bid = recv_first; bid < recv_last; bid++) {
             // access the element and ask for its level
             p8est_quadrant_t* ghostquad   = p8est_quadrant_array_index(&ghost->ghosts, bid);
             level_t           ghost_level = ghostquad->level;
-            // if the mirror is admissible, register the rank and break
+            // if the ghost block is admissible, register the rank and break
             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group++] = ir;
                 break;
             }
         }
     }
+    // add the cpus that will get a call from me
     MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_target_group_);
     MPI_Group_free(&win_group);
 
@@ -497,7 +506,7 @@ void Ghost::InitComm_() {
 }
 
 /**
- * @brief Free the communication windows
+ * @brief Free the communication window mirrors_window_ and the groups mirror_origin_group_ & mirror_target_group_
  * 
  */
 void Ghost::FreeComm_() {
@@ -514,7 +523,11 @@ void Ghost::FreeComm_() {
 }
 
 /**
- * @brief Post the RMA call: get the values of siblings and coarse neighbors
+ * @brief Post the RMA call: get the values of siblings and coarse neighbors to my local memory
+ * 
+ * - push the current info to the windows so that other ranks can access it
+ * - init the epochs on the windows
+ * - call Ghost::GetGhost4Block_Post()
  * 
  * @param field 
  * @param ida 
@@ -676,6 +689,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 PhysBlock* pb = new PhysBlock(ibidule, block, nghost_front, nghost_back);
 //#pragma omp critical
                 phys->push_back(pb);
+                m_verb("I found a physical boundary ghost!\n");
             }
             // else, the edges and corners will be filled through the face
         }
@@ -714,8 +728,8 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
             }
             // get the hgrid
-            real_t ngh_len[3]   = {m_quad_len(nghq->level), m_quad_len(nghq->level), m_quad_len(nghq->level)};
-            real_t ngh_hgrid[3] = {m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N};
+            const real_t ngh_len[3]   = {m_quad_len(nghq->level), m_quad_len(nghq->level), m_quad_len(nghq->level)};
+            const real_t ngh_hgrid[3] = {m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N};
 
             //................................................
             // create the new block and push back
@@ -779,7 +793,7 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
 //#pragma omp critical
                     gparent->push_back(gb);
-                    // the children represent my contribution to my neighbor ghost points
+                    // I compute my own contribution to my neighbor ghost points
                     GBMirror* invert_gb = new GBMirror(/* source */ block->level() - 1, block->xyz(), coarse_hgrid, block_len,
                                                        /* target */ nghq->level, ngh_pos, ngh_hgrid, block_min, block_max, block->gs(), block->stride(), ngh_rank);
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window_);
@@ -788,12 +802,17 @@ void Ghost::InitList4Block(const qid_t* qid, GridBlock* block) {
                 }
                 //................................................
                 else if (nghq->level > block->level()) {
-                    real_t ngh_hgrid_coarse[3] = {ngh_len[0] / M_HN, ngh_len[1] / M_HN, ngh_len[2] / M_HN};
+                    const real_t ngh_hgrid_coarse[3] = {ngh_len[0] / M_HN, ngh_len[1] / M_HN, ngh_len[2] / M_HN};
                     // children: source = coarse version of my neighbor, target = myself
                     GBMirror* gb = new GBMirror(/* source */ nghq->level - 1, ngh_pos, ngh_hgrid_coarse, ngh_len,
                                                 /* target */ block->level(), block->xyz(), block->hgrid(), block_min, block_max, block->gs(), block->stride(), ngh_rank);
 //#pragma omp critical
                     gchildren->push_back(gb);
+
+                    m_verb("me: lvl = %d, pos = %f %f %f, length = %f",block->level(),block->xyz(0),block->xyz(1),block->xyz(2),block_len[0]);
+                    m_verb("ngh: lvl = %d, pos = %f %f %f, length = %f",nghq->level,ngh_pos[0],ngh_pos[1],ngh_pos[2],ngh_len[0]);
+                    m_verb("we have a children ghost: from %d %d %d to %d %d %d",gb->start(0),gb->start(1),gb->start(2),gb->end(0),gb->end(1),gb->end(2));
+                    m_verb("\n");
                 }
                 //................................................
                 else {
@@ -822,8 +841,9 @@ void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, const Field* 
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
-    real_p data   = block->pointer(fid, ida_);
+    // recover the mirro spot using the mirror id
+    real_p   mirror = mirrors_ + qid->mid * m_blockmemsize(1);
+    data_ptr data   = block->pointer(fid, ida_);
     m_assume_aligned(mirror);
     m_assume_aligned(data);
     memcpy(mirror, data, m_blockmemsize(1) * sizeof(real_t));
@@ -831,7 +851,7 @@ void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, const Field* 
 }
 
 /**
- * @brief Pull the local information to the local block, only for the needed ghost points
+ * @brief Pull the local information from the window to the local block, only for the needed ghost points
  * 
  * @param qid the quarant ID considered
  * @param block the gridblock considered
@@ -841,8 +861,8 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p mirror = mirrors_ + qid->cid * m_blockmemsize(1);
-    real_p data   = block->data(fid, ida_);
+    real_p   mirror = mirrors_ + qid->mid * m_blockmemsize(1) + m_zeroidx(0, block);
+    data_ptr data   = block->data(fid, ida_);
     m_assume_aligned(mirror);
     m_assume_aligned(data);
 
@@ -850,7 +870,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
         const lid_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
         const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
-        real_t* data_src = mirror + m_zeroidx(0, block) + m_midx(start[0], start[1], start[2], 0, block);
+        real_t* data_src = mirror + m_midx(start[0], start[1], start[2], 0, block);
         real_t* data_trg = data + m_midx(start[0], start[1], start[2], 0, block);
 
         // copy the value = sendrecv to myself to the correct spot
@@ -865,6 +885,8 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
 
 /**
  * @brief get the memory from the mirrors and myself (+bc!) to my ghost points and to the coarse myself
+ * 
+ * This is the step number 1/4 of ghost computation
  * 
  * @param qid the quarant ID considered
  * @param block the gridblock considered
@@ -901,6 +923,8 @@ void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field*
 /**
  * @brief once the communication is over, compute the refined ghost points for the missing areas
  * 
+ * This is the step number 2/4 of ghost computation
+ * 
  * @param qid the quarant ID considered
  * @param block the gridblock considered
  * @param fid the field id
@@ -921,6 +945,8 @@ void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field*
 
 /**
  * @brief locally compute the ghost points of my coarser neighbors and post the copy/put calls
+ * 
+ * This is the step number 3/4 of ghost computation
  * 
  * @param qid the quarant ID considered
  * @param block the gridblock considered
@@ -946,6 +972,8 @@ void Ghost::PutGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field*
 
 /**
  * @brief Finally apply the physical BC once everything is done
+ * 
+ * This is the step number 4/4 of ghost computation
  * 
  * @param qid 
  * @param block 
@@ -1310,13 +1338,14 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, const Field* field) {
         // p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, local_to_mirrors[bid]);
         p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, bid);
         p8est_tree_t*     tree   = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);
-        // get the id, in this case the cummulative id = mirror id
+
+        // build the mirror id
         qid_t myid;
-        myid.cid = bid;
-        myid.qid = mirror->p.piggy3.local_num - tree->quadrants_offset;
-        myid.tid = mirror->p.piggy3.which_tree;
+        myid.cid = mirror->p.piggy3.local_num;   // cummulative id
+        myid.mid = bid;                          // mirror id
+        myid.tid = mirror->p.piggy3.which_tree;  // tree id
         // use it to retreive the actual quadrant in the correct tree
-        p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+        p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.cid - tree->quadrants_offset);
         GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task
         (this->*op)(&myid, block, field);

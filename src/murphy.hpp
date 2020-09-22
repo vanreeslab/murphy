@@ -41,11 +41,15 @@ typedef std::map<std::string, real_p> datamap_t;
  * @brief id of a quadrant
  * 
  */
-typedef struct qid_t
-{
-    p4est_locidx_t cid; //!< cummulative_id, does not depends on the tree id
-    p4est_locidx_t qid; //!< quadrant id = depends on the tree
-    p4est_topidx_t tid; //!< tree id
+typedef struct qid_t {
+    p4est_locidx_t cid;  //!< cummulative_id = the absolute id of the quadrant, used to access arrays
+    p4est_topidx_t tid;  //!< tree id
+    // actual id of the quadrant: depend if it's a quadrant, a mirror or a ghost
+    union {
+        p4est_locidx_t qid;  //!< if a normal quadrant: quadrant id = depends on the tree
+        p4est_locidx_t mid;  //!< if a mirror quadrant: mirror id
+        // p4est_locidx_t gid;  //!< if a ghost quadrant: ghost id
+    };
 } qid_t;
 
 /**
