@@ -1,4 +1,4 @@
-# Implementation choices
+x# Implementation choices
 
 Here we go through the implementation strategy that guided us to the current version.
 
@@ -43,19 +43,19 @@ The ghost points computation is done using the wavelets to reconstruct missing i
 
 ### 6. Operators
 To perfom operations on the blocks, we inherite from abstact classes. There are currently the following different operators
-1. `OperatorS`: a simple operator, does not interact with any field
+<!-- 1. `OperatorS`: a simple operator, does not interact with any field -->
 1. `OperatorF`: operates on a given field, ghost status is automatically changed to `false` afterwards.
 1. `ConstOperatorF`: act on a given field, without changing its content. The ghost status is unchanged afterwards.
 1. `OperatorF2F`: operates on two fields, a source and a target. The ghost status of the target is automatically changed to `false` afterwards
+1. `OperatorFF2F`: operates on three fields, two sources and one target. The ghost status of the target is automatically changed to `false` afterwards
 1. `ConstOperatorFF`: operates on two fields, without changing their content. No ghost status change afterwards.
 
-E.g. the error computation between two fields is a `ConstOperatorFF` operator, the application of a stencil is a `OperatorF2F`, etc. It is possible to inherit from multiple at the same time as they don't have a common ancestor (see the `Ghost` class).
+E.g. the error computation between two fields is a `ConstOperatorFF` operator, etc. It is possible to inherit from multiple at the same time as they don't have a common ancestor.
 
-All operators overload the function `operator()` which triggers the executation of the `ApplyMyOperator` function in the block.
-Given the operator type, the arguments of the `Apply` function changes. In any case, the `Apply` function, as a member function, has access to the content of the current object.
+All operators overload the corresponding function `ApplyMyOperator()` which is triggered by the executation of the `operator()` function on the entire field.
+Given the operator type, the arguments of the `ApplyMyOperator` function changes. In any case, the `ApplyMyOperator` function, as a member function, has access to the content of the current object.
 
-:warning: The `Apply` function is automatically processed in a multi-threaded section (using OpenMP). This means that the threads will execute the functions on a different blocks __at the same time__, each of them with a copy of the adress of the current object (`this` pointer). Hence, any operation performed in this function has to be __thread-safe__! (use `#pragma omp critical`, `#pragma omp single`, `#pragma omp atomic`,... if needed).
-
+:warning: The `ApplyMyOperator` function is automatically processed in a multi-threaded section (using OpenMP). This means that the threads will execute the functions on a different blocks __at the same time__, each of them with a copy of the adress of the current object (`this` pointer). Hence, any operation performed in this function has to be __thread-safe__! (use `#pragma omp critical`, `#pragma omp single`, `#pragma omp atomic`,... if needed).
 
 
 ### 7. Stencils

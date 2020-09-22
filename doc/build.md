@@ -73,11 +73,26 @@ You can specify the following variables:
 
 ---------------------
 ### Possible compilation flag
-You can modify the login level by adding the following compilations flags in your `ARCH` file:
-- ```-DLOG_ALLRANKS``` will enable log on every processor. By default, only the master logs
-- ```-DVERBOSE``` enable extended logs
-- ```-DNDEBUG``` disable the assertion checks and the debug comments
-- ```-DLOG_MUTE``` disable every logs
+Some compilations flags are available to change the behavior of the code:
+- `-DBLOCK_GS=X` sets the number of ghost points to use (default `X=2`)
+- `-DWAVELET_N=X` dictates the interpolation order of the wavelets (default `X=2`)
+- `-DWAVELET_NT=X` dictates the moment order of the wavelets (default `X=2`)
+- `-DLOG_ALLRANKS` will enable log on every processor. By default, only the master logs
+- `-DVERBOSE` enable extended logs
+- `-DNDEBUG` disable the assertion checks and the other debuging sections
+- `-DLOG_MUTE` disable every logs
+<!-- - ```-DMG_GAUSSSEIDEL``` uses the gauss-seidel smoother instead of the Jacobi one -->
+
+To use them, you can append the make command, e.g. to change the wavelet behavior
+```sh
+make OPTS="-DDBLOCK_GS=4 -DWAVELET_N=4"
+```
+or add it to the `ARCH` file:
+```makefile
+override OPTS += -DDBLOCK_GS=4 -DWAVELET_N=2
+```
+
+In doubts, you should always run `make info` to test the different options.
 
 ---------------------
 ### Testing
@@ -101,3 +116,18 @@ doxygen doc/Doxyfile
 ```
 You will need `dot` to get a visual graphs (see `HAVE_DOT` option in the Doxyfile).
 On MacOS, you can install it using homebrew: `brew install graphviz`.
+
+
+-----------------------
+### Installation from scratch
+We here assume that you have nothing installed and we showcase how to build OpenMPI, HDF5 and p4est all together. 
+
+:warning: we here perform a debug build, do not use this one for production use
+```sh
+# Open MPI
+wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.4.tar.gz
+tar -xvf openmpi-4.0.4.tar.gz 
+cd openmpi-4.0.4
+./configure --prefix=${HOME}/ompi_4.0.4 --enable-debug --enable-memchecker
+make install -j12
+```

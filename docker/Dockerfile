@@ -1,7 +1,8 @@
-FROM ubuntu:18.04
+FROM ubuntu:latest
 
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+#RUN echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 #RUN apt update
 #RUN apt upgrade -y
 RUN apt-get -y update && apt-get install -y \
@@ -21,6 +22,13 @@ RUN cd /p4est &&\
     make install -j
 RUN rm -rf /p4est
 
+#flups
+# RUN git clone https://git.immc.ucl.ac.be/examples/flups.git
+COPY flups /flups
+RUN cd /flups &&\
+    ARCH_FILE=make_arch/make.docker_valid_opt PREFIX=/soft/flups make install -j
+RUN rm -rf /flups
+
 #Google test
 RUN git clone https://github.com/google/googletest.git
 RUN cd /googletest &&\
@@ -30,10 +38,3 @@ RUN rm -rf /googletest
 
 #cpp lint
 #RUN pip3 install cpplint
-
-VOLUME ["/etc/gitlab-runner"]
-
-RUN useradd -ms /bin/bash validator
-USER validator
-WORKDIR /home/validator
-

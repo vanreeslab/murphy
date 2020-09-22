@@ -7,9 +7,16 @@
 #include "grid.hpp"
 #include "gridblock.hpp"
 #include "patch.hpp"
+#include "mgfamily.hpp"
+#include "multigrid.hpp"
+
+using std::string;
+using std::list;
 
 /**
  * @brief initiate a new block and store its adress in the p4est quad
+ * 
+ * @warning no memory allocation is done at this point!
  */
 void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     m_begin;
@@ -24,6 +31,7 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
 
     real_t len = m_quad_len(quad->level);
     // the user data points to the data defined by the grid = GridBlock*
+    m_assert(sizeof(GridBlock*) == forest->data_size,"cannot cast the pointer, this is baaaad");
     *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = new GridBlock(len, xyz, quad->level);
     //-------------------------------------------------------------------------
     m_end;
@@ -37,6 +45,7 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
     //-------------------------------------------------------------------------
     p8est_quadrant_t* quad  = info->quad;
     GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+    m_assert(block != nullptr,"the block you are trying to free has already been free'ed");
     delete (block);
     *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = nullptr;
     //-------------------------------------------------------------------------
@@ -146,7 +155,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 }
 
 /**
- * @brief reply that we should refine the block if the output of @ref Interpolator::Criterion() is bigger than the tolerance (we use the interpolator from the @ref Grid)
+ * @brief refine a block if @ref Interpolator::Criterion() is bigger than @ref Grid::rtol()
  * 
  * @param forest 
  * @param which_tree 
@@ -158,29 +167,41 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
-    Interpolator* interp = grid->detail();
+    Interpolator* interp = grid->interp();
     // get the field and check each dimension
     bool   refine = false;
     Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+
+    // if the block is locked, I cannot touch it anymore
+    if (block->locked()) {
+        return false;
+    }
+
+    // if we are not locked, we are available for refinement
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
-        m_verb("refine? %e vs %e", norm, grid->rtol());
-        // refine the whole grid if one dimension needs to be refined
+        m_log("refine? %e >? %e", norm, grid->rtol());
+        // refine the block if one dimension needs to be refined
         if (refine) {
-            break;
+            // lock the block indicate that it cannot be changed in res anymore
+            block->lock();
+            // return to refine
+            return true;
         }
     }
-    // refine if the criterion is bigger than the tolerance
-    return refine;
+    // if we reached here, we do not need to refine
+    return false;
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief reply that we should coarsen the block if the output of the @ref Interpolator::Criterion() is bigger than the tolerance (we use the interpolator from the @ref Grid)
+ * @brief reply that we should coarsen the group of 8 blocks if @ref Interpolator::Criterion() is lower than @ref Grid::ctol() for everyblock.
+ * 
+ * We do NOT coarsen if one of the block does not match the criterion
  * 
  * @param forest 
  * @param which_tree 
@@ -191,35 +212,47 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
-    Interpolator* interp = grid->detail();
+    Interpolator* interp = grid->interp();
+    Field*        fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+
     // for each of the children
-    bool   coarsen = false;
-    Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+    bool coarsen = true;
     for (int id = 0; id < P8EST_CHILDREN; id++) {
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
+
+        // if one of the 8 block is locked, I cannot change it, neither the rest of the group
+        if (block->locked()) {
+            return false;
+        }
+
+        // check if I can coarsen
         for (int ida = 0; ida < fid->lda(); ida++) {
             real_p data = block->data(fid, ida);
             real_t norm = interp->Criterion(block, data);
-            // coarsen if the norm is bigger
+            // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
-            // coarsen the whole grid if one dimension needs to be coarsened
-            if (coarsen) {
-                break;
+            m_log("coarsen? %e <? %e", norm, grid->ctol());
+
+            // if I cannot coarsen, I can give up on the whole group, so return false
+            if (!coarsen) {
+                return false;
             }
         }
-        // coarsen the whole grid if one block needs to be coarsened
-        if (coarsen) {
-            break;
-        }
     }
-    // refine if the criterion is bigger than the tolerance
-    return coarsen;
+    // if I arrived here, I can coarsen the whole group, so lock them and return true
+    for (int id = 0; id < P8EST_CHILDREN; id++) {
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
+        block->lock();
+    }
+    return true;
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
  * @brief Interpolate one block to his children or 8 children to their parent, using the Interpolator of the @ref Grid.
+ * 
+ * If one of the outgoing block(s) is locked, then I lock the incomming block(s)
  * 
  * @param forest 
  * @param which_tree 
@@ -244,12 +277,10 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     Interpolator*         interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    if (grid->HasProfiler()) {
-        grid->profiler()->Start("cback_interpolate");
-    }
+    // m_log("prof callback");
+    m_profStart(grid->profiler(),"cback_interpolate");
 
-    // get the working field
-    // Field* field = grid->working_callback_field();
+    // m_log("interpolate callback");
 
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
@@ -272,11 +303,6 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // if only one is entering, it means we coarse -> dlvl = +1
     const sid_t dlvl = (num_outgoing == 1) ? -1 : 1;
 
-    // create an empty SubBlock representing the valid GP
-    lid_t     full_start[3] = {0, 0, 0};
-    lid_t     full_end[3]   = {0, 0, 0};
-    SubBlock* mem_block     = new SubBlock(M_GS, M_STRIDE, full_start, full_end);
-
     // do the required iterpolation
     for (sid_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = *(reinterpret_cast<GridBlock**>(outgoing[iout]->p.user_data));
@@ -289,18 +315,19 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
 
             // if we refine
             if (num_outgoing == 1) {
-                // get the shift given the child id
-                lid_t shift[3];
-                shift[0] = M_HN * ((childid % 2));      // x corner index = (ic%4)%2
-                shift[1] = M_HN * ((childid % 4) / 2);  // y corner index
-                shift[2] = M_HN * ((childid / 4));      // z corner index
-                // we create a subblock with the correct memory representation for the target
-                // no nned to redefine the target zone, we can use the standard 0 -> M_N
-                for (int id = 0; id < 3; id++) {
-                    full_start[id] = shift[id] - M_GS;
-                    full_end[id]   = shift[id] + M_HN + M_GS;
+                // check if the parent is locked and lock the child if this is the case
+                // this may happen if the parent has been tagged for refinement
+                if (block_out->locked()) {
+                    block_in->lock();
                 }
-                mem_block->Reset(M_GS, M_STRIDE, full_start, full_end);
+
+                // get the shift given the child id
+                const lid_t shift[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
+
+                // we create a subblock with the correct memory representation for the source = parent
+                const lid_t src_start[3] = {shift[0] - M_GS, shift[1] - M_GS, shift[2] - M_GS};
+                const lid_t src_end[3]   = {shift[0] + M_HN + M_GS, shift[1] + M_HN + M_GS, shift[2] + M_HN + M_GS};
+                SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
 
                 // for every field, we interpolate it
                 for (auto fid = f_start; fid != f_end; fid++) {
@@ -308,24 +335,27 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(dlvl, shift, mem_block, block_out->data(current_field, ida), block_in, block_in->data(current_field, ida));
+                        interp->Interpolate(dlvl, shift, &mem_src, block_out->data(current_field, ida), block_in, block_in->data(current_field, ida));
                     }
                 }
             } else if (num_incoming == 1) {
-                // get the shift
-                lid_t shift[3];
-                shift[0] = -M_N * ((childid % 2));      // x corner index = (ic%4)%2
-                shift[1] = -M_N * ((childid % 4) / 2);  // y corner index
-                shift[2] = -M_N * ((childid / 4));      // z corner index
-                // we create a subblock with the correct memory representation for the source
-                // no nned to redefine the source zone, we can use the standard 0 -> M_N
-                full_start[0] = M_HN * ((childid % 2));      // x corner index = (ic%4)%2
-                full_start[1] = M_HN * ((childid % 4) / 2);  // y corner index
-                full_start[2] = M_HN * ((childid / 4));      // z corner index
-                for (int id = 0; id < 3; id++) {
-                    full_end[id] = full_start[id] + M_HN;
+                // check if the child is locked and lock the parent if this is the case
+                // this may happen if the parent has been tagged for refinement
+                if (block_out->locked()) {
+                    block_in->lock();
                 }
-                mem_block->Reset(M_GS, M_STRIDE, full_start, full_end);
+
+                // get the shift
+                const lid_t shift[3] = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
+
+                // we create a subblock with the correct memory representation for the target
+                const lid_t trg_start[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
+                const lid_t trg_end[3]   = {trg_start[0] + M_HN, trg_start[1] + M_HN, trg_start[2] + M_HN};
+                SubBlock    mem_trg(M_GS, M_STRIDE, trg_start, trg_end);
+                // and an extended source block
+                const lid_t src_start[3] = {-M_GS, -M_GS, -M_GS};
+                const lid_t src_end[3]   = {M_N + M_GS, M_N + M_GS, M_N + M_GS};
+                SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
 
                 // for every field, we interpolate it
                 for (auto fid = f_start; fid != f_end; fid++) {
@@ -333,14 +363,12 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(dlvl, shift, block_out, block_out->data(current_field, ida), mem_block, block_in->data(current_field, ida));
+                        interp->Interpolate(dlvl, shift, &mem_src, block_out->data(current_field, ida), &mem_trg, block_in->data(current_field, ida));
                     }
                 }
             }
         }
     }
-
-    delete (mem_block);
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
@@ -349,9 +377,10 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    if (grid->HasProfiler()) {
-        grid->profiler()->Stop("cback_interpolate");
-    }
+
+    // m_log("exit interpolate callback");
+    m_profStop(grid->profiler(), "cback_interpolate");
+    // m_log("exit prof callback");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -407,6 +436,52 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    m_begin;
+    m_assert(num_outgoing == P8EST_CHILDREN, "this function is only called when doing the refinement");
+    m_assert(num_incoming == 1, "this function is only called when doing the refinement");
+    //-------------------------------------------------------------------------
+    p8est_connectivity_t* connect = forest->connectivity;
+    // retrieve the multigrid
+    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+
+    // get the new block informations and create it
+    qdrt_t* quad = incoming[0];
+    real_t xyz[3];
+    p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+    real_t     len      = m_quad_len(quad->level);
+    GridBlock* parent = new GridBlock(len, xyz, quad->level);
+    // allocate the correct fields
+    parent->AddFields(grid->map_fields());
+    // store the new block
+    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = parent;
+
+    // get the leaving blocks
+    GridBlock* children[P8EST_CHILDREN];
+    for(sid_t ic=0; ic<P8EST_CHILDREN; ic++){
+        children[ic] = *(reinterpret_cast<GridBlock**>(outgoing[ic]->p.user_data));
+    }
+    
+    // bind the family together
+    MGFamily* family = grid->curr_family();
+    family->AddMembers(parent,children);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief always reply yes if p4est ask if we should coarsen the block
+ */
+int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+    sid_t target_level = grid->curr_level();
+    return (quadrant[0]->level > target_level);
     //-------------------------------------------------------------------------
     m_end;
 }

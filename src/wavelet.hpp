@@ -4,107 +4,101 @@
 #include "interpolator.hpp"
 #include "murphy.hpp"
 
+// check if the compilation defines the order of the wavelet. if not, we do it
+#ifndef WAVELET_N
+#define M_WAVELET_N 2
+#else
+#define M_WAVELET_N WAVELET_N
+#endif
+
+#ifndef WAVELET_NT
+#define M_WAVELET_NT 2
+#else
+#define M_WAVELET_NT WAVELET_NT
+#endif
+
 /**
- * @brief Average interpolating wavelet computation
+ * @brief Interpolating wavelet computation
  * 
- * The coefficients used are available in Diego's thesis, table 2.3 (order 3) and table 2.4 (order 5).
+ * The wavelet application considered here is based on the lifting/dual lifting scheme.
+ * More details on the wavelet approach can be found in the wavelet tutorial (https://github.com/van-Rees-Lab/wavelet_tutorial).
  * 
- * The coarsening: the coefficient is always (1/2)^3 = 1/8 of each of the children.
+ * For any couple N,Nt (with Nt <= N) the filter coefficients are computed by (https://github.com/van-Rees-Lab/wavelet_tutorial/blob/master/code/wavelet_xy.py)
  * 
- * The refinement:
- * For a parent value, x, it's contribution to the children values, c's, will be (see table 2.3, Diego's thesis)
+ * The following filters are used:
+ * - ha = compute the scaling from a given level -> coarsening
+ * - ga = compute the details from a given level -> detail computation
+ * - gs = reconstruction from the scaling and 0 detail of the scaling coef -> refinement
  * 
- *     -1/8   1/8          1     1          1/8   -1/8
- * |-----c-----c-----|-----c-----c-----|-----c-----c-----|
- * |                                                     |
- * |                                                     |
- * |-----------------|--------X--------|-----------------|
  * 
- * So, from the child perspective, (the one used in this implementation), we receive info from 3 parents:
- * |-----------------|-----c-----c-----|-----------------|
- * |                                                     |
- * |   1/8   -1/8           1     1         -1/8   1/8   |
- * |-------X---------|--------X--------|---------X-------|
- * 
- * In the implementation (see @ref Refine_), we gather the child values by two (hence 8 in 3D) and
- * attribute the value of hs[i] to the one on the left and hs[i]*sign[i] to the one on the right. (i=-1,0,1 in 3D)
+ * @warning we MUST satisfy Nt <= N
  *  
- * 
- * 
- * @tparam order the average interpolating wavelet order
+ * @tparam N the number of vanishing moments of the dual wavelet -> interpolates polynomial of N-1
+ * @tparam Nt the number of vanishing moments of the primal wavelet -> preserves Nt vanishing moments in the interpolation
  */
-
-template <int order>
 class Wavelet : public Interpolator {
-   protected:
-    real_t hs_[order];
-    real_t sgn_hs_[order];
-
-    real_t ga_[order];
-    real_t sgn_ga_[order];
-
    public:
-    Wavelet() {
-        if (order == 3) {
-            // h synthesis - refinement
-            hs_[0] = 0.125;
-            hs_[1] = 1.0;
-            hs_[2] = -0.125;
-            // sign convention
-            sgn_hs_[0] = -1.0;
-            sgn_hs_[1] = 1.0;
-            sgn_hs_[2] = -1.0;
-            // g analysis - analysis
-            ga_[0] = 0.0625;
-            ga_[1] = 0.5;
-            ga_[2] = -0.0625;
-            // sign convention
-            sgn_ga_[0] = 1.0;
-            sgn_ga_[1] = -1.0;
-            sgn_ga_[2] = 1.0;
-        } else if (order == 5) {
-            // h synthesis
-            hs_[0] = -3.0 / 128.0;
-            hs_[1] = 11.0 / 64.0;
-            hs_[2] = 1.0;
-            hs_[3] = -11.0 / 64.0;
-            hs_[4] = 3.0 / 128.0;
-            // sign convention
-            sgn_hs_[0] = -1.0;
-            sgn_hs_[1] = -1.0;
-            sgn_hs_[2] = 1.0;
-            sgn_hs_[3] = -1.0;
-            sgn_hs_[4] = -1.0;
-            // g analysis
-            ga_[0] = -0.01171875;
-            ga_[1] = 0.171875;
-            ga_[2] = 0.5;
-            ga_[3] = -0.171875;
-            ga_[4] = +0.01171875;
-            // sign convention
-            sgn_ga_[0] = 1.0;
-            sgn_ga_[1] = 1.0;
-            sgn_ga_[2] = -1.0;
-            sgn_ga_[3] = 1.0;
-            sgn_ga_[4] = 1.0;
-        } else {
-            m_assert(false, "order %d not implemented yet", order);
-        }
-    }
+#if (M_WAVELET_N == 2) && (M_WAVELET_NT == 2)
+    static constexpr lid_t  len_ha_ = 5;
+    static constexpr lid_t  len_ga_ = 3;
+    static constexpr lid_t  len_gs_ = 2;
+    static constexpr real_t ha_[]   = {-0.125, 0.25, 0.75, 0.25, -0.125};
+    static constexpr real_t ga_[]   = {-0.5, 1.0, -0.5};
+    static constexpr real_t gs_[]   = {0.5, 0.5};
+#elif (M_WAVELET_N == 4) && (M_WAVELET_NT == 0)
+    static constexpr lid_t  len_ha_ = 1;
+    static constexpr lid_t  len_ga_ = 7;
+    static constexpr lid_t  len_gs_ = 4;
+    static constexpr real_t ha_[]   = {1.0};
+    static constexpr real_t ga_[]   = {0.0625, 0.0, -0.5625, 1.0, -0.5625, 0.0, 0.0625};
+    static constexpr real_t gs_[]   = {-0.0625, 0.5625, 0.5625, -0.0625};
+#elif (M_WAVELET_N == 4) && (M_WAVELET_NT == 2)
+    static constexpr lid_t  len_ha_ = 9;
+    static constexpr lid_t  len_ga_ = 7;
+    static constexpr lid_t  len_gs_ = 4;
+    static constexpr real_t ha_[]   = {0.015625, 0.0, -0.125, 0.25, 0.71875, 0.25, -0.125, 0.0, 0.015625};
+    static constexpr real_t ga_[]   = {0.0625, 0.0, -0.5625, 1.0, -0.5625, 0.0, 0.0625};
+    static constexpr real_t gs_[]   = {-0.0625, 0.5625, 0.5625, -0.0625};
+#else
+    static constexpr lid_t  len_ha_ = 0;
+    static constexpr lid_t  len_ga_ = 0;
+    static constexpr lid_t  len_gs_ = 0;
+    static constexpr real_t ha_[]   = nullptr;
+    static constexpr real_t ga_[]   = nullptr;
+    static constexpr real_t gs_[]   = nullptr;
+#endif
+
+    // front ghost length
+    lid_t ncoarsen_front() const override { return len_ha_ / 2; }
+    lid_t nrefine_front() const override { return len_gs_ / 2 - 1; }
+    lid_t ncriterion_front() const override { return len_ga_ / 2 - 1; }
+    // back ghost length
+    lid_t nrefine_back() const override { return len_gs_ / 2; }
+    lid_t ncoarsen_back() const override { return len_ha_ / 2 - 1; }
+    lid_t ncriterion_back() const override { return len_ga_ / 2; }
+    /*
+    * @name function overriding Interpolator class
+    * @{
+    */
+    string Identity() const override { return "interpolating wavelet " + std::to_string(M_WAVELET_N) + "." + std::to_string(M_WAVELET_NT); }
 
     real_t Criterion(MemLayout* block, real_p data) override;
-    void   Details(MemLayout* block, real_p data, real_t* criterion);
-
-    string Identity() override { return "Averaging wavelet order " + std::to_string(order); }
-    lid_t  NGhostCoarse() override { return (order / 2); }
 
    protected:
-    void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const override;
-    void Refine_(const interp_ctx_t* ctx) const override;
-    void Copy_(const interp_ctx_t* ctx) const override;
-    void Detail_(const interp_ctx_t* ctx, real_t* details_inf_norm) const;
+    void Coarsen_(const interp_ctx_t* ctx) override;
+    void Refine_(const interp_ctx_t* ctx) override;
+    /* @}*/
+
+    /*
+    * @name implementation specific function
+    * @{
+    */
+   public:
+    void Details(MemLayout* block, real_p data, real_t* details_max);
+
+   protected:
+    void Detail_(const interp_ctx_t* ctx, real_t* details_max);
+    /* @}*/
 };
 
 #endif  // SRC_WAVELET_HPP_
-
-#include "wavelet.ipp"

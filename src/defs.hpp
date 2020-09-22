@@ -1,9 +1,11 @@
 #ifndef SRC_DEFS_HPP_
 #define SRC_DEFS_HPP_
 
+#include <execinfo.h>
 #include <mpi.h>
 #include <omp.h>
 #include <p8est.h>
+#include "hdf5.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -13,8 +15,13 @@
  * @{
  */
 #define M_N 16          //!< size of one block (M_N x M_N x M_N)
-#define M_GS 2          //!< number of ghost points
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
+
+#ifndef BLOCK_GS
+#define M_GS 2  //!< number of ghost points
+#else
+#define M_GS BLOCK_GS
+#endif
 /** @} */
 
 /**
@@ -29,93 +36,102 @@
  * @name memory management
  * @{
  */
-#define M_MPI_REAL MPI_DOUBLE  //!< type used for the MPI communication (double by default)
+#define M_MPI_REAL MPI_DOUBLE          //!< type used for the MPI communication (double by default)
+#define M_HDF5_REAL H5T_NATIVE_DOUBLE  //!< type used for the MPI communication (double by default)
 
 /**
  * @brief returns true if the memory is aligned
  * 
  */
-#define m_isaligned(a)                      \
-    ({                                      \
-        const void* _a = (a);               \
-        ((uintptr_t)_a) % M_ALIGNMENT == 0; \
+#define m_isaligned(a)                                  \
+    ({                                                  \
+        const void* m_isaligned_a_ = (void*)(a);        \
+        ((uintptr_t)m_isaligned_a_) % M_ALIGNMENT == 0; \
     })
 
 #if defined(__INTEL_COMPILER)
-#define m_assume_aligned(a)                                  \
-    ({                                                       \
-        __typeof__(a) a_ = (a);                              \
-        m_assert(m_isaligned(a_), "data has to be aligned"); \
-        __assume_aligned(a_, M_ALIGNMENT);                   \
+#define m_assume_aligned(a)                                                   \
+    ({                                                                        \
+        __typeof__(a) m_assume_aligned_a_ = (a);                              \
+        m_assert(m_isaligned(m_assume_aligned_a_), "data has to be aligned"); \
+        __assume_aligned(m_assume_aligned_a_, M_ALIGNMENT);                   \
     })
-#define m_calloc(size)                                 \
-    ({                                                 \
-        size_t size_ = (size_t)(size);                 \
-        void*  data  = _mm_malloc(size_, M_ALIGNMENT); \
-        memset(data, 0, size_);                        \
-        data;                                          \
+#define m_calloc(size)                                                   \
+    ({                                                                   \
+        size_t m_calloc_size_ = (size_t)(size);                          \
+        void*  m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT); \
+        memset(m_calloc_data_, 0, m_calloc_size_);                       \
+        m_calloc_data_;                                                  \
     })
-#define m_free(data)                     \
-    ({                                   \
-        __typeof__(data) data_ = (data); \
-        _mm_free((void*)data_);          \
+#define m_free(data)                        \
+    ({                                      \
+        void* m_free_data_ = (void*)(data); \
+        _mm_free(m_free_data_);             \
     })
 #else  //defined(__GNUC__)
-/**
- * @brief shortcuts the memory alignement assumption and check if it can be done
- */
-#define m_assume_aligned(a)                                  \
-    ({                                                       \
-        __typeof__(a) a_ = (a);                              \
-        m_assert(m_isaligned(a_), "data has to be aligned"); \
-        __builtin_assume_aligned(a_, M_ALIGNMENT);           \
+#define m_assume_aligned(a)                                                   \
+    ({                                                                        \
+        __typeof__(a) m_assume_aligned_a_ = (a);                              \
+        m_assert(m_isaligned(m_assume_aligned_a_), "data has to be aligned"); \
+        __builtin_assume_aligned(m_assume_aligned_a_, M_ALIGNMENT);           \
     })
 /**
  * @brief allocate a given size (in Byte) and set to 0 the array.
  * the return pointer is aligned to M_ALIGMEMENT
  */
-#define m_calloc(size)                                    \
-    ({                                                    \
-        size_t size_ = (size_t)(size);                    \
-        void*  data  = aligned_alloc(M_ALIGNMENT, size_); \
-        memset(data, 0, size_);                           \
-        data;                                             \
+#define m_calloc(size)                                                      \
+    ({                                                                      \
+        size_t m_calloc_size_ = (size_t)(size);                             \
+        void*  m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_); \
+        memset(m_calloc_data_, 0, m_calloc_size_);                          \
+        m_calloc_data_;                                                     \
     })
 /**
  * @brief frees the pointer allocated using @ref m_calloc()
  */
-#define m_free(data)                     \
-    ({                                   \
-        __typeof__(data) data_ = (data); \
-        free((void*)data_);              \
+#define m_free(data)                        \
+    ({                                      \
+        void* m_free_data_ = (void*)(data); \
+        free(m_free_data_);                 \
     })
 #endif
 /** @} */
 
 /**
- * @name min max macros
+ * @name min max sign macros
  * 
  */
 /**
  * @brief returns the max of two expressions
  * 
  */
-#define m_max(a, b)             \
-    ({                          \
-        __typeof__(a) _a = (a); \
-        __typeof__(b) _b = (b); \
-        _a > _b ? _a : _b;      \
+#define m_max(a, b)                                      \
+    ({                                                   \
+        __typeof__(a) m_max_a_ = (a);                    \
+        __typeof__(b) m_max_b_ = (b);                    \
+        (m_max_a_ > m_max_b_) ? (m_max_a_) : (m_max_b_); \
     })
 
 /**
  * @brief returns the min of two expressions
  * 
  */
-#define m_min(a, b)             \
-    ({                          \
-        __typeof__(a) _a = (a); \
-        __typeof__(b) _b = (b); \
-        _a < _b ? _a : _b;      \
+#define m_min(a, b)                                      \
+    ({                                                   \
+        __typeof__(a) m_min_a_ = (a);                    \
+        __typeof__(b) m_min_b_ = (b);                    \
+        (m_min_a_ < m_min_b_) ? (m_min_a_) : (m_min_b_); \
+    })
+
+/**
+ * @brief returns the sign of a number
+ * 
+ */
+#define m_sign(a)                                                \
+    ({                                                           \
+        __typeof__(a) m_sign_a_    = (a);                        \
+        __typeof__(a) m_sign_zero_ = 0;                          \
+        (m_sign_zero_ < m_sign_a_) - (m_sign_a_ < m_sign_zero_); \
     })
 
 /** @} */
@@ -125,7 +141,7 @@
  * 
  */
 /**
- * @brief returns the position of a point (i0,i1,i2) in the computational domain
+ * @brief returns the position of a point (i0,i1,i2) wrt to the computational domain
  * 
  * @param i0 the index in the x direction within a block
  * @param i1 the index in the y direction within a block
@@ -134,15 +150,15 @@
  * @param xyz the position of the origin of the block (!= the position of (0,0,0))
  * 
  */
-#define m_pos(pos, i0, i1, i2, hgrid, xyz)        \
-    ({                                            \
-        __typeof__(i0) _i0 = (i0);                \
-        __typeof__(i1) _i1 = (i1);                \
-        __typeof__(i2) _i2 = (i2);                \
-                                                  \
-        pos[0] = (_i0 + 0.5) * hgrid[0] + xyz[0]; \
-        pos[1] = (_i1 + 0.5) * hgrid[1] + xyz[1]; \
-        pos[2] = (_i2 + 0.5) * hgrid[2] + xyz[2]; \
+#define m_pos(pos, i0, i1, i2, hgrid, xyz) \
+    ({                                     \
+        __typeof__(i0) m_pos_i0_ = (i0);         \
+        __typeof__(i1) m_pos_i1_ = (i1);         \
+        __typeof__(i2) m_pos_i2_ = (i2);         \
+                                           \
+        pos[0] = m_pos_i0_ * hgrid[0] + xyz[0];  \
+        pos[1] = m_pos_i1_ * hgrid[1] + xyz[1];  \
+        pos[2] = m_pos_i2_ * hgrid[2] + xyz[2];  \
     })
 
 /**
@@ -157,35 +173,36 @@
  */
 #define m_pos_relative(offset, i0, i1, i2, hgrid) \
     ({                                            \
-        __typeof__(i0) _i0 = (i0);                \
-        __typeof__(i1) _i1 = (i1);                \
-        __typeof__(i2) _i2 = (i2);                \
+        __typeof__(i0) m_pos_relative_i0_ = (i0);                \
+        __typeof__(i1) m_pos_relative_i1_ = (i1);                \
+        __typeof__(i2) m_pos_relative_i2_ = (i2);                \
                                                   \
-        offset[0] = (_i0 + 0.5) * hgrid[0];       \
-        offset[1] = (_i1 + 0.5) * hgrid[1];       \
-        offset[2] = (_i2 + 0.5) * hgrid[2];       \
+        offset[0] = m_pos_relative_i0_ * hgrid[0];               \
+        offset[1] = m_pos_relative_i1_ * hgrid[1];               \
+        offset[2] = m_pos_relative_i2_ * hgrid[2];               \
     })
 
 /**
  * @brief returns the size (in elements) of one block
  * 
  */
-#define m_blockmemsize(lda)                             \
-    ({                                                  \
-        __typeof__(lda) _lda = (lda);                   \
-        (size_t)(lda * M_STRIDE * M_STRIDE * M_STRIDE); \
+#define m_blockmemsize(lda)                              \
+    ({                                                   \
+        __typeof__(lda) m_blockmemsize_lda_ = (lda);                    \
+        (size_t)(m_blockmemsize_lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
     })
 
 /**
  * @brief returns the memory offset of the first block element: (0,0,0)
  * 
  */
-#define m_zeroidx(ida, mem)                                        \
-    ({                                                             \
-        sid_t  ida_ = (ida);                                       \
-        lid_t  gs_  = (mem->gs());                                 \
-        size_t str_ = (size_t)(mem->stride());                     \
-        (size_t)(gs_ + str_ * (gs_ + str_ * (gs_ + str_ * ida_))); \
+#define m_zeroidx(ida, mem)                                                                                                              \
+    ({                                                                                                                                   \
+        __typeof__(mem) m_zeroidx_mem_ = (mem);                                                                                          \
+        lda_t  m_zeroidx_ida_          = (lda_t)(ida);                                                                                   \
+        lid_t  m_zeroidx_gs_           = (lid_t)(m_zeroidx_mem_->gs());                                                                  \
+        size_t m_zeroidx_str_          = (size_t)(m_zeroidx_mem_->stride());                                                             \
+        (size_t)(m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * m_zeroidx_ida_))); \
     })
 
 /**
@@ -195,14 +212,14 @@
  * 
  * @note: we cast the stride to size_t to ensure a proper conversion while computing the adress
  */
-#define m_sidx(i0, i1, i2, ida, str)                               \
-    ({                                                             \
-        lid_t  i0_  = (i0);                                        \
-        lid_t  i1_  = (i1);                                        \
-        lid_t  i2_  = (i2);                                        \
-        sid_t  ida_ = (ida);                                       \
-        size_t str_ = (size_t)(str);                               \
-        (size_t)(i0_ + str_ * (i1_ + str_ * (i2_ + str_ * ida_))); \
+#define m_sidx(i0, i1, i2, ida, str)                                                                                \
+    ({                                                                                                              \
+        lid_t  m_sidx_i0_  = (lid_t)(i0);                                                                           \
+        lid_t  m_sidx_i1_  = (lid_t)(i1);                                                                           \
+        lid_t  m_sidx_i2_  = (lid_t)(i2);                                                                           \
+        lda_t  m_sidx_ida_ = (lda_t)(ida);                                                                          \
+        size_t m_sidx_str_ = (size_t)(str);                                                                         \
+        (size_t)(m_sidx_i0_ + m_sidx_str_ * (m_sidx_i1_ + m_sidx_str_ * (m_sidx_i2_ + m_sidx_str_ * m_sidx_ida_))); \
     })
 
 /**
@@ -211,9 +228,10 @@
  * This macro is equivalent to @ref m_sidx with a stride given by MemLayout::stride()
  * 
  */
-#define m_midx(i0, i1, i2, ida, mem)            \
-    ({                                          \
-        m_sidx(i0, i1, i2, ida, mem->stride()); \
+#define m_midx(i0, i1, i2, ida, mem)                    \
+    ({                                                  \
+        __typeof__(mem) m_midx_mem_ = (mem);            \
+        m_sidx(i0, i1, i2, ida, m_midx_mem_->stride()); \
     })
 
 /**
@@ -229,14 +247,13 @@
  * @brief returns the lenght of a quadrant at a given level,
  * assuming one octree is a cubic domain: (1 x 1 x 1)
  */
-#define m_quad_len(level)                                  \
-    ({                                                     \
-        __typeof__(level) lvl_ = (level);                  \
-        1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(lvl_)); \
+#define m_quad_len(level)                                             \
+    ({                                                                \
+        level_t m_quad_len_lvl_ = (level_t)(level);                   \
+        1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(m_quad_len_lvl_)); \
     })
 
 /** @} */
-
 
 /**
  * @name logs and verbosity 
@@ -248,24 +265,24 @@
  */
 #ifndef LOG_MUTE
 #ifndef LOG_ALLRANKS
-#define m_log(format, ...)                                 \
-    ({                                                     \
-        int rank;                                          \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);              \
-        if (rank == 0) {                                   \
-            char def_nhyipns[1024];                        \
-            sprintf(def_nhyipns, format, ##__VA_ARGS__);   \
-            fprintf(stdout, "[murphy] %s\n", def_nhyipns); \
-        }                                                  \
+#define m_log(format, ...)                                \
+    ({                                                    \
+        int m_log_rank_;                                  \
+        MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);      \
+        if (m_log_rank_ == 0) {                           \
+            char m_log_msg_[1024];                        \
+            sprintf(m_log_msg_, format, ##__VA_ARGS__);   \
+            fprintf(stdout, "[murphy] %s\n", m_log_msg_); \
+        }                                                 \
     })
 #else
-#define m_log(format, ...)                                      \
-    ({                                                          \
-        int rank;                                               \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);                   \
-        char def_nhyipns[1024];                                 \
-        sprintf(def_nhyipns, format, ##__VA_ARGS__);            \
-        fprintf(stdout, "[%d murphy] %s\n", rank, def_nhyipns); \
+#define m_log(format, ...)                                            \
+    ({                                                                \
+        int m_log_rank_;                                              \
+        MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);                  \
+        char m_log_msg_[1024];                                        \
+        sprintf(m_log_msg_, format, ##__VA_ARGS__);                   \
+        fprintf(stdout, "[%d murphy] %s\n", m_log_rank_, m_log_msg_); \
     })
 #endif
 #else
@@ -278,13 +295,13 @@
  * 
  */
 #ifdef VERBOSE
-#define m_verb(format, ...)                                     \
-    ({                                                          \
-        int rank;                                               \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);                   \
-        char def_nhyipns[1024];                                 \
-        sprintf(def_nhyipns, format, ##__VA_ARGS__);            \
-        fprintf(stdout, "[%d murphy] %s\n", rank, def_nhyipns); \
+#define m_verb(format, ...)                                             \
+    ({                                                                  \
+        int m_verb_rank_;                                               \
+        MPI_Comm_rank(MPI_COMM_WORLD, &m_verb_rank_);                   \
+        char m_verb_msg_[1024];                                         \
+        sprintf(m_verb_msg_, format, ##__VA_ARGS__);                    \
+        fprintf(stdout, "[%d murphy] %s\n", m_verb_rank_, m_verb_msg_); \
     })
 #else
 #define m_verb(format, ...) \
@@ -299,15 +316,16 @@
 #define m_assert(cond, ...) \
     { ((void)0); }
 #else
-#define m_assert(cond, ...)                                                                                            \
-    ({                                                                                                                 \
-        if (!(cond)) {                                                                                                 \
-            char def_nhyzpns[1024];                                                                                    \
-            sprintf(def_nhyzpns, __VA_ARGS__);                                                                         \
-            fprintf(stdout, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)\n", #cond, def_nhyzpns, __FILE__, __LINE__); \
-            fflush(stdout);                                                                                            \
-            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                 \
-        }                                                                                                              \
+#define m_assert(cond, ...)                                                                                              \
+    ({                                                                                                                   \
+        bool m_assert_cond_ = (bool)(cond);                                                                              \
+        if (!(m_assert_cond_)) {                                                                                         \
+            char m_assert_msg_[1024];                                                                                    \
+            sprintf(m_assert_msg_, __VA_ARGS__);                                                                         \
+            fprintf(stdout, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)\n", #cond, m_assert_msg_, __FILE__, __LINE__); \
+            fflush(stdout);                                                                                              \
+            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                   \
+        }                                                                                                                \
     })
 #endif
 
@@ -315,16 +333,21 @@
  * @brief entry and exit of functions, enabled if VERBOSE is enabled
  * 
  */
+#ifdef VERBOSE
 #define m_begin                                                                             \
     m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
-    double def_idajfl_T0 = MPI_Wtime();                                                     \
+    double m_begin_T0 = MPI_Wtime();                                                        \
     m_verb("----- entering %s", __func__);
-
 #define m_end                                                                               \
     m_assert(omp_get_num_threads() == 1, "no MPI is allowed in an openmp parallel region"); \
-    double def_idajfl_T1 = MPI_Wtime();                                                     \
-    m_verb("----- leaving %s after %lf [s]", __func__, (def_idajfl_T1) - (def_idajfl_T0));
-    
+    double m_end_T1_ = MPI_Wtime();                                                         \
+    m_verb("----- leaving %s after %lf [s]", __func__, (m_end_T1_) - (m_begin_T0));
+#else
+#define m_begin \
+    { ((void)0); }
+#define m_end \
+    { ((void)0); }
+#endif
 /** @} */
 
 #endif  // SRC_DEFS_HPP_

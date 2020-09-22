@@ -2,7 +2,6 @@
 #define SRC_LAPLACIAN_HPP_
 
 #include "murphy.hpp"
-#include "operator.hpp"
 #include "stencil.hpp"
 
 /**
@@ -14,9 +13,11 @@
  */
 template <sid_t length>
 class LaplacianCross : public Stencil {
+   protected:
     real_t coef_[length];  //!< coefficients of the laplacian to apply
    public:
-    LaplacianCross(Grid* grid) : Stencil(grid) {
+    explicit LaplacianCross() {
+        // get the stencil
         if (length == 3) {
             coef_[0] = +1.0;
             coef_[1] = -2.0;
@@ -32,11 +33,10 @@ class LaplacianCross : public Stencil {
         }
     }
 
-   protected:
-    void ApplyOpDerivInner(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
-    void ApplyOpDerivOuter(const qid_t* qid, GridBlock* block, const Field* fid_src, Field* fid_trg) override;
+    virtual void ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
+    virtual void ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
 };
 
 #endif  // SRC_LAPLACIAN_HPP_
 
-#include "laplacian.ipp"
+#include "laplacian.inc"

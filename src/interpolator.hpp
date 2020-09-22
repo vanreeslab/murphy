@@ -26,67 +26,85 @@ typedef struct interp_ctx_t {
     lid_t srcstart[3];  //!< first index available in the source memory
     lid_t srcend[3];    //!< last index available in the source memory
 #endif
+    real_t alpha = 0.0;  //!< the constant multiplication factor: target = alpha * constant + interpolation(source)
+
     /**
      * @name position pointers
      * 
      * They both refer the position (0,0,0) of the target, hence the ghostsize is assumed to be zero
      * @{
      */
-    real_p sdata;  //!< refers the (0,0,0) location of the target memory, in the source layout
-    real_p tdata;  //!< refers the (0,0,0) location of the target memory
+    data_ptr sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
+    data_ptr cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
+    data_ptr tdata;  //!< refers the (0,0,0) location of the target memory
     /** @} */
 } interp_ctx_t;
 
-using std::string;
-
 /**
- * @brief defines a set of function used to interpolate
+ * @brief defines the most basic interpolator, define function to be implemented: Refine and Coarsen
  * 
- * The memory description relies on the MemLayout object and they are working on one dimension at a time.
+ * The target field is computed as alpha * constant field + interpolation(source field).
+ * The interpolation procedure is one of the following:
+ * - a copy
+ * - a get/put RMA operation on an already activated window
+ * - a refinement (to be provided by the child class)
+ * - a coarsening (to be provided by the child class)
  * 
  */
 class Interpolator {
    public:
-   /**
-    * @brief returns a positive, single value that represents a refinement/coarsening criterion
-    * 
-    * @param block the memory layout to use to compute that value
-    * @param data the memory adress refering to point (0,0,0)
-    * @return real_t the criterion value, always >= 0
-    */
-    virtual real_t Criterion(MemLayout* block, real_p data) = 0;
-
-    virtual void Interpolate(const sid_t dlvl, const lid_t shift[3], MemLayout* block_src, real_p data_src, MemLayout* block_trg, real_p data_trg);
+    explicit Interpolator(){};
+    // need to define the destructor as virtual to be sure to pass by by the wavelet destructor
+    virtual ~Interpolator(){};
 
     /**
-    * @brief returns a string identifying the operator
+    * @name basic implemented interpolating functions
+    * @{
     */
-    virtual string Identity() = 0;
+    virtual void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg);
+    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg);
+    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, data_ptr data_cst);
+    virtual void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win);
+    virtual void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win);
+    /** @} */
+
+    virtual real_t      Criterion(MemLayout* block, real_p data) = 0;
+    virtual std::string Identity() const                         = 0;
+
     /**
-    * @brief returns how many ghost points on the coarse level must be present when refinement
-    */
-    virtual lid_t NGhostCoarse() = 0;
+     * @name filter length - to be implemented
+     * @{
+     */
+    virtual lid_t ncoarsen_front() const   = 0;
+    virtual lid_t ncriterion_front() const = 0;
+    virtual lid_t nrefine_front() const    = 0;
+    virtual lid_t ncoarsen_back() const    = 0;
+    virtual lid_t ncriterion_back() const  = 0;
+    virtual lid_t nrefine_back() const     = 0;
+    /** @} */
+
+    /**
+     * @name ghost length, worst case of each filter
+     * @{
+     */
+    virtual lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
+    virtual lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())); }
+    /** @} */
 
    protected:
-   /**
-    * @brief coarsen the information for blocks having a jump in level
-    * 
-    * @param ctx the interpolation context, see @ref interp_ctx_t
-    * @param dlvl the number of level we have to coarsen
-    */
-    virtual void Coarsen_(const interp_ctx_t* ctx, const lid_t dlvl) const = 0;
+    // call Copy_, Coarsen_ or Refine_
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst);
+
     /**
-     * @brief refines by one level the information
-     * 
-     * @param ctx the interpolation context, see @ref interp_ctx_t
+     * @name Interpolation functions, to be implemented
+     * @{
      */
-    virtual void Refine_(const interp_ctx_t* ctx) const                    = 0;
-    /**
-     * @brief copy the information for blocks at the same level
-     * 
-     * @param ctx the interpolation context, see @ref interp_ctx_t
-     */
-    virtual void Copy_(const interp_ctx_t* ctx) const                      = 0;
+    virtual void Coarsen_(const interp_ctx_t* ctx) = 0;
+    virtual void Refine_(const interp_ctx_t* ctx)  = 0;
+    /** @} */
+
+    // defined function -- might be overriden
+    virtual void Copy_(const level_t dlvl, const interp_ctx_t* ctx);
 };
 
 #endif  // SRC_INTERPOLATE_HPP_

@@ -2,7 +2,7 @@
 
 #include <mpi.h>
 
-TimerAgent::TimerAgent(string name) {
+TimerBlock::TimerBlock(string name) {
     name_ = name;
 }
 
@@ -10,7 +10,7 @@ TimerAgent::TimerAgent(string name) {
  * @brief start the timer
  * 
  */
-void TimerAgent::Start() {
+void TimerBlock::Start() {
     count_ += 1;
     t0_ = MPI_Wtime();
 }
@@ -19,7 +19,7 @@ void TimerAgent::Start() {
  * @brief stop the timer
  * 
  */
-void TimerAgent::Stop() {
+void TimerBlock::Stop() {
     // get the time
     t1_ = MPI_Wtime();
     // store it
@@ -33,7 +33,7 @@ void TimerAgent::Stop() {
  * @brief reset the timer
  * 
  */
-void TimerAgent::Reset() {
+void TimerBlock::Reset() {
     t1_       = 0.0;
     t0_       = 0.0;
     time_acc_ = 0.0;
@@ -45,7 +45,7 @@ void TimerAgent::Reset() {
  * @brief adds memory to the timer to compute bandwith
  * 
  */
-void TimerAgent::AddMem(size_t mem) {
+void TimerBlock::AddMem(size_t mem) {
     memsize_ += mem;
 }
 
@@ -54,10 +54,10 @@ void TimerAgent::AddMem(size_t mem) {
  * 
  * @param child 
  */
-void TimerAgent::AddChild(TimerAgent* child) {
+void TimerBlock::AddChild(TimerBlock* child) {
     string childName = child->name();
 
-    map<string, TimerAgent*>::iterator it = children_.find(childName);
+    map<string, TimerBlock*>::iterator it = children_.find(childName);
     // if it does not already exist
     if (it == children_.end()) {
         children_[childName] = child;
@@ -69,7 +69,7 @@ void TimerAgent::AddChild(TimerAgent* child) {
  * 
  * @param daddy 
  */
-void TimerAgent::SetParent(TimerAgent* parent) {
+void TimerBlock::SetParent(TimerBlock* parent) {
     parent_  = parent;
     is_root_ = false;
 }
@@ -79,13 +79,13 @@ void TimerAgent::SetParent(TimerAgent* parent) {
  * 
  * @return real_t 
  */
-real_t TimerAgent::time_acc() const {
+real_t TimerBlock::time_acc() const {
     if (count_ > 0) {
         return time_acc_;
     } else {
         real_t sum = 0.0;
-        for (map<string, TimerAgent*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
-            const TimerAgent* child = it->second;
+        for (map<string, TimerBlock*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
+            const TimerBlock* child = it->second;
             sum += child->time_acc();
         }
         return sum;
@@ -97,13 +97,13 @@ real_t TimerAgent::time_acc() const {
  * 
  * @return real_t 
  */
-real_t TimerAgent::time_min() const {
+real_t TimerBlock::time_min() const {
     if (count_ > 0) {
         return time_min_;
     } else {
         real_t sum = 0.0;
-        for (map<string, TimerAgent*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
-            const TimerAgent* child = it->second;
+        for (map<string, TimerBlock*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
+            const TimerBlock* child = it->second;
             sum += child->time_min();
         }
         return sum;
@@ -115,41 +115,41 @@ real_t TimerAgent::time_min() const {
  * 
  * @return real_t 
  */
-real_t TimerAgent::time_max() const {
+real_t TimerBlock::time_max() const {
     if (count_ > 0) {
         return time_max_;
     } else {
         real_t sum = 0.0;
-        for (map<string, TimerAgent*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
-            const TimerAgent* child = it->second;
+        for (map<string, TimerBlock*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
+            const TimerBlock* child = it->second;
             sum += child->time_max();
         }
         return sum;
     }
 }
 
-void TimerAgent::DumpParentality(FILE* file, const int level) {
+void TimerBlock::DumpParentality(FILE* file, const int level) {
     fprintf(file, "%d;%s", level, name_.c_str());
-    for (map<string, TimerAgent*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
-        const TimerAgent* child     = it->second;
+    for (map<string, TimerBlock*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
+        const TimerBlock* child     = it->second;
         string            childName = child->name();
         fprintf(file, ";%s", childName.c_str());
     }
     fprintf(file, "\n");
 
-    for (map<string, TimerAgent*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
+    for (map<string, TimerBlock*>::const_iterator it = children_.begin(); it != children_.end(); it++) {
         it->second->DumpParentality(file, level + 1);
     }
 }
 
 /**
- * @brief display the time for the TimerAgent
+ * @brief display the time for the TimerBlock
  * 
  * @param file 
  * @param level 
  * @param total_time 
  */
-void TimerAgent::Disp(FILE* file, const int level, const real_t total_time) {
+void TimerBlock::Disp(FILE* file, const int level, const real_t total_time) {
     // check if any proc has called the agent
     int total_count;
     MPI_Allreduce(&count_, &total_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -193,8 +193,8 @@ void TimerAgent::Disp(FILE* file, const int level, const real_t total_time) {
 
         // compute the self time  = time passed inside - children
         real_t sum_child = 0.0;
-        for (map<string, TimerAgent*>::iterator it = children_.begin(); it != children_.end(); it++) {
-            TimerAgent* child = it->second;
+        for (map<string, TimerBlock*>::iterator it = children_.begin(); it != children_.end(); it++) {
+            TimerBlock* child = it->second;
             sum_child += child->time_acc();
         }
         real_t loc_self_time = (this->time_acc() - sum_child);
@@ -241,8 +241,8 @@ void TimerAgent::Disp(FILE* file, const int level, const real_t total_time) {
         }
     }
     // recursive call to the childrens
-    for (map<string, TimerAgent*>::iterator it = children_.begin(); it != children_.end(); it++) {
-        TimerAgent* child = it->second;
+    for (map<string, TimerBlock*>::iterator it = children_.begin(); it != children_.end(); it++) {
+        TimerBlock* child = it->second;
         child->Disp(file, level + 1, total_time);
     }
 }
@@ -258,49 +258,49 @@ Prof::Prof(const string myname) : name_(myname) {
     CreateSingle_("root");
 }
 Prof::~Prof() {
-    for (map<string, TimerAgent*>::iterator it = time_map_.begin(); it != time_map_.end(); it++) {
-        TimerAgent* current = it->second;
+    for (map<string, TimerBlock*>::iterator it = time_map_.begin(); it != time_map_.end(); it++) {
+        TimerBlock* current = it->second;
         delete (current);
     }
 }
 
 /**
- * @brief create a TimerAgent inside the #time_map_
+ * @brief create a TimerBlock inside the #time_map_
  * 
  * @param name the key of the entry
  */
 void Prof::CreateSingle_(string name) {
-    map<string, TimerAgent*>::iterator it = time_map_.find(name);
+    map<string, TimerBlock*>::iterator it = time_map_.find(name);
     // if it does not already exist
     // if (it != time_map_.end()) {
     //     // time_map_[name]->Reset();
     // } else 
     if (it == time_map_.end()) {
-        time_map_[name] = new TimerAgent(name);
+        time_map_[name] = new TimerBlock(name);
         time_map_[name]->Reset();
     }
 }
 
 /**
- * @brief create a new TimerAgent with "root" as parent
+ * @brief create a new TimerBlock with "root" as parent
  * 
- * @param name the TimerAgent name
+ * @param name the TimerBlock name
  */
 void Prof::Create(string name) {
     Create(name, "root");
 }
 
 /**
- * @brief create a new TimerAgent 
+ * @brief create a new TimerBlock 
  * 
- * @param child the new TimerAgent
- * @param daddy the dad of the new TimerAgent if it does not exists, it is created
+ * @param child the new TimerBlock
+ * @param daddy the dad of the new TimerBlock if it does not exists, it is created
  */
 void Prof::Create(string child, string parent) {
     // create a new guy
     CreateSingle_(child);
     // find the daddy agent in the root
-    map<string, TimerAgent*>::iterator it = time_map_.find(parent);
+    map<string, TimerBlock*>::iterator it = time_map_.find(parent);
     if (it == time_map_.end()) {
         Create(parent);
     }
@@ -308,15 +308,15 @@ void Prof::Create(string child, string parent) {
 }
 
 /**
- * @brief start the timer of the TimerAgent
+ * @brief start the timer of the TimerBlock
  * 
- * @param name the TimerAgent name
+ * @param name the TimerBlock name
  */
 void Prof::Start(string name) {
 #ifdef NDEBUG
     time_map_[name]->Start();
 #else
-    map<string, TimerAgent*>::iterator it = time_map_.find(name);
+    map<string, TimerBlock*>::iterator it = time_map_.find(name);
     if (it != time_map_.end()) {
         time_map_[name]->Start();
     } else {
@@ -326,15 +326,15 @@ void Prof::Start(string name) {
 }
 
 /**
- * @brief stop the timer of the TimerAgent
+ * @brief stop the timer of the TimerBlock
  * 
- * @param name the TimerAgent name
+ * @param name the TimerBlock name
  */
 void Prof::Stop(string name) {
 #ifdef NDEBUG
     time_map_[name]->Stop();
 #else
-    map<string, TimerAgent*>::iterator it = time_map_.find(name);
+    map<string, TimerBlock*>::iterator it = time_map_.find(name);
     if (it != time_map_.end()) {
         time_map_[name]->Stop();
     } else {
@@ -347,7 +347,7 @@ void Prof::AddMem(string name, size_t mem) {
 #ifdef NDEBUG
     time_map_[name]->AddMem(mem);
 #else
-    map<string, TimerAgent*>::iterator it = time_map_.find(name);
+    map<string, TimerBlock*>::iterator it = time_map_.find(name);
     if (it != time_map_.end()) {
         time_map_[name]->AddMem(mem);
     } else {

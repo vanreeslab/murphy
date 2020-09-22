@@ -12,11 +12,10 @@
 class PhysBlock : public SubBlock {
    protected:
     sid_t iface_;  //!< ID of the normal to the face
-
    public:
     sid_t iface() { return iface_; }
     sid_t dir() { return iface_ / 2; }
-    PhysBlock(const sid_t iface, MemLayout* block);
+    PhysBlock(const iface_t iface, const MemLayout* block, const lid_t nghost_front[3], const lid_t nghost_back[3]);
 };
 
 #endif  // SRC_PHYSBLOCK_HPP_
