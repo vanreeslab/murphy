@@ -10,20 +10,47 @@ This comes handy when we consider the interpolation required from one neighbor t
 Instead of solving this dependency list, we rather use the fact that to compute this refinement, only the values of my neighbors are needed.
 Hence, we use a _coarse myself_, i.e. a coarse representation of myself, as a temporary storage of the needed values and then we compute the refinement needed.
 
-The first step of our ghosting is then to fill this coarse representation with neighbors on the same level, aka _siblings_ as me and neighbors coarser than me, aka _parents_. 
+The first step of our ghosting is then to fill this coarse representation with neighbors on the same level, aka _siblings_ as me and neighbors coarser than me, aka _parents_.
 
-Once we have that, we can compute the refinement and simply copy the needed values from the siblings.
+Once we have that, we can compute the refinement in a simple way and I obtain the needed values.
 
-The ghost points that need to be refined from a finer neigbor's values often require a very large number of values. Instead of asking all those values, my neighbor will refine itself to the temporary area and I will just take the resulting values. 
+The ghost points that need to be refined from a finer neigbor's values often require a very large number of values. Instead of asking all those values, my neighbor will refine itself to the temporary area and I will just take the resulting values.
 
 ### The ghosting procedure
-At the end of the day, I need to perform the following operations:
-1. copy my siblings values to my ghost area
-1. copy my siblings values to the coarse temporary memory.
-1. copy the values of my coarser neighbors to the coarse temporary memory.
-1. compute the refined ghost values
-1. coarsen myself, the coarsening will be wrong in the areas with a finer neighbor but will be correct in the area of a coarser neighbors
-1. copy the coarsened values to meet my neighbor's need in ghost points.
+At the end of the day, I need to perform the following operations, divided into 4 steps
+
+------------------------
+- copy the current data to the windows `PushToWindow4Block`
+- start the epochs on the windows
+------------------------
+**STEP 1**: `GetGhost4Block_Post`
+- copy my siblings values to my ghost area (using RMA + simple copy)
+- if I have at least one coarse neighbor:
+    - copy my siblings values to the coarse temporary memory.
+    - copy the values of my coarser neighbors to the coarse temporary memory.
+------------------------
+- wait for the comm to finish
+------------------------
+**STEP 2**: `GetGhost4Block_Wait`
+- if I have at least one coarse neighbor:
+    - coarsen myself (:warning: the coarsening will be wrong in the areas with a finer neighbor but will be correct in the area of a coarser neighbors)
+    - compute the refinement from the `tmp` to the coarser ghost points
+------------------------
+-  start the epochs on the windows
+------------------------
+**STEP 3**: `PutGhost4Block_Post`
+- if I have at least one coarse neighbor
+    - reset the `tmp` array
+    - compute the physical boundary condition (:warning: it will be wrong in some location but correct where it matters: the intersections with siblings and coarse ghost points)
+    - compute the coarsening for my neighbors and store it in `tmp`
+    - Copy/RMA the result to the parent's window
+------------------------
+- wait for the comm to finish
+- get the updated info: `PullFromWindow4Block`
+------------------------
+**STEP 4**: `PutGhost4Block_Wait`
+- compute the physical boundary conditions with the correct data
+------------------------
 
 
 As a summary, I need to take care of the ghost points from same level and coarser neighbors. My finer neighbors will fill my ghost points. This works only because of the 2:1 constraint, ensuring that the fine ghost points do not influence the coarse ones. 
@@ -43,4 +70,4 @@ The reason behind this is that many ghost objects can be declared on the same me
 ### Improvement lists and todo
 - use the MPI_DataType everywhere when possible. It is a wonderfull abstraction of the memory block and also it provides a great way of copying non-continuous datas
 - the computation of the coarse indexed is really annoying and not very usefull, maybe we can change it?
-- the ghost list is actually linked uniquely to the GridBlock instead of the ghost itself. Hence we might want to include it in the 
+- the ghost list is actually linked uniquely to the GridBlock instead of the ghost itself. Hence we might want to include it in the GridBlock, alike the ghost ptr, so that we avoid double allocation as well.
