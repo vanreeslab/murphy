@@ -141,13 +141,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
             back_recv_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_send_request_ * sizeof(MPI_Request)));
             // allocate the cummulative list, to know which block I have to copy to the buffer
             // note: we cannot use a cummulative since we may not have continuous set (if some blocks are not moving)
-            q_send_cum_block_ = reinterpret_cast<lid_t *>(m_calloc(n_send_request_ * sizeof(lid_t)));
-            q_send_cum_request_ = reinterpret_cast<lid_t *>(m_calloc((n_send_request_ + 1) * sizeof(lid_t)));
+            q_send_cum_block_ = reinterpret_cast<iblock_t *>(m_calloc(n_send_request_ * sizeof(iblock_t)));
+            q_send_cum_request_ = reinterpret_cast<iblock_t *>(m_calloc((n_send_request_ + 1) * sizeof(iblock_t)));
 
             // for each receiver, allocate the send request
-            int   rcount  = 0;
-            lid_t qcount  = 0;
-            lid_t tqcount = 0;
+            rank_t   rcount  = 0;
+            iblock_t qcount  = 0;
+            iblock_t tqcount = 0;
             for (rank_t ir = 0; ir < n_recver; ir++) {
                 // get who is the receiver and skip if it's me
                 const rank_t c_recver = first_recver + ir;
@@ -164,6 +164,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
                     continue;
                 }
                 // remember the begin and end point
+                m_assert(rcount < n_send_request_, "scount = %d is too big compared to the number of request = %d", rcount, n_send_request_);
                 q_send_cum_block_[rcount]   = tqcount;
                 q_send_cum_request_[rcount] = qcount;
 
@@ -238,7 +239,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
             n_recv_request_ = 0;
             for (rank_t ir = 0; ir < n_sender; ++ir) {
                 const rank_t c_sender = first_sender + ir;
-                n_recv_request_ += (oldpart[c_sender + 1] - oldpart[c_sender + ir]) > 0;
+                n_recv_request_ += (oldpart[c_sender + 1] - oldpart[c_sender]) > 0;
             }
             // remove myself
             n_recv_request_ -= (first_sender <= rank && rank <= last_sender);
@@ -249,13 +250,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
             back_send_request_ = reinterpret_cast<MPI_Request *>(m_calloc(n_recv_request_ * sizeof(MPI_Request)));
             // allocate the cummulative list, to know which block I have to copy to the buffer
             // note: we cannot use a cummulative since we may not have continuous set (if some blocks are not moving)
-            q_recv_cum_block_   = reinterpret_cast<lid_t *>(m_calloc(n_recv_request_ * sizeof(lid_t)));
-            q_recv_cum_request_ = reinterpret_cast<lid_t *>(m_calloc((n_recv_request_ + 1) * sizeof(lid_t)));
+            q_recv_cum_block_   = reinterpret_cast<iblock_t *>(m_calloc(n_recv_request_ * sizeof(iblock_t)));
+            q_recv_cum_request_ = reinterpret_cast<iblock_t *>(m_calloc((n_recv_request_ + 1) * sizeof(iblock_t)));
 
             // for each receiver, allocate the send request
-            int   scount  = 0;
-            lid_t qcount  = 0;  //! counter on the blocks actually send
-            lid_t tqcount = 0;  //! counter on all the blocks on this rank
+            rank_t   scount  = 0;  // counter on the number of sender (rank)
+            iblock_t qcount  = 0;  // counter on the blocks actually send
+            iblock_t tqcount = 0;  // counter on all the blocks on this rank
             for (rank_t ir = 0; ir < n_sender; ir++) {
                 // get who is the sender
                 const rank_t c_sender = first_sender + ir;
@@ -274,6 +275,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
                     continue;
                 }
                 // store the memory accesses
+                m_assert(scount < n_recv_request_, "scount = %d is too big compared to the number of request = %d", scount, n_recv_request_);
                 q_recv_cum_block_[scount]   = tqcount;
                 q_recv_cum_request_[scount] = qcount;
                 // create the send request
@@ -286,6 +288,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
                 scount += 1;
             }
             q_recv_cum_request_[n_recv_request_] = qcount;
+            m_assert(qcount == cpart_n, "counters are not matching");
             m_assert(qcount == cpart_n, "counters are not matching");
         } else {
             m_verb("No blocks to recv");
