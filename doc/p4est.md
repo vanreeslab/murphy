@@ -1,7 +1,8 @@
 ## Notes on P4EST library
 
 ### Miscellaneous notes
-- the quadrants are indexed using the type `p4est_locidx_t`
+- the quadrants are indexed using the type `p4est_locidx_t`.
+- the constant `P8EST_MAXLEVEL` defines the number of max level, ranging from `0` to `P8EST_QMAXLEVEL`.
 
 ### ghosts and mirrors
 #### Definitions

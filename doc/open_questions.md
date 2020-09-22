@@ -6,7 +6,7 @@ The definition of so many operators is difficult to follow.
 You have operators, then implementation of operators, it that really usefull? 
 On one side, it helps to decrease the lines of code, ease the writting of new operators. On the other side, it's a bit messy to have all those operators defined independently.
 
-##### :+1: hosen solution
+##### :+1: chosen solution
 I reduced the useless inheritance to the operators by use the `DoOp_F_` function as much as possible.
 
 ---------------------------

@@ -13,5 +13,5 @@
 ### more documentation/information?
 Please, refer to the following pages for detailed instructions
 - [Build murphy](doc/build.md)
-- [Implementation choices](doc/implementation.md)
-- [How to contribute?](doc/contribute.md)
+- [To know before contributing](doc/contribute.md)
+- [Documentation](doc/documentation.md)
