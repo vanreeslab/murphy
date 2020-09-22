@@ -22,7 +22,6 @@ class test_Wavelet_Convergence_Periodic : public ::testing::Test {
 };
 
 //==============================================================================================================================
-// #if (WAVELET_N == 2)
 TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
     for (lda_t id = 0; id < 3; id++) {
         // init the errors
@@ -59,10 +58,10 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
             // pull the ghosts
             grid.GhostPull(&test);
 
-            IOH5 io("data_test");
-            io(&grid, &test);
-            io.dump_ghost(true);
-            io(&grid, &test);
+            // IOH5 io("data_test");
+            // io(&grid, &test);
+            // io.dump_ghost(true);
+            // io(&grid, &test);
 
             // create the solution field
             Field sol("sol", 1);
@@ -80,7 +79,7 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
         m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
-        ASSERT_GE(conv2, 1.9);
-        ASSERT_GE(convi, 1.9);
+        ASSERT_GE(conv2, M_WAVELET_N-0.1);
+        ASSERT_GE(convi, M_WAVELET_N-0.1);
     }
 }
