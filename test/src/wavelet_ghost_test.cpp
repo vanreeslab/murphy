@@ -106,7 +106,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_2_x) {
         // create the solution field
         Field sol("sol", 1);
         grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir, true);
+        SetPolynom field_sol(deg, dir, &grid);
         field_sol(&grid, &sol);
 
         // mask both the sol and the result
@@ -161,7 +161,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_4_x) {
         // create the solution field
         Field sol("sol", 1);
         grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir, true);
+        SetPolynom field_sol(deg, dir, &grid);
         field_sol(&grid, &sol);
 
         // mask both the sol and the result
