@@ -109,9 +109,11 @@ all: $(TARGET)
 preproc: $(IN)
 
 $(TARGET): $(OBJ)
+	mkdir -p $(OBJ_DIR)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIB)
 
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
+	mkdir -p $(TEST_DIR)/$(OBJ_DIR)
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
 .PHONY: clean
