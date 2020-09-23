@@ -9,7 +9,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.4
+      image: vanreeslab/murphy:v1.5
     # define the steps
     steps:
       #checkout the repo
@@ -18,33 +18,6 @@ jobs:
       - run: mkdir build
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test_ci make -j12
-      # # save the exe created
-      # - uses: actions/upload-artifact@v2
-      #   with:
-      #     name: murphy
-      #     path: murphy
-
-  # #----------------------------------------------------------------------------
-  # build-test:
-  #   #indicate to run on the beast using the correct docker
-  #   runs-on: beast-tower
-  #   timeout-minutes: 20
-  #   container:
-  #     image: vanreeslab/murphy:v1.4
-  #   # define the steps
-  #   steps:
-  #     #checkout the repo
-  #     - uses: actions/checkout@v2
-  #     # do the build
-  #     - run: mkdir build
-  #     - run: mkdir test/build
-  #     - name: build
-  #       run: ARCH_FILE=make_arch/make.docker_gcc_test_ci make test -j
-  #     # # save the exe created
-  #     # - uses: actions/upload-artifact@v2
-  #     #   with:
-  #     #     name: murphy_test
-  #     #     path: murphy_test
 
   #----------------------------------------------------------------------------
   runtests_wavelet_2_2:
@@ -53,14 +26,9 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.4
+      image: vanreeslab/murphy:v1.5
     # define the steps
     steps:
-      # - uses: actions/download-artifact@v2
-      #   with:
-      #     name: murphy_test
-      # - name: fix permission
-      #   run: chmod +x murphy_test
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
@@ -82,14 +50,9 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.4
+      image: vanreeslab/murphy:v1.5
     # define the steps
     steps:
-      # - uses: actions/download-artifact@v2
-      #   with:
-      #     name: murphy_test
-      # - name: fix permission
-      #   run: chmod +x murphy_test
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
@@ -111,14 +74,9 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.4
+      image: vanreeslab/murphy:v1.5
     # define the steps
     steps:
-      # - uses: actions/download-artifact@v2
-      #   with:
-      #     name: murphy_test
-      # - name: fix permission
-      #   run: chmod +x murphy_test
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
@@ -132,60 +90,3 @@ jobs:
       # run the tests
       - name: run_mpi
         run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
-
-  #----------------------------------------------------------------------------
-  # run-test-OpenMP:
-  #   needs: build-test
-  #   #indicate to run on the beast using the correct docker
-  #   runs-on: beast-tower
-  #   timeout-minutes: 20
-  #   container:
-  #     image: vanreeslab/murphy:v1.4
-  #   # define the steps
-  #   steps:
-  #     - uses: actions/download-artifact@v2
-  #       with:
-  #         name: murphy_test
-  #     - name: fix permission
-  #       run: chmod +x murphy_test
-  #     # do the build
-  #     - name: build
-  #       run: OMP_NUM_THREADS=5 mpirun --allow-run-as-root -n 1 ./murphy_test
-  
-  # #----------------------------------------------------------------------------
-  # run-test-MPI:
-  #   needs: build-test
-  #   #indicate to run on the beast using the correct docker
-  #   runs-on: beast-tower
-  #   timeout-minutes: 20
-  #   container:
-  #     image: vanreeslab/murphy:v1.4
-  #   # define the steps
-  #   steps:
-  #     - uses: actions/download-artifact@v2
-  #       with:
-  #         name: murphy_test
-  #     - name: fix permission
-  #       run: chmod +x murphy_test
-  #     # do the build
-  #     - name: build
-  #       run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 5 ./murphy_test
-  
-  # #----------------------------------------------------------------------------
-  # run-test-Hybrid:
-  #   needs: build-test
-  #   #indicate to run on the beast using the correct docker
-  #   runs-on: beast-tower
-  #   timeout-minutes: 20
-  #   container:
-  #     image: vanreeslab/murphy:v1.4
-  #   # define the steps
-  #   steps:
-  #     - uses: actions/download-artifact@v2
-  #       with:
-  #         name: murphy_test
-  #     - name: fix permission
-  #       run: chmod +x murphy_test
-  #     # do the build
-  #     - name: build
-  #       run: OMP_NUM_THREADS=5 mpirun --allow-run-as-root -n 5 ./murphy_test
