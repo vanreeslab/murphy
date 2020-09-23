@@ -6,6 +6,7 @@ It means that we have the following branches:
 - `master` is the default working branch
 - `develop` is the development branch, the source branch for every new development
 - `dev-*` are the ongoing development branch
+- `fix-*` fix a bug or solve an issue
 
 To create a new development branch, simply do
 ```bash

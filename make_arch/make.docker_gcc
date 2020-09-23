@@ -18,7 +18,7 @@ HDF5_LIBNAME := -lhdf5_openmpi
 
 # P4EST_INC := /soft/p4est-2.2-gcc7/include
 # P4EST_LIB := /soft/p4est-2.2-gcc7/lib
-P4EST_INC := /soft/p4est-github-gcc9.3/include
-P4EST_LIB := /soft/p4est-github-gcc9.3/lib
-#P4EST_INC := /soft/p4est-github/include
-#P4EST_LIB := /soft/p4est-github/lib
+# P4EST_INC := /soft/p4est-github-gcc9.3/include
+# P4EST_LIB := /soft/p4est-github-gcc9.3/lib
+P4EST_INC := /soft/p4est-github/include
+P4EST_LIB := /soft/p4est-github/lib
