@@ -87,18 +87,13 @@ all: $(TARGET)
 .PHONY: preproc 
 preproc: $(IN)
 
-$(TARGET): $(OBJ_DIR) $(OBJ)
+$(TARGET): $(OBJ)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIB)
 
 .PHONY: test 
-test:  $(TEST_DIR)/$(OBJ_DIR)  $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
+test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
-
-$(TEST_DIR)/$(OBJ_DIR):
-	mkdir -p $(TEST_DIR)/$(OBJ_DIR)
 
 .PHONY: clean 
 clean:
@@ -159,3 +154,6 @@ logo:
 	$(info  '----------------' '----------------' '----------------' '----------------' '----------------' '----------------' )
 
 -include $(DEP)
+
+# mkdir the needed dirs
+$(shell   mkdir -p $(OBJ_DIR) $(TEST_DIR)/$(OBJ_DIR))
