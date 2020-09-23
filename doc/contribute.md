@@ -8,7 +8,12 @@ It means that we have the following branches:
 - `dev-*` are the ongoing development branch
 
 To create a new development branch, simply do
-```bach
+```bash
+# go on the develop branch
+git checkout develop
+# update your version
+git pull
+# create a new branch
 git checkout -b dev-mynewfeature develop
 ```
 To incorporate your development into the develop branch, use pull requests.

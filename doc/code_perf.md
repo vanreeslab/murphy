@@ -1,6 +1,5 @@
 # Code perfomance
 
-
 Here is a few tips I learned that may impact the code performance.
 I used the [compiler explorer app](https://godbolt.org/) that can also be run locally!
 
