@@ -8,7 +8,12 @@ It means that we have the following branches:
 - `dev-*` are the ongoing development branch
 
 To create a new development branch, simply do
-```bach
+```bash
+# go on the develop branch
+git checkout develop
+# update your version
+git pull
+# create a new branch
 git checkout -b dev-mynewfeature develop
 ```
 To incorporate your development into the develop branch, use pull requests.
@@ -19,10 +24,11 @@ It helps to automatically identify the reason of the commit. Here is a small non
 
 Action | Corresponding emoji
 --------|-----------------------------
-Solve a regular bug | :bug:
-Sovle a critical bug | :ambulance:
-Add documentation / comments / doxygen | :memo:
-Compilation / makefile | :wrench:
+Solve a regular bug | :bug: `:bug:`
+Sovle a critical bug | :ambulance: `:ambulance:`
+Add documentation / comments / doxygen | :memo: `:memo:`
+Compilation / makefile | :wrench: `:wrench:`
+Docker | :whale: `:whale:`
 
 <!-- ----------------------------
 ### Typing variables
@@ -36,24 +42,17 @@ No `int` declarations are used in the code, except for MPI rank-related numbers,
 
 
 ----------------------------
-### When to use what - table
-
-To ease the development of the code, we use a few custom types and macros: here is a summary
-
-`what`? | When
---------|-----------------------------
-`m_verb` | to display information in the body of a function or when some diag of the fucntion are not improtant
-`m_log` | to display important information at the end of a function, to give info to the user
-`rank_t` | to store MPI-rank ids
-`lda_` | to store leading dimension numbers (typically 0,1,2)
-
-
-----------------------------
 ### Style Guide
 To ensure a consistent style accross murphy, we rely on the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html#C++_Version).
-We extensivelly use the `cpplint` tool to detect style errors, as well,
-```
+Additionally, we use two tools to help the formating:
+- `cpplint` tool to detect style errors,
+```bash
 cpplint --filter=-whitespace/line_length,-runtime/printf myfile
+```
+- `clang-format` to help the formating in VSCode. The file `.clang-format` should be automatically detected and loaded in VSCode, giving you access Immediately to the formating behavior. You regenerate that file using 
+```bash
+# brew install clang-format if needed
+clang-format -style='{BasedOnStyle: Google, ColumnLimit: 0, IndentWidth: 4, AlignConsecutiveAssignments: true, AlignConsecutiveDeclarations: true, AlignEscapedNewlines: true, AlignOperands: true }' -dump-config > .clang-format
 ```
 
 However, some exceptions are made to the mentionned guide style:
@@ -61,3 +60,41 @@ However, some exceptions are made to the mentionned guide style:
 - the macro definitions acting as functions are name `m_myfunction`. The `m_` states for `Murphy`
 - the files are names in lowercase with a `.cpp` and `.hpp` extension, alike the class it contains (e.g. class `Grid` in `grid.cpp`)
 - callback functions used to interface with p4est start with `cback_`
+
+
+----------------------------
+### When to use what - table
+
+To ease the development of the code, we use a few custom types and macros: here is a summary
+
+|`What`? | When
+--------|-----------------------------
+| **MACROS**
+`m_verb` | displays information in the body of a function or when some diag of the function are not improtant
+`m_log` | displays important information at the end of a function, to give info to the user
+`m_min` | returns the min of two numbers
+`m_max` | returns the max of two numbers
+`m_sign` | returns the sign
+`m_pos` | position of a 3D point in the domain
+`m_pos_relative` | position of a 3D point in the block
+`m_begin` | starts every function to have a timer in full verbose mode
+`m_end` | ends every function to have a timer in full verbose mode
+| **MEMORY**
+`m_calloc` | allocate aligned memory
+`m_free` | free aligned memory
+`m_isaligned` | check the alignment
+`m_assume_aligned` | tells the compiler the array is aligned (and check the assertion in debug mode)
+`m_blockmemsize` | returns the number of elements in one block
+`m_zeroidx` | shifts the memory to the element `(0,0,0)`
+| **TYPES**
+`rank_t` | a MPI-rank
+`lda_t` | a leading dimension numbers (typically 0,1,2)
+`iblock_t` | a local block index
+`iface_t` | a face id (0 to 26)
+`level_t` | a level
+`qdrt_t`| a `p8est_quadrant_t` variable
+`real_t` | a floating point number
+`data_ptr` | a memory adress of the element (0,0,0)
+`mem_ptr` | the raw memory address
+`const_mem_ptr` | the constant raw memory address
+
