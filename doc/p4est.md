@@ -1,12 +1,13 @@
 ## Notes on P4EST library
 
+--------------------------------------------
 ### Miscellaneous notes
 - the quadrants are indexed using the type `p4est_locidx_t`.
 - the constant `P8EST_MAXLEVEL` defines the number of max level, ranging from `0` to `P8EST_QMAXLEVEL`.
 
-### ghosts and mirrors
+--------------------------------------------
+### Ghosts and Mirrors
 #### Definitions
-
 - **ghost** the ghosting is seen as an external layer of 1 quadrant around the local quadrant space.
 For any procs, this list of quadrant within the external layer is called `ghost`.
 - **mirrors** from the other side, one block which is in the ghost list of someone else is called a `mirror`.
