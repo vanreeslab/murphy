@@ -32,7 +32,7 @@ RUN rm -rf /flups
 #Google test
 RUN git clone https://github.com/google/googletest.git
 RUN cd /googletest &&\
-    cmake . -DCMAKE_INSTALL_PREFIX=/soft/googletest-gcc7 &&\
+    cmake . -DCMAKE_INSTALL_PREFIX=/soft/googletest &&\
     make install -j
 RUN rm -rf /googletest
 
