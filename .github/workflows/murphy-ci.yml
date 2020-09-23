@@ -15,7 +15,6 @@ jobs:
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
-      - run: mkdir build
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make -j12
 
@@ -32,8 +31,6 @@ jobs:
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
-      - run: mkdir build
-      - run: mkdir test/build
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2"
       # run the tests
@@ -56,8 +53,6 @@ jobs:
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
-      - run: mkdir build
-      - run: mkdir test/build
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
       # run the tests
@@ -80,8 +75,6 @@ jobs:
       #checkout the repo
       - uses: actions/checkout@v2
       # do the build
-      - run: mkdir build
-      - run: mkdir test/build
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4"
       # run the tests
