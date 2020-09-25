@@ -9,6 +9,7 @@
 #include "patch.hpp"
 #include "mgfamily.hpp"
 #include "multigrid.hpp"
+#include "setvalues.hpp"
 
 using std::string;
 using std::list;
@@ -440,7 +441,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     m_end;
 }
 
-void cback_OperatorFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
     m_begin;
     m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
     m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
@@ -474,7 +475,7 @@ void cback_OperatorFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
 
     // fill the field of criterion with the operator
     Field*     fid  = reinterpret_cast<Field*>(grid->cback_criterion_field());
-    OperatorF* expr = reinterpret_cast<OperatorF*>(grid->cback_interpolate_ptr());
+    SetValue* expr = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
     (*expr)(grid, fid);
 
     // deallocate the leaving blocks

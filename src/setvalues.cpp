@@ -2,24 +2,38 @@
 
 #include <cmath>
 
+
+static void CallSetValueMemFunc(const qid_t* qid, GridBlock* block, Field* fid, SetValue* val){
+    val->FillGridBlock(qid,block,fid);
+}
+
 //=====================================================================================================
 /**
  * @brief Set the Value and defines the range which is assigned to the value, including ghost points or not
  * 
  * @param grid if nullptr, the range is 0 -> M_N, if non null, the range includes the GP.
  */
-SetValue::SetValue(const Grid* grid) {
+SetValue::SetValue(const lid_t nghost_front, const lid_t nghost_back) {
     //-------------------------------------------------------------------------
-    if (grid != nullptr) {
-        start_ = 0 - grid->NGhostFront();
-        end_   = M_N + grid->NGhostBack();
-    }
+    start_ = 0 - nghost_front;
+    end_   = M_N + nghost_back;
     //-------------------------------------------------------------------------
 }
 
+void SetValue::operator()(ForestGrid* grid, Field* field){
+    m_begin;
+    //-------------------------------------------------------------------------
+    DoOpTree(&CallSetValueMemFunc,grid,field,this);
+    // update the ghost status
+    m_verb("setting the ghosts of %s to false", field->name().c_str());
+    field->ghost_status(false);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
 //=====================================================================================================
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, nullptr) {}
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Grid* grid) : SetValue(grid) {
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, 0,0) {}
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -30,7 +44,7 @@ SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Grid* grid) 
     m_end;
 }
 
-void SetAbs::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetAbs::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -57,8 +71,8 @@ void SetAbs::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3]) : SetSinus(length, freq, nullptr) {}
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const Grid* grid) : SetValue(grid) {
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3]) : SetSinus(length, freq, 0,0) {}
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -69,7 +83,7 @@ SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const Grid* gri
     m_end;
 }
 
-void SetSinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetSinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz     = block->xyz();
@@ -92,8 +106,8 @@ void SetSinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3]) : SetCosinus(length, freq, nullptr) {}
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const Grid* grid) : SetValue(grid) {
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3]) : SetCosinus(length, freq, 0,0) {}
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -104,7 +118,7 @@ SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const Grid*
     m_end;
 }
 
-void SetCosinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetCosinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz     = block->xyz();
@@ -130,8 +144,8 @@ void SetCosinus::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3]) : SetPolynom(degree, direction, nullptr) {}
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const Grid* grid) : SetValue(grid) {
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3]) : SetPolynom(degree, direction, 0,0) {}
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -141,7 +155,7 @@ SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const G
     //-------------------------------------------------------------------------
     m_end;
 }
-void SetPolynom::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetPolynom::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -164,8 +178,8 @@ void SetPolynom::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetExponential(center, sigma, alpha, nullptr) {}
-SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Grid* grid) : SetValue(grid) {
+SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetExponential(center, sigma, alpha, 0,0) {}
+SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -177,7 +191,7 @@ SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], co
     m_end;
 }
 
-void SetExponential::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetExponential::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -209,8 +223,8 @@ void SetExponential::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetErf(center, sigma, alpha, nullptr) {}
-SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Grid* grid) : SetValue(grid) {
+SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetErf(center, sigma, alpha, 0,0) {}
+SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -222,7 +236,7 @@ SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha
     m_end;
 }
 
-void SetErf::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetErf::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -255,8 +269,8 @@ void SetErf::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetVortexRing(normal, center, sigma, radius, nullptr) {}
-SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Grid* grid) : SetValue(grid) {
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetVortexRing(normal, center, sigma, radius, 0,0) {}
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;
@@ -269,7 +283,7 @@ SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const r
     m_end;
 }
 
-void SetVortexRing::ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) {
+void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();

@@ -16,6 +16,7 @@
 #include "patch.hpp"
 #include "prof.hpp"
 #include "operator.hpp"
+#include "setvalues.hpp"
 
 /**
  * @brief implements the grid management and the related responsabilities on top of ForestGrid
@@ -104,11 +105,8 @@ class Grid : public ForestGrid {
     void Adapt(Field* field);
     void Adapt(std::list<Patch>* patches);
 
-    void AdaptInitialCondition(Field* field, OperatorF* expression);
+    void AdaptInitialCondition(Field* field, SetValue* expression);
     /**@}*/
-
-   private:
-    // void LoopOnGridBlock_(const gbop_t op, Field* field) const;
 };
 
 #endif  // SRC_GRID_HPP_

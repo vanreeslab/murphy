@@ -52,14 +52,14 @@ int main(int argc, char** argv) {
         const lda_t   normal    = 2;
         const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
-        SetVortexRing vr_init(normal, center, sigma, radius,&grid);
-        
+        SetVortexRing vr_init(normal, center, sigma, radius, grid.NGhostFront(), grid.NGhostBack());
+
         // set the BC for kiding
         vort.bctype(M_BC_EXTRAP_3);
 
         // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
         // vort->bctype(M_BC_ODD);
-        
+
         // psi->bctype(M_BC_ODD);
         // res->bctype(M_BC_ODD);
         grid.SetTol(1e-1, 1e-3);

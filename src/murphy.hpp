@@ -5,6 +5,7 @@
 
 #include <map>
 #include <string>
+#include <limits>
 
 #include "defs.hpp"
 

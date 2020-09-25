@@ -1,15 +1,17 @@
 #include "ioh5.hpp"
 
+#include "doop.hpp"
 #include "mpi.h"
 
 using std::numeric_limits;
+using std::string;
 using std::to_string;
 
 /**
  * @brief defines a GridBlock application function for IOH5
  * 
  */
-using ioh5_doop_t = void(IOH5::*)(const qid_t* qid, GridBlock* block, const Field* fid);
+using ioh5_doop_t = void (IOH5::*)(const qid_t* qid, GridBlock* block, const Field* fid);
 
 /**
  * @brief wrapper function to call IOH5 
@@ -145,8 +147,8 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 
     //................................................
     // call first the xmf and then the h5 to reduce filesystem stress
-    DoOpMesh(&CallIOH5MemFunc,grid,field,this,&IOH5::xmf_write_block_);
-    DoOpMesh(&CallIOH5MemFunc,grid,field,this,&IOH5::hdf5_write_block_);
+    DoOpMesh(&CallIOH5MemFunc, grid, field, this, &IOH5::xmf_write_block_);
+    DoOpMesh(&CallIOH5MemFunc, grid, field, this, &IOH5::hdf5_write_block_);
 
     //................................................
     // print the footer
@@ -160,7 +162,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 
 // /**
 //  * @brief Dumps the field contained in a given block
-//  * 
+//  *
 //  * @param qid the quadrant ID
 //  * @param block the block to be dumped
 //  * @param fid the field
@@ -171,7 +173,6 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 //     hdf5_write_block_(qid, block, fid);
 //     //-------------------------------------------------------------------------
 // }
-
 
 /**
  * @brief ask to dump the ghosts, this will be reset to false after the next dump
@@ -319,7 +320,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     // fopen the xmf, every proc
     int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
     // if something went wrong, check if the file already exist of something else was baaad
-    m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, MPI_File_open failed (error = %d)", filename.c_str(),err);
+    m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, MPI_File_open failed (error = %d)", filename.c_str(), err);
 
     // the current position of current proc
     MPI_Offset offset = 0;
@@ -425,8 +426,8 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     //#pragma omp critical
     char msg[4096];
     memset(msg, 0, 4096);
-    size_t offset        = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
-    size_t len           = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global_, block->level(), msg);
+    size_t offset = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
+    size_t len    = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global_, block->level(), msg);
     m_assert(len == len_per_quad_, "the len has changed, hence the file will be corrupted: now %ld vs stored %ld", len, len_per_quad_);
     // write the header
     MPI_Status status;

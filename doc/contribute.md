@@ -31,6 +31,7 @@ Add documentation / comments / doxygen | :memo: `:memo:`
 Compilation / makefile | :wrench: `:wrench:`
 Docker | :whale: `:whale:`
 Refactor | :recycle: `:recycle:`
+Work in Progress | :construction: `:construction:`
 
 <!-- ----------------------------
 ### Typing variables
@@ -42,7 +43,10 @@ To ease the remplacement of the doubles into floats and handle the different typ
 No `int` declarations are used in the code, except for MPI rank-related numbers, which are `int` by the MPI standard. -->
 
 Create issues to keep track of the development and also to discuss any question you might have.
-You can use the keywords **clos(e/es/ed)**, **resolv(e/es/ed)** and **fix(/es/ed)**
+You can use the keywords **clos(e/es/ed)**, **resolv(e/es/ed)** and **fix(/es/ed)** followed by the issue number to close an issue once merged in the default branch
+```bash
+git commit -m ":sparkles: closes #9"
+```
 
 
 ----------------------------

@@ -539,7 +539,7 @@ void Grid::Adapt(Field* field) {
  * 
  * @param expression 
  */
-void Grid::AdaptInitialCondition(Field* field, OperatorF* expression) {
+void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
@@ -563,13 +563,13 @@ void Grid::AdaptInitialCondition(Field* field, OperatorF* expression) {
 
     // coarsen + refine the needed blocks recursivelly using the wavelet criterion and the operator fill
     m_profStart(prof_, "p4est_refcoarse");
-    p8est_coarsen_ext(p4est_forest_, 1, 0, cback_Interpolator, nullptr, cback_OperatorFill);
-    p8est_refine_ext(p4est_forest_, 1, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_OperatorFill);
+    p8est_coarsen_ext(p4est_forest_, 1, 0, cback_Interpolator, nullptr, cback_ValueFill);
+    p8est_refine_ext(p4est_forest_, 1, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_ValueFill);
     m_profStop(prof_, "p4est_refcoarse");
 
     // balance the partition
     m_profStart(prof_, "p4est_balance");
-    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, cback_OperatorFill);
+    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, cback_ValueFill);
     m_profStop(prof_, "p4est_balance");
 
     // partition the grid

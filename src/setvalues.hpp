@@ -1,27 +1,25 @@
-/**
- * @file setvalues.hpp
- * @brief defines several Operators to set various functions in the blocks
- * @version
- */
 #ifndef SRC_SETVALUES_HPP_
 #define SRC_SETVALUES_HPP_
 
-#include "grid.hpp"
+#include "doop.hpp"
+#include "forestgrid.hpp"
 #include "murphy.hpp"
-#include "operator.hpp"
 
 //=====================================================================================================
 /**
  * @brief defines a default SetValue object
  * 
  */
-class SetValue : public OperatorF {
+class SetValue {
    protected:
     lid_t start_ = 0;    //!< the starting index in 3D = [start_,start_,start_]
     lid_t end_   = M_N;  //!< the ending index in 3D = [end_,end_,end_]
 
    public:
-    SetValue(const Grid* grid);
+    explicit SetValue(const lid_t nghost_front, const lid_t nghost_back);
+
+    virtual void operator()(ForestGrid* grid, Field* field);
+    virtual void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) = 0;
 };
 
 //=====================================================================================================
@@ -33,11 +31,11 @@ class SetAbs : public SetValue {
     real_t center_[3] = {0, 0, 0};
     real_t alpha_[3]  = {0.0, 0.0, 0.0};
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
     SetAbs(const real_t alpha[3], const real_t center[3]);
-    SetAbs(const real_t alpha[3], const real_t center[3], const Grid* grid);
+    SetAbs(const real_t alpha[3], const real_t center[3], const lid_t nghost_front, const lid_t nghost_back);
 };
 
 //=====================================================================================================
@@ -49,11 +47,11 @@ class SetSinus : public SetValue {
     real_t freq_[3]   = {0, 0, 0};
     real_t length_[3] = {0.0, 0.0, 0.0};
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetSinus(const real_t length[3],const real_t freq[3]);
-    SetSinus(const real_t length[3],const real_t freq[3],const Grid* grid);
+    SetSinus(const real_t length[3], const real_t freq[3]);
+    SetSinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front, const lid_t nghost_back);
 };
 
 //=====================================================================================================
@@ -65,11 +63,11 @@ class SetCosinus : public SetValue {
     real_t freq_[3]   = {0, 0, 0};
     real_t length_[3] = {0.0, 0.0, 0.0};
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetCosinus(const real_t length[3],const real_t freq[3]);
-    SetCosinus(const real_t length[3],const real_t freq[3],const Grid* grid);
+    SetCosinus(const real_t length[3], const real_t freq[3]);
+    SetCosinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front, const lid_t nghost_back);
 };
 
 //=====================================================================================================
@@ -82,11 +80,11 @@ class SetPolynom : public SetValue {
     lid_t  deg_[3] = {0, 0, 0};        //!< the degree of the polynomial
     real_t dir_[3] = {0.0, 0.0, 0.0};  //!< the direction concerned: 1.0 means involved, 0.0 means not involved
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
     SetPolynom(const lid_t degree[3], const real_t direction[3]);
-    SetPolynom(const lid_t degree[3], const real_t direction[3],const Grid* grid);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const lid_t nghost_front, const lid_t nghost_back);
 };
 
 //=====================================================================================================
@@ -99,11 +97,11 @@ class SetExponential : public SetValue {
     real_t sigma_[3]  = {0.0, 0.0, 0.0};
     real_t alpha_     = 1.0;
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
     SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Grid* grid);
+    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front, const lid_t nghost_back);
 };
 
 //=====================================================================================================
@@ -113,11 +111,11 @@ class SetErf : public SetValue {
     real_t sigma_[3]  = {0.0, 0.0, 0.0};
     real_t alpha_     = 1.0;
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
     SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Grid* grid);
+    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front, const lid_t nghost_back);
 };
 
 //=====================================================================================================
@@ -128,12 +126,11 @@ class SetVortexRing : public SetValue {
     real_t radius_    = 0.0;              //!< the direction normal to the ring, i.e. the z direction
     real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
 
-    void ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override;
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
     SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
-    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius,const Grid* grid);
+    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const lid_t nghost_front, const lid_t nghost_back);
 };
 
 #endif  // SRC_SETVALUES_HPP_
-
