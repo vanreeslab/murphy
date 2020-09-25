@@ -29,7 +29,7 @@
  * The amount of needed memory is smaller but so is the image quality.
  * 
  */
-class IOH5 : public ConstOperatorF {
+class IOH5 {
    protected:
     bool   dump_ghost_    = false;  //!< true if we io the ghost points with us
     lid_t  block_stride_  = 0;      //!< the stride of one block, depends on dump_ghost_
@@ -68,10 +68,8 @@ class IOH5 : public ConstOperatorF {
 
     void dump_ghost(const bool dump_ghost);
 
-    void ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) override;
-
     void operator()(ForestGrid* grid, Field* field, string name);
-    void operator()(ForestGrid* grid, Field* field) override;
+    void operator()(ForestGrid* grid, Field* field);
 
    protected:
     size_t xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg);

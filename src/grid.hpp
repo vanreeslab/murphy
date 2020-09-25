@@ -15,6 +15,7 @@
 #include "murphy.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
+#include "operator.hpp"
 
 /**
  * @brief implements the grid management and the related responsabilities on top of ForestGrid
@@ -31,7 +32,8 @@ class Grid : public ForestGrid {
     real_t rtol_ = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_ = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
 
-    void* tmp_ptr_ = nullptr;  //!< temporary pointer, needed by the adaptation of the grid
+    void* cback_criterion_field_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
+    void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
    public:
     explicit Grid();
@@ -92,17 +94,21 @@ class Grid : public ForestGrid {
      */
     real_t rtol() const { return rtol_; }
     real_t ctol() const { return ctol_; }
-    void*  tmp_ptr() const { return tmp_ptr_; }
+    void*  cback_criterion_field() const { return cback_criterion_field_; }
+    void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void Refine(const sid_t delta_level);
     void Coarsen(const sid_t delta_level);
+
     void Adapt(Field* field);
     void Adapt(std::list<Patch>* patches);
+
+    void AdaptInitialCondition(Field* field, OperatorF* expression);
     /**@}*/
 
    private:
-    void LoopOnGridBlock_(const gbop_t op, Field* field) const;
+    // void LoopOnGridBlock_(const gbop_t op, Field* field) const;
 };
 
 #endif  // SRC_GRID_HPP_

@@ -81,7 +81,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     //-------------------------------------------------------------------------
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_field());
     GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     m_assert(block->level() == quadrant->level, "the two levels must match");
 
@@ -120,7 +120,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
     //-------------------------------------------------------------------------
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_field());
 
     // check every block, if one child needs to be coarsen, we return true for everybody
     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
@@ -166,11 +166,11 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
+    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     Interpolator* interp = grid->interp();
     // get the field and check each dimension
-    bool   refine = false;
-    Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
+    bool refine = false;
 
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
@@ -183,7 +183,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
-        m_log("refine? %e >? %e", norm, grid->rtol());
+        m_verb("refine? %e >? %e", norm, grid->rtol());
         // refine the block if one dimension needs to be refined
         if (refine) {
             // lock the block indicate that it cannot be changed in res anymore
@@ -212,8 +212,8 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
+    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     Interpolator* interp = grid->interp();
-    Field*        fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
 
     // for each of the children
     bool coarsen = true;
@@ -428,6 +428,54 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
             block->AddField(fid->second);
         }
     }
+
+    // deallocate the leaving blocks
+    for (int id = 0; id < num_outgoing; id++) {
+        qdrt_t*    quad  = outgoing[id];
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // delete the block, the fields are destroyed in the destructor
+        delete (block);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void cback_OperatorFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    m_begin;
+    m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
+    m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
+    m_assert(forest->user_pointer != nullptr, "we need the grid in this function");
+    //-------------------------------------------------------------------------
+    // retrieve the grid from the forest user-data pointer
+    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+
+    // get needed grid info
+    auto                  f_start = grid->FieldBegin();
+    auto                  f_end   = grid->FieldEnd();
+    p8est_connectivity_t* connect = forest->connectivity;
+
+    // allocate the incomming blocks
+    for (int id = 0; id < num_incoming; id++) {
+        qdrt_t* quad = incoming[id];
+        // get block informations and create it
+        real_t xyz[3];
+        p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        real_t     len   = m_quad_len(quad->level);
+        GridBlock* block = new GridBlock(len, xyz, quad->level);
+        // store the block
+        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        // for every field, we allocate the memory
+        for (auto fid = f_start; fid != f_end; fid++) {
+            // allocate the new field
+            block->AddField(fid->second);
+        }
+    }
+
+    // fill the field of criterion with the operator
+    Field*     fid  = reinterpret_cast<Field*>(grid->cback_criterion_field());
+    OperatorF* expr = reinterpret_cast<OperatorF*>(grid->cback_interpolate_ptr());
+    (*expr)(grid, fid);
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {

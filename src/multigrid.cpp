@@ -37,7 +37,7 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level, Field* rhs, Field* sol, Field*
     m_assert(rhs->lda() == res->lda(), "the dimension between the source and the residual MUST match");
 
     // get by how many level I have to do
-    sid_t l_max_level = p4est_MaxLocalLevel(grid->forest());
+    sid_t l_max_level = p4est_MaxLocalLevel(grid->p4est_forest());
     // upate the counters on every rank
     m_assert(sizeof(l_max_level) == 1, "change the MPI datatype bellow");
     MPI_Allreduce(&l_max_level, &max_level_, 1, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);
@@ -59,11 +59,11 @@ Multigrid::Multigrid(Grid* grid, sid_t fft_level, Field* rhs, Field* sol, Field*
 
         // regester myself in the user_pointer
         tmp_ilevel_               = il;
-        p8est_t* curr_forest      = grids_[il]->forest();
+        p8est_t* curr_forest      = grids_[il]->p4est_forest();
         curr_forest->user_pointer = this;
 
         // get the number of CHILDREN on the fine level, i.e. the number of children entering the family
-        sc_array_t quadarray = grids_[il + 1]->mesh()->quad_level[fft_level + il + 1];
+        sc_array_t quadarray = grids_[il + 1]->p4est_mesh()->quad_level[fft_level + il + 1];
         m_assert(quadarray.elem_count < numeric_limits<lid_t>::max(), "the number of quad is too big");
         // create the new family
         families_[il] = new MGFamily(quadarray.elem_count);

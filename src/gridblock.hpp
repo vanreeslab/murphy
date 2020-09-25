@@ -52,12 +52,9 @@ class GridBlock : public MemLayout {
      * @name Lock management
      * 
      * @{ */
-    inline void lock() { lock_ = true; }
-    inline bool locked() const { return lock_; }
-    inline void unlock(Field* fid) {
-        m_assert(fid == nullptr, "this should be null");
-        lock_ = false;
-    }
+    void lock() { lock_ = true; }
+    void unlock() { lock_ = false; }
+    bool locked() const { return lock_; }
     /**@} */
 
     /**
@@ -96,9 +93,30 @@ class GridBlock : public MemLayout {
     /** @} */
 };
 
+
+using gridblock_doop_empty_t = void (GridBlock::*)();
+using gridblock_doop_field_t = void (GridBlock::*)(Field*);
+
 /**
- * @brief pointer to an member function of the class @ref GridBlock
+ * @brief defines a wrapper to call a GridBlock member function as an op_t
+ * 
+ * @param block the GridBlock
+ * @param op the operator of type gop_empty_t
  */
-using gbop_t = void (GridBlock::*)(Field* fid);
+static void CallGridBlockMemFuncEmpty(const qid_t* qid, GridBlock* block, gridblock_doop_empty_t op) {
+    (block->*op)();
+};
+
+/**
+ * @brief defines a wrapper to call a GridBlock member function as an op_t
+ * 
+ * @param block the GridBlock
+ * @param field the considered field
+ * @param op the operator of type gop_field_ts
+ */
+static void CallGridBlockMemFuncField(const qid_t* qid, GridBlock* block, Field* field, gridblock_doop_field_t op) {
+    (block->*op)(field);
+};
+
 
 #endif  // SRC_GRIDBLOCK_HPP_

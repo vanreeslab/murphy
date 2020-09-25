@@ -5,14 +5,14 @@
 /**
  * @brief redirects to the inner stencil computation
  */
-void CallStencilOpInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
+static void CallStencilOpInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
     stencil->ApplyStencilInner(qid, block, fid_src, fid_trg);
 }
 
 /**
  * @brief redirects to the outer stencil computation
  */
-void CallStencilOpOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
+static void CallStencilOpOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
     stencil->ApplyStencilOuter(qid, block, fid_src, fid_trg);
 }
 
@@ -38,7 +38,8 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         m_profStart(grid->profiler(), "stencil_outer");
         if (field_trg != nullptr) {
             ida_ = ida;
-            DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpInner, grid, field_src, field_trg, this);
+            // DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpInner, grid, field_src, field_trg, this);
+            DoOpMesh(&CallStencilOpInner, grid, field_src, field_trg, this);
         }
         m_profStop(grid->profiler(), "stencil_outer");
 
@@ -50,7 +51,8 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
             // inner operation on the now received dimension
             ida_ = ida;
             m_profStart(grid->profiler(), "stencil_inner");
-            DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpOuter, grid, field_src, field_trg, this);
+            // DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpOuter, grid, field_src, field_trg, this);
+            DoOpMesh(&CallStencilOpOuter, grid, field_src, field_trg, this);
             m_profStop(grid->profiler(), "stencil_inner");
         }
     }

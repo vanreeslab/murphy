@@ -6,6 +6,19 @@ using std::numeric_limits;
 using std::to_string;
 
 /**
+ * @brief defines a GridBlock application function for IOH5
+ * 
+ */
+using ioh5_doop_t = void(IOH5::*)(const qid_t* qid, GridBlock* block, const Field* fid);
+
+/**
+ * @brief wrapper function to call IOH5 
+ */
+static void CallIOH5MemFunc(const qid_t* qid, GridBlock* block, Field* fid, IOH5* io, ioh5_doop_t op) {
+    (io->*op)(qid, block, fid);
+}
+
+/**
  * @brief add a string attribute to the loc hdf5 object
  * 
  * @note this function is inspired from AMReX
@@ -117,7 +130,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 
     // get the block offset and the number of global blocks
     size_t n_block_global = 0;
-    size_t local_n_block  = (size_t)(grid->forest()->local_num_quadrants);
+    size_t local_n_block  = (size_t)(grid->p4est_forest()->local_num_quadrants);
     MPI_Scan(&local_n_block, &block_offset_, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&local_n_block, &n_block_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
     block_offset_ -= local_n_block;
@@ -131,8 +144,9 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     hdf5_write_header_(grid, n_block_global, field->lda());
 
     //................................................
-    // call the standard operator
-    ConstOperatorF::operator()(grid, field);
+    // call first the xmf and then the h5 to reduce filesystem stress
+    DoOpMesh(&CallIOH5MemFunc,grid,field,this,&IOH5::xmf_write_block_);
+    DoOpMesh(&CallIOH5MemFunc,grid,field,this,&IOH5::hdf5_write_block_);
 
     //................................................
     // print the footer
@@ -144,6 +158,21 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     m_end;
 }
 
+// /**
+//  * @brief Dumps the field contained in a given block
+//  * 
+//  * @param qid the quadrant ID
+//  * @param block the block to be dumped
+//  * @param fid the field
+//  */
+// void IOH5::IOGridBlock(const qid_t* qid, GridBlock* block, const Field* fid) {
+//     //-------------------------------------------------------------------------
+//     xmf_write_block_(qid, block, fid);
+//     hdf5_write_block_(qid, block, fid);
+//     //-------------------------------------------------------------------------
+// }
+
+
 /**
  * @brief ask to dump the ghosts, this will be reset to false after the next dump
  * 
@@ -151,20 +180,6 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
  */
 void IOH5::dump_ghost(const bool dump_ghost) {
     dump_ghost_ = dump_ghost;
-}
-
-/**
- * @brief definition of the operator applied to the block, dump the xmf and hdf5 part
- * 
- * @param qid the quadrant ID
- * @param block the block to be dumped
- * @param fid the field
- */
-void IOH5::ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) {
-    //-------------------------------------------------------------------------
-    xmf_write_block_(qid, block, fid);
-    hdf5_write_block_(qid, block, fid);
-    //-------------------------------------------------------------------------
 }
 
 /**
@@ -337,7 +352,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0, 1, msg);
 
     // need to compute the shift of everybody
-    size_t quad_len = grid->forest()->local_num_quadrants * len_per_quad_;
+    size_t quad_len = grid->p4est_forest()->local_num_quadrants * len_per_quad_;
     size_t pos_end  = header_count + quad_len;
 
     // gt count, the position of proc i (in lines!!) as the sum of the position of procs 0 -> (i-1)
