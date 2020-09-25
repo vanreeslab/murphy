@@ -217,9 +217,9 @@ void Grid::AddField(Field* field) {
         // allocate the field on every block
         // LoopOnGridBlock_(&GridBlock::AddField, field);
         DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::AddField);
-        m_verb("field %s has been added to the grid", field->name().c_str());
+        m_log("field %s has been added to the grid", field->name().c_str());
     } else {
-        m_verb("field %s is already in the grid", field->name().c_str());
+        m_log("field %s is already in the grid", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -554,12 +554,14 @@ void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
     DestroyGhost();
 
     // store the operator and the grid for access in the callback function
+    m_log("Storing the field %s for refinement",field->name().c_str());
     cback_criterion_field_      = reinterpret_cast<void*>(field);
     cback_interpolate_ptr_      = reinterpret_cast<void*>(expression);
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
     // apply the operator to get the starting value
     (*expression)(this, field);
+    m_assert(field->ghost_status(),"the ghost status should be valid here...");
 
     // coarsen + refine the needed blocks recursivelly using the wavelet criterion and the operator fill
     m_profStart(prof_, "p4est_refcoarse");
@@ -587,6 +589,9 @@ void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
     }
+    // we modified one block after another, so we set the ghost value from the SetValue
+    field->ghost_status(expression->ghost_value());
+
     // reset the forest pointer
     cback_criterion_field_      = nullptr;
     cback_interpolate_ptr_      = nullptr;

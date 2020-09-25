@@ -17,6 +17,8 @@ SetValue::SetValue(const lid_t nghost_front, const lid_t nghost_back) {
     //-------------------------------------------------------------------------
     start_ = 0 - nghost_front;
     end_   = M_N + nghost_back;
+    // set true for the ghost if we fill them
+    ghost_value_ = (nghost_front + nghost_back) > 0;
     //-------------------------------------------------------------------------
 }
 
@@ -26,7 +28,7 @@ void SetValue::operator()(ForestGrid* grid, Field* field){
     DoOpTree(&CallSetValueMemFunc,grid,field,this);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
-    field->ghost_status(false);
+    field->ghost_status(ghost_value_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -297,6 +299,7 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
     const lda_t idy = (normal_ + 2) % 3;
     const lda_t idz = normal_;
     // get the pointers correct
+    m_log("puting the vortex ring in field : %s",fid->name().c_str());
     data_ptr wx = block->data(fid, idx);
     data_ptr wy = block->data(fid, idy);
     data_ptr wz = block->data(fid, idz);

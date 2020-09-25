@@ -448,7 +448,9 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     m_assert(forest->user_pointer != nullptr, "we need the grid in this function");
     //-------------------------------------------------------------------------
     // retrieve the grid from the forest user-data pointer
-    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    Grid*     grid  = reinterpret_cast<Grid*>(forest->user_pointer);
+    Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_field());
+    SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
     m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
 
     // get needed grid info
@@ -471,12 +473,10 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
             // allocate the new field
             block->AddField(fid->second);
         }
-    }
+        // fill the new block with the analytical value
 
-    // fill the field of criterion with the operator
-    Field*     fid  = reinterpret_cast<Field*>(grid->cback_criterion_field());
-    SetValue* expr = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
-    (*expr)(grid, fid);
+        expr->FillGridBlock(nullptr,block,field);
+    }
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {

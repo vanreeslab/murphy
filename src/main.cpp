@@ -57,20 +57,16 @@ int main(int argc, char** argv) {
         // set the BC for kiding
         vort.bctype(M_BC_EXTRAP_3);
 
-        // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        // vort->bctype(M_BC_ODD);
-
-        // psi->bctype(M_BC_ODD);
-        // res->bctype(M_BC_ODD);
-        grid.SetTol(1e-1, 1e-3);
+        // adapt the mesh
+        grid.SetTol(1e-1, 1e-2);
         grid.AdaptInitialCondition(&vort,&vr_init);
 
         // create the IO
         IOH5 dump("data");
         dump(&grid, &vort);
         grid.GhostPull(&vort);
-        dump.dump_ghost(true);
-        dump(&grid, &vort);
+        // dump.dump_ghost(true);
+        // dump(&grid, &vort);
 
     }
     // display the profiler
