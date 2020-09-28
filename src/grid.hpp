@@ -33,7 +33,7 @@ class Grid : public ForestGrid {
     real_t rtol_ = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_ = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
 
-    // bool  recursive_adapt_       = false;    //!< we do here recursive adaptation or not
+    bool  recursive_adapt_       = false;    //!< we do here recursive adaptation or not
     void* cback_criterion_field_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 

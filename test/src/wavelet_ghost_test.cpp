@@ -69,7 +69,7 @@ class test_Wavelet_Ghost : public ::testing::Test {
 };
 
 //==============================================================================================================================
-#if (WAVELET_N == 2)
+#if (M_WAVELET_N == 2)
 TEST_F(test_Wavelet_Ghost, ghost_order_2_x) {
     for (lda_t id = 0; id < 3; id++) {
         bool  period[3] = {false, false, false};
@@ -106,7 +106,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_2_x) {
         // create the solution field
         Field sol("sol", 1);
         grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir, &grid);
+        SetPolynom field_sol(deg, dir, grid.NGhostFront(), grid.NGhostBack());
         field_sol(&grid, &sol);
 
         // mask both the sol and the result
@@ -124,7 +124,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_2_x) {
         ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL);
     }
 }
-#elif (WAVELET_N == 4)
+#elif (M_WAVELET_N == 4)
 TEST_F(test_Wavelet_Ghost, ghost_order_4_x) {
     for (lda_t id = 0; id < 3; id++) {
         bool  period[3] = {false, false, false};
@@ -161,7 +161,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_4_x) {
         // create the solution field
         Field sol("sol", 1);
         grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir, &grid);
+        SetPolynom field_sol(deg, dir, grid.NGhostFront(), grid.NGhostBack());
         field_sol(&grid, &sol);
 
         // mask both the sol and the result
