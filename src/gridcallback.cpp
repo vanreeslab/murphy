@@ -228,7 +228,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 
         // if one of the 8 block is locked, I cannot change it, neither the rest of the group
         if (block->locked()) {
-            // m_log("block is locked");
+            m_log("block is locked, we do nothing!");
             return false;
         }
 
@@ -277,6 +277,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // retrieve the grid from the forest user-data pointer
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
     m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(!grid->recursive_adapt(), "the wavelet refinement does not support recursive adaptation as no GP is filled");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
@@ -285,7 +286,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     p8est_connectivity_t* connect = forest->connectivity;
 
     // m_log("prof callback");
-    m_profStart(grid->profiler(),"cback_interpolate");
+    m_profStart(grid->profiler(), "cback_interpolate");
 
     // m_log("interpolate callback");
 
@@ -434,8 +435,13 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
             // allocate the new field
             block->AddField(fid->second);
         }
-        block->lock();
 
+        // lock or unlock the block given the recursive behavior or not
+        if (grid->recursive_adapt()) {
+            block->unlock();
+        } else {
+            block->lock();
+        }
     }
 
     // deallocate the leaving blocks
@@ -484,9 +490,14 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
             block->AddField(fid->second);
         }
         // fill the new block with the analytical value
-        expr->FillGridBlock(nullptr,block,field);
-        // unlock the block
-        block->unlock();
+        expr->FillGridBlock(nullptr, block, field);
+
+        // lock or unlock the block given the recursive behavior or not
+        if (grid->recursive_adapt()) {
+            block->unlock();
+        } else {
+            block->lock();
+        }
     }
 
     // deallocate the leaving blocks

@@ -30,10 +30,10 @@ class Grid : public ForestGrid {
     Ghost*        ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     Interpolator* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
 
-    real_t rtol_ = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
-    real_t ctol_ = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    bool   recursive_adapt_ = false;   //!< recursive adaptation or not
+    real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
+    real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
 
-    bool  recursive_adapt_       = false;    //!< we do here recursive adaptation or not
     void* cback_criterion_field_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
@@ -96,17 +96,18 @@ class Grid : public ForestGrid {
      */
     real_t rtol() const { return rtol_; }
     real_t ctol() const { return ctol_; }
+    bool   recursive_adapt() const { return recursive_adapt_; }
     void*  cback_criterion_field() const { return cback_criterion_field_; }
     void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void Refine(const sid_t delta_level);
     void Coarsen(const sid_t delta_level);
+    void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
     void Adapt(Field* field);
+    void Adapt(Field* field, SetValue* expression);
     void Adapt(std::list<Patch>* patches);
-
-    void AdaptInitialCondition(Field* field, SetValue* expression);
     /**@}*/
 };
 

@@ -20,8 +20,7 @@ class SetValue {
     explicit SetValue(const lid_t nghost_front, const lid_t nghost_back);
 
     inline bool ghost_value() const { return ghost_value_; }
-
-    virtual void operator()(ForestGrid* grid, Field* field);
+    void operator()(ForestGrid* grid, Field* field);
 
     /**
      * @brief Fill the value within the 

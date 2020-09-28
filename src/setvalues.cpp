@@ -299,7 +299,6 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
     const lda_t idy = (normal_ + 2) % 3;
     const lda_t idz = normal_;
     // get the pointers correct
-    m_log("puting the vortex ring in field : %s",fid->name().c_str());
     data_ptr wx = block->data(fid, idx);
     data_ptr wy = block->data(fid, idy);
     data_ptr wz = block->data(fid, idz);

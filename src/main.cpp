@@ -59,7 +59,8 @@ int main(int argc, char** argv) {
 
         // adapt the mesh
         grid.SetTol(1e-0, 1e-2);
-        grid.AdaptInitialCondition(&vort,&vr_init);
+        grid.SetRecursiveAdapt(true);
+        grid.Adapt(&vort,&vr_init);
 
         // create the IO
         IOH5 dump("data");

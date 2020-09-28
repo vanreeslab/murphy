@@ -478,8 +478,9 @@ void Grid::Adapt(Field* field) {
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must start with the user_pointer to null");
+    m_assert(!recursive_adapt(),"we cannot refine recursivelly here");
     m_log("--> grid adaptation started... (interpolator: %s)", interp_->Identity().c_str());
-    //-------------------------------------------------------------------------
+    //---------------------------------------------s----------------------------
     // unlock all the blocks
     // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
     DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
@@ -498,8 +499,8 @@ void Grid::Adapt(Field* field) {
     // coarsen the needed block
     m_profStart(prof_, "p4est_refcoarse");
     m_log("check for coarsening");
-    p8est_coarsen_ext(p4est_forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
-    p8est_refine_ext(p4est_forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
+    p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Interpolator, nullptr, cback_Interpolate);
+    p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
     m_profStop(prof_, "p4est_refcoarse");
     // balance the partition
     m_profStart(prof_, "p4est_balance");
@@ -545,7 +546,7 @@ void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must start with the user_pointer to null");
-    m_log("--> grid adaptation started... (using analytical expression)");
+    m_log("--> grid adaptation started... (using analytical expression and recursive = %d)", recursive_adapt());
     //-------------------------------------------------------------------------
     // unlock all the blocks
     // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
@@ -554,19 +555,19 @@ void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
     DestroyGhost();
 
     // store the operator and the grid for access in the callback function
-    m_log("Storing the field %s for refinement",field->name().c_str());
     cback_criterion_field_      = reinterpret_cast<void*>(field);
     cback_interpolate_ptr_      = reinterpret_cast<void*>(expression);
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+    m_verb("Storing the field %s for refinement", field->name().c_str());
 
     // apply the operator to get the starting value
     (*expression)(this, field);
-    m_assert(field->ghost_status(),"the ghost status should be valid here...");
+    m_assert(field->ghost_status(), "the ghost status should be valid here...");
 
     // coarsen + refine the needed blocks recursivelly using the wavelet criterion and the operator fill
     m_profStart(prof_, "p4est_refcoarse");
-    p8est_coarsen_ext(p4est_forest_, 1, 0, cback_Interpolator, nullptr, cback_ValueFill);
-    p8est_refine_ext(p4est_forest_, 1, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_ValueFill);
+    p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Interpolator, nullptr, cback_ValueFill);
+    p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_ValueFill);
     m_profStop(prof_, "p4est_refcoarse");
 
     // balance the partition
@@ -596,6 +597,9 @@ void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
     cback_criterion_field_      = nullptr;
     cback_interpolate_ptr_      = nullptr;
     p4est_forest_->user_pointer = nullptr;
+
+    // reset the recursive to false
+    SetRecursiveAdapt(false);
     //-------------------------------------------------------------------------
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
@@ -619,7 +623,7 @@ void Grid::Adapt(list<Patch>* patches) {
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must start with the user_pointer to null");
-    m_log("--> grid adaptation started... (using patches)");
+    m_log("--> grid adaptation started... (using patches and recursive = %d)",recursive_adapt());
     //-------------------------------------------------------------------------
     if (patches->size() == 0) {
         return;
@@ -637,8 +641,8 @@ void Grid::Adapt(list<Patch>* patches) {
 
     // coarsen + refine the needed blocks recursivelly
     m_profStart(prof_, "p4est_refcoarse");
-    p8est_coarsen_ext(p4est_forest_, 1, 0, cback_Patch, nullptr, cback_AllocateOnly);
-    p8est_refine_ext(p4est_forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
+    p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Patch, nullptr, cback_AllocateOnly);
+    p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
     m_profStop(prof_, "p4est_refcoarse");
 
     // balance the partition
@@ -664,6 +668,9 @@ void Grid::Adapt(list<Patch>* patches) {
     // reset the forest pointer
     cback_criterion_field_      = nullptr;
     p4est_forest_->user_pointer = nullptr;
+    
+    // reset the recursive to false
+    SetRecursiveAdapt(false);
     //-------------------------------------------------------------------------
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
