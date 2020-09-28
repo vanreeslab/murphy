@@ -540,7 +540,7 @@ void Grid::Adapt(Field* field) {
  * 
  * @param expression 
  */
-void Grid::AdaptInitialCondition(Field* field, SetValue* expression) {
+void Grid::Adapt(Field* field, SetValue* expression) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
@@ -668,7 +668,7 @@ void Grid::Adapt(list<Patch>* patches) {
     // reset the forest pointer
     cback_criterion_field_      = nullptr;
     p4est_forest_->user_pointer = nullptr;
-    
+
     // reset the recursive to false
     SetRecursiveAdapt(false);
     //-------------------------------------------------------------------------
