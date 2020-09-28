@@ -20,11 +20,11 @@ using std::string;
  */
 class GridBlock : public MemLayout {
    protected:
-    bool      lock_;      //!< lock the block, indicating that no refinement/coarsening can happen
-    level_t   level_;     //!< the level of the block
-    real_t    xyz_[3];    //!< the origin of the block
-    real_t    hgrid_[3];  //!< the grid spacing of the block
-    datamap_t data_map_;  //<! a map of the pointers to the actual data
+    bool      lock_     = false;            //!< lock the block, indicating that no refinement/coarsening can happen
+    level_t   level_    = -1;               //!< the level of the block
+    real_t    xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
+    real_t    hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
+    datamap_t data_map_;                    //<! a map of the pointers to the actual data
 
     real_t* ptr_ghost_ = nullptr;  //!< a pointer of data that I do not handle but which uniquely associated to me for the ghost computation
 

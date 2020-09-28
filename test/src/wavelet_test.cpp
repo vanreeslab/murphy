@@ -48,7 +48,7 @@ class valid_Wavelet : public ::testing::Test {
 };
 
 //==============================================================================================================================
-#if (WAVELET_N == 2 && WAVELET_NT == 2)
+#if (M_WAVELET_N == 2 && M_WAVELET_NT == 2)
 static double poly_1(const double x) {
     return M_PI_2 * x + M_SQRT2;
 }
@@ -286,7 +286,7 @@ TEST_F(valid_Wavelet, detail_order_2_2) {
     ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL);
 }
 //==============================================================================================================================
-#elif (WAVELET_N == 4 && WAVELET_NT == 0)
+#elif (M_WAVELET_N == 4 && M_WAVELET_NT == 0)
 
 static double poly_3(const double x) {
     return M_PI * pow(x, 3) + M_PI_2 * pow(x, 2) + M_SQRT2 * x + M_PI_4;
@@ -534,7 +534,7 @@ TEST_F(valid_Wavelet, detail_order_4_0) {
 
 //==============================================================================================================================
 // test the wavelet + moments
-#elif (WAVELET_N == 4 && WAVELET_NT == 2)
+#elif (M_WAVELET_N == 4 && M_WAVELET_NT == 2)
 
 
 static double poly_3(const double x) {

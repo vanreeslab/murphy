@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
         vort.bctype(M_BC_EXTRAP_3);
 
         // adapt the mesh
-        grid.SetTol(1e-1, 1e-2);
+        grid.SetTol(1e-0, 1e-2);
         grid.AdaptInitialCondition(&vort,&vr_init);
 
         // create the IO

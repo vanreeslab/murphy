@@ -170,27 +170,32 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     Interpolator* interp = grid->interp();
-    // get the field and check each dimension
-    bool refine = false;
-
+    
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
+        m_log("block is locked, we do nothing!");
         return false;
     }
+    m_log("let's check the refinement for the field %s",fid->name().c_str());
 
+    bool refine = false;
     // if we are not locked, we are available for refinement
+    // we refine the block if one of the field component needs it
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
-        m_verb("refine? %e >? %e", norm, grid->rtol());
         // refine the block if one dimension needs to be refined
         if (refine) {
             // lock the block indicate that it cannot be changed in res anymore
             block->lock();
+            m_log("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
             return true;
+        }
+        else{
+            m_log("block %f %f %f: NO refine (%e < %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
         }
     }
     // if we reached here, we do not need to refine
@@ -223,6 +228,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 
         // if one of the 8 block is locked, I cannot change it, neither the rest of the group
         if (block->locked()) {
+            // m_log("block is locked");
             return false;
         }
 
@@ -428,6 +434,8 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
             // allocate the new field
             block->AddField(fid->second);
         }
+        block->lock();
+
     }
 
     // deallocate the leaving blocks
@@ -451,7 +459,9 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     Grid*     grid  = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_field());
     SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
+    
     m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(expr->ghost_value(),"the SetValue object must set the ghost values");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
@@ -474,8 +484,9 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
             block->AddField(fid->second);
         }
         // fill the new block with the analytical value
-
         expr->FillGridBlock(nullptr,block,field);
+        // unlock the block
+        block->unlock();
     }
 
     // deallocate the leaving blocks

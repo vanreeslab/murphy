@@ -12,13 +12,22 @@
  */
 class SetValue {
    protected:
-    lid_t start_ = 0;    //!< the starting index in 3D = [start_,start_,start_]
-    lid_t end_   = M_N;  //!< the ending index in 3D = [end_,end_,end_]
+    bool  ghost_value_ = false;  //!< the ghost value to set to the block
+    lid_t start_       = 0;      //!< the starting index in 3D = [start_,start_,start_]
+    lid_t end_         = M_N;    //!< the ending index in 3D = [end_,end_,end_]
 
    public:
     explicit SetValue(const lid_t nghost_front, const lid_t nghost_back);
 
+    inline bool ghost_value() const { return ghost_value_; }
+
     virtual void operator()(ForestGrid* grid, Field* field);
+
+    /**
+     * @brief Fill the value within the 
+     * 
+     * @param qid with be nullptr as it shouldn't be used here
+     */
     virtual void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) = 0;
 };
 

@@ -66,7 +66,7 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
             // create the solution field
             Field sol("sol", 1);
             grid.AddField(&sol);
-            SetSinus field_sol(sin_len, freq, &grid);
+            SetSinus field_sol(sin_len, freq, grid.NGhostFront(),grid.NGhostBack());
             field_sol(&grid, &sol);
 
             // now, we need to check
