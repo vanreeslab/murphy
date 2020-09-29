@@ -79,8 +79,8 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
         m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
-        ASSERT_GE(conv2, M_WAVELET_N + 1 - 0.1);
-        ASSERT_GE(convi, M_WAVELET_N + 1 - 0.1);
+        ASSERT_GE(conv2, M_WAVELET_N - 0.1);
+        ASSERT_GE(convi, M_WAVELET_N - 0.1);
     }
 }
 //==============================================================================================================================
