@@ -5,6 +5,7 @@
 #include "murphy.hpp"
 #include "toolsp4est.hpp"
 #include "gridblock.hpp"
+#include "blockoperator.hpp"
 
 /**
  * @brief General expression of any operator taking a list of types as input
@@ -65,6 +66,38 @@ void DoOpMesh(const op_t<T...> op, ForestGrid* grid, T... data) {
     //-------------------------------------------------------------------------
     m_end;
 }
+
+template <typename O, typename... T>
+void DoOpMesh(const O* op, void (O::*mem_func)(const qid_t*, GridBlock*, T...), ForestGrid* grid, T... data) {
+    m_begin;
+    m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
+    //-------------------------------------------------------------------------
+    // get the grid info
+    p8est_t*      forest  = grid->p4est_forest();
+    p8est_mesh_t* mesh    = grid->p4est_mesh();
+    const lid_t   nqlocal = mesh->local_num_quadrants;  // number of trees * number of elem/tree
+
+    for (lid_t bid = 0; bid < nqlocal; bid++) {
+        // get the tree
+        p8est_tree_t* tree;
+        tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
+        // get the id
+        qid_t myid;
+        myid.cid = bid;                           // cummulative id
+        myid.qid = bid - tree->quadrants_offset;  // quadrant id
+        myid.tid = mesh->quad_to_tree[bid];       // tree id
+        // the quadrants can be from differents trees -> get the correct one
+        p8est_quadrant_t* quad;
+        quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // send the task
+        op->*func(&myid, block, data...);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
 /**
  * @brief Iterates on GridBlock at a given level using the p4est_mesh
  * 

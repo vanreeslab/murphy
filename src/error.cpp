@@ -2,23 +2,13 @@
 
 #include "gridblock.hpp"
 
-ErrorCalculator::ErrorCalculator() : ErrorCalculator(nullptr) {
-}
-
 /**
  * @brief Construct a new Error Calculator, if the grid is not nullptr, compute the error on the ghost points as well
  * 
- * @param grid the grid to use to get the number of actual ghost points, if nullptr, no ghost point is taken into account
+ * @param interp the interpolator to use to get the number of actual ghost points, see BlockOperator::BlockOperator()
  */
-ErrorCalculator::ErrorCalculator(const Grid* grid) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    start_ = (grid == nullptr) ? 0 : (-grid->NGhostFront());
-    end_   = (grid == nullptr) ? M_N : (M_N + grid->NGhostBack());
-
-    //-------------------------------------------------------------------------
-    m_end;
-}
+ErrorCalculator::ErrorCalculator(const Interpolator* interp) : BlockOperator(interp) {}
+ErrorCalculator::ErrorCalculator() : BlockOperator(nullptr) {}
 
 /**
  * @brief returns the infinite norm of the error, see @ref ErrorCalculator::Norms()
@@ -28,7 +18,7 @@ ErrorCalculator::ErrorCalculator(const Grid* grid) {
  * @param sol the analytical solution field
  * @param norm_i the infinite norm
  */
-void ErrorCalculator::Normi(Grid* grid, Field* field, Field* sol, real_t* norm_i) {
+void ErrorCalculator::Normi(Grid* grid, const Field* field, const Field* sol, real_t* norm_i) {
     Norms(grid, field, sol, nullptr, norm_i);
 }
 
@@ -40,7 +30,7 @@ void ErrorCalculator::Normi(Grid* grid, Field* field, Field* sol, real_t* norm_i
  * @param sol the analytical solution
  * @param norm_2 the 2-norm
  */
-void ErrorCalculator::Norm2(Grid* grid, Field* field, Field* sol, real_t* norm_2) {
+void ErrorCalculator::Norm2(Grid* grid, const Field* field, const Field* sol, real_t* norm_2) {
     Norms(grid, field, sol, norm_2, nullptr);
 }
 
@@ -60,14 +50,18 @@ void ErrorCalculator::Norm2(Grid* grid, Field* field, Field* sol, real_t* norm_2
  * @param norm_2 the 2-norm, can be `nullptr`
  * @param norm_i the infinite norm, can be `nullptr`
  */
-void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2, real_t* norm_i) {
+void ErrorCalculator::Norms(Grid* grid, const Field* field, const Field* sol, real_t* norm_2, real_t* norm_i) {
     m_begin;
     m_assert(field->lda() == sol->lda(), "the two fields must have the same dimension");
     //-------------------------------------------------------------------------
     error_2_ = 0.0;
     error_i_ = 0.0;
-    // apply
-    ConstOperatorFF::operator()(grid, field, sol);
+
+    // check that if we do the ghost, the ghost are updated
+    m_assert(!(do_ghost_ && (!field->ghost_status())), "we cannot compute the ghost");
+    // call the operator
+    DoOpMesh(this, &ErrorOnGridBlock, grid, field, sol);
+
     // do the gathering into
     if (norm_2 != nullptr) {
         MPI_Allreduce(&error_2_, norm_2, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
@@ -90,7 +84,7 @@ void ErrorCalculator::Norms(Grid* grid, Field* field, Field* sol, real_t* norm_2
  * @param fid the field
  * @param sol the analytical solution
  */
-void ErrorCalculator::ApplyConstOpFF(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
+void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
     const real_t* hgrid = block->hgrid();
 
