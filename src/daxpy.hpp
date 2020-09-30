@@ -12,7 +12,7 @@
  * z = alpha * x + y
  * 
  */
-class Daxpy : BlockOperator {
+class Daxpy : public BlockOperator {
    protected:
     real_t alpha_ = 0.0;
 

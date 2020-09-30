@@ -7,7 +7,7 @@
 #include "interpolator.hpp"
 #include "murphy.hpp"
 
-class ErrorCalculator : BlockOperator{
+class ErrorCalculator : public BlockOperator{
     real_t error_2_ = 0.0;  //!< the 2 norm of the error on the grid
     real_t error_i_ = 0.0;  //!< the infinite norm of the error on the grid
 
