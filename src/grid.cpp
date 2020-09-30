@@ -216,7 +216,8 @@ void Grid::AddField(Field* field) {
         fields_[field->name()] = field;
         // allocate the field on every block
         // LoopOnGridBlock_(&GridBlock::AddField, field);
-        DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::AddField);
+        // DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::AddField);
+        DoOpTree(nullptr,&GridBlock::AddField,this, field);
         m_log("field %s has been added to the grid", field->name().c_str());
     } else {
         m_log("field %s is already in the grid", field->name().c_str());
@@ -235,7 +236,8 @@ void Grid::DeleteField(Field* field) {
     //-------------------------------------------------------------------------
     if (IsAField(field)) {
         // remove the field to everyblock
-        DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::DeleteField);
+        // DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::DeleteField);
+        DoOpTree(nullptr,&GridBlock::DeleteField,this,field);
         // remove the field
         fields_.erase(field->name());
     } else {
@@ -347,7 +349,8 @@ void Grid::Refine(const sid_t delta_level) {
     for (int id = 0; id < delta_level; id++) {
         // unlock all the blocks
         // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-        DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+        // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+        DoOpTree(nullptr, &GridBlock::unlock,this);
 
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
@@ -405,7 +408,8 @@ void Grid::Coarsen(const sid_t delta_level) {
     for (int id = 0; id < delta_level; id++) {
         // unlock all the blocks
         // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-        DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+        // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+        DoOpTree( nullptr,&GridBlock::unlock,this);
 
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
@@ -483,7 +487,8 @@ void Grid::Adapt(Field* field) {
     //---------------------------------------------s----------------------------
     // unlock all the blocks
     // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-    DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    DoOpTree(nullptr,&GridBlock::unlock,this);
 
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
@@ -550,7 +555,9 @@ void Grid::Adapt(Field* field, SetValue* expression) {
     //-------------------------------------------------------------------------
     // unlock all the blocks
     // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-    DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    DoOpTree(nullptr,&GridBlock::unlock,this);
+
     // delete the soon-to be outdated ghost and mesh
     DestroyGhost();
 
@@ -630,7 +637,8 @@ void Grid::Adapt(list<Patch>* patches) {
     }
     // unlock all the blocks
     // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-    DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    DoOpTree(nullptr,&GridBlock::unlock,this);
 
     // delete the soon-to be outdated ghost and mesh
     DestroyGhost();

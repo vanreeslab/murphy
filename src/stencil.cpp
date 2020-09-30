@@ -3,20 +3,6 @@
 #include "doop.hpp"
 
 /**
- * @brief redirects to the inner stencil computation
- */
-static void CallStencilOpInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
-    stencil->ApplyStencilInner(qid, block, fid_src, fid_trg);
-}
-
-/**
- * @brief redirects to the outer stencil computation
- */
-static void CallStencilOpOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg, Stencil* stencil) {
-    stencil->ApplyStencilOuter(qid, block, fid_src, fid_trg);
-}
-
-/**
  * @brief apply the stencil on the field_src and store the result in field_trg
  * 
  * This functions implements the ghost computation, inner stencil and outer stencil computation overlapping, dimension by dimension.
@@ -39,7 +25,8 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         if (field_trg != nullptr) {
             ida_ = ida;
             // DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpInner, grid, field_src, field_trg, this);
-            DoOpMesh(&CallStencilOpInner, grid, field_src, field_trg, this);
+            // DoOpMesh(&CallStencilOpInner, grid, field_src, field_trg, this);
+            DoOpMesh(this,&Stencil::ApplyStencilInner,grid,field_src, field_trg);
         }
         m_profStop(grid->profiler(), "stencil_outer");
 
@@ -52,7 +39,8 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
             ida_ = ida;
             m_profStart(grid->profiler(), "stencil_inner");
             // DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpOuter, grid, field_src, field_trg, this);
-            DoOpMesh(&CallStencilOpOuter, grid, field_src, field_trg, this);
+            // DoOpMesh(&CallStencilOpOuter, grid, field_src, field_trg, this);
+            DoOpMesh(this,&Stencil::ApplyStencilOuter,grid,field_src, field_trg);
             m_profStop(grid->profiler(), "stencil_inner");
         }
     }

@@ -2,12 +2,6 @@
 
 #include <cmath>
 
-
-static void CallSetValueMemFunc(const qid_t* qid, GridBlock* block, Field* fid, SetValue* val){
-    val->FillGridBlock(qid,block,fid);
-}
-
-//=====================================================================================================
 /**
  * @brief Set the Value and defines the range which is assigned to the value, including ghost points or not
  * 
@@ -25,7 +19,7 @@ SetValue::SetValue(const lid_t nghost_front, const lid_t nghost_back) {
 void SetValue::operator()(ForestGrid* grid, Field* field){
     m_begin;
     //-------------------------------------------------------------------------
-    DoOpTree(&CallSetValueMemFunc,grid,field,this);
+    DoOpTree(this,&SetValue::FillGridBlock,grid,field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
     field->ghost_status(ghost_value_);

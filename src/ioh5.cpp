@@ -8,19 +8,6 @@ using std::string;
 using std::to_string;
 
 /**
- * @brief defines a GridBlock application function for IOH5
- * 
- */
-using ioh5_doop_t = void (IOH5::*)(const qid_t* qid, GridBlock* block, const Field* fid);
-
-/**
- * @brief wrapper function to call IOH5 
- */
-static void CallIOH5MemFunc(const qid_t* qid, GridBlock* block, Field* fid, IOH5* io, ioh5_doop_t op) {
-    (io->*op)(qid, block, fid);
-}
-
-/**
  * @brief add a string attribute to the loc hdf5 object
  * 
  * @note this function is inspired from AMReX
@@ -81,7 +68,7 @@ IOH5::~IOH5() {
  * @param grid the grid supporting the field
  * @param field the field to dump, the file will be named after using @ref Field::name()
  */
-void IOH5::operator()(ForestGrid* grid, Field* field) {
+void IOH5::operator()(ForestGrid* grid,const Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
     IOH5::operator()(grid, field, field->name());
@@ -100,7 +87,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field) {
  * @param field the field to dump
  * @param name the filename to use
  */
-void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
+void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
     m_begin;
     //-------------------------------------------------------------------------
     m_assert(field->ghost_status(), "the field has outdated ghosts, please update them, even if dump ghost is false");
@@ -120,6 +107,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
         filename_hdf5_ = name + ".h5";
         filename_xdmf_ = name + ".xmf";
     }
+
     // if the folder does not exist, create it
     struct stat st = {0};
     if (rank == 0 && stat(folder_.c_str(), &st) == -1) {
@@ -147,8 +135,8 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 
     //................................................
     // call first the xmf and then the h5 to reduce filesystem stress
-    DoOpMesh(&CallIOH5MemFunc, grid, field, this, &IOH5::xmf_write_block_);
-    DoOpMesh(&CallIOH5MemFunc, grid, field, this, &IOH5::hdf5_write_block_);
+    DoOpMesh(this, &IOH5::xmf_write_block_, grid, field);
+    DoOpMesh(this, &IOH5::hdf5_write_block_, grid, field);
 
     //................................................
     // print the footer
@@ -303,9 +291,9 @@ void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
 /**
  * @brief write the header of the xmf + compute the offset of every rank in the file
  * 
- * @param grid 
+ * @param grid the forest grid to be IOed
  * @param n_block_global the global number of block (total on the comm) involved in the IO
- * @param lda 
+ * @param lda the number of dimensios to IO
  */
 void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global, const lda_t lda) {
     m_begin;

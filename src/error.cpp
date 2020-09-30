@@ -60,7 +60,7 @@ void ErrorCalculator::Norms(Grid* grid, const Field* field, const Field* sol, re
     // check that if we do the ghost, the ghost are updated
     m_assert(!(do_ghost_ && (!field->ghost_status())), "we cannot compute the ghost");
     // call the operator
-    DoOpMesh(this, &ErrorOnGridBlock, grid, field, sol);
+    DoOpMesh(this, &ErrorCalculator::ErrorOnGridBlock, grid, field, sol);
 
     // do the gathering into
     if (norm_2 != nullptr) {

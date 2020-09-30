@@ -136,42 +136,6 @@ static inline lid_t CoarseFromBlock(const lid_t a, const Interpolator* interp) {
 }
 
 /**
- * @brief callback function for @ref InitList4Block()
- */
-static void CallGhostInitList(const qid_t* qid, GridBlock* block, nullptr_t fid, Ghost* ghost) {
-    m_assert(fid == nullptr, "this pointer has to be null");
-    ghost->InitList4Block(qid, block);
-}
-
-/**
- * @brief callback function for @ref GetGhost4Block_Post()
- */
-static void CallGetGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid, Ghost* ghost) {
-    ghost->GetGhost4Block_Post(qid, block, fid);
-}
-
-/**
- * @brief callback function for @ref GetGhost4Block_Wait()
- */
-static void CallGetGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid, Ghost* ghost) {
-    ghost->GetGhost4Block_Wait(qid, block, fid);
-}
-
-/**
- * @brief callback function for @ref PutGhost4Block_Post()
- */
-static void CallPutGhost4Block_Post(const qid_t* qid, GridBlock* block, Field* fid, Ghost* ghost) {
-    ghost->PutGhost4Block_Post(qid, block, fid);
-}
-
-/**
- * @brief callback function for @ref PutGhost4Block_Wait()
- */
-static void CallPutGhost4Block_Wait(const qid_t* qid, GridBlock* block, Field* fid, Ghost* ghost) {
-    ghost->PutGhost4Block_Wait(qid, block, fid);
-}
-
-/**
  * @brief Construct a new Ghost object 
  * 
  * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp) for details
@@ -336,7 +300,8 @@ void Ghost::InitList_() {
     // init the list on every active block that matches the level requirements
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOp_F_<op_t<Ghost*, nullptr_t>, Ghost*, nullptr_t>(CallGhostInitList, grid_, il, nullptr, this);
-        DoOpMeshLevel(&CallGhostInitList, grid_, il, nullptr, this);
+        // DoOpMeshLevel(&CallGhostInitList, grid_, il, nullptr, this);
+        DoOpMeshLevel(this,&Ghost::InitList4Block, grid_, il);
     }
 
     // complete the access epoch and wait for the exposure one
@@ -533,7 +498,7 @@ void Ghost::FreeComm_() {
  * @param field 
  * @param ida 
  */
-void Ghost::PullGhost_Post(Field* field, const lda_t ida) {
+void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
@@ -554,7 +519,8 @@ void Ghost::PullGhost_Post(Field* field, const lda_t ida) {
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOpMeshLevel(&CallGetGhost4Block_Post, grid_, il, field, this);
+        // DoOpMeshLevel(&CallGetGhost4Block_Post, grid_, il, field, this);
+        DoOpMeshLevel(this,&Ghost::GetGhost4Block_Post, grid_, il,field);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -566,7 +532,7 @@ void Ghost::PullGhost_Post(Field* field, const lda_t ida) {
  * @param field the field on which to operate
  * @param ida the dimemsion inside the field
  */
-void Ghost::PullGhost_Wait(Field* field, const lda_t ida) {
+void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
@@ -580,7 +546,8 @@ void Ghost::PullGhost_Wait(Field* field, const lda_t ida) {
     // we now have all the information needed to compute the ghost points in coarser blocks
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
-        DoOpMeshLevel(&CallGetGhost4Block_Wait, grid_, il, field, this);
+        // DoOpMeshLevel(&CallGetGhost4Block_Wait, grid_, il, field, this);
+        DoOpMeshLevel(this,&Ghost::GetGhost4Block_Wait, grid_, il, field);
     }
 
     //................................................
@@ -592,7 +559,8 @@ void Ghost::PullGhost_Wait(Field* field, const lda_t ida) {
     // start what can be done = sibling and parents copy
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Post, grid_, il, field, this);
-        DoOpMeshLevel(&CallPutGhost4Block_Post, grid_, il, field, this);
+        // DoOpMeshLevel(&CallPutGhost4Block_Post, grid_, il, field, this);
+        DoOpMeshLevel(this,&Ghost::PutGhost4Block_Post, grid_, il, field);
     }
 
     // finish the access epochs for the exposure epoch to be over
@@ -605,7 +573,8 @@ void Ghost::PullGhost_Wait(Field* field, const lda_t ida) {
     // we now have all the information needed, we finish with a physbc
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Wait, grid_, il, field, this);
-        DoOpMeshLevel(&CallPutGhost4Block_Wait, grid_, il, field, this);
+        // DoOpMeshLevel(&CallPutGhost4Block_Wait, grid_, il, field, this);
+        DoOpMeshLevel(this,&Ghost::PutGhost4Block_Wait, grid_, il, field);
     }
 
     //-------------------------------------------------------------------------
@@ -896,7 +865,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
  * @param block the gridblock considered
  * @param fid the field id
  */
-void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field* fid) {
+void Ghost::GetGhost4Block_Post(const qid_t* qid, GridBlock* block,const Field* fid) {
     //-------------------------------------------------------------------------
     // get the working array given the thread
     real_p     tmp       = block->ptr_ghost();

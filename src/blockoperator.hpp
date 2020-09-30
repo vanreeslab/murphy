@@ -31,8 +31,8 @@ class BlockOperator {
         m_begin;
         //-------------------------------------------------------------------------
         do_ghost_ = (interp != nullptr);
-        start_    = (interp == nullptr) ? 0 : (-interp->NGhostFront());
-        end_      = (interp == nullptr) ? M_N : (M_N + interp->NGhostBack());
+        start_    = (interp == nullptr) ? 0 : (-interp->nghost_front());
+        end_      = (interp == nullptr) ? M_N : (M_N + interp->nghost_back());
         //-------------------------------------------------------------------------
         m_end;
     }
