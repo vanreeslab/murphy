@@ -7,29 +7,22 @@
  * 
  * @param grid if nullptr, the range is 0 -> M_N, if non null, the range includes the GP.
  */
-SetValue::SetValue(const lid_t nghost_front, const lid_t nghost_back) {
-    //-------------------------------------------------------------------------
-    start_ = 0 - nghost_front;
-    end_   = M_N + nghost_back;
-    // set true for the ghost if we fill them
-    ghost_value_ = (nghost_front + nghost_back) > 0;
-    //-------------------------------------------------------------------------
-}
+SetValue::SetValue(const Interpolator* interp) : BlockOperator(interp) {}
 
-void SetValue::operator()(ForestGrid* grid, Field* field){
+void SetValue::operator()(const ForestGrid* grid, Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
-    DoOpTree(this,&SetValue::FillGridBlock,grid,field);
+    DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
-    field->ghost_status(ghost_value_);
+    field->ghost_status(do_ghost_);
     //-------------------------------------------------------------------------
     m_end;
 }
 
 //=====================================================================================================
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, 0,0) {}
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, nullptr) {}
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -67,8 +60,8 @@ void SetAbs::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3]) : SetSinus(length, freq, 0,0) {}
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3]) : SetSinus(length, freq, nullptr) {}
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -102,8 +95,8 @@ void SetSinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3]) : SetCosinus(length, freq, 0,0) {}
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3]) : SetCosinus(length, freq, nullptr) {}
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -140,8 +133,8 @@ void SetCosinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3]) : SetPolynom(degree, direction, 0,0) {}
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3]) : SetPolynom(degree, direction, nullptr) {}
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -174,8 +167,8 @@ void SetPolynom::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetExponential(center, sigma, alpha, 0,0) {}
-SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetExponential(center, sigma, alpha, nullptr) {}
+SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -219,8 +212,8 @@ void SetExponential::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fi
 }
 
 //=====================================================================================================
-SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetErf(center, sigma, alpha, 0,0) {}
-SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetErf(center, sigma, alpha, nullptr) {}
+SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -265,8 +258,8 @@ void SetErf::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetVortexRing(normal, center, sigma, radius, 0,0) {}
-SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const lid_t nghost_front,const lid_t nghost_back) : SetValue(nghost_front,nghost_back) {
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetVortexRing(normal, center, sigma, radius, nullptr) {}
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;

@@ -598,7 +598,7 @@ void Grid::Adapt(Field* field, SetValue* expression) {
         fid->second->ghost_status(false);
     }
     // we modified one block after another, so we set the ghost value from the SetValue
-    field->ghost_status(expression->ghost_value());
+    field->ghost_status(expression->do_ghost());
 
     // reset the forest pointer
     cback_criterion_field_      = nullptr;

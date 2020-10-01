@@ -36,6 +36,8 @@ class BlockOperator {
         //-------------------------------------------------------------------------
         m_end;
     }
+
+    inline bool do_ghost() const { return do_ghost_; }
 };
 
 #endif

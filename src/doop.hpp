@@ -25,7 +25,7 @@
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpMesh(const O op, F memfunc, ForestGrid* grid, T... data) {
+void DoOpMesh(const O op, F memfunc,const ForestGrid* grid, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -85,7 +85,7 @@ void DoOpMesh(const O op, F memfunc, ForestGrid* grid, T... data) {
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpMeshLevel(const O op, F memfunc, ForestGrid* grid, const level_t lvl, T... data) {
+void DoOpMeshLevel(const O op, F memfunc,const ForestGrid* grid, const level_t lvl, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -144,7 +144,7 @@ void DoOpMeshLevel(const O op, F memfunc, ForestGrid* grid, const level_t lvl, T
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpTree(const O op, F memfunc, ForestGrid* grid, T... data) {
+void DoOpTree(const O op, F memfunc, const ForestGrid* grid, T... data) {
     m_begin;
     //-------------------------------------------------------------------------
     // do some static (=compilation) checks to be sure that the couple O and F is compatible

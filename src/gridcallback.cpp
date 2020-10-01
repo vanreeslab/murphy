@@ -467,7 +467,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
     
     m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
-    m_assert(expr->ghost_value(),"the SetValue object must set the ghost values");
+    m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();

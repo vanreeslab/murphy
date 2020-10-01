@@ -4,23 +4,19 @@
 #include "doop.hpp"
 #include "forestgrid.hpp"
 #include "murphy.hpp"
+#include "blockoperator.hpp"
 
 //=====================================================================================================
 /**
  * @brief defines a default SetValue object
  * 
  */
-class SetValue {
-   protected:
-    bool  ghost_value_ = false;  //!< the ghost value to set to the block
-    lid_t start_       = 0;      //!< the starting index in 3D = [start_,start_,start_]
-    lid_t end_         = M_N;    //!< the ending index in 3D = [end_,end_,end_]
+class SetValue : public BlockOperator{
 
    public:
-    explicit SetValue(const lid_t nghost_front, const lid_t nghost_back);
+    explicit SetValue(const Interpolator* interp);
 
-    inline bool ghost_value() const { return ghost_value_; }
-    void operator()(ForestGrid* grid, Field* field);
+    void operator()(const ForestGrid* grid, Field* field);
 
     /**
      * @brief Fill the value within the 
@@ -43,7 +39,7 @@ class SetAbs : public SetValue {
 
    public:
     SetAbs(const real_t alpha[3], const real_t center[3]);
-    SetAbs(const real_t alpha[3], const real_t center[3], const lid_t nghost_front, const lid_t nghost_back);
+    SetAbs(const real_t alpha[3], const real_t center[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -59,7 +55,7 @@ class SetSinus : public SetValue {
 
    public:
     SetSinus(const real_t length[3], const real_t freq[3]);
-    SetSinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front, const lid_t nghost_back);
+    SetSinus(const real_t length[3], const real_t freq[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -75,7 +71,7 @@ class SetCosinus : public SetValue {
 
    public:
     SetCosinus(const real_t length[3], const real_t freq[3]);
-    SetCosinus(const real_t length[3], const real_t freq[3], const lid_t nghost_front, const lid_t nghost_back);
+    SetCosinus(const real_t length[3], const real_t freq[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -92,7 +88,7 @@ class SetPolynom : public SetValue {
 
    public:
     SetPolynom(const lid_t degree[3], const real_t direction[3]);
-    SetPolynom(const lid_t degree[3], const real_t direction[3], const lid_t nghost_front, const lid_t nghost_back);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -109,7 +105,7 @@ class SetExponential : public SetValue {
 
    public:
     SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front, const lid_t nghost_back);
+    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -123,7 +119,7 @@ class SetErf : public SetValue {
 
    public:
     SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const lid_t nghost_front, const lid_t nghost_back);
+    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -138,7 +134,7 @@ class SetVortexRing : public SetValue {
 
    public:
     SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
-    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const lid_t nghost_front, const lid_t nghost_back);
+    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Interpolator* interp);
 };
 
 #endif  // SRC_SETVALUES_HPP_
