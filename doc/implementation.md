@@ -48,22 +48,21 @@ grid->GhostPull(vort);
 The ghost points computation is done using the wavelets to reconstruct missing information in the case of a level mismatch. The ghost reconstruction is done dimension by dimension, allowing to overlap wavelet reconstruction with the communication for the next dimension. Each field owns a boolean to indicate if the ghost points are up-to-date. Hence, calling the `GhostPull` with an already up-to-date field will return immediatly. To ensure consistency of this boolean, please use carefully the operators abstract classes.
 
 ----------------------------------------------------------
-### 6. Operators
-To perfom operations on the blocks, we inherite from abstact classes, see the documentation in `operat
-<!-- 1. `OperatorS`: a simple operator, does not interact with any field -->
-1. `OperatorF`: operates on a given field, ghost status is automatically changed to `false` afterwards.
-1. `ConstOperatorF`: act on a given field, without changing its content. The ghost status is unchanged afterwards.
-1. `OperatorF2F`: operates on two fields, a source and a target. The ghost status of the target is automatically changed to `false` afterwards
-1. `OperatorFF2F`: operates on three fields, two sources and one target. The ghost status of the target is automatically changed to `false` afterwards
-1. `ConstOperatorFF`: operates on two fields, without changing their content. No ghost status change afterwards.
+### 6. DoOp functions
+To avoid the code repetition, we implemented 3 main functions to loops on the GridBlocks:
+- `DoOpMesh`: loops on the blocks using the `p4est_mesh`, i.e. requires the ghosts to be up to date with the grid (not the ghost values!)
+- `DoOpMeshLevel`: same but only on a considered level
+- `DoOpTree`: loops on the blocks using the trees, i.e. do not require the ghosts to be up to date with the grid.
 
-E.g. the error computation between two fields is a `ConstOperatorFF` operator, etc. It is possible to inherit from multiple at the same time as they don't have a common ancestor.
+The functions operates using a similar interface:
+- an object that owns the function you want to call on the blocks
+- the function of the object that will be called
+- the grid
+- any other arguments that the user wants foward to the function.
 
-All operators overload the corresponding function `ApplyMyOperator()` which is triggered by the executation of the `operator()` function on the entire field.
-Given the operator type, the arguments of the `ApplyMyOperator` function changes. In any case, the `ApplyMyOperator` function, as a member function, has access to the content of the current object.
+For example, here is a list of different values
 
-<!-- :warning: The `ApplyMyOperator` function is automatically processed in a multi-threaded section (using OpenMP). This means that the threads will execute the functions on a different blocks __at the same time__, each of them with a copy of the adress of the current object (`this` pointer). Hence, any operation performed in this function has to be __thread-safe__! (use `#pragma omp critical`, `#pragma omp single`, `#pragma omp atomic`,... if needed). -->
-
+:warning: it's the reponsability of every function that calls a `DoOp` to update the ghost status of a field once the job is done.
 
 <!-- ### 7. Stencils
 The computation of a stencil is done using the `Stencil` class. This class implements the overlap between the stencil computation and the required ghost exchange.

@@ -64,10 +64,3 @@ The problem is that the temp memory has to remain untouched while the RMA calls 
 
 I decided to have the temp memory linked to the grid block instead of the ghost object.
 The reason behind this is that many ghost objects can be declared on the same mesh, e.g. the MG, and by doing that, we avoid a double useless allocation
-
-
-------------------------------------------------------------------
-### Improvement lists and todo
-- use the MPI_DataType everywhere when possible. It is a wonderfull abstraction of the memory block and also it provides a great way of copying non-continuous datas
-- the computation of the coarse indexed is really annoying and not very usefull, maybe we can change it?
-- the ghost list is actually linked uniquely to the GridBlock instead of the ghost itself. Hence we might want to include it in the GridBlock, alike the ghost ptr, so that we avoid double allocation as well.

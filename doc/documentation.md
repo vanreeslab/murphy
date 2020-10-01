@@ -6,4 +6,4 @@
 
 ### Big picture information
 - [main implentation choices](implementation.md)
-- [C++ performance](code_perf.md)
+<!-- - [C++ performance](code_perf.md) -->

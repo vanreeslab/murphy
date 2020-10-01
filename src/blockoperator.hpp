@@ -6,12 +6,10 @@
 #include "interpolator.hpp"
 
 /**
- * @brief represents the simplest operator on a GridBlock that operates from [start_,start_,start_] to [end_,end_,end_]
+ * @brief represents the simplest operator on a GridBlock that operates from [start_,start_,start_] to [end_,end_,end_] on a GridBlock
  * 
  * No structure is imposed for the operator, the call or anything else.
- * We just take into account the simplest redundant operation: the start and end index and the call to the member function
- * 
- * @warning we cannot store a pointer to a templated function so every class must have its own calling function
+ * We just take into account the simplest redundant operation: the start and end index
  * 
  * @tparam T the template to handle any combination of the arguments, must be at the end of the call
  */
@@ -37,6 +35,9 @@ class BlockOperator {
         m_end;
     }
 
+    /**
+     * @brief return true if the BlockOperator fills the ghosts
+     */
     inline bool do_ghost() const { return do_ghost_; }
 };
 

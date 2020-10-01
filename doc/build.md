@@ -119,7 +119,7 @@ doxygen doc/Doxyfile
 You will need `dot` to get a visual graphs (see `HAVE_DOT` option in the Doxyfile).
 On MacOS, you can install it using homebrew: `brew install graphviz`.
 
-
+<!-- 
 -----------------------
 ### Installation from scratch
 We here assume that you have nothing installed and we showcase how to build OpenMPI, HDF5 and p4est all together. 
@@ -132,6 +132,6 @@ tar -xvf openmpi-4.0.4.tar.gz
 cd openmpi-4.0.4
 ./configure --prefix=${HOME}/ompi_4.0.4 --enable-debug --enable-memchecker
 make install -j12
-```
+``` -->
 
-*to be continued*
+<!-- *to be continued* -->
