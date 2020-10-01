@@ -66,11 +66,11 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
             // create the solution field
             Field sol("sol", 1);
             grid.AddField(&sol);
-            SetSinus field_sol(sin_len, freq, grid.NGhostFront(),grid.NGhostBack());
+            SetSinus field_sol(sin_len, freq, grid.interp());
             field_sol(&grid, &sol);
 
             // now, we need to check
-            ErrorCalculator error(&grid);
+            ErrorCalculator error(grid.interp());
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
@@ -128,11 +128,11 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_cosinus) {
             // create the solution field
             Field sol("sol", 1);
             grid.AddField(&sol);
-            SetCosinus field_sol(sin_len, freq, grid.NGhostFront(),grid.NGhostBack());
+            SetCosinus field_sol(sin_len, freq, grid.interp());
             field_sol(&grid, &sol);
 
             // now, we need to check
-            ErrorCalculator error(&grid);
+            ErrorCalculator error(grid.interp());
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);

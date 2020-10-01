@@ -16,10 +16,10 @@
 using std::list;
 
 // define a mask on the edge and corner ghosts
-class MaskPhysBC : public OperatorF {
+class MaskPhysBC{
    protected:
     real_t L_[3];
-    void   ApplyOpF(const qid_t* qid, GridBlock* block, Field* fid) override {
+    void   ApplyMask(const qid_t* qid, GridBlock* block, const Field* fid) {
         //-------------------------------------------------------------------------
         real_t pos[3];
 
@@ -60,6 +60,10 @@ class MaskPhysBC : public OperatorF {
         //-------------------------------------------------------------------------
         m_end;
     };
+
+    void operator()(const ForestGrid* grid,const Field* fid){
+        DoOpMesh(this,&MaskPhysBC::ApplyMask,grid,fid);
+    }
 };
 
 class test_Wavelet_Ghost : public ::testing::Test {
@@ -106,7 +110,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_2_x) {
         // create the solution field
         Field sol("sol", 1);
         grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir, grid.NGhostFront(), grid.NGhostBack());
+        SetPolynom field_sol(deg, dir, grid.interp());
         field_sol(&grid, &sol);
 
         // mask both the sol and the result
@@ -116,7 +120,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_2_x) {
 
         // now, we need to check
         real_t          norm2, normi;
-        ErrorCalculator error(&grid);
+        ErrorCalculator error(grid.interp());
         error.Norms(&grid, &test, &sol, &norm2, &normi);
 
         m_log("checking in dim %d: the two norms: %e %e", id, normi, norm2);
@@ -161,7 +165,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_4_x) {
         // create the solution field
         Field sol("sol", 1);
         grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir, grid.NGhostFront(), grid.NGhostBack());
+        SetPolynom field_sol(deg, dir, grid.interp());
         field_sol(&grid, &sol);
 
         // mask both the sol and the result
@@ -171,7 +175,7 @@ TEST_F(test_Wavelet_Ghost, ghost_order_4_x) {
 
         // now, we need to check
         real_t          norm2, normi;
-        ErrorCalculator error(&grid);
+        ErrorCalculator error(grid.interp());
         error.Norms(&grid, &test, &sol, &norm2, &normi);
 
         m_log("checking in dim %d: the two norms: %e %e", id, normi, norm2);
