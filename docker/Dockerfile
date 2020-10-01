@@ -9,11 +9,13 @@ RUN apt-get -y update && apt-get install -y \
     automake autoconf m4 libblas-dev liblapack-dev
 
 # OpenMPI v4.0.5
-RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.5.tar.gz &&\
-    tar -xvf openmpi-4.0.5.tar.gz &&\
-    cd openmpi-4.0.5 &&\
-    ./configure --prefix=/usr/local --enable-debug --enable-memchecker &&\
-    make all install
+# RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.5.tar.gz &&\
+#     tar -xvf openmpi-4.0.5.tar.gz &&\
+#     cd openmpi-4.0.5 &&\
+#     ./configure --prefix=/usr/local --enable-debug --enable-memchecker &&\
+#     make all install
+RUN apt-get -y update && apt-get install -y \
+    libopenmpi-dev openmpi-bin
 
 RUN apt-get -y update && apt-get install -y \
     libhdf5-mpi-dev libfftw3-dev \

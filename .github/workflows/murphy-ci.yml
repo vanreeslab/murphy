@@ -9,7 +9,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.7
+      image: vanreeslab/murphy:v1.6
     # define the steps
     steps:
       #checkout the repo
@@ -25,7 +25,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.7
+      image: vanreeslab/murphy:v1.6
     # define the steps
     steps:
       #checkout the repo
@@ -47,7 +47,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.7
+      image: vanreeslab/murphy:v1.6
     # define the steps
     steps:
       #checkout the repo
@@ -69,7 +69,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.7
+      image: vanreeslab/murphy:v1.6
     # define the steps
     steps:
       #checkout the repo
