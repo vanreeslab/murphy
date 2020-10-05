@@ -3,9 +3,23 @@
 #include "doop.hpp"
 
 /**
+ * @brief Construct a new Stencil with no profiler attached
+ * 
+ * The Stencil only operates on the inner block and do not fill the ghost points
+ * 
+ */
+Stencil::Stencil() : BlockOperator(nullptr, nullptr) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    prof_ = nullptr;
+    //-------------------------------------------------------------------------
+    m_end;
+};
+
+/**
  * @brief apply the stencil on the field_src and store the result in field_trg
  * 
- * This functions implements the ghost computation, inner stencil and outer stencil computation overlapping, dimension by dimension.
+ * This functions implements the ghost value update, inner stencil and outer stencil computation overlapping, dimension by dimension.
  * At the end, the field_src ghost status is changed to true and the target field contains the result (with wrong ghost stauts).
  * 
  * @param field_src 
@@ -14,8 +28,12 @@
  */
 void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     m_begin;
+    m_assert(grid != nullptr, "the grid cannot be null");
     m_assert(field_src != nullptr, "the source field cannot be null");
+    m_assert(field_trg != nullptr, "the source field cannot be null");
+    m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
     //-------------------------------------------------------------------------
+    // init the prof if not already done
     for (int ida = 0; ida < field_src->lda(); ida++) {
         // start the send of the coarse
         grid->GhostPull_Post(field_src, ida);
@@ -24,8 +42,6 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         m_profStart(grid->profiler(), "stencil_outer");
         if (field_trg != nullptr) {
             ida_ = ida;
-            // DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpInner, grid, field_src, field_trg, this);
-            // DoOpMesh(&CallStencilOpInner, grid, field_src, field_trg, this);
             DoOpMesh(this,&Stencil::ApplyStencilInner,grid,field_src, field_trg);
         }
         m_profStop(grid->profiler(), "stencil_outer");
@@ -33,22 +49,15 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         // get the coarse representation back
         grid->GhostPull_Wait(field_src, ida);
 
-        // finalize the outer
-        if (field_trg != nullptr) {
-            // inner operation on the now received dimension
-            ida_ = ida;
-            m_profStart(grid->profiler(), "stencil_inner");
-            // DoOp_F_<op_t<Stencil*, Field*, Field*>, Stencil*, Field*, Field*>(CallStencilOpOuter, grid, field_src, field_trg, this);
-            // DoOpMesh(&CallStencilOpOuter, grid, field_src, field_trg, this);
-            DoOpMesh(this,&Stencil::ApplyStencilOuter,grid,field_src, field_trg);
-            m_profStop(grid->profiler(), "stencil_inner");
-        }
+        // inner operation on the now received dimension
+        m_profStart(grid->profiler(), "stencil_inner");
+        ida_ = ida;
+        DoOpMesh(this, &Stencil::ApplyStencilOuter, grid, field_src, field_trg);
+        m_profStop(grid->profiler(), "stencil_inner");
     }
     // update the ghost status
     field_src->ghost_status(true);
-    if (field_trg != nullptr) {
-        field_trg->ghost_status(false);
-    }
+    field_trg->ghost_status(false);
     //-------------------------------------------------------------------------
     m_end;
 }

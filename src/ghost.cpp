@@ -143,7 +143,7 @@ static inline lid_t CoarseFromBlock(const lid_t a, const Interpolator* interp) {
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
  * @param interp the interpolator to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(ForestGrid* grid, Interpolator* interp) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp) {
+Ghost::Ghost(ForestGrid* grid, Interpolator* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
     //-------------------------------------------------------------------------
     // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp)
     //-------------------------------------------------------------------------
@@ -163,16 +163,23 @@ Ghost::Ghost(ForestGrid* grid, Interpolator* interp) : Ghost(grid, -1, P8EST_MAX
  * @param max_level the maximum level on which the GP are initiated
  * @param interp the interpolator to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp) {
+Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp, Prof* profiler) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // get the important pointers
     grid_   = grid;
     interp_ = interp;
+    prof_   = profiler;
     // store the level information
     min_level_ = m_max(min_level, 0);
     max_level_ = m_min(max_level, P8EST_QMAXLEVEL);
+
+    // init the profiler info
+    m_profCreate(prof_, "ghost");
+    m_profCreateParent(prof_, "ghost", "ghost_init");
+    m_profCreateParent(prof_, "ghost", "ghost_wait");
+    m_profCreateParent(prof_, "ghost", "ghost_computation");
 
     //................................................
     // get how many active quads should be considered and allocate the ghost ptr
@@ -189,8 +196,10 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
 
     //................................................
     // initialize the communications and the ghost's lists
+    m_profStart(prof_,"ghost_init");
     InitComm_();
     InitList_();
+    m_profStop(prof_,"ghost_init");
 
     //-------------------------------------------------------------------------
     m_log("ghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), CoarseNGhostFront(interp_), CoarseNGhostBack(interp_));
@@ -506,6 +515,7 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     // store the current dimension
     ida_ = ida;
 
+    m_profStart(prof_,"ghost_computation");
     //................................................
     // fill the Window memory with the Mirror information
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
@@ -522,6 +532,7 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
         // DoOpMeshLevel(&CallGetGhost4Block_Post, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::GetGhost4Block_Post, grid_, il,field);
     }
+    m_profStop(prof_,"ghost_computation");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -540,9 +551,12 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     //................................................
     // finish the access epochs for the exposure epoch to be over
+    m_profStart(prof_,"ghost_wait");
     MPI_Win_complete(mirrors_window_);
     MPI_Win_wait(mirrors_window_);
+    m_profStop(prof_,"ghost_wait");
 
+    m_profStart(prof_,"ghost_computation");
     // we now have all the information needed to compute the ghost points in coarser blocks
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
@@ -562,11 +576,15 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
         // DoOpMeshLevel(&CallPutGhost4Block_Post, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::PutGhost4Block_Post, grid_, il, field);
     }
+    m_profStop(prof_,"ghost_computation");
 
+    m_profStart(prof_,"ghost_wait");
     // finish the access epochs for the exposure epoch to be over
     MPI_Win_complete(mirrors_window_);
     MPI_Win_wait(mirrors_window_);
+    m_profStop(prof_,"ghost_wait");
 
+    m_profStart(prof_,"ghost_computation");
     // we copy back the missing info
     LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
 
@@ -576,6 +594,7 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
         // DoOpMeshLevel(&CallPutGhost4Block_Wait, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::PutGhost4Block_Wait, grid_, il, field);
     }
+    m_profStop(prof_,"ghost_computation");
 
     //-------------------------------------------------------------------------
     m_end;
@@ -849,7 +868,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;
         MPI_Datatype dtype;
-        ToMPIDatatype(start, end, block->gs(), block->stride(), 1, &dtype);
+        ToMPIDatatype(start, end, block->stride(), 1, &dtype);
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
         MPI_Type_free(&dtype);
     }

@@ -195,7 +195,7 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1, &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
@@ -203,7 +203,7 @@ void Interpolator::GetRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
     MPI_Datatype dtype_src;
-    ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale, &dtype_src);
+    ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
 #ifndef NDEBUG
@@ -233,7 +233,7 @@ void Interpolator::PutRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(trg_start, trg_end, block_trg->gs(), block_trg->stride(), 1, &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
@@ -241,7 +241,7 @@ void Interpolator::PutRma(const level_t dlvl, const lid_t shift[3], const MemLay
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
     MPI_Datatype dtype_src;
-    ToMPIDatatype(src_start, src_end, block_src->gs(), block_src->stride(), scale, &dtype_src);
+    ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
 #ifndef NDEBUG

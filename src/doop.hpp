@@ -36,7 +36,7 @@ void DoOpMesh(const O op, F memfunc,const ForestGrid* grid, T... data) {
     } else {
         static_assert(std::is_pointer<O>(), "the operator type must be a pointer");
         static_assert(std::is_member_function_pointer<F>(), "the function type must be a pointer to a member function");
-        static_assert(std::is_same<F, void (std::remove_pointer<O>::type::*)(const qid_t* qid, GridBlock* block, T...)>::value, "if the operator is null, the function MUST be a member function of the GridBlock class");
+        static_assert(std::is_same<F, void (std::remove_pointer<O>::type::*)(const qid_t* qid, GridBlock* block, T...)>(), "if the operator is null, the function MUST be a member function of the GridBlock class");
     }
     //-------------------------------------------------------------------------
     // get the grid info

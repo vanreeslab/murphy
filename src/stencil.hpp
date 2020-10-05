@@ -1,6 +1,7 @@
 #ifndef SRC_STENCIL_HPP_
 #define SRC_STENCIL_HPP_
 
+#include "blockoperator.hpp"
 #include "grid.hpp"
 #include "murphy.hpp"
 
@@ -13,10 +14,15 @@
  * (given by `(ida_ + 1)%3` and `(ida_ + 2)%3`
  * 
  */
-class Stencil {
+class Stencil : public BlockOperator {
    protected:
-    sid_t ida_ = 0;  //!< current source dimension
+    sid_t ida_  = 0;  //!< current source dimension
+    Prof* prof_ = 0;  //!< the profiler to use
    public:
+    // default void constructor
+    explicit Stencil();
+    explicit Stencil(const Grid* grid);
+
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
      * between the ghost exchange and the stencil computation.

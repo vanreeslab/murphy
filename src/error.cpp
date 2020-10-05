@@ -7,8 +7,8 @@
  * 
  * @param interp the interpolator to use to get the number of actual ghost points, see BlockOperator::BlockOperator()
  */
-ErrorCalculator::ErrorCalculator(const Interpolator* interp) : BlockOperator(interp) {}
-ErrorCalculator::ErrorCalculator() : BlockOperator(nullptr) {}
+ErrorCalculator::ErrorCalculator(const Interpolator* interp) : BlockOperator(interp, nullptr) {}
+ErrorCalculator::ErrorCalculator() : BlockOperator(nullptr, nullptr) {}
 
 /**
  * @brief returns the infinite norm of the error, see @ref ErrorCalculator::Norms()

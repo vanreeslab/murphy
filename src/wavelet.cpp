@@ -150,9 +150,9 @@ void Wavelet::Refine_(const interp_ctx_t* ctx) {
         for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
             for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
                 // get 0 if odd, 1 if even (even if negative!!)
-                const lda_t iy = m_sign(ik1) * (ik1 % 2);
-                const lda_t ix = m_sign(ik0) * (ik0 % 2);
-                const lda_t iz = m_sign(ik2) * (ik2 % 2);
+                const sid_t iy = m_sign(ik1) * (ik1 % 2);
+                const sid_t ix = m_sign(ik0) * (ik0 % 2);
+                const sid_t iz = m_sign(ik2) * (ik2 % 2);
                 m_assert(ix == 0 || ix == 1, "this are the two possible values");
                 m_assert(iy == 0 || iy == 1, "this are the two possible values");
                 m_assert(iz == 0 || iz == 1, "this are the two possible values");
@@ -211,7 +211,6 @@ void Wavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max) {
     //-------------------------------------------------------------------------
     const sid_t   ga_lim   = len_ga_ / 2;
     const_mem_ptr ga       = Wavelet::ga_ + ga_lim;
-    const real_t  zero     = 0.0;
     const lid_t   start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
     const lid_t   end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 

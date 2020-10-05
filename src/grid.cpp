@@ -42,17 +42,10 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     // profiler
     prof_ = prof;
     // init the profiler tracking
-    m_profCreate(prof_, "ghost_init");
-    m_profCreate(prof_, "ghost_comm");
-    m_profCreate(prof_, "ghost_cmpt");
     m_profCreate(prof_, "p4est_refcoarse");
     m_profCreate(prof_, "p4est_balance");
     m_profCreate(prof_, "p4est_partition_init");
     m_profCreate(prof_, "p4est_partition_comm");
-    m_profCreate(prof_, "stencil_inner");
-    m_profCreate(prof_, "stencil_outer");
-    m_profCreateParent(prof_, "ghost_comm", "ghost_comm_start");
-    m_profCreateParent(prof_, "ghost_comm", "ghost_comm_wait");
     m_profCreateParent(prof_, "p4est_refcoarse", "cback_interpolate");
 
     // create a default interpolator
@@ -132,7 +125,7 @@ void Grid::SetupGhost() {
     // create the ghosts structure
     m_log("starting the Ghost construction");
     m_profStart(prof_, "ghost_init");
-    ghost_ = new Ghost(this, interp_);
+    ghost_ = new Ghost(this, interp_,prof_);
     m_profStop(prof_, "ghost_init");
     //-------------------------------------------------------------------------
     m_end;
@@ -283,9 +276,7 @@ void Grid::GhostPull_Post(Field* field, const sid_t ida) {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     if (!field->ghost_status()) {
-        m_profStart(prof_, "ghostpull_post");
         ghost_->PullGhost_Post(field, ida);
-        m_profStop(prof_, "ghostpull_post");
     }
     //-------------------------------------------------------------------------
     m_end;

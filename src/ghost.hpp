@@ -54,6 +54,7 @@ class Ghost {
 
     ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
     Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
+    Prof *        prof_;    //!< the profiler to time operations, not owned
 
     ListGBLocal ** block_sibling_;         //!<  list of local block on my resolution
     ListGBLocal ** block_parent_;          //!<  list of local block coarser (neighbors to me)
@@ -65,8 +66,8 @@ class Ghost {
     listGBPhysic **phys_;                  //!<  physical boundary condition
 
    public:
-    Ghost(ForestGrid *grid, Interpolator *interp);
-    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, Interpolator *interp);
+    Ghost(ForestGrid *grid, Interpolator *interp, Prof *profiler);
+    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, Interpolator *interp, Prof *profiler);
     ~Ghost();
 
     /**
