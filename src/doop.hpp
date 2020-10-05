@@ -1,57 +1,49 @@
 #ifndef SRC_DOOP_HPP_
 #define SRC_DOOP_HPP_
 
+#include <type_traits>
+
+#include "blockoperator.hpp"
 #include "forestgrid.hpp"
+#include "gridblock.hpp"
 #include "murphy.hpp"
 #include "toolsp4est.hpp"
-#include "gridblock.hpp"
 
 /**
- * @brief General expression of any operator taking a list of fields as input/output
+ * @brief iterates on the Gridblocks at a given level using the p4est_mesh object
  * 
- * @warning This templated alias uses the parameter pack feature introduced in C++11
+ * This function is alike @ref DoOpMesh() but only calls the function on the given level
+ * This functions takes an object @ref op and applies the function op->memfunc to it.
  * 
- * Here is some examples
- * - An operator `op_t<real_t*, Field*>` corresponds to 
- * ```
- * void operator1(const qid_t* qid, Block* block, Field* field1, real_t* data)
- * ```
- * 
- * - An operator `op_t<real_t*, const Field*, const Field*, Field*, Field*>` corresponds to
- * ```
- * void operator2(const qid_t* qid, Block* block, const Field* field_src1, const Field* field_src2, Field* field_trg1, Field* field_trg2, real_t* data)
- * ```
- * 
- * @tparam T the type of the data is passed as a user_defined pointer
- * @tparam F The parameter pack of Fields* which is passed
+ * @tparam O the object type: std::nullptr_t if the object is nullptr or any pointer to an object
+ * @tparam F the function type: a pointer to a member function of the GridBlock class (if @ref op is nullptr) or a pointer to a member function of the O class.
+ * @tparam T the template package used to pass arguments to the functions
+ * @param op a pointer to the object to use for the function call; if nullptr: the function has to be a member function of the GridBlock class
+ * @param memfunc the member function to call with the GridBlock
+ * @param grid the grid that contains the blocks
+ * @param lvl the desired level
+ * @param data the data passed by the user to the function
  */
-template <typename T, typename... F>
-using op_t = void (*)(const qid_t* qid, GridBlock* block, F... fid, T);
-
-/**
- * @brief The actual implementation of the Block iteration
- * 
- * @warning We use a omp directive to loop over the blocks, hence the data is set as firstprivate!
- * 
- * @tparam O the type of operator that is used, see the definition of op_t
- * @tparam T the type of data given as user-defined data.
- * @tparam F the parameter pack containing the list of the fields which is taken as input/output, see the definition of opt_t
- * @param op the operator to be called on the blocks
- * @param grid the grid which contains the blocks
- * @param field the field on which we have to work
- * @param data the user-defined data forwared to the operator
- */
-template <typename O, typename T, typename... F>
-void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
+template <typename O, typename F, typename... T>
+void DoOpMesh(const O op, F memfunc,const ForestGrid* grid, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
+    // do some static (=compilation) checks to be sure that the couple O and F is compatible
+    constexpr bool do_gridblock = std::is_same<O, std::nullptr_t>();
+    if constexpr (do_gridblock) {
+        static_assert(std::is_same<F, void (GridBlock::*)(T...)>(), "if the operator is nullptr, the function MUST be a member function of the GridBlock class");
+    } else {
+        static_assert(std::is_pointer<O>(), "the operator type must be a pointer");
+        static_assert(std::is_member_function_pointer<F>(), "the function type must be a pointer to a member function");
+        static_assert(std::is_same<F, void (std::remove_pointer<O>::type::*)(const qid_t* qid, GridBlock* block, T...)>::value, "if the operator is null, the function MUST be a member function of the GridBlock class");
+    }
+    //-------------------------------------------------------------------------
     // get the grid info
-    p8est_t*      forest  = grid->forest();
-    p8est_mesh_t* mesh    = grid->mesh();
+    p8est_t*      forest  = grid->p4est_forest();
+    p8est_mesh_t* mesh    = grid->p4est_mesh();
     const lid_t   nqlocal = mesh->local_num_quadrants;  // number of trees * number of elem/tree
 
-//#pragma omp parallel for firstprivate(data)
     for (lid_t bid = 0; bid < nqlocal; bid++) {
         // get the tree
         p8est_tree_t* tree;
@@ -66,37 +58,53 @@ void DoOp_F_(const O op, ForestGrid* grid, F... field, T data) {
         quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
 
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
-        // send the task
-        op(&myid, block, field..., data);
+        // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
+        if constexpr (do_gridblock) {
+            (block->*memfunc)(data...);
+        } else {
+            (op->*memfunc)(&myid, block, data...);
+        }
     }
     //-------------------------------------------------------------------------
     m_end;
 }
+
 /**
- * @brief The actual implementation of the Block iteration, performed ONLY on the given level
+ * @brief iterates on the Gridblocks at a given level using the p4est_mesh object
  * 
- * @warning We use a omp directive to loop over the blocks, hence the data is set as firstprivate!
+ * This function is alike @ref DoOpMesh() but only calls the function on the given level
+ * This functions takes an object @ref op and applies the function op->memfunc to it.
  * 
- * @tparam O the type of operator that is used, see the definition of op_t
- * @tparam T the type of data given as user-defined data.
- * @tparam F the parameter pack containing the list of the fields which is taken as input/output, see the definition of opt_t
- * @param op the operator to be called on the blocks
- * @param grid the grid which contains the blocks
- * @param lvl the level on which we need to call the operator
- * @param field the field on which we have to work
- * @param data the user-defined data forwared to the operator
+ * @tparam O the object type: std::nullptr_t if the object is nullptr or any pointer to an object
+ * @tparam F the function type: a pointer to a member function of the GridBlock class (if @ref op is nullptr) or a pointer to a member function of the O class.
+ * @tparam T the template package used to pass arguments to the functions
+ * @param op a pointer to the object to use for the function call; if nullptr: the function has to be a member function of the GridBlock class
+ * @param memfunc the member function to call with the GridBlock
+ * @param grid the grid that contains the blocks
+ * @param lvl the desired level
+ * @param data the data passed by the user to the function
  */
-template <typename O, typename T, typename... F>
-void DoOp_F_(const O op, ForestGrid* grid, const level_t lvl, F... field, T data) {
+template <typename O, typename F, typename... T>
+void DoOpMeshLevel(const O op, F memfunc,const ForestGrid* grid, const level_t lvl, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
+    // do some static (=compilation) checks to be sure that the couple O and F is compatible
+    constexpr bool do_gridblock = std::is_same<O, std::nullptr_t>();
+    if constexpr (do_gridblock) {
+        static_assert(std::is_same<F, void (GridBlock::*)(T...)>(), "if the operator is nullptr, the function MUST be a member function of the GridBlock class");
+    } else {
+        static_assert(std::is_pointer<O>(), "the operator type must be a pointer");
+        static_assert(std::is_member_function_pointer<F>(), "the function type must be a pointer to a member function");
+        static_assert(std::is_same<F, void (std::remove_pointer<O>::type::*)(const qid_t* qid, GridBlock* block, T...)>(), "if the operator is null, the function MUST be a member function of the GridBlock class");
+    }
+    
+    //-------------------------------------------------------------------------
     // get the grid info
-    p8est_t*       forest  = grid->forest();
-    p8est_mesh_t*  mesh    = grid->mesh();
+    p8est_t*       forest  = grid->p4est_forest();
+    p8est_mesh_t*  mesh    = grid->p4est_mesh();
     const iblock_t nqlocal = p4est_NumQuadOnLevel(mesh, lvl);
 
-//#pragma omp parallel for firstprivate(data)
     for (iblock_t lid = 0; lid < nqlocal; lid++) {
         // get the corresponding id of the quadrant
         const iblock_t bid = p4est_GetQuadIdOnLevel(mesh, lvl, lid);
@@ -111,8 +119,68 @@ void DoOp_F_(const O op, ForestGrid* grid, const level_t lvl, F... field, T data
         p8est_quadrant_t* quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
 
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
-        // send the task
-        op(&myid, block, field..., data);
+        // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
+        if constexpr (do_gridblock) {
+            (block->*memfunc)(data...);
+        } else {
+            (op->*memfunc)(&myid, block, data...);
+        }
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief iterates on the Gridblocks using the p4est_tree, NOT using the p4est_mesh object
+ * 
+ * This function is alike @ref DoOpMesh() but can be called without the Ghost object created
+ * 
+ * @tparam O the object type: std::nullptr_t if the object is nullptr or any pointer to an object
+ * @tparam F the function type: a pointer to a member function of the GridBlock class (if @ref op is nullptr) or a pointer to a member function of the O class.
+ * @tparam T the template package used to pass arguments to the functions
+ * @param op a pointer to the object to use for the function call; if nullptr: the function has to be a member function of the GridBlock class
+ * @param memfunc the member function to call with the GridBlock
+ * @param grid the grid that contains the blocks
+ * @param data the data passed by the user to the function
+ */
+template <typename O, typename F, typename... T>
+void DoOpTree(const O op, F memfunc, const ForestGrid* grid, T... data) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // do some static (=compilation) checks to be sure that the couple O and F is compatible
+    constexpr bool do_gridblock = std::is_same<O, std::nullptr_t>();
+    if constexpr (do_gridblock) {
+        static_assert(std::is_same<F, void (GridBlock::*)(T...)>(), "if the operator is nullptr, the function MUST be a member function of the GridBlock class");
+    } else {
+        static_assert(std::is_pointer<O>(), "the operator type must be a pointer");
+        static_assert(std::is_member_function_pointer<F>(), "the function type must be a pointer to a member function");
+        static_assert(std::is_same<F, void (std::remove_pointer<O>::type::*)(const qid_t* qid, GridBlock* block, T...)>::value, "if the operator is null, the function MUST be a member function of the GridBlock class");
+    }
+    //-------------------------------------------------------------------------
+    // get the grid info
+    p8est_t* forest = grid->p4est_forest();
+
+    for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; ++it) {
+        p8est_tree_t* tree    = p8est_tree_array_index(forest->trees, it);
+        const size_t  nqlocal = tree->quadrants.elem_count;
+
+        for (size_t bid = 0; bid < nqlocal; bid++) {
+            p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
+            GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+
+            // get the id
+            qid_t myid;
+            myid.cid = bid;                           // cummulative id
+            myid.qid = bid + tree->quadrants_offset;  // quadrant id
+            myid.tid = it;                            // tree id
+
+            // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
+            if constexpr (do_gridblock) {
+                (block->*memfunc)(data...);
+            } else {
+                (op->*memfunc)(&myid, block, data...);
+            }
+        }
     }
     //-------------------------------------------------------------------------
     m_end;

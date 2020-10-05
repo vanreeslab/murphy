@@ -71,13 +71,13 @@ TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
 
 ################################################################################
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -c $< -o $@
 
 $(TEST_DIR)/$(OBJ_DIR)/%.o : $(TEST_DIR)/$(SRC_DIR)/%.cpp $(THEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++17 -fPIC -MMD -c $< -o $@
 
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -E $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -E $< -o $@
 
 ################################################################################
 default: $(TARGET)

@@ -46,7 +46,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
     m_begin;
     //-------------------------------------------------------------------------
     const rank_t commsize = grid->mpisize();
-    p8est_t *    forest   = grid->forest();
+    p8est_t *    forest   = grid->p4est_forest();
     const rank_t rank     = forest->mpirank;
 
     // store the destructive state

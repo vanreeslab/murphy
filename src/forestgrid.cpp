@@ -9,9 +9,9 @@
 ForestGrid::ForestGrid() {
     m_begin;
     //-------------------------------------------------------------------------
-    forest_           = nullptr;
-    mesh_             = nullptr;
-    ghost_            = nullptr;
+    p4est_forest_     = nullptr;
+    p4est_mesh_       = nullptr;
+    p4est_ghost_      = nullptr;
     is_mesh_valid_    = false;
     is_connect_owned_ = false;
     //-------------------------------------------------------------------------
@@ -39,11 +39,11 @@ ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], 
     // create the forest at a given level, the associated ghost and mesh object
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-    int min_quad = ((int)pow(2, 3 * ilvl)) / comm_size;
-    forest_      = p8est_new_ext(comm, connect, min_quad, 0, 1, datasize, nullptr, nullptr);
+    int min_quad  = ((int)pow(2, 3 * ilvl)) / comm_size;
+    p4est_forest_ = p8est_new_ext(comm, connect, min_quad, 0, 1, datasize, nullptr, nullptr);
     // forest_ - p8est_new(comm,connect,datasize,nullptr,nullptr);
     // set the pointer to null
-    forest_->user_pointer = nullptr;
+    p4est_forest_->user_pointer = nullptr;
     // store the domain periodicity and domain size
     domain_length_[0]   = (real_t)l[0];
     domain_length_[1]   = (real_t)l[1];
@@ -65,9 +65,9 @@ void ForestGrid::CopyFrom(const ForestGrid* grid) {
     //-------------------------------------------------------------------------
     // copy the existing forest, including the memory adress to the GridBlock
     is_connect_owned_ = false;
-    forest_           = p8est_copy(grid->forest(), 1);
+    p4est_forest_     = p8est_copy(grid->p4est_forest(), 1);
     // set the pointer to null
-    forest_->user_pointer = nullptr;
+    p4est_forest_->user_pointer = nullptr;
     // store the domain periodicity and domain size
     domain_length_[0]   = grid->domain_length(0);
     domain_length_[1]   = grid->domain_length(1);
@@ -91,9 +91,9 @@ ForestGrid::~ForestGrid() {
     // destroy the connectivity and the forest
     p8est_connectivity_t* connect = nullptr;
     if (is_connect_owned_) {
-        connect = forest_->connectivity;
+        connect = p4est_forest_->connectivity;
     }
-    p8est_destroy(forest_);
+    p8est_destroy(p4est_forest_);
     if (is_connect_owned_) {
         p8est_connectivity_destroy(connect);
     }
@@ -111,13 +111,13 @@ void ForestGrid::ResetP4estGhostMesh() {
     m_begin;
     //-------------------------------------------------------------------------
     // destroy the structures
-    if (mesh_ != nullptr) {
-        p8est_mesh_destroy(mesh_);
-        mesh_ = nullptr;
+    if (p4est_mesh_ != nullptr) {
+        p8est_mesh_destroy(p4est_mesh_);
+        p4est_mesh_ = nullptr;
     }
-    if (ghost_ != nullptr) {
-        p8est_ghost_destroy(ghost_);
-        ghost_ = nullptr;
+    if (p4est_ghost_ != nullptr) {
+        p8est_ghost_destroy(p4est_ghost_);
+        p4est_ghost_ = nullptr;
     }
     // unvalidate the mesh
     is_mesh_valid_ = false;
@@ -133,10 +133,10 @@ void ForestGrid::ResetP4estGhostMesh() {
  */
 void ForestGrid::SetupP4estGhostMesh() {
     m_begin;
-    m_assert(ghost_ == nullptr && mesh_ == nullptr,"cannot initialize something that already exist");
+    m_assert(p4est_ghost_ == nullptr && p4est_mesh_ == nullptr, "cannot initialize something that already exist");
     //-------------------------------------------------------------------------
-    ghost_         = p8est_ghost_new(forest_, P8EST_CONNECT_FULL);
-    mesh_          = p8est_mesh_new_ext(forest_, ghost_, 1, 1, P8EST_CONNECT_FULL);
+    p4est_ghost_   = p8est_ghost_new(p4est_forest_, P8EST_CONNECT_FULL);
+    p4est_mesh_    = p8est_mesh_new_ext(p4est_forest_, p4est_ghost_, 1, 1, P8EST_CONNECT_FULL);
     is_mesh_valid_ = true;
     //-------------------------------------------------------------------------
     m_end;

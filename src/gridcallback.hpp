@@ -30,7 +30,8 @@ int  cback_Interpolator(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quad
 int  cback_Interpolator(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
 // interpolation
 void cback_Interpolate(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
-void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]);
+void cback_AllocateOnly(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+void cback_ValueFill(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
 /**@}*/
 
 /**

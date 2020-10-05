@@ -34,71 +34,41 @@ int main(int argc, char** argv) {
         m_log("periodic? %d %d %d", argument.period_[0], argument.period_[1], argument.period_[2]);
         
         // create the grid, at this point, no memory is created
-        Grid* grid = new Grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
+        Grid grid(argument.init_lvl_, argument.period_, argument.length_, MPI_COMM_WORLD, prof);
 
-        // get an refined and adapted grid given the patch
-        list<Patch> patch;
-        real_t      origin[3] = {0.5, 0.0, 0.0};
-        real_t      length[3] = {0.5, 1.0, 1.0};
-        // patch.push_back(Patch(origin, length, 2));
-        grid->Adapt(&patch);
-        grid->Adapt(&argument.patch_);
+        // // get an refined and adapted grid given the patch
+        // list<Patch> patch;
+        // real_t      origin[3] = {0.5, 0.0, 0.0};
+        // real_t      length[3] = {0.5, 1.0, 1.0};
+        // // patch.push_back(Patch(origin, length, 2));
+        // grid->Adapt(&patch);
+        // grid->Adapt(&argument.patch_);
+
         // create a field
         Field vort("vorticity", 3);
-        // Field* psi  = new Field("psi", 3);
-        // Field* res  = new Field("residual", 3);
-        // // register the field to the grid
-        grid->AddField(&vort);
-        // grid->AddField(psi);
-        // grid->AddField(res);
-        // // get some values for the polynomial
-        // real_t     dir[3]  = {0.0, 1.0, 0.0};
-        // lid_t      deg[3]  = {0, 1, 0};
-        // SetPolynom polynom = SetPolynom(deg, dir);
-        // polynom(grid, vort);
-        // real_t length[3] = {1.0* argument.length_[0],1.0* argument.length_[1],1.0* argument.length_[2]};
-        // real_t freq[3] = {2.0,4.0,1.0};
-        // SetSinus sinus = SetSinus(length,freq);
-        // sinus(grid,vort);
-
-        IOH5 dump = IOH5("data");
+        grid.AddField(&vort);
 
         const real_t  center[3] = {argument.length_[0] / 2.0, argument.length_[1] / 2.0, argument.length_[2] / 2.0};
         const lda_t   normal    = 2;
         const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
-        SetVortexRing vr_init(normal, center, sigma, radius);
-        vr_init(grid,&vort);
+        SetVortexRing vr_init(normal, center, sigma, radius, grid.interp());
 
-        // // set an EVEN bc for everybody (everywhere and in X direction for each dimension)
-        // vort->bctype(M_BC_ODD);
+        // set the BC for kiding
         vort.bctype(M_BC_EXTRAP_3);
-        // psi->bctype(M_BC_ODD);
-        // res->bctype(M_BC_ODD);
-        grid->SetTol(1e-1, 1e-3);
-        grid->Adapt(&vort);
-        vr_init(grid, &vort);
-        grid->Adapt(&vort);
-        vr_init(grid, &vort);
-        // grid->Adapt(vort);
-        // vr_init(grid, vort);
-        // grid->Adapt(vort);
 
-        grid->GhostPull(&vort);
-        // vr_init(grid, vort);
+        // adapt the mesh
+        grid.SetTol(1e-0, 1e-2);
+        grid.SetRecursiveAdapt(true);
+        grid.Adapt(&vort,&vr_init);
 
-        dump(grid, &vort);
+        // create the IO
+        IOH5 dump("data");
+        dump(&grid, &vort);
+        grid.GhostPull(&vort);
+        // dump.dump_ghost(true);
+        // dump(&grid, &vort);
 
-        dump.dump_ghost(true);
-        dump(grid, &vort);
-
-        // init the MG solver
-        // Multigrid* poisson = new Multigrid(grid, 0, vort, psi, res);
-
-        // poisson->Solve();
-
-        // and destroy the grid and the field
-        delete (grid);
     }
     // display the profiler
     prof->Disp();

@@ -73,25 +73,24 @@ class Ghost {
      * @name RMA-based high-level ghosting - post and wait
      * @{
      */
-    void PullGhost_Post(Field *field, const lda_t ida);
-    void PullGhost_Wait(Field *field, const lda_t ida);
+    void PullGhost_Post(const Field *field, const lda_t ida);
+    void PullGhost_Wait(const Field *field, const lda_t ida);
     /** @}*/
 
     /**
      * @name RMA-based low-level ghosting - get and put the values
      * @{
      */
-    void InitList4Block(const qid_t *qid,       GridBlock *block);
-    void PushToWindow4Block(const qid_t *qid,   GridBlock *block, const Field *fid);
-    void GetGhost4Block_Post(const qid_t *qid,  GridBlock *block, const Field *fid);
-    void GetGhost4Block_Wait(const qid_t *qid,  GridBlock *block, const Field *fid);
-    void PutGhost4Block_Post(const qid_t *qid,  GridBlock *block, const Field *fid);
-    void PutGhost4Block_Wait(const qid_t *qid,  GridBlock *block, const Field *fid);
+    void InitList4Block(const qid_t *qid, GridBlock *block);
+    void PushToWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid);
+    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, const Field *fid);
+    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, const Field *fid);
+    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, const Field *fid);
+    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, const Field *fid);
     void PullFromWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid);
     /** @}*/
 
    protected:
-
     /**
      * @name Init and free the comm/list
      * @{

@@ -9,6 +9,7 @@
 #include "patch.hpp"
 #include "mgfamily.hpp"
 #include "multigrid.hpp"
+#include "setvalues.hpp"
 
 using std::string;
 using std::list;
@@ -81,7 +82,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     //-------------------------------------------------------------------------
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_field());
     GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     m_assert(block->level() == quadrant->level, "the two levels must match");
 
@@ -120,7 +121,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
     //-------------------------------------------------------------------------
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->tmp_ptr());
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_field());
 
     // check every block, if one child needs to be coarsen, we return true for everybody
     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
@@ -166,30 +167,35 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
+    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     Interpolator* interp = grid->interp();
-    // get the field and check each dimension
-    bool   refine = false;
-    Field* fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
-
+    
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
+        m_log("block is locked, we do nothing!");
         return false;
     }
+    m_log("let's check the refinement for the field %s",fid->name().c_str());
 
+    bool refine = false;
     // if we are not locked, we are available for refinement
+    // we refine the block if one of the field component needs it
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
-        m_log("refine? %e >? %e", norm, grid->rtol());
         // refine the block if one dimension needs to be refined
         if (refine) {
             // lock the block indicate that it cannot be changed in res anymore
             block->lock();
+            m_log("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
             return true;
+        }
+        else{
+            m_log("block %f %f %f: NO refine (%e < %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
         }
     }
     // if we reached here, we do not need to refine
@@ -212,8 +218,8 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
+    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     Interpolator* interp = grid->interp();
-    Field*        fid    = reinterpret_cast<Field*>(grid->tmp_ptr());
 
     // for each of the children
     bool coarsen = true;
@@ -222,6 +228,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 
         // if one of the 8 block is locked, I cannot change it, neither the rest of the group
         if (block->locked()) {
+            m_log("block is locked, we do nothing!");
             return false;
         }
 
@@ -270,6 +277,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // retrieve the grid from the forest user-data pointer
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
     m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(!grid->recursive_adapt(), "the wavelet refinement does not support recursive adaptation as no GP is filled");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
@@ -278,7 +286,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     p8est_connectivity_t* connect = forest->connectivity;
 
     // m_log("prof callback");
-    m_profStart(grid->profiler(),"cback_interpolate");
+    m_profStart(grid->profiler(), "cback_interpolate");
 
     // m_log("interpolate callback");
 
@@ -427,6 +435,13 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
             // allocate the new field
             block->AddField(fid->second);
         }
+
+        // lock or unlock the block given the recursive behavior or not
+        if (grid->recursive_adapt()) {
+            block->unlock();
+        } else {
+            block->lock();
+        }
     }
 
     // deallocate the leaving blocks
@@ -440,48 +455,104 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     m_end;
 }
 
-void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
     m_begin;
-    m_assert(num_outgoing == P8EST_CHILDREN, "this function is only called when doing the refinement");
-    m_assert(num_incoming == 1, "this function is only called when doing the refinement");
+    m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
+    m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
+    m_assert(forest->user_pointer != nullptr, "we need the grid in this function");
     //-------------------------------------------------------------------------
-    p8est_connectivity_t* connect = forest->connectivity;
-    // retrieve the multigrid
-    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
-
-    // get the new block informations and create it
-    qdrt_t* quad = incoming[0];
-    real_t xyz[3];
-    p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-    real_t     len      = m_quad_len(quad->level);
-    GridBlock* parent = new GridBlock(len, xyz, quad->level);
-    // allocate the correct fields
-    parent->AddFields(grid->map_fields());
-    // store the new block
-    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = parent;
-
-    // get the leaving blocks
-    GridBlock* children[P8EST_CHILDREN];
-    for(sid_t ic=0; ic<P8EST_CHILDREN; ic++){
-        children[ic] = *(reinterpret_cast<GridBlock**>(outgoing[ic]->p.user_data));
-    }
+    // retrieve the grid from the forest user-data pointer
+    Grid*     grid  = reinterpret_cast<Grid*>(forest->user_pointer);
+    Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_field());
+    SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
     
-    // bind the family together
-    MGFamily* family = grid->curr_family();
-    family->AddMembers(parent,children);
+    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
+
+    // get needed grid info
+    auto                  f_start = grid->FieldBegin();
+    auto                  f_end   = grid->FieldEnd();
+    p8est_connectivity_t* connect = forest->connectivity;
+
+    // allocate the incomming blocks
+    for (int id = 0; id < num_incoming; id++) {
+        qdrt_t* quad = incoming[id];
+        // get block informations and create it
+        real_t xyz[3];
+        p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        real_t     len   = m_quad_len(quad->level);
+        GridBlock* block = new GridBlock(len, xyz, quad->level);
+        // store the block
+        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        // for every field, we allocate the memory
+        for (auto fid = f_start; fid != f_end; fid++) {
+            // allocate the new field
+            block->AddField(fid->second);
+        }
+        // fill the new block with the analytical value
+        expr->FillGridBlock(nullptr, block, field);
+
+        // lock or unlock the block given the recursive behavior or not
+        if (grid->recursive_adapt()) {
+            block->unlock();
+        } else {
+            block->lock();
+        }
+    }
+
+    // deallocate the leaving blocks
+    for (int id = 0; id < num_outgoing; id++) {
+        qdrt_t*    quad  = outgoing[id];
+        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // delete the block, the fields are destroyed in the destructor
+        delete (block);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
 
-/**
- * @brief always reply yes if p4est ask if we should coarsen the block
- */
-int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
-    sid_t target_level = grid->curr_level();
-    return (quadrant[0]->level > target_level);
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+//     m_begin;
+//     m_assert(num_outgoing == P8EST_CHILDREN, "this function is only called when doing the refinement");
+//     m_assert(num_incoming == 1, "this function is only called when doing the refinement");
+//     //-------------------------------------------------------------------------
+//     p8est_connectivity_t* connect = forest->connectivity;
+//     // retrieve the multigrid
+//     Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+
+//     // get the new block informations and create it
+//     qdrt_t* quad = incoming[0];
+//     real_t xyz[3];
+//     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+//     real_t     len      = m_quad_len(quad->level);
+//     GridBlock* parent = new GridBlock(len, xyz, quad->level);
+//     // allocate the correct fields
+//     parent->AddFields(grid->map_fields());
+//     // store the new block
+//     *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = parent;
+
+//     // get the leaving blocks
+//     GridBlock* children[P8EST_CHILDREN];
+//     for(sid_t ic=0; ic<P8EST_CHILDREN; ic++){
+//         children[ic] = *(reinterpret_cast<GridBlock**>(outgoing[ic]->p.user_data));
+//     }
+    
+//     // bind the family together
+//     MGFamily* family = grid->curr_family();
+//     family->AddMembers(parent,children);
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
+
+// /**
+//  * @brief always reply yes if p4est ask if we should coarsen the block
+//  */
+// int cback_Level(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     Multigrid* grid = reinterpret_cast<Multigrid*>(forest->user_pointer);
+//     sid_t target_level = grid->curr_level();
+//     return (quadrant[0]->level > target_level);
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }

@@ -16,12 +16,12 @@ class ForestGrid {
     real_t domain_length_[3];    //!< length of the domain, given by the tree aspect ratio
     bool   domain_periodic_[3];  //!< boolean indicating if a direction is periodic
 
-    p8est_t*       forest_ = nullptr;  //!< the p8est_t structure
-    p8est_mesh_t*  mesh_   = nullptr;  //!< the p8est_mesh_t structure
-    p8est_ghost_t* ghost_  = nullptr;  //!< the p8est_ghost_t structure
+    p8est_t*       p4est_forest_ = nullptr;  //!< the p8est_t structure
+    p8est_mesh_t*  p4est_mesh_   = nullptr;  //!< the p8est_mesh_t structure
+    p8est_ghost_t* p4est_ghost_  = nullptr;  //!< the p8est_ghost_t structure
 
     bool is_connect_owned_ = false; /**<indicate if we have to free the connectivity */
-    bool is_mesh_valid_ = false; /**<indicate that the mesh and the ghost structures are up-to-date */
+    bool is_mesh_valid_    = false; /**<indicate that the mesh and the ghost structures are up-to-date */
 
    public:
     /**
@@ -40,21 +40,20 @@ class ForestGrid {
     bool        domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
     inline bool is_mesh_valid() const { return is_mesh_valid_; }
 
-
     /**
      * @name p4est managmeent
      * 
      * @{
      */
-    inline int                   mpirank() const { return forest_->mpirank; }
-    inline int                   mpisize() const { return forest_->mpisize; }
-    inline MPI_Comm              mpicomm() const { return forest_->mpicomm; }
-    inline p8est_t*              forest() const { return forest_; }
-    inline p8est_mesh_t*         mesh() const { return mesh_; }
-    inline p8est_ghost_t*        ghost() const { return ghost_; }
-    inline p8est_connectivity_t* connect() const { return forest_->connectivity; }
+    inline int                   mpirank() const { return p4est_forest_->mpirank; }
+    inline int                   mpisize() const { return p4est_forest_->mpisize; }
+    inline MPI_Comm              mpicomm() const { return p4est_forest_->mpicomm; }
+    inline p8est_t*              p4est_forest() const { return p4est_forest_; }
+    inline p8est_mesh_t*         p4est_mesh() const { return p4est_mesh_; }
+    inline p8est_ghost_t*        p4est_ghost() const { return p4est_ghost_; }
+    inline p8est_connectivity_t* p4est_connect() const { return p4est_forest_->connectivity; }
 
-    inline lid_t local_num_quadrants() const { return forest_->local_num_quadrants; }
+    inline lid_t local_num_quadrants() const { return p4est_forest_->local_num_quadrants; }
     /** @} */
 
     /**

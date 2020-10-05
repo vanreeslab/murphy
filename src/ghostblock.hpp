@@ -74,13 +74,13 @@ class GhostBlock : public SubBlock {
 
     T data_src() {
         return data_src_;
-        }
-        T* data_src_ptr() {
-            return &data_src_;
-        }
-        void data_src(T data) {
-            data_src_ = data;
-        }
+    }
+    T* data_src_ptr() {
+        return &data_src_;
+    }
+    void data_src(T data) {
+        data_src_ = data;
+    }
 };
 
 #endif  // SRC_GHOST_BLOCK_HPP_

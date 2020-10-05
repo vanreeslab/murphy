@@ -1,10 +1,10 @@
 #include "daxpy.hpp"
 
-Daxpy::Daxpy(real_t alpha) {
+Daxpy::Daxpy(real_t alpha) :  BlockOperator(nullptr) {
     alpha_ = alpha;
 }
 
-void Daxpy::ApplyOpFF2F(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z) {
+void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     m_assert(fid_y->lda() == fid_z->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------

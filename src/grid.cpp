@@ -16,8 +16,8 @@ using std::string;
  */
 Grid::Grid() : ForestGrid() {
     //-------------------------------------------------------------------------
-    prof_     = nullptr;
-    ghost_    = nullptr;
+    prof_  = nullptr;
+    ghost_ = nullptr;
     // create a default interpolator
     interp_ = new Wavelet();
     //-------------------------------------------------------------------------
@@ -58,16 +58,16 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     // create a default interpolator
     interp_ = new Wavelet();
     // create the associated blocks
-    p8est_iterate(forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
+    p8est_iterate(p4est_forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
     // partition the grid to have compatible grid
-    Partitioner part = Partitioner(&fields_,this,true);
-    part.Start(&fields_,M_FORWARD);
-    part.End(&fields_,M_FORWARD);
+    Partitioner part = Partitioner(&fields_, this, true);
+    part.Start(&fields_, M_FORWARD);
+    part.End(&fields_, M_FORWARD);
     // setup the ghost stuctures as the mesh will not change anymore
     m_log("The grid is partitioned -> let's build the ghost now");
     SetupGhost();
     //-------------------------------------------------------------------------
-    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -76,7 +76,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
  * 
  * @param grid the source grid
  */
-void Grid::CopyFrom(Grid* grid){
+void Grid::CopyFrom(Grid* grid) {
     m_begin;
     //-------------------------------------------------------------------------
     this->ForestGrid::CopyFrom(grid);
@@ -111,7 +111,7 @@ Grid::~Grid() {
     DestroyGhost();
     // destroy the remaining blocks
     if (is_connect_owned_) {
-        p8est_iterate(forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
+        p8est_iterate(p4est_forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -131,9 +131,9 @@ void Grid::SetupGhost() {
     this->SetupP4estGhostMesh();
     // create the ghosts structure
     m_log("starting the Ghost construction");
-    m_profStart(prof_,"ghost_init");
+    m_profStart(prof_, "ghost_init");
     ghost_ = new Ghost(this, interp_);
-    m_profStop(prof_,"ghost_init");
+    m_profStop(prof_, "ghost_init");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -170,7 +170,7 @@ size_t Grid::LocalMemSize() const {
     // memsize += ghost_->LocalMemSize();
     // memsize += interp_->LocalMemSize();
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        memsize += forest_->local_num_quadrants * (M_N * M_N * M_N) * fid->second->lda() * sizeof(real_t);
+        memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid->second->lda() * sizeof(real_t);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -183,7 +183,7 @@ size_t Grid::LocalMemSize() const {
  * @return size_t 
  */
 size_t Grid::LocalNumDof() const {
-    return forest_->local_num_quadrants * (M_N * M_N * M_N);
+    return p4est_forest_->local_num_quadrants * (M_N * M_N * M_N);
 }
 
 /**
@@ -192,7 +192,7 @@ size_t Grid::LocalNumDof() const {
  * @return size_t 
  */
 size_t Grid::GlobalNumDof() const {
-    return forest_->global_num_quadrants * (M_N * M_N * M_N);
+    return p4est_forest_->global_num_quadrants * (M_N * M_N * M_N);
 }
 
 bool Grid::IsAField(const Field* field) const {
@@ -215,10 +215,12 @@ void Grid::AddField(Field* field) {
         // add the field
         fields_[field->name()] = field;
         // allocate the field on every block
-        LoopOnGridBlock_(&GridBlock::AddField, field);
-        m_verb("field %s has been added to the grid", field->name().c_str());
+        // LoopOnGridBlock_(&GridBlock::AddField, field);
+        // DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::AddField);
+        DoOpTree(nullptr,&GridBlock::AddField,this, field);
+        m_log("field %s has been added to the grid", field->name().c_str());
     } else {
-        m_verb("field %s is already in the grid", field->name().c_str());
+        m_log("field %s is already in the grid", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -233,8 +235,9 @@ void Grid::DeleteField(Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
     if (IsAField(field)) {
-        // add the field to everyblock
-        LoopOnGridBlock_(&GridBlock::DeleteField, field);
+        // remove the field to everyblock
+        // DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::DeleteField);
+        DoOpTree(nullptr,&GridBlock::DeleteField,this,field);
         // remove the field
         fields_.erase(field->name());
     } else {
@@ -260,7 +263,7 @@ void Grid::ResetFields(const map<string, Field*>* fields) {
     for (auto iter = fields->begin(); iter != fields->end(); iter++) {
         fields_[iter->first] = iter->second;
         // check if we satisfy the requirements on the key
-        m_assert(iter->first == iter->second->name(),"the key of the map must be the name of the field");
+        m_assert(iter->first == iter->second->name(), "the key of the map must be the name of the field");
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -339,10 +342,15 @@ void Grid::GhostPull(Field* field) {
 void Grid::Refine(const sid_t delta_level) {
     m_begin;
     //-------------------------------------------------------------------------
+    // set the grid in the forest for the callback
+    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+
     // we create the new blocks
     for (int id = 0; id < delta_level; id++) {
         // unlock all the blocks
-        LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+        // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+        // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+        DoOpTree(nullptr, &GridBlock::unlock,this);
 
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
@@ -350,17 +358,15 @@ void Grid::Refine(const sid_t delta_level) {
         }
         // delete the soon-to be outdated ghost and mesh
         DestroyGhost();
-        // set the grid in the forest for the callback
-        forest_->user_pointer = reinterpret_cast<void*>(this);
 
         // do the p4est interpolation by callback
         m_profStart(prof_, "p4est_refcoarse");
-        p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Yes, nullptr, cback_Interpolate);
+        p8est_refine_ext(p4est_forest_, 0, P8EST_MAXLEVEL, cback_Yes, nullptr, cback_Interpolate);
         m_profStop(prof_, "p4est_refcoarse");
 
         // balance the partition
         m_profStart(prof_, "p4est_balance");
-        p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
         m_profStop(prof_, "p4est_balance");
 
         // partition the grid
@@ -379,8 +385,11 @@ void Grid::Refine(const sid_t delta_level) {
             fid->second->ghost_status(false);
         }
     }
+
+    p4est_forest_->user_pointer = nullptr;
     //-------------------------------------------------------------------------
-    m_log("refined grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_log("refined grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -392,10 +401,16 @@ void Grid::Refine(const sid_t delta_level) {
 void Grid::Coarsen(const sid_t delta_level) {
     m_begin;
     //-------------------------------------------------------------------------
+    // set the grid in the forest for the callback
+    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+
     // we create the new blocks
     for (int id = 0; id < delta_level; id++) {
         // unlock all the blocks
-        LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+        // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+        // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+        DoOpTree( nullptr,&GridBlock::unlock,this);
+
         // compute the ghost needed by the interpolation
         for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
             // set the working field before entering the callback
@@ -405,27 +420,25 @@ void Grid::Coarsen(const sid_t delta_level) {
         }
         // delete the soon-to be outdated ghost and mesh
         DestroyGhost();
-        // set the grid in the forest for the callback
-        forest_->user_pointer = reinterpret_cast<void*>(this);
 
         // do the p4est interpolation by callback
         m_profStart(prof_, "p4est_refcoarse");
-        p8est_coarsen_ext(forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
-        m_profStop(prof_,"p4est_refcoarse");
-        
+        p8est_coarsen_ext(p4est_forest_, 0, 0, cback_Yes, nullptr, cback_Interpolate);
+        m_profStop(prof_, "p4est_refcoarse");
+
         // balance the partition
-        m_profStart(prof_,"p4est_balance");
-        p8est_balance_ext(forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
-        m_profStop(prof_,"p4est_balance");
+        m_profStart(prof_, "p4est_balance");
+        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, NULL, cback_Interpolate);
+        m_profStop(prof_, "p4est_balance");
 
         // partition the grid
-        m_profStart(prof_,"p4est_partition_init");
+        m_profStart(prof_, "p4est_partition_init");
         Partitioner partition(&fields_, this, true);
-        m_profStop(prof_,"p4est_partition_init");
-        m_profStart(prof_,"p4est_partition_comm");
-        partition.Start(&fields_,M_FORWARD);
-        partition.End(&fields_,M_FORWARD);
-        m_profStop(prof_,"p4est_partition_comm");
+        m_profStop(prof_, "p4est_partition_init");
+        m_profStart(prof_, "p4est_partition_comm");
+        partition.Start(&fields_, M_FORWARD);
+        partition.End(&fields_, M_FORWARD);
+        m_profStop(prof_, "p4est_partition_comm");
 
         // create a new ghost and mesh
         SetupGhost();
@@ -434,8 +447,11 @@ void Grid::Coarsen(const sid_t delta_level) {
             fid->second->ghost_status(false);
         }
     }
+
+    p4est_forest_->user_pointer = nullptr;
     //-------------------------------------------------------------------------
-    m_log("coarsened grid created with %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_log("coarsened grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -462,13 +478,17 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  */
 void Grid::Adapt(Field* field) {
     m_begin;
+    m_assert(IsAField(field), "the field must already exist on the grid!");
+    m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field` must be  null");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must start with the user_pointer to null");
+    m_assert(!recursive_adapt(),"we cannot refine recursivelly here");
     m_log("--> grid adaptation started... (interpolator: %s)", interp_->Identity().c_str());
-    //-------------------------------------------------------------------------
+    //---------------------------------------------s----------------------------
     // unlock all the blocks
-    LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-
-    // store the criterion field
-    tmp_ptr_ = reinterpret_cast<void*>(field);
+    // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    DoOpTree(nullptr,&GridBlock::unlock,this);
 
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
@@ -477,17 +497,19 @@ void Grid::Adapt(Field* field) {
     // delete the soon-to be outdated ghost and mesh
     DestroyGhost();
 
+    // store the criterion field
+    cback_criterion_field_      = reinterpret_cast<void*>(field);
+    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+
     // coarsen the needed block
-    // set the grid in the forest for the callback
-    forest_->user_pointer = reinterpret_cast<void*>(this);
     m_profStart(prof_, "p4est_refcoarse");
     m_log("check for coarsening");
-    p8est_coarsen_ext(forest_, 0, 0, cback_Interpolator, nullptr, cback_Interpolate);
-    p8est_refine_ext(forest_, 0, P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
+    p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Interpolator, nullptr, cback_Interpolate);
+    p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_Interpolate);
     m_profStop(prof_, "p4est_refcoarse");
     // balance the partition
     m_profStart(prof_, "p4est_balance");
-    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_Interpolate);
+    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, cback_Interpolate);
     m_profStop(prof_, "p4est_balance");
 
     // partition the grid
@@ -507,9 +529,89 @@ void Grid::Adapt(Field* field) {
         fid->second->ghost_status(false);
     }
     // reset the forest pointer
-    forest_->user_pointer = nullptr;
+    cback_criterion_field_      = nullptr;
+    p4est_forest_->user_pointer = nullptr;
     //-------------------------------------------------------------------------
-    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
+    m_end;
+}
+/**
+ * @brief Adapt the grid given an analytical boundary condition for the only field present in the grid
+ * 
+ * @warning only field will be set to the value, the rest will be set to 0.0 or kept as such
+ * 
+ * @param expression 
+ */
+void Grid::Adapt(Field* field, SetValue* expression) {
+    m_begin;
+    m_assert(IsAField(field), "the field must already exist on the grid!");
+    m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must start with the user_pointer to null");
+    m_log("--> grid adaptation started... (using analytical expression and recursive = %d)", recursive_adapt());
+    //-------------------------------------------------------------------------
+    // unlock all the blocks
+    // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    DoOpTree(nullptr,&GridBlock::unlock,this);
+
+    // delete the soon-to be outdated ghost and mesh
+    DestroyGhost();
+
+    // store the operator and the grid for access in the callback function
+    cback_criterion_field_      = reinterpret_cast<void*>(field);
+    cback_interpolate_ptr_      = reinterpret_cast<void*>(expression);
+    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+    m_verb("Storing the field %s for refinement", field->name().c_str());
+
+    // apply the operator to get the starting value
+    (*expression)(this, field);
+    m_assert(field->ghost_status(), "the ghost status should be valid here...");
+
+    // coarsen + refine the needed blocks recursivelly using the wavelet criterion and the operator fill
+    m_profStart(prof_, "p4est_refcoarse");
+    p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Interpolator, nullptr, cback_ValueFill);
+    p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Interpolator, nullptr, cback_ValueFill);
+    m_profStop(prof_, "p4est_refcoarse");
+
+    // balance the partition
+    m_profStart(prof_, "p4est_balance");
+    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, cback_ValueFill);
+    m_profStop(prof_, "p4est_balance");
+
+    // partition the grid
+    m_profStart(prof_, "p4est_partition_init");
+    Partitioner partition(&fields_, this, true);
+    m_profStop(prof_, "p4est_partition_init");
+    m_profStart(prof_, "p4est_partition_comm");
+    partition.Start(&fields_, M_FORWARD);
+    partition.End(&fields_, M_FORWARD);
+    m_profStop(prof_, "p4est_partition_comm");
+
+    // create a new ghost and mesh
+    SetupGhost();
+    // set the ghosting fields as non-valid
+    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+        fid->second->ghost_status(false);
+    }
+    // we modified one block after another, so we set the ghost value from the SetValue
+    field->ghost_status(expression->do_ghost());
+
+    // reset the forest pointer
+    cback_criterion_field_      = nullptr;
+    cback_interpolate_ptr_      = nullptr;
+    p4est_forest_->user_pointer = nullptr;
+
+    // reset the recursive to false
+    SetRecursiveAdapt(false);
+    //-------------------------------------------------------------------------
+    m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
@@ -525,40 +627,45 @@ void Grid::Adapt(Field* field) {
  */
 void Grid::Adapt(list<Patch>* patches) {
     m_begin;
-    m_log("--> grid adaptation started... (using patches)");
+    m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field_` must be  null");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must start with the user_pointer to null");
+    m_log("--> grid adaptation started... (using patches and recursive = %d)",recursive_adapt());
     //-------------------------------------------------------------------------
     if (patches->size() == 0) {
         return;
     }
     // unlock all the blocks
-    LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-    // store the criterion patch list
-    tmp_ptr_ = reinterpret_cast<void*>(patches);
-    // no ghost is computed as no interpolation will be done
+    // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
+    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
+    DoOpTree(nullptr,&GridBlock::unlock,this);
+
     // delete the soon-to be outdated ghost and mesh
     DestroyGhost();
-    // set the grid in the forest for the callback
-    forest_->user_pointer = reinterpret_cast<void*>(this);
-    
+
+    // store the criterion patch list
+    cback_criterion_field_      = reinterpret_cast<void*>(patches);
+    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+
     // coarsen + refine the needed blocks recursivelly
-    m_profStart(prof_,"p4est_refcoarse");
-    p8est_coarsen_ext(forest_, 1, 0, cback_Patch, nullptr, cback_AllocateOnly);
-    p8est_refine_ext(forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
-    m_profStop(prof_,"p4est_refcoarse");
+    m_profStart(prof_, "p4est_refcoarse");
+    p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Patch, nullptr, cback_AllocateOnly);
+    p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
+    m_profStop(prof_, "p4est_refcoarse");
 
     // balance the partition
-    m_profStart(prof_,"p4est_balance");
-    p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_AllocateOnly);
-    m_profStop(prof_,"p4est_balance");
+    m_profStart(prof_, "p4est_balance");
+    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, cback_AllocateOnly);
+    m_profStop(prof_, "p4est_balance");
 
     // partition the grid
-    m_profStart(prof_,"p4est_partition_init");
+    m_profStart(prof_, "p4est_partition_init");
     Partitioner partition(&fields_, this, true);
-    m_profStop(prof_,"p4est_partition_init");
-    m_profStart(prof_,"p4est_partition_comm");
-    partition.Start(&fields_,M_FORWARD);
-    partition.End(&fields_,M_FORWARD);
-    m_profStop(prof_,"p4est_partition_comm");
+    m_profStop(prof_, "p4est_partition_init");
+    m_profStart(prof_, "p4est_partition_comm");
+    partition.Start(&fields_, M_FORWARD);
+    partition.End(&fields_, M_FORWARD);
+    m_profStop(prof_, "p4est_partition_comm");
 
     // create a new ghost and mesh
     SetupGhost();
@@ -567,95 +674,47 @@ void Grid::Adapt(list<Patch>* patches) {
         fid->second->ghost_status(false);
     }
     // reset the forest pointer
-    forest_->user_pointer = nullptr;
+    cback_criterion_field_      = nullptr;
+    p4est_forest_->user_pointer = nullptr;
+
+    // reset the recursive to false
+    SetRecursiveAdapt(false);
     //-------------------------------------------------------------------------
-    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
+    m_assert(cback_criterion_field_ == nullptr, "the pointer `cback_criterion_field` must be  null");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
 
 // /**
-//  * @brief adapt = (refine or coarsen) each block recursivelly using the OperatorF to get values (ghost included!!)
-//  * 
-//  * @warning no interpolation will be performed, but the blocks will be initialized with the analytical value from the OperatorF
-//  * 
-//  * @param analytic an OperatorF able to fill the block with analytical values
+//  * @brief iterates on the blocks and performs a simple @ref gbop_t operation using the forest structure and not the mesh
+//  *
+//  * @warning for allocation and block management only. Use Operators (see operator.hpp) for computations
+//  *
+//  * @param op
+//  * @param field
 //  */
-// void Grid::Adapt(OperatorF* patches) {
+// void Grid::LoopOnGridBlock_(const opt_t op, Field* field) const {
 //     m_begin;
-//     m_log("--> grid adaptation started... (using patches)");
 //     //-------------------------------------------------------------------------
-//     if (patches->size() == 0) {
-//         return;
+//     // get the grid info
+//     for (p4est_topidx_t it = p4est_forest_->first_local_tree; it <= p4est_forest_->last_local_tree; it++) {
+//         p8est_tree_t* tree    = p8est_tree_array_index(p4est_forest_->trees, it);
+//         const size_t  nqlocal = tree->quadrants.elem_count;
+
+//         //#pragma omp parallel for firstprivate(field)
+//         for (size_t bid = 0; bid < nqlocal; bid++) {
+//             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
+//             GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+//             // apply
+//             (block->*op)(field);
+//         }
+//         // downgrade the ghost status since we changed its value
+//         if (field != nullptr) {
+//             field->ghost_status(false);
+//         }
+//         //-------------------------------------------------------------------------
+//         m_end;
 //     }
-//     // store the criterion patch list
-//     tmp_ptr_ = reinterpret_cast<void*>(patches);
-//     // no ghost is computed as no interpolation will be done
-//     // delete the soon-to be outdated ghost and mesh
-//     DestroyGhost();
-//     // set the grid in the forest for the callback
-//     forest_->user_pointer = reinterpret_cast<void*>(this);
-    
-//     // coarsen + refine the needed blocks recursivelly
-//     m_profStart(prof_,"p4est_refcoarse");
-//     p8est_coarsen_ext(forest_, 1, 0, cback_Patch, nullptr, cback_AllocateOnly);
-//     p8est_refine_ext(forest_, 1, P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
-//     m_profStop(prof_,"p4est_refcoarse");
-
-//     // balance the partition
-//     m_profStart(prof_,"p4est_balance");
-//     p8est_balance_ext(forest_, P8EST_CONNECT_FULL, nullptr, cback_AllocateOnly);
-//     m_profStop(prof_,"p4est_balance");
-
-//     // partition the grid
-//     m_profStart(prof_,"p4est_partition_init");
-//     Partitioner partition(&fields_, this, true);
-//     m_profStop(prof_,"p4est_partition_init");
-//     m_profStart(prof_,"p4est_partition_comm");
-//     partition.Start(&fields_,M_FORWARD);
-//     partition.End(&fields_,M_FORWARD);
-//     m_profStop(prof_,"p4est_partition_comm");
-
-//     // create a new ghost and mesh
-//     SetupGhost();
-//     // set the ghosting fields as non-valid
-//     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-//         fid->second->ghost_status(false);
-//     }
-//     // reset the forest pointer
-//     forest_->user_pointer = nullptr;
-//     //-------------------------------------------------------------------------
-//     m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads", forest_->global_num_quadrants, forest_->trees->elem_count, forest_->mpisize, omp_get_max_threads());
-//     m_end;
 // }
-
-/**
- * @brief iterates on the blocks and performs a simple @ref gbop_t operation using the forest structure and not the mesh
- * 
- * @warning for allocation and block management only. Use Operators (see operator.hpp) for computations
- * 
- * @param op 
- * @param field 
- */
-void Grid::LoopOnGridBlock_(const gbop_t op, Field* field) const {
-    m_begin;
-    //-------------------------------------------------------------------------
-    // get the grid info
-    for (p4est_topidx_t it = forest_->first_local_tree; it <= forest_->last_local_tree; it++) {
-        p8est_tree_t* tree    = p8est_tree_array_index(forest_->trees, it);
-        const size_t  nqlocal = tree->quadrants.elem_count;
-
-        //#pragma omp parallel for firstprivate(field)
-        for (size_t bid = 0; bid < nqlocal; bid++) {
-            p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
-            GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
-            // apply
-            (block->*op)(field);
-        }
-        // downgrade the ghost status since we changed its value
-        if (field != nullptr) {
-            field->ghost_status(false);
-        }
-        //-------------------------------------------------------------------------
-        m_end;
-    }
-}

@@ -8,10 +8,11 @@
 
 #include <iostream>
 
+#include "field.hpp"
 #include "forestgrid.hpp"
+#include "gridblock.hpp"
 #include "hdf5.h"
 #include "murphy.hpp"
-#include "operator.hpp"
 
 #define M_IOH5_LINE_LEN 128
 
@@ -29,7 +30,7 @@
  * The amount of needed memory is smaller but so is the image quality.
  * 
  */
-class IOH5 : public ConstOperatorF {
+class IOH5 {
    protected:
     bool   dump_ghost_    = false;  //!< true if we io the ghost points with us
     lid_t  block_stride_  = 0;      //!< the stride of one block, depends on dump_ghost_
@@ -37,9 +38,9 @@ class IOH5 : public ConstOperatorF {
     size_t block_offset_  = 0;      //!< the offset in the xdmf file for the current rank
     size_t stride_global_ = 0;      //!< total length of the hdf5 dataset, must be indicated in the xdmf of every block.
 
-    string folder_;         //!< the folder where do dump the files
-    string filename_hdf5_;  //!< the filename of the hdf5 file
-    string filename_xdmf_;  //!< the filenanem of the xdmf file
+    std::string folder_;         //!< the folder where do dump the files
+    std::string filename_hdf5_;  //!< the filename of the hdf5 file
+    std::string filename_xdmf_;  //!< the filenanem of the xdmf file
 
     hid_t hdf5_file_;       //!< hdf5 object refering to the filename
     hid_t hdf5_dataset_;    //!< hdf5 dataset to store the blocks
@@ -63,18 +64,16 @@ class IOH5 : public ConstOperatorF {
     // write a block
 
    public:
-    explicit IOH5(string folder);
+    explicit IOH5(std::string folder);
     ~IOH5();
 
     void dump_ghost(const bool dump_ghost);
 
-    void ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) override;
-
-    void operator()(ForestGrid* grid, Field* field, string name);
-    void operator()(ForestGrid* grid, Field* field) override;
+    void operator()(ForestGrid* grid, const Field* field, const std::string name);
+    void operator()(ForestGrid* grid, const Field* field);
 
    protected:
-    size_t xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg);
+    size_t xmf_core_(const std::string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg);
 };
 
 #endif

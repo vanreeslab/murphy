@@ -1,8 +1,10 @@
 #include "ioh5.hpp"
 
+#include "doop.hpp"
 #include "mpi.h"
 
 using std::numeric_limits;
+using std::string;
 using std::to_string;
 
 /**
@@ -66,7 +68,7 @@ IOH5::~IOH5() {
  * @param grid the grid supporting the field
  * @param field the field to dump, the file will be named after using @ref Field::name()
  */
-void IOH5::operator()(ForestGrid* grid, Field* field) {
+void IOH5::operator()(ForestGrid* grid,const Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
     IOH5::operator()(grid, field, field->name());
@@ -85,7 +87,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field) {
  * @param field the field to dump
  * @param name the filename to use
  */
-void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
+void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
     m_begin;
     //-------------------------------------------------------------------------
     m_assert(field->ghost_status(), "the field has outdated ghosts, please update them, even if dump ghost is false");
@@ -105,6 +107,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
         filename_hdf5_ = name + ".h5";
         filename_xdmf_ = name + ".xmf";
     }
+
     // if the folder does not exist, create it
     struct stat st = {0};
     if (rank == 0 && stat(folder_.c_str(), &st) == -1) {
@@ -117,7 +120,7 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
 
     // get the block offset and the number of global blocks
     size_t n_block_global = 0;
-    size_t local_n_block  = (size_t)(grid->forest()->local_num_quadrants);
+    size_t local_n_block  = (size_t)(grid->p4est_forest()->local_num_quadrants);
     MPI_Scan(&local_n_block, &block_offset_, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&local_n_block, &n_block_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
     block_offset_ -= local_n_block;
@@ -131,8 +134,9 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     hdf5_write_header_(grid, n_block_global, field->lda());
 
     //................................................
-    // call the standard operator
-    ConstOperatorF::operator()(grid, field);
+    // call first the xmf and then the h5 to reduce filesystem stress
+    DoOpMesh(this, &IOH5::xmf_write_block_, grid, field);
+    DoOpMesh(this, &IOH5::hdf5_write_block_, grid, field);
 
     //................................................
     // print the footer
@@ -144,6 +148,20 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
     m_end;
 }
 
+// /**
+//  * @brief Dumps the field contained in a given block
+//  *
+//  * @param qid the quadrant ID
+//  * @param block the block to be dumped
+//  * @param fid the field
+//  */
+// void IOH5::IOGridBlock(const qid_t* qid, GridBlock* block, const Field* fid) {
+//     //-------------------------------------------------------------------------
+//     xmf_write_block_(qid, block, fid);
+//     hdf5_write_block_(qid, block, fid);
+//     //-------------------------------------------------------------------------
+// }
+
 /**
  * @brief ask to dump the ghosts, this will be reset to false after the next dump
  * 
@@ -151,20 +169,6 @@ void IOH5::operator()(ForestGrid* grid, Field* field, string name) {
  */
 void IOH5::dump_ghost(const bool dump_ghost) {
     dump_ghost_ = dump_ghost;
-}
-
-/**
- * @brief definition of the operator applied to the block, dump the xmf and hdf5 part
- * 
- * @param qid the quadrant ID
- * @param block the block to be dumped
- * @param fid the field
- */
-void IOH5::ApplyConstOpF(const qid_t* qid, GridBlock* block, const Field* fid) {
-    //-------------------------------------------------------------------------
-    xmf_write_block_(qid, block, fid);
-    hdf5_write_block_(qid, block, fid);
-    //-------------------------------------------------------------------------
 }
 
 /**
@@ -287,9 +291,9 @@ void IOH5::hdf5_write_footer_(const ForestGrid* grid) {
 /**
  * @brief write the header of the xmf + compute the offset of every rank in the file
  * 
- * @param grid 
+ * @param grid the forest grid to be IOed
  * @param n_block_global the global number of block (total on the comm) involved in the IO
- * @param lda 
+ * @param lda the number of dimensios to IO
  */
 void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global, const lda_t lda) {
     m_begin;
@@ -304,7 +308,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     // fopen the xmf, every proc
     int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
     // if something went wrong, check if the file already exist of something else was baaad
-    m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, MPI_File_open failed (error = %d)", filename.c_str(),err);
+    m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, MPI_File_open failed (error = %d)", filename.c_str(), err);
 
     // the current position of current proc
     MPI_Offset offset = 0;
@@ -337,7 +341,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0, 1, msg);
 
     // need to compute the shift of everybody
-    size_t quad_len = grid->forest()->local_num_quadrants * len_per_quad_;
+    size_t quad_len = grid->p4est_forest()->local_num_quadrants * len_per_quad_;
     size_t pos_end  = header_count + quad_len;
 
     // gt count, the position of proc i (in lines!!) as the sum of the position of procs 0 -> (i-1)
@@ -410,8 +414,8 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     //#pragma omp critical
     char msg[4096];
     memset(msg, 0, 4096);
-    size_t offset        = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
-    size_t len           = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global_, block->level(), msg);
+    size_t offset = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
+    size_t len    = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global_, block->level(), msg);
     m_assert(len == len_per_quad_, "the len has changed, hence the file will be corrupted: now %ld vs stored %ld", len, len_per_quad_);
     // write the header
     MPI_Status status;

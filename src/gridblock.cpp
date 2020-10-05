@@ -13,9 +13,10 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
     m_begin;
     //-------------------------------------------------------------------------
     level_ = level;
+    lock_  = false;
     for (int id = 0; id < 3; id++) {
         xyz_[id]   = xyz[id];
-        hgrid_[id] = length / M_N; // the grid spacing is still given by L/N
+        hgrid_[id] = length / M_N;  // the grid spacing is still given by L/N
     }
     //-------------------------------------------------------------------------
     m_end;
