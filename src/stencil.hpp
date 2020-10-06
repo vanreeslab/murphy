@@ -17,11 +17,10 @@
 class Stencil : public BlockOperator {
    protected:
     sid_t ida_  = 0;  //!< current source dimension
-    Prof* prof_ = 0;  //!< the profiler to use
+    
    public:
     // default void constructor
     explicit Stencil();
-    explicit Stencil(Prof* profiler);
 
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping

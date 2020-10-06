@@ -1,6 +1,6 @@
 #include "daxpy.hpp"
 
-Daxpy::Daxpy(real_t alpha) :  BlockOperator(nullptr,nullptr) {
+Daxpy::Daxpy(real_t alpha) :  BlockOperator(nullptr) {
     alpha_ = alpha;
 }
 

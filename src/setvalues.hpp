@@ -15,7 +15,6 @@
 class SetValue : public BlockOperator {
    public:
     explicit SetValue(const Interpolator* interp);
-    explicit SetValue(const Interpolator* interp, Prof* prof);
 
     void operator()(const ForestGrid* grid, Field* field);
 
@@ -40,7 +39,7 @@ class SetAbs : public SetValue {
 
    public:
     SetAbs(const real_t alpha[3], const real_t center[3]);
-    SetAbs(const real_t alpha[3], const real_t center[3], const Interpolator* interp, Prof* profiler);
+    SetAbs(const real_t alpha[3], const real_t center[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -56,7 +55,7 @@ class SetSinus : public SetValue {
 
    public:
     SetSinus(const real_t length[3], const real_t freq[3]);
-    SetSinus(const real_t length[3], const real_t freq[3], const Interpolator* interp, Prof* profiler);
+    SetSinus(const real_t length[3], const real_t freq[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -72,7 +71,7 @@ class SetCosinus : public SetValue {
 
    public:
     SetCosinus(const real_t length[3], const real_t freq[3]);
-    SetCosinus(const real_t length[3], const real_t freq[3], const Interpolator* interp, Prof* profiler);
+    SetCosinus(const real_t length[3], const real_t freq[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -89,7 +88,7 @@ class SetPolynom : public SetValue {
 
    public:
     SetPolynom(const lid_t degree[3], const real_t direction[3]);
-    SetPolynom(const lid_t degree[3], const real_t direction[3], const Interpolator* interp, Prof* profiler);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -106,7 +105,7 @@ class SetExponential : public SetValue {
 
    public:
     SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp, Prof* profiler);
+    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -120,7 +119,7 @@ class SetErf : public SetValue {
 
    public:
     SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp, Prof* profiler);
+    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp);
 };
 
 //=====================================================================================================
@@ -135,7 +134,7 @@ class SetVortexRing : public SetValue {
 
    public:
     SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
-    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Interpolator* interp, Prof* profiler);
+    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Interpolator* interp);
 };
 
 #endif  // SRC_SETVALUES_HPP_

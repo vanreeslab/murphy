@@ -18,7 +18,6 @@ class Daxpy : public BlockOperator {
 
    public:
     explicit Daxpy(real_t alpha);
-
     void ComputeDaxpyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z);
 };
 

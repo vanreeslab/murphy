@@ -54,7 +54,8 @@ int main(int argc, char** argv) {
         const lda_t   normal    = 2;
         const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
-        SetVortexRing vr_init(normal, center, sigma, radius, grid.interp(),prof);
+        SetVortexRing vr_init(normal, center, sigma, radius, grid.interp());
+        vr_init.Profile(grid.profiler());
         // SetVortexRing vr_init(normal, center, sigma, radius);
 
 
@@ -78,7 +79,8 @@ int main(int argc, char** argv) {
         SetVortexRing vr_init2(normal, center, sigma, radius);
         vr_init2(&grid,&vort);
 
-        LaplacianCross<3> diffusion(prof);
+        LaplacianCross<3> diffusion;
+        diffusion.Profile(grid.profiler());
         diffusion(&grid,&vort,&diff);
 
         grid.GhostPull(&diff);

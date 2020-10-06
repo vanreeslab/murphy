@@ -515,10 +515,11 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     // store the current dimension
     ida_ = ida;
 
-    m_profStart(prof_,"ghost_computation");
     //................................................
     // fill the Window memory with the Mirror information
+    m_profStart(prof_, "ghost computation");
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
+    m_profStop(prof_, "ghost computation");
 
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
@@ -528,11 +529,11 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
 
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
+    m_profStart(prof_, "ghost computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(&CallGetGhost4Block_Post, grid_, il, field, this);
-        DoOpMeshLevel(this,&Ghost::GetGhost4Block_Post, grid_, il,field);
+        DoOpMeshLevel(this, &Ghost::GetGhost4Block_Post, grid_, il, field);
     }
-    m_profStop(prof_,"ghost_computation");
+    m_profStop(prof_, "ghost computation");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -551,18 +552,17 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     //................................................
     // finish the access epochs for the exposure epoch to be over
-    m_profStart(prof_,"ghost_wait");
+    m_profStart(prof_, "ghost wait");
     MPI_Win_complete(mirrors_window_);
     MPI_Win_wait(mirrors_window_);
-    m_profStop(prof_,"ghost_wait");
+    m_profStop(prof_,"ghost wait");
 
-    m_profStart(prof_,"ghost_computation");
     // we now have all the information needed to compute the ghost points in coarser blocks
+    m_profStart(prof_,"ghost computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallGetGhost4Block_Wait, grid_, il, field, this);
-        // DoOpMeshLevel(&CallGetGhost4Block_Wait, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::GetGhost4Block_Wait, grid_, il, field);
     }
+    m_profStop(prof_,"ghost computation");
 
     //................................................
     // post exposure and access epochs for to put the values to my neighbors
@@ -571,20 +571,21 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     //................................................
     // start what can be done = sibling and parents copy
+    m_profStart(prof_,"ghost computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Post, grid_, il, field, this);
         // DoOpMeshLevel(&CallPutGhost4Block_Post, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::PutGhost4Block_Post, grid_, il, field);
     }
-    m_profStop(prof_,"ghost_computation");
+    m_profStop(prof_,"ghost computation");
 
-    m_profStart(prof_,"ghost_wait");
+    m_profStart(prof_,"ghost wait");
     // finish the access epochs for the exposure epoch to be over
     MPI_Win_complete(mirrors_window_);
     MPI_Win_wait(mirrors_window_);
-    m_profStop(prof_,"ghost_wait");
+    m_profStop(prof_,"ghost wait");
 
-    m_profStart(prof_,"ghost_computation");
+    m_profStart(prof_,"ghost computation");
     // we copy back the missing info
     LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
 
@@ -594,7 +595,7 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
         // DoOpMeshLevel(&CallPutGhost4Block_Wait, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::PutGhost4Block_Wait, grid_, il, field);
     }
-    m_profStop(prof_,"ghost_computation");
+    m_profStop(prof_,"ghost computation");
 
     //-------------------------------------------------------------------------
     m_end;

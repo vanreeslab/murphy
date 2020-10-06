@@ -17,8 +17,7 @@ class LaplacianCross : public Stencil {
     real_t coef_[length];  //!< coefficients of the laplacian to apply
 
    public:
-    explicit LaplacianCross() : LaplacianCross(nullptr) {}
-    explicit LaplacianCross(Prof* profiler) : Stencil(profiler) {
+    explicit LaplacianCross() : Stencil() {
         // get the stencil
         if (length == 3) {
             coef_[0] = +1.0;

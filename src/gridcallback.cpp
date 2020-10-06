@@ -181,6 +181,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     bool refine = false;
     // if we are not locked, we are available for refinement
     // we refine the block if one of the field component needs it
+    m_profStart(grid->profiler(),"wavelet criterion");
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
@@ -192,6 +193,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
             block->lock();
             m_verb("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
+            m_profStop(grid->profiler(),"wavelet criterion");
             return true;
         }
         else{
@@ -199,6 +201,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         }
     }
     // if we reached here, we do not need to refine
+    m_profStop(grid->profiler(),"wavelet criterion");
     return false;
     //-------------------------------------------------------------------------
     m_end;
@@ -221,6 +224,8 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     Interpolator* interp = grid->interp();
 
+    m_profStart(grid->profiler(),"wavelet criterion");
+
     // for each of the children
     bool coarsen = true;
     for (int id = 0; id < P8EST_CHILDREN; id++) {
@@ -228,7 +233,8 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 
         // if one of the 8 block is locked, I cannot change it, neither the rest of the group
         if (block->locked()) {
-            m_log("block is locked, we do nothing!");
+            m_verb("block is locked, we do nothing!");
+            m_profStop(grid->profiler(),"wavelet criterion");
             return false;
         }
 
@@ -242,6 +248,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 
             // if I cannot coarsen, I can give up on the whole group, so return false
             if (!coarsen) {
+                m_profStop(grid->profiler(),"wavelet criterion");
                 return false;
             }
         }
@@ -251,6 +258,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
         block->lock();
     }
+    m_profStop(grid->profiler(),"wavelet criterion");
     return true;
     //-------------------------------------------------------------------------
     m_end;
@@ -285,8 +293,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     Interpolator*         interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    // m_log("prof callback");
-    m_profStart(grid->profiler(), "cback_interpolate");
+    m_profStart(grid->profiler(), "wavelet interpolation");
 
     // m_log("interpolate callback");
 
@@ -386,9 +393,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         delete (block);
     }
 
-    // m_log("exit interpolate callback");
-    m_profStop(grid->profiler(), "cback_interpolate");
-    // m_log("exit prof callback");
+    m_profStop(grid->profiler(), "wavelet interpolation");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -420,6 +425,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
+    m_profStart(grid->profiler(), "allocate");
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -451,6 +457,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
+    m_profStop(grid->profiler(), "allocate");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -474,6 +481,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
+    m_profStart(grid->profiler(), "fill values");
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -507,6 +515,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
+    m_profStop(grid->profiler(), "fill values");
     //-------------------------------------------------------------------------
     m_end;
 }
