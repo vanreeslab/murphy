@@ -91,13 +91,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
     }
 
     //................................................
-    m_log("current status: %d quads locally", forest->local_num_quadrants);
+    m_verb("current status: %d quads locally", forest->local_num_quadrants);
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, true, NULL);
     m_assert(nqshipped >= 0,"the number of quads to send must be >= 0");
     // p4est_gloidx_t nqshipped = p8est_partition_for_coarsening(forest, 0, NULL);
-    m_log("we decided to move %ld blocks", nqshipped);
-    m_log("new status: %d quads locally", forest->local_num_quadrants);
+    m_verb("we decided to move %ld blocks", nqshipped);
+    m_verb("new status: %d quads locally", forest->local_num_quadrants);
 
     if (nqshipped > 0) {
         // get the NEW number of quads

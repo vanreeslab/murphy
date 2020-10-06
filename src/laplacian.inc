@@ -16,8 +16,8 @@
 template <sid_t length>
 void LaplacianCross<length>::ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
-    real_t* coef     = coef_ + (length / 2);
-    real_t  scale[3] = {1.0/pow(block->hgrid(0), 2), 1.0/pow(block->hgrid(1), 2),1.0/ pow(block->hgrid(2), 2)};
+    const real_t* coef     = coef_ + (length / 2);
+    const real_t  scale[3] = {1.0/pow(block->hgrid(0), 2), 1.0/pow(block->hgrid(1), 2),1.0/ pow(block->hgrid(2), 2)};
 
     real_p data_src = block->data(fid_src, ida_);
     real_p data_trg = block->data(fid_trg, ida_);
@@ -26,9 +26,9 @@ void LaplacianCross<length>::ApplyStencilInner(const qid_t* qid, GridBlock* bloc
 
     // m_log("the coefs are %f %f %f %f %f",coef[-2],coef[-1],coef[0],coef[1],coef[2]);
 
-    for (lid_t i2 = M_GS; i2 < M_N - M_GS; i2++) {
-        for (lid_t i1 = M_GS; i1 < M_N - M_GS; i1++) {
-            for (lid_t i0 = M_GS; i0 < M_N - M_GS; i0++) {
+    for (lid_t i2 = M_GS; i2 < M_N - M_GS; ++i2) {
+        for (lid_t i1 = M_GS; i1 < M_N - M_GS; ++i1) {
+            for (lid_t i0 = M_GS; i0 < M_N - M_GS; ++i0) {
                 // get the data pointer in front of the row for every cache line
                 real_p       trg = data_trg + m_idx(i0, i1, i2);  // cache line for writting
                 const real_p src = data_src + m_idx(i0, i1, i2);  // cache line for reading
@@ -57,8 +57,8 @@ void LaplacianCross<length>::ApplyStencilInner(const qid_t* qid, GridBlock* bloc
 template <sid_t length>
 void LaplacianCross<length>::ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) {
     //-------------------------------------------------------------------------
-    real_t* coef     = coef_ + (length / 2);
-    real_t  scale[3] = {1.0/pow(block->hgrid(0), 2), 1.0/pow(block->hgrid(1), 2),1.0/ pow(block->hgrid(2), 2)};
+    const real_t* coef     = coef_ + (length / 2);
+    const real_t  scale[3] = {1.0/pow(block->hgrid(0), 2), 1.0/pow(block->hgrid(1), 2),1.0/ pow(block->hgrid(2), 2)};
 
     real_p data_src = block->data(fid_src, ida_);
     real_p data_trg = block->data(fid_trg, ida_);

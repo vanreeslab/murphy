@@ -173,10 +173,10 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
-        m_log("block is locked, we do nothing!");
+        m_verb("block is locked, we do nothing!");
         return false;
     }
-    m_log("let's check the refinement for the field %s",fid->name().c_str());
+    m_verb("let's check the refinement for the field %s",fid->name().c_str());
 
     bool refine = false;
     // if we are not locked, we are available for refinement
@@ -190,12 +190,12 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         if (refine) {
             // lock the block indicate that it cannot be changed in res anymore
             block->lock();
-            m_log("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
+            m_verb("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
             return true;
         }
         else{
-            m_log("block %f %f %f: NO refine (%e < %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
+            m_verb("block %f %f %f: NO refine (%e < %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
         }
     }
     // if we reached here, we do not need to refine
@@ -238,7 +238,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
             real_t norm = interp->Criterion(block, data);
             // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
-            m_log("coarsen? %e <? %e", norm, grid->ctol());
+            m_verb("coarsen? %e <? %e", norm, grid->ctol());
 
             // if I cannot coarsen, I can give up on the whole group, so return false
             if (!coarsen) {

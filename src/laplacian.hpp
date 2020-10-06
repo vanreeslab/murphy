@@ -15,8 +15,10 @@ template <sid_t length>
 class LaplacianCross : public Stencil {
    protected:
     real_t coef_[length];  //!< coefficients of the laplacian to apply
+
    public:
-    explicit LaplacianCross() {
+    explicit LaplacianCross() : LaplacianCross(nullptr) {}
+    explicit LaplacianCross(Prof* profiler) : Stencil(profiler) {
         // get the stencil
         if (length == 3) {
             coef_[0] = +1.0;

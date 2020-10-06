@@ -57,7 +57,7 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     part.Start(&fields_, M_FORWARD);
     part.End(&fields_, M_FORWARD);
     // setup the ghost stuctures as the mesh will not change anymore
-    m_log("The grid is partitioned -> let's build the ghost now");
+    m_verb("The grid is partitioned -> let's build the ghost now");
     SetupGhost();
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
@@ -97,7 +97,7 @@ Grid::~Grid() {
     //-------------------------------------------------------------------------
     // destroy the interpolator and the details they are mine
     if (interp_ != nullptr) {
-        m_log("dealloc the interp");
+        m_verb("dealloc the interp");
         delete (interp_);
     }
     // destroy the ghosts, they are mine as well
@@ -123,7 +123,7 @@ void Grid::SetupGhost() {
     // create the forestGrid part
     this->SetupP4estGhostMesh();
     // create the ghosts structure
-    m_log("starting the Ghost construction");
+    m_verb("starting the Ghost construction");
     m_profStart(prof_, "ghost_init");
     ghost_ = new Ghost(this, interp_,prof_);
     m_profStop(prof_, "ghost_init");
@@ -139,7 +139,7 @@ void Grid::DestroyGhost() {
     m_begin;
     //-------------------------------------------------------------------------
     if (ghost_ != nullptr) {
-        m_log("dealloc the ghost");
+        m_verb("dealloc the ghost");
         delete (ghost_);
         ghost_ = nullptr;
     }

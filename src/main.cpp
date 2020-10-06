@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
         // dump.dump_ghost(true);
         // dump(&grid, &vort);
 
-        LaplacianCross<3> diffusion;
+        LaplacianCross<3> diffusion(prof);
         diffusion(&grid,&vort,&diff);
 
         grid.GhostPull(&diff);

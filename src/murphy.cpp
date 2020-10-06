@@ -16,10 +16,10 @@ void murphy_init(int argc, char** argv) {
     // }
     MPI_Init(&argc, &argv);
     MPI_Comm comm = MPI_COMM_WORLD;
-    // sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
-    sc_init(comm, 1, 1, NULL, SC_LP_INFO);
-    // p4est_init(NULL, SC_LP_SILENT);
-    p4est_init(NULL, SC_LP_INFO);
+    sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
+    // sc_init(comm, 1, 1, NULL, SC_LP_INFO);
+    p4est_init(NULL, SC_LP_SILENT);
+    // p4est_init(NULL, SC_LP_INFO);
     // so dome checks for the aligment, the constants etc
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
     m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");

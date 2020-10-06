@@ -226,7 +226,7 @@ Ghost::~Ghost() {
  */
 void Ghost::InitList_() {
     m_begin;
-    m_log("Ghost lists initialization started...");
+    m_verb("Ghost lists initialization started...");
     //-------------------------------------------------------------------------
     // allocate the lists for the corresponding quads
     m_assert(n_active_quad_ >= 0, "the number of active quad must be >= 0");
@@ -324,7 +324,7 @@ void Ghost::InitList_() {
     local2disp_        = nullptr;
 
     //-------------------------------------------------------------------------
-    m_log("Ghost lists initialization is done!");
+    m_verb("Ghost lists initialization is done");
     m_end;
 }
 
@@ -409,7 +409,7 @@ void Ghost::InitComm_() {
             n_mirror_to_send_++;
         }
     }
-    m_log("I have %d mirrors to send", n_mirror_to_send_);
+    m_verb("I have %d mirrors to send", n_mirror_to_send_);
     // initialize the Window by allocating the memory space needed for the exchange
     MPI_Info info;
     MPI_Info_create(&info);

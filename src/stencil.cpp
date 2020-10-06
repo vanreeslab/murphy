@@ -8,10 +8,13 @@
  * The Stencil only operates on the inner block and do not fill the ghost points
  * 
  */
-Stencil::Stencil() : BlockOperator(nullptr, nullptr) {
+Stencil::Stencil() : BlockOperator(nullptr, nullptr) {};
+
+Stencil::Stencil(Prof* profiler) : BlockOperator(nullptr, profiler) {
     m_begin;
     //-------------------------------------------------------------------------
-    prof_ = nullptr;
+    m_profCreate(profiler,"stencil_outer");
+    m_profCreate(profiler,"stencil_inner");
     //-------------------------------------------------------------------------
     m_end;
 };
@@ -34,7 +37,7 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
     //-------------------------------------------------------------------------
     // init the prof if not already done
-    for (int ida = 0; ida < field_src->lda(); ida++) {
+    for (lda_t ida = 0; ida < field_src->lda(); ++ida) {
         // start the send of the coarse
         grid->GhostPull_Post(field_src, ida);
 
