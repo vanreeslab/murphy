@@ -35,9 +35,9 @@ class TimerBlock {
     void Stop();
     // void Reset();
     // void AddMem(size_t mem);
-    void Disp(FILE* file, const int level, const real_t totalTime);
+    void Disp(FILE* file, const int level, const real_t totalTime, const lda_t icol) const;
 
-    int         count() const { return count_; }
+    int count() const { return count_; }
     // bool        is_root() const { return is_root_; }
     std::string name() const { return name_; }
     real_t      time_acc() const;

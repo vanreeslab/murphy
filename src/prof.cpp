@@ -167,7 +167,7 @@ real_t TimerBlock::time_acc() const {
  * @param level 
  * @param total_time 
  */
-void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time) {
+void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, const lda_t icol) const {
     // check if any proc has called the agent
     int total_count;
     MPI_Allreduce(&count_, &total_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -178,13 +178,16 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // setup the displayed name
-    string myname = name_;
-    if (level > 1) {
-        myname = " " + myname;
-    }
+    string shifter = "";
+    // if (level > 1) {
+    //     myname = " " + myname;
+    // }
     for (int l = 1; l < level; l++) {
-        myname = "--" + myname;
+        // myname = "----" + myname;
+        shifter = shifter + "--- ";
     }
+    string myname = shifter + name_;
+
     // if someone has every call the agent, display it
     if (total_count > 0) {
         real_t scale = 1.0 / comm_size;
@@ -246,7 +249,16 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time) {
         // printf the important information
         if (rank == 0) {
             // printf("%-25.25s|  %9.4f\t%9.4f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%09.1f\t%9.2f\n", myname.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
-            printf("%-25.25s|  \033[0;31m%09.6f\033[0m [s] -> \033[0;32m%06.4f\033[0m \tpercent of the time - on average %.4f [s] per call (sample = %.0f calls)\n", myname.c_str(), mean_time, glob_percent, mean_time_per_count, mean_count);
+            if (icol == 0) {
+                printf("%-35.35s| %s\033[0;31m%09.6f\033[0m %% -> \033[0;31m%07.4f\033[0m [s] \t\t(mean/call %.4f [s], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, mean_time_per_count, mean_count);
+            }
+            if (icol == 1) {
+                printf("%-35.35s| %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t(mean/call %.4f [s], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, mean_time_per_count, mean_count);
+            }
+            if (icol == 2) {
+                printf("%-35.35s| %s\033[0;32m%09.6f\033[0m %% -> \033[0;32m%07.4f\033[0m [s] \t\t(mean/call %.4f [s], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, mean_time_per_count, mean_count);
+            }
+            // printf in the file
             if (file != nullptr) {
                 fprintf(file, "%s;%.6f;%.6f;%.6f;%.0f\n", name_.c_str(), mean_time, glob_percent, mean_time_per_count, mean_count);
             }
@@ -261,9 +273,31 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time) {
         }
     }
     // recursive call to the childrens
-    for (map<string, TimerBlock*>::iterator it = children_.begin(); it != children_.end(); it++) {
+    // compute the min and max part
+    string max_name, min_name;
+    real_t max_time = -1e+15;
+    real_t min_time = +1e+15;
+    for (auto it = children_.cbegin(); it != children_.cend(); ++it) {
         TimerBlock* child = it->second;
-        child->Disp(file, level + 1, total_time);
+        real_t ctime = child->time_acc();
+        if(ctime > max_time){
+            max_time = ctime;
+            max_name = child->name();
+        }
+        if(ctime < min_time){
+            min_time = ctime;
+            min_name = child->name();
+        }
+    }
+    for (auto it = children_.cbegin(); it != children_.cend(); ++it) {
+        TimerBlock* child = it->second;
+        if (child->name() == max_name && children_.size()>1) {
+            child->Disp(file, level + 1, total_time, 0);
+        } else if (child->name() == min_name  && children_.size()>1) {
+            child->Disp(file, level + 1, total_time, 2);
+        } else {
+            child->Disp(file, level + 1, total_time, 1);
+        }
     }
 }
 
@@ -448,7 +482,7 @@ void Prof::Disp() const {
     }
 
     // display root with the total time
-    current_->Disp(file, 0, total_time);
+    current_->Disp(file, 0, total_time,1);
     // display footer
     if (rank == 0) {
         // printf("===================================================================================================================================================\n");
