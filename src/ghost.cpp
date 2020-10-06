@@ -176,10 +176,10 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     max_level_ = m_min(max_level, P8EST_QMAXLEVEL);
 
     // init the profiler info
-    m_profCreate(prof_, "ghost");
-    m_profCreateParent(prof_, "ghost", "ghost_init");
-    m_profCreateParent(prof_, "ghost", "ghost_wait");
-    m_profCreateParent(prof_, "ghost", "ghost_computation");
+    // m_profCreate(prof_, "ghost");
+    // m_profCreateParent(prof_, "ghost", "ghost_init");
+    // m_profCreateParent(prof_, "ghost", "ghost_wait");
+    // m_profCreateParent(prof_, "ghost", "ghost_computation");
 
     //................................................
     // get how many active quads should be considered and allocate the ghost ptr

@@ -13,8 +13,8 @@ Stencil::Stencil() : BlockOperator(nullptr, nullptr) {};
 Stencil::Stencil(Prof* profiler) : BlockOperator(nullptr, profiler) {
     m_begin;
     //-------------------------------------------------------------------------
-    m_profCreate(profiler,"stencil_outer");
-    m_profCreate(profiler,"stencil_inner");
+    // m_profCreate(profiler,"stencil_outer");
+    // m_profCreate(profiler,"stencil_inner");
     //-------------------------------------------------------------------------
     m_end;
 };
@@ -36,28 +36,34 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     m_assert(field_trg != nullptr, "the source field cannot be null");
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
     //-------------------------------------------------------------------------
+    m_profStart(grid->profiler(),"stencil");
     // init the prof if not already done
     for (lda_t ida = 0; ida < field_src->lda(); ++ida) {
         // start the send of the coarse
+        m_profStart(grid->profiler(),"ghost");
         grid->GhostPull_Post(field_src, ida);
+        m_profStop(grid->profiler(),"ghost");
 
         // compute the stencil on the outer side
-        m_profStart(grid->profiler(), "stencil_outer");
+        m_profStart(grid->profiler(), "inner");
         if (field_trg != nullptr) {
             ida_ = ida;
             DoOpMesh(this,&Stencil::ApplyStencilInner,grid,field_src, field_trg);
         }
-        m_profStop(grid->profiler(), "stencil_outer");
+        m_profStop(grid->profiler(), "inner");
 
         // get the coarse representation back
+        m_profStart(grid->profiler(),"ghost");
         grid->GhostPull_Wait(field_src, ida);
+        m_profStop(grid->profiler(),"ghost");
 
         // inner operation on the now received dimension
-        m_profStart(grid->profiler(), "stencil_inner");
         ida_ = ida;
+        m_profStart(grid->profiler(), "outer");
         DoOpMesh(this, &Stencil::ApplyStencilOuter, grid, field_src, field_trg);
-        m_profStop(grid->profiler(), "stencil_inner");
+        m_profStop(grid->profiler(), "outer");
     }
+    m_profStop(grid->profiler(),"stencil");
     // update the ghost status
     field_src->ghost_status(true);
     field_trg->ghost_status(false);

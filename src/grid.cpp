@@ -42,11 +42,11 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     // profiler
     prof_ = prof;
     // init the profiler tracking
-    m_profCreate(prof_, "p4est_refcoarse");
-    m_profCreate(prof_, "p4est_balance");
-    m_profCreate(prof_, "p4est_partition_init");
-    m_profCreate(prof_, "p4est_partition_comm");
-    m_profCreateParent(prof_, "p4est_refcoarse", "cback_interpolate");
+    // m_profCreate(prof_, "p4est_refcoarse");
+    // m_profCreate(prof_, "p4est_balance");
+    // m_profCreate(prof_, "p4est_partition_init");
+    // m_profCreate(prof_, "p4est_partition_comm");
+    // m_profCreateParent(prof_, "p4est_refcoarse", "cback_interpolate");
 
     // create a default interpolator
     interp_ = new Wavelet();
@@ -124,9 +124,7 @@ void Grid::SetupGhost() {
     this->SetupP4estGhostMesh();
     // create the ghosts structure
     m_verb("starting the Ghost construction");
-    m_profStart(prof_, "ghost_init");
     ghost_ = new Ghost(this, interp_,prof_);
-    m_profStop(prof_, "ghost_init");
     //-------------------------------------------------------------------------
     m_end;
 }

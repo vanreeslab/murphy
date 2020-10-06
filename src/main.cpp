@@ -70,9 +70,13 @@ int main(int argc, char** argv) {
         // create the IO
         IOH5 dump("data");
         dump(&grid, &vort);
-        grid.GhostPull(&vort);
+        // grid.GhostPull(&vort);
         // dump.dump_ghost(true);
         // dump(&grid, &vort);
+
+        // reset the field on the final mesh but no ghost point is filled this time
+        SetVortexRing vr_init2(normal, center, sigma, radius);
+        vr_init2(&grid,&vort);
 
         LaplacianCross<3> diffusion(prof);
         diffusion(&grid,&vort,&diff);

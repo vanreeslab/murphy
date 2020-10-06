@@ -16,7 +16,7 @@ SetValue::SetValue(const Interpolator* interp) : BlockOperator(interp, nullptr) 
 SetValue::SetValue(const Interpolator* interp, Prof* profiler) : BlockOperator(interp, profiler) {
     m_begin;
     //-------------------------------------------------------------------------
-    m_profCreate(profiler, "SetValue");
+    // m_profCreate(profiler, "SetValue");
     //-------------------------------------------------------------------------
     m_end;
 }
