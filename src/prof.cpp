@@ -141,13 +141,13 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
         if (rank == 0) {
             // printf("%-25.25s|  %9.4f\t%9.4f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%09.1f\t%9.2f\n", myname.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
             if (icol == 0) { // go red
-                printf("%-45.45s %s\033[0;31m%09.6f\033[0m %% (\033[0;31m%07.4f\033[0m [s]) \t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+                printf("%-45.45s %s\033[0;31m%09.6f\033[0m %% (\033[0;31m%07.4f\033[0m [s]) \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
             }
             if (icol == 1) { // go orange
-                printf("%-45.45s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+                printf("%-45.45s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
             }
             if (icol == 2) { // go normal
-                printf("%-45.45s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+                printf("%-45.45s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
             }
             // printf in the file
             if (file != nullptr) {
@@ -313,14 +313,18 @@ void Prof::Disp() const {
     // display the header
     if (rank == 0) {
         printf("===================================================================================================================================================\n");
-        printf("        PROFILER %s --> total time = \033[0;33m%.4f\033[m [s] \n\n", name_.c_str(),total_time);
+        printf("        PROFILER %s --> total time = \033[0;33m%.4f\033[m [s] \n\n", name_.c_str(), total_time);
     }
 
     // display root with the total time, root is the only block which is common to everybody
-    current_->Disp(file, 0, total_time,0);
+    current_->Disp(file, 0, total_time, 0);
 
     // display footer
     if (rank == 0) {
+        printf("===================================================================================================================================================\n");
+        printf("legend:\n");
+        printf("  - \033[0;31mthis indicates the most expensive step of the most expensive operation\033[0m\n");
+        printf("  - \033[0;33mthis indicates the most expensive step of the parent operation\033[0m\n");
         printf("===================================================================================================================================================\n");
 
         if (file != nullptr) {
