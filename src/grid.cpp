@@ -333,6 +333,16 @@ void Grid::GhostPull(Field* field) {
 void Grid::Refine(const sid_t delta_level) {
     m_begin;
     //-------------------------------------------------------------------------
+    m_profStart(prof_,"refine");
+    // init the profiler
+    m_profInit(prof_,"p4est refine");
+    m_profInitLeave(prof_,"wavelet interpolation");
+    m_profLeave(prof_,"p4est refine");
+    m_profInit(prof_,"p4est balance");
+    m_profInitLeave(prof_,"wavelet interpolation");
+    m_profLeave(prof_, "p4est balance");
+    //................................................
+
     // set the grid in the forest for the callback
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
@@ -378,6 +388,7 @@ void Grid::Refine(const sid_t delta_level) {
     }
 
     p4est_forest_->user_pointer = nullptr;
+    m_profStop(prof_,"refine");
     //-------------------------------------------------------------------------
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
     m_log("refined grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
@@ -392,6 +403,16 @@ void Grid::Refine(const sid_t delta_level) {
 void Grid::Coarsen(const sid_t delta_level) {
     m_begin;
     //-------------------------------------------------------------------------
+    m_profStart(prof_,"coarsen");
+    //................................................
+    m_profInit(prof_,"p4est coarsen");
+    m_profInitLeave(prof_,"wavelet interpolation");
+    m_profLeave(prof_,"p4est coarsen");
+    m_profInit(prof_,"p4est balance");
+    m_profInitLeave(prof_,"wavelet interpolation");
+    m_profLeave(prof_, "p4est balance");
+    //................................................
+
     // set the grid in the forest for the callback
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
@@ -440,6 +461,7 @@ void Grid::Coarsen(const sid_t delta_level) {
     }
 
     p4est_forest_->user_pointer = nullptr;
+    m_profStop(prof_,"coarsen");
     //-------------------------------------------------------------------------
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
     m_log("coarsened grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
@@ -477,9 +499,21 @@ void Grid::Adapt(Field* field) {
     m_log("--> grid adaptation started... (interpolator: %s)", interp_->Identity().c_str());
     //---------------------------------------------s----------------------------
     m_profStart(prof_, "adapt field");
+    //................................................
+    m_profInit(prof_, "p4est coarsen");
+    m_profInitLeave(prof_, "wavelet interpolation");
+    m_profInitLeave(prof_, "wavelet criterion");
+    m_profLeave(prof_, "p4est coarsen");
+    m_profInit(prof_, "p4est refine");
+    m_profInitLeave(prof_, "wavelet interpolation");
+    m_profInitLeave(prof_, "wavelet criterion");
+    m_profLeave(prof_, "p4est refine");
+    m_profInit(prof_, "p4est balance");
+    m_profInitLeave(prof_, "wavelet interpolation");
+    m_profLeave(prof_, "p4est balance");
+    //................................................
+
     // unlock all the blocks
-    // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
     DoOpTree(nullptr, &GridBlock::unlock, this);
 
     // compute the ghost needed by the interpolation of every other field in the grid
@@ -548,9 +582,20 @@ void Grid::Adapt(Field* field, SetValue* expression) {
     m_log("--> grid adaptation started... (using analytical expression and recursive = %d)", recursive_adapt());
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adapt expression");
+    //................................................
+    m_profInit(prof_, "p4est coarsen");
+    m_profInitLeave(prof_, "wavelet criterion");
+    m_profInitLeave(prof_, "fill values");
+    m_profLeave(prof_, "p4est coarsen");
+    m_profInit(prof_, "p4est refine");
+    m_profInitLeave(prof_, "wavelet criterion");
+    m_profInitLeave(prof_, "fill values");
+    m_profLeave(prof_, "p4est refine");
+    m_profInit(prof_, "p4est balance");
+    m_profInitLeave(prof_, "fill values");
+    m_profLeave(prof_, "p4est balance");
+    //................................................
     // unlock all the blocks
-    // LoopOnGridBlock_(&GridBlock::unlock, nullptr);
-    // DoOpTree(&CallGridBlockMemFuncEmpty, this, &GridBlock::unlock);
     DoOpTree(nullptr, &GridBlock::unlock, this);
 
     // delete the soon-to be outdated ghost and mesh
@@ -631,6 +676,18 @@ void Grid::Adapt(list<Patch>* patches) {
     m_log("--> grid adaptation started... (using patches and recursive = %d)", recursive_adapt());
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adapt patch");
+    //................................................
+    m_profInit(prof_, "p4est coarsen");
+    m_profInitLeave(prof_, "allocate only");
+    m_profLeave(prof_, "p4est coarsen");
+    m_profInit(prof_, "p4est refine");
+    m_profInitLeave(prof_, "allocate only");
+    m_profLeave(prof_, "p4est refine");
+    m_profInit(prof_, "p4est balance");
+    m_profInitLeave(prof_, "allocate only");
+    m_profLeave(prof_, "p4est balance");
+    //................................................
+
     if (patches->size() == 0) {
         return;
     }
@@ -647,10 +704,12 @@ void Grid::Adapt(list<Patch>* patches) {
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
     // coarsen + refine the needed blocks recursivelly
-    m_profStart(prof_, "p4est_refcoarse");
+    m_profStart(prof_, "p4est coarsen");
     p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, cback_Patch, nullptr, cback_AllocateOnly);
+    m_profStop(prof_, "p4est coarsen");
+    m_profStart(prof_, "p4est refine");
     p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, cback_Patch, nullptr, cback_AllocateOnly);
-    m_profStop(prof_, "p4est_refcoarse");
+    m_profStop(prof_, "p4est refine");
 
     // balance the partition
     m_profStart(prof_, "p4est balance");

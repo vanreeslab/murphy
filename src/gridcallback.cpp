@@ -393,7 +393,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         delete (block);
     }
 
-    m_profStop(grid->profiler(), "wavelet interpolation");
+    // m_profStop(grid->profiler(), "wavelet interpolation");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -425,7 +425,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    m_profStart(grid->profiler(), "allocate");
+    m_profStart(grid->profiler(), "allocate only");
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -457,7 +457,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    m_profStop(grid->profiler(), "allocate");
+    m_profStop(grid->profiler(), "allocate only");
     //-------------------------------------------------------------------------
     m_end;
 }
