@@ -44,34 +44,42 @@ class SetAbs : public SetValue {
 
 //=====================================================================================================
 /**
- * @brief sets a sinus in every dimension of a field
+ * @brief sets a sinus in every dimension of a field:
+ *
+ *  formula: sum_i alpha[i] * sin(2*pi*freq[i] * x/L[i])
+ * 
  */
 class SetSinus : public SetValue {
    protected:
     real_t freq_[3]   = {0, 0, 0};
     real_t length_[3] = {0.0, 0.0, 0.0};
+    real_t alpha_[3]  = {0.0, 0.0, 0.0};
 
     void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetSinus(const real_t length[3], const real_t freq[3]);
-    SetSinus(const real_t length[3], const real_t freq[3], const Interpolator* interp);
+    SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]);
+    SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
 /**
  * @brief sets a cosinus in every dimension of a field
+ * 
+ * formula: sum_i alpha[i] * cos(2*pi*freq[i] * x/L[i])
+ * 
  */
 class SetCosinus : public SetValue {
    protected:
     real_t freq_[3]   = {0, 0, 0};
     real_t length_[3] = {0.0, 0.0, 0.0};
+    real_t alpha_[3]  = {0.0, 0.0, 0.0};
 
     void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetCosinus(const real_t length[3], const real_t freq[3]);
-    SetCosinus(const real_t length[3], const real_t freq[3], const Interpolator* interp);
+    SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]);
+    SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp);
 };
 
 //=====================================================================================================

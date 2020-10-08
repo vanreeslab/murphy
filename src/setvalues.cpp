@@ -67,13 +67,14 @@ void SetAbs::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3]) : SetSinus(length, freq, nullptr) {}
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const Interpolator* interp) : SetValue(interp) {
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]) : SetSinus(length, freq, alpha, nullptr) {}
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
         length_[id] = length[id];
         freq_[id]   = freq[id];
+        alpha_[id]  = alpha[id];
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -93,7 +94,9 @@ void SetSinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
-                    data[m_idx(i0, i1, i2)] = sin(pos[0] * fact[0]) * sin(pos[1] * fact[1]) * sin(pos[2] * fact[2]);
+                    data[m_idx(i0, i1, i2)] = alpha_[0] * sin(pos[0] * fact[0]) +
+                                              alpha_[1] * sin(pos[1] * fact[1]) +
+                                              alpha_[2] * sin(pos[2] * fact[2]);
                 }
             }
         }
@@ -102,13 +105,14 @@ void SetSinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3]) : SetCosinus(length, freq, nullptr) {}
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const Interpolator* interp) : SetValue(interp) {
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]) : SetCosinus(length, freq, alpha, nullptr) {}
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
         length_[id] = length[id];
         freq_[id]   = freq[id];
+        alpha_[id]  = alpha[id];
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -129,9 +133,9 @@ void SetCosinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
-                    data[m_idx(i0, i1, i2)] = cos(pos[0] * fact[0]) *
-                                              cos(pos[1] * fact[1]) *
-                                              cos(pos[2] * fact[2]);
+                    data[m_idx(i0, i1, i2)] = alpha_[0] * cos(pos[0] * fact[0]) +
+                                              alpha_[1] * cos(pos[1] * fact[1]) +
+                                              alpha_[2] * cos(pos[2] * fact[2]);
                 }
             }
         }

@@ -296,8 +296,6 @@ void Grid::GhostPull_Wait(Field* field, const sid_t ida) {
     if (!field->ghost_status()) {
         ghost_->PullGhost_Wait(field, ida);
     }
-    // put the field as correct
-    field->ghost_status(true);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -314,7 +312,7 @@ void Grid::GhostPull(Field* field) {
     //-------------------------------------------------------------------------
     // start the send in the first dimension
     m_profStart(prof_, "pull ghost");
-    for (int ida = 0; ida < field->lda(); ida++) {
+    for (int ida = 0; ida < field->lda(); ++ida) {
         GhostPull_Post(field, ida);
         GhostPull_Wait(field, ida);
     }

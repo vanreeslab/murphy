@@ -541,9 +541,10 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
 void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
+    m_assert(ida_ == ida,"the ongoing dimension (%d) must be over first",ida_);
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-
+    
     //................................................
     // finish the access epochs for the exposure epoch to be over
     m_profStart(prof_, "ghost wait");

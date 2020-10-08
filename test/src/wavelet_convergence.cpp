@@ -15,14 +15,14 @@
 
 using std::list;
 
-class test_Wavelet_Convergence_Periodic : public ::testing::Test {
+class valid_Wavelet_Convergence : public ::testing::Test {
    protected:
     void SetUp() override{};
     void TearDown() override{};
 };
 
 //==============================================================================================================================
-TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
+TEST_F(valid_Wavelet_Convergence, periodic_sinus) {
     for (lda_t id = 0; id < 3; id++) {
         // init the errors
         real_t erri[3] = {0.0, 0.0, 0.0};
@@ -52,7 +52,8 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
             // put a sinus
             const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
             const real_t freq[3]    = {3.0, 1.0, 2.0};
-            SetSinus     field_init(sin_len, freq);
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetSinus     field_init(sin_len, freq, alpha);
             field_init(&grid, &test);
 
             // pull the ghosts
@@ -66,7 +67,7 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
             // create the solution field
             Field sol("sol", 1);
             grid.AddField(&sol);
-            SetSinus field_sol(sin_len, freq, grid.interp());
+            SetSinus field_sol(sin_len, freq, alpha, grid.interp());
             field_sol(&grid, &sol);
 
             // now, we need to check
@@ -84,7 +85,7 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_sinus) {
     }
 }
 //==============================================================================================================================
-TEST_F(test_Wavelet_Convergence_Periodic, convergence_cosinus) {
+TEST_F(valid_Wavelet_Convergence, periodic_cosinus) {
     for (lda_t id = 0; id < 3; id++) {
         // init the errors
         real_t erri[3] = {0.0, 0.0, 0.0};
@@ -108,13 +109,14 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_cosinus) {
 
             // create the test file
             string fieldName = "cosinus" + std::to_string(id) + "__" + std::to_string(il);
-            Field  test(fieldName, 1);
+            Field  test(fieldName, 3);
             grid.AddField(&test);
 
             // put a sinus
             const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
             const real_t freq[3]    = {2.0, 3.0, 1.0};
-            SetCosinus     field_init(sin_len, freq);
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetCosinus   field_init(sin_len, freq, alpha);
             field_init(&grid, &test);
 
             // pull the ghosts
@@ -126,9 +128,9 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_cosinus) {
             // io(&grid, &test);
 
             // create the solution field
-            Field sol("sol", 1);
+            Field sol("sol", 3);
             grid.AddField(&sol);
-            SetCosinus field_sol(sin_len, freq, grid.interp());
+            SetCosinus field_sol(sin_len, freq, alpha, grid.interp());
             field_sol(&grid, &sol);
 
             // now, we need to check
@@ -141,7 +143,7 @@ TEST_F(test_Wavelet_Convergence_Periodic, convergence_cosinus) {
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
         m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
-        ASSERT_GE(conv2, M_WAVELET_N-0.1);
-        ASSERT_GE(convi, M_WAVELET_N-0.1);
+        ASSERT_GE(conv2, M_WAVELET_N - 0.1);
+        ASSERT_GE(convi, M_WAVELET_N - 0.1);
     }
 }
