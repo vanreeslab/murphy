@@ -19,6 +19,25 @@ SetValue::SetValue(const Interpolator* interp) : BlockOperator(interp) {
 void SetValue::operator()(const ForestGrid* grid, Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
+    // get the span of ida
+    ida_start_ = 0;
+    ida_end_ = field->lda();
+    // go for it
+    DoOpTree(this, &SetValue::FillGridBlock, grid, field);
+    // update the ghost status
+    m_verb("setting the ghosts of %s to false", field->name().c_str());
+    field->ghost_status(do_ghost_);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void SetValue::operator()(const ForestGrid* grid, Field* field, const lda_t ida) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // get the span of ida
+    ida_start_ = ida;
+    ida_end_ = ida + 1;
+    // go for it
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
@@ -46,7 +65,7 @@ void SetAbs::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     const real_t* xyz   = block->xyz();
     const real_t* hgrid = block->hgrid();
 
-    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+    for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_p data = block->data(fid, ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -87,7 +106,7 @@ void SetSinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     const real_t* hgrid   = block->hgrid();
     const real_t  fact[3] = {2.0 * M_PI * freq_[0] / length_[0], 2.0 * M_PI * freq_[1] / length_[1], 2.0 * M_PI * freq_[2] / length_[2]};
 
-    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+    for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_p data = block->data(fid, ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -126,7 +145,7 @@ void SetCosinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     const real_t  vol     = 1.0 / (hgrid[0] * hgrid[1] * hgrid[2]);
     const real_t  fact[3] = {2.0 * M_PI * freq_[0] / length_[0], 2.0 * M_PI * freq_[1] / length_[1], 2.0 * M_PI * freq_[2] / length_[2]};
 
-    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+    for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_p data = block->data(fid, ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -161,7 +180,7 @@ void SetPolynom::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     const real_t* xyz   = block->xyz();
     const real_t* hgrid = block->hgrid();
 
-    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+    for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_p data = block->data(fid, ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -201,7 +220,7 @@ void SetExponential::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fi
     real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
     real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2);
 
-    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+    for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_p data = block->data(fid, ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -247,7 +266,7 @@ void SetErf::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     real_t oo_sqrt2  = 1.0 / M_SQRT2;
     real_t fact      = alpha_ / (4.0 * M_PI * sigma);  // see Wincky encyclopedia
 
-    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+    for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_p data = block->data(fid, ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {

@@ -13,10 +13,15 @@
  * 
  */
 class SetValue : public BlockOperator {
+   protected:
+    lda_t ida_start_;
+    lda_t ida_end_;
+
    public:
     explicit SetValue(const Interpolator* interp);
 
     void operator()(const ForestGrid* grid, Field* field);
+    void operator()(const ForestGrid* grid, Field* field, const lda_t ida);
 
     /**
      * @brief Fill the value within the 
