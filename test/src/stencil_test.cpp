@@ -79,11 +79,11 @@ TEST_F(valid_Stencil,gradient_periodic_cosinus){
             Gradient<3> grad;
             grad(&grid, &test, &dtest);
 
-            grid.GhostPull(&dtest);
-            IOH5 io("data_test");
-            io(&grid, &test);
-            io(&grid, &dtest);
-            io(&grid, &sol);
+            // grid.GhostPull(&dtest);
+            // IOH5 io("data_test");
+            // io(&grid, &test);
+            // io(&grid, &dtest);
+            // io(&grid, &sol);
 
             // now, we need to check
             ErrorCalculator error;
