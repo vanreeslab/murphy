@@ -8,7 +8,7 @@
 
 #define DOUBLE_TOL 1e-13
 
-class valid_Wavelet : public ::testing::Test {
+class valid_Wavelet_Kernel : public ::testing::Test {
    protected:
     SubBlock* block_coarse_;
     SubBlock* block_fine_;
@@ -53,7 +53,7 @@ static double poly_1(const double x) {
     return M_PI_2 * x + M_SQRT2;
 }
 // test the wavelet + moments
-TEST_F(valid_Wavelet, coarsen_order_2_2) {
+TEST_F(valid_Wavelet_Kernel, coarsen_order_2_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = 0;
         coarse_end_[id]   = 8;
@@ -158,7 +158,7 @@ TEST_F(valid_Wavelet, coarsen_order_2_2) {
 }
 
 // test the wavelets + moments
-TEST_F(valid_Wavelet, refine_order_2_2) {
+TEST_F(valid_Wavelet_Kernel, refine_order_2_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = -2;
         coarse_end_[id]   = 10;
@@ -264,7 +264,7 @@ TEST_F(valid_Wavelet, refine_order_2_2) {
 }
 
 // test the details
-TEST_F(valid_Wavelet, detail_order_2_2) {
+TEST_F(valid_Wavelet_Kernel, detail_order_2_2) {
     real_t* data_fine = data_fine_ + m_zeroidx(0, block_fine_);
     // fill the source
     for (int i2 = fine_start_[2] - block_fine_->gs(); i2 < fine_end_[2] + block_fine_->gs(); i2++) {
@@ -292,7 +292,7 @@ static double poly_3(const double x) {
     return M_PI * pow(x, 3) + M_PI_2 * pow(x, 2) + M_SQRT2 * x + M_PI_4;
 }
 // test the wavelet + moments
-TEST_F(valid_Wavelet, coarsen_order_4_0) {
+TEST_F(valid_Wavelet_Kernel, coarsen_order_4_0) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = 0;
         coarse_end_[id]   = 8;
@@ -396,7 +396,7 @@ TEST_F(valid_Wavelet, coarsen_order_4_0) {
     }
 }
 // test the wavelets + moments
-TEST_F(valid_Wavelet, refine_order_4_0) {
+TEST_F(valid_Wavelet_Kernel, refine_order_4_0) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = -2;
         coarse_end_[id]   = 10;
@@ -503,7 +503,7 @@ TEST_F(valid_Wavelet, refine_order_4_0) {
 }
 
 // test the details
-TEST_F(valid_Wavelet, detail_order_4_0) {
+TEST_F(valid_Wavelet_Kernel, detail_order_4_0) {
     for (int id = 0; id < 3; id++) {
         fine_start_[id] = 0;
         fine_end_[id]   = 12;
@@ -541,7 +541,7 @@ static double poly_3(const double x) {
     return M_PI * pow(x, 3) + M_PI_2 * pow(x, 2) + M_SQRT2 * x + M_PI_4;
 }
 
-TEST_F(valid_Wavelet, coarsen_order_4_2) {
+TEST_F(valid_Wavelet_Kernel, coarsen_order_4_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = 0;
         coarse_end_[id]   = 6;
@@ -646,7 +646,7 @@ TEST_F(valid_Wavelet, coarsen_order_4_2) {
 }
 
 // test the wavelets + moments
-TEST_F(valid_Wavelet, refine_order_4_2) {
+TEST_F(valid_Wavelet_Kernel, refine_order_4_2) {
     for (int id = 0; id < 3; id++) {
         coarse_start_[id] = -4;
         coarse_end_[id]   = 6 + 2;
@@ -752,7 +752,7 @@ TEST_F(valid_Wavelet, refine_order_4_2) {
 }
 
 // test the details
-TEST_F(valid_Wavelet, detail_order_4_2) {
+TEST_F(valid_Wavelet_Kernel, detail_order_4_2) {
     for (int id = 0; id < 3; id++) {
         fine_start_[id] = 0;
         fine_end_[id]   = 12;

@@ -11,73 +11,145 @@
 #include "subblock.hpp"
 #include "wavelet.hpp"
 
-#define DOUBLE_TOL 1e-08 // we have to pay attention that the error get's worse with the order -> we extrapolate further and further
+#define DOUBLE_TOL 1e-11
 
 using std::list;
 
-class valid_Wavelet_Ghost : public ::testing::Test {
+class valid_Wavelet_Convergence : public ::testing::Test {
    protected:
     void SetUp() override{};
     void TearDown() override{};
 };
 
-TEST_F(valid_Wavelet_Ghost, ghost_accuracy_extrap) {
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
     for (lda_t id = 0; id < 3; id++) {
-        bool  period[3] = {false, false, false};
+        // init the errors
+        real_t erri[3] = {0.0, 0.0, 0.0};
+        real_t err2[3] = {0.0, 0.0, 0.0};
+
+        // setup the mesh
+        bool  period[3] = {true, true, true};
         lid_t L[3]      = {1, 1, 1};
         L[id]           = 3;
-        Grid grid(0, period, L, MPI_COMM_WORLD, nullptr);
 
-        // create the patch refinement to refine the middle tree
-        real_t origin[3]      = {0.0, 0.0, 0.0};
-        origin[id]            = 1.0;
-        real_t      length[3] = {1.0, 1.0, 1.0};
-        Patch       p1(origin, length, 1);
-        list<Patch> patch{p1};
-        grid.Adapt(&patch);
+        for (level_t il = 1; il < 3; ++il) {
+            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
-        Field test("test", 1);
-        grid.AddField(&test);
-        test.bctype(M_BC_EXTRAP);
+            // create the patch refinement to refine the middle tree
+            real_t origin[3]      = {0.0, 0.0, 0.0};
+            origin[id]            = 1;
+            real_t      length[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin, length, il + 1);
+            list<Patch> patch{p1};
+            grid.Adapt(&patch);
 
-        // create the initial field
-        const lid_t  deg[3] = {M_WAVELET_N-1, M_WAVELET_N-1, M_WAVELET_N-1};
-        const real_t dir[3] = {M_SQRT2, -M_PI, M_E};
-        const real_t shift[3] = {0.0, 0.0, 0.0};
-        SetPolynom   field_init(deg, dir,shift);
-        field_init(&grid, &test);
+            // create the test file
+            string fieldName = "sinus" + std::to_string(id) + "__" + std::to_string(il);
+            Field  test(fieldName, 1);
+            grid.AddField(&test);
 
-        // pull the ghosts
-        grid.GhostPull(&test);
+            // put a sinus
+            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t freq[3]    = {3.0, 1.0, 2.0};
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetSinus     field_init(sin_len, freq, alpha);
+            field_init(&grid, &test);
 
-        // IOH5 io("data_test");
-        // io(&grid, &test);
-        // io.dump_ghost(true);
-        // io(&grid, &test);
+            // pull the ghosts
+            grid.GhostPull(&test);
 
-        // create the solution field
-        Field sol("sol", 1);
-        grid.AddField(&sol);
-        SetPolynom field_sol(deg, dir,shift, grid.interp());
-        field_sol(&grid, &sol);
+            // IOH5 io("data_test");
+            // io(&grid, &test);
+            // io.dump_ghost(true);
+            // io(&grid, &test);
 
-        // mask both the sol and the result
-        // MaskPhysBC mask(L);
-        // mask(&grid, &test);
-        // mask(&grid, &sol);
+            // create the solution field
+            Field sol("sol", 1);
+            grid.AddField(&sol);
+            SetSinus field_sol(sin_len, freq, alpha, grid.interp());
+            field_sol(&grid, &sol);
 
-        // now, we need to check
-        real_t          norm2, normi;
-        ErrorCalculator error(grid.interp());
-        error.Norms(&grid, &test, &sol, &norm2, &normi);
+            // now, we need to check
+            ErrorCalculator error(grid.interp());
+            error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
-        m_log("checking in dim %d: the two norms: %e %e", id, normi, norm2);
-        ASSERT_NEAR(normi, 0.0, DOUBLE_TOL);
-        ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL);
+            m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
+        }
+        real_t conv2 = -log(err2[2] / err2[1]) / log(2);
+        real_t convi = -log(erri[2] / erri[1]) / log(2);
+
+        m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
+        ASSERT_GE(conv2, M_WAVELET_N - 0.1);
+        ASSERT_GE(convi, M_WAVELET_N - 0.1);
+    }
+}
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_cos) {
+    for (lda_t id = 0; id < 3; id++) {
+        // init the errors
+        real_t erri[3] = {0.0, 0.0, 0.0};
+        real_t err2[3] = {0.0, 0.0, 0.0};
+
+        // setup the mesh
+        bool  period[3] = {true, true, true};
+        lid_t L[3]      = {1, 1, 1};
+        L[id]           = 3;
+
+        for (level_t il = 1; il < 3; ++il) {
+            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+
+            // create the patch refinement to refine the middle tree
+            real_t origin[3]      = {0.0, 0.0, 0.0};
+            origin[id]            = 1;
+            real_t      length[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin, length, il + 1);
+            list<Patch> patch{p1};
+            grid.Adapt(&patch);
+
+            // create the test file
+            string fieldName = "cosinus" + std::to_string(id) + "__" + std::to_string(il);
+            Field  test(fieldName, 3);
+            grid.AddField(&test);
+
+            // put a sinus
+            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t freq[3]    = {2.0, 3.0, 1.0};
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetCosinus   field_init(sin_len, freq, alpha);
+            field_init(&grid, &test);
+
+            // pull the ghosts
+            grid.GhostPull(&test);
+
+            // IOH5 io("data_test");
+            // io(&grid, &test);
+            // io.dump_ghost(true);
+            // io(&grid, &test);
+
+            // create the solution field
+            Field sol("sol", 3);
+            grid.AddField(&sol);
+            SetCosinus field_sol(sin_len, freq, alpha, grid.interp());
+            field_sol(&grid, &sol);
+
+            // now, we need to check
+            ErrorCalculator error(grid.interp());
+            error.Norms(&grid, &test, &sol, err2 + il, erri + il);
+
+            m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
+        }
+        real_t conv2 = -log(err2[2] / err2[1]) / log(2);
+        real_t convi = -log(erri[2] / erri[1]) / log(2);
+
+        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
+        ASSERT_GE(conv2, M_WAVELET_N - 0.1);
+        ASSERT_GE(convi, M_WAVELET_N - 0.1);
     }
 }
 
-TEST_F(valid_Wavelet_Ghost, ghost_convergence_extrap) {
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_extrap_polynom) {
     real_t ei[2];
     real_t e2[2];
     for (lda_t id = 0; id < 3; id++) {
@@ -142,8 +214,8 @@ TEST_F(valid_Wavelet_Ghost, ghost_convergence_extrap) {
     }
 }
 
-
-TEST_F(valid_Wavelet_Ghost, ghost_convergence_dirichlet_0) {
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_dirichlet0_polynom) {
     real_t ei[2];
     real_t e2[2];
     for (lda_t id = 0; id < 3; id++) {
@@ -217,8 +289,8 @@ TEST_F(valid_Wavelet_Ghost, ghost_convergence_dirichlet_0) {
     }
 }
 
-
-TEST_F(valid_Wavelet_Ghost, ghost_convergence_neuman_0) {
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_neuman0_cos) {
     real_t ei[2];
     real_t e2[2];
     for (lda_t id = 0; id < 3; id++) {
@@ -245,11 +317,11 @@ TEST_F(valid_Wavelet_Ghost, ghost_convergence_neuman_0) {
             test.bctype(M_BC_NEU, 0, 2 * id + 1);
 
             // create the initial field
-            real_t freq[3]    = {0.0, 0.0, 0.0};
-            real_t coslen[3]  = {L[0], L[1], L[2]};
-            real_t alpha[3]   = {0.0, 0.0, 0.0};
-            freq[id]          = 2.0;
-            alpha[id]         = 1.0;
+            real_t freq[3]   = {0.0, 0.0, 0.0};
+            real_t coslen[3] = {L[0], L[1], L[2]};
+            real_t alpha[3]  = {0.0, 0.0, 0.0};
+            freq[id]         = 2.0;
+            alpha[id]        = 1.0;
 
             SetCosinus field_init(coslen, freq, alpha);
             field_init(&grid, &test);
@@ -289,4 +361,3 @@ TEST_F(valid_Wavelet_Ghost, ghost_convergence_neuman_0) {
         ASSERT_GE(conv2, M_WAVELET_N - 0.1);
     }
 }
-
