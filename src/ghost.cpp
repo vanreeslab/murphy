@@ -1094,17 +1094,17 @@ inline void Ghost::Compute4Block_Phys2Myself_(const qid_t* qid, GridBlock* cur_b
     for (auto gblock : (*phys_[qid->cid])) {
         bctype_t bctype = fid->bctype(ida_, gblock->iface());
         // get the correct face_start
-        if (bctype == M_BC_EVEN) {
-            EvenBoundary<M_WAVELET_N / 2> bc = EvenBoundary<M_WAVELET_N / 2>();
+        if (bctype == M_BC_NEU) {
+            NeumanBoundary<M_WAVELET_N - 1> bc;
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
-        } else if (bctype == M_BC_ODD) {
-            OddBoundary<M_WAVELET_N / 2> bc = OddBoundary<M_WAVELET_N / 2>();
+        } else if (bctype == M_BC_DIR) {
+            DirichletBoundary<M_WAVELET_N - 1> bc;
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
         } else if (bctype == M_BC_EXTRAP) {
-            ExtrapBoundary<M_WAVELET_N> bc = ExtrapBoundary<M_WAVELET_N>();
+            ExtrapBoundary<M_WAVELET_N> bc;
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
         } else if (bctype == M_BC_ZERO) {
-            ZeroBoundary bc = ZeroBoundary();
+            ZeroBoundary bc;
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
         } else {
             m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
@@ -1158,17 +1158,17 @@ inline void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur
         coarse_block.Reset(CoarseNGhostFront(interp_), CoarseStride(interp_), coarse_start, coarse_end);
         data_ptr data_trg = ptr_trg + m_zeroidx(0, &coarse_block);
         // get the correct face_start
-        if (bctype == M_BC_EVEN) {
-            EvenBoundary<M_WAVELET_N / 2> bc = EvenBoundary<M_WAVELET_N / 2>();
+        if (bctype == M_BC_NEU) {
+            NeumanBoundary<M_WAVELET_N - 1> bc;
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_ODD) {
-            OddBoundary<M_WAVELET_N / 2> bc = OddBoundary<M_WAVELET_N / 2>();
+        } else if (bctype == M_BC_DIR) {
+            DirichletBoundary<M_WAVELET_N - 1> bc;
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_EXTRAP) {
-            ExtrapBoundary<M_WAVELET_N> bc = ExtrapBoundary<M_WAVELET_N>();
+            ExtrapBoundary<M_WAVELET_N> bc;
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_ZERO) {
-            ZeroBoundary bc = ZeroBoundary();
+            ZeroBoundary bc;
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else {
             m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
