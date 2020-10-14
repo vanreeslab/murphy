@@ -237,12 +237,14 @@ class NeumanBoundary : public Boundary<npoint> {
         m_assert(bc_value == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         // get the correct
         real_t f0_value;
-        if constexpr (npoint == 2) {
-            f0_value = (bc_value - (2.0 * f[0] - 0.5 * f[1])) * (-2.0 / 3.0);
-        } else if (npoint == 4) {
-            f0_value = (bc_value - (4.0 * f[0] - 3.0 * f[1] + 4.0 / 3.0 * f[2] - 1.0 / 4.0 * f[3])) * (-12.0 / 25.0);
-        } else if (npoint == 6) {
-            f0_value = (bc_value - (6.0 * f[0] - 15.0 / 2.0 * f[1] + 20.0 / 3.0 * f[2] - 15.0 / 4.0 * f[3] + 6.0 / 5.0 * f[4] - 1.0 / 6.0 * f[5])) * (-20.0 / 49.0);
+        if constexpr (npoint == 1) {
+            f0_value = (bc_value - (1.0 * f[0])) * (-1.0);
+        } else if (npoint == 3) {
+            f0_value = (bc_value - (3.0 * f[0] - 3.0 / 2.0 * f[1] + 1.0 / 3.0 * f[2])) * (-6.0 / 11.0);
+        } else if (npoint == 5) {
+            f0_value = (bc_value - (5.0 * f[0] - 5.0 * f[1] + 10.0 / 3.0 * f[2] - 5.0 / 4.0 * f[3] + 1.0 / 5.0 * f[4])) * (-60.0 / 137.0);
+        } else {
+            m_assert(false, "error, the npoint = %d is not valid", npoint);
         }
         //-------------------------------------------------------------------------
         constexpr lda_t len = npoint + 1;

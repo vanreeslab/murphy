@@ -163,13 +163,14 @@ void SetCosinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 }
 
 //=====================================================================================================
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3]) : SetPolynom(degree, direction, nullptr) {}
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const Interpolator* interp) : SetValue(interp) {
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3]) : SetPolynom(degree, direction, shift, nullptr) {}
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const Interpolator* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
-    for (int id = 0; id < 3; id++) {
-        deg_[id] = degree[id];
-        dir_[id] = direction[id];
+    for (lda_t id = 0; id < 3; id++) {
+        deg_[id]   = degree[id];
+        dir_[id]   = direction[id];
+        shift_[id] = shift[id];
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -188,7 +189,9 @@ void SetPolynom::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
                     // get the position
                     m_pos(pos, i0, i1, i2, hgrid, xyz);
 
-                    data[m_idx(i0, i1, i2)] = dir_[0] * pow(pos[0], deg_[0]) + dir_[1] * pow(pos[1], deg_[1]) + dir_[2] * pow(pos[2], deg_[2]);
+                    data[m_idx(i0, i1, i2)] = dir_[0] * pow(pos[0] - shift_[0], deg_[0]) +
+                                              dir_[1] * pow(pos[1] - shift_[1], deg_[1]) +
+                                              dir_[2] * pow(pos[2] - shift_[2], deg_[2]);
                 }
             }
         }

@@ -93,15 +93,16 @@ class SetCosinus : public SetValue {
  */
 class SetPolynom : public SetValue {
    protected:
-    bool   extend_ = false;            //!< indicate if we need to fill the ghosts or not
-    lid_t  deg_[3] = {0, 0, 0};        //!< the degree of the polynomial
-    real_t dir_[3] = {0.0, 0.0, 0.0};  //!< the direction concerned: 1.0 means involved, 0.0 means not involved
+    bool   extend_   = false;            //!< indicate if we need to fill the ghosts or not
+    lid_t  deg_[3]   = {0, 0, 0};        //!< the degree of the polynomial
+    real_t dir_[3]   = {0.0, 0.0, 0.0};  //!< the direction concerned: 1.0 means involved, 0.0 means not involved
+    real_t shift_[3] = {0.0, 0.0, 0.0};
 
     void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
 
    public:
-    SetPolynom(const lid_t degree[3], const real_t direction[3]);
-    SetPolynom(const lid_t degree[3], const real_t direction[3], const Interpolator* interp);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3]);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const Interpolator* interp);
 };
 
 //=====================================================================================================
