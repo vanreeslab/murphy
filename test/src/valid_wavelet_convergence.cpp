@@ -33,7 +33,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
         lid_t L[3]      = {1, 1, 1};
         L[id]           = 3;
 
-        for (level_t il = 1; il < 3; ++il) {
+        for (level_t il = 2; il < 4; ++il) {
             Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
@@ -96,7 +96,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_cos) {
         lid_t L[3]      = {1, 1, 1};
         L[id]           = 3;
 
-        for (level_t il = 1; il < 3; ++il) {
+        for (level_t il = 2; il < 4; ++il) {
             Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
@@ -153,7 +153,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_extrap_polynom) {
     real_t ei[2];
     real_t e2[2];
     for (lda_t id = 0; id < 3; id++) {
-        for (level_t il = 1; il < 3; il++) {
+        for (level_t il = 2; il < 4; il++) {
             bool  period[3] = {false, false, false};
             lid_t L[3]      = {1, 1, 1};
             L[id]           = 3;
@@ -219,7 +219,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_dirichlet0_polynom
     real_t ei[2];
     real_t e2[2];
     for (lda_t id = 0; id < 3; id++) {
-        for (level_t il = 1; il < 3; il++) {
+        for (level_t il = 2; il < 4; il++) {
             bool period[3] = {true, true, true};
             period[id]     = false;
             lid_t L[3]     = {1, 1, 1};
@@ -294,7 +294,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_neuman0_cos) {
     real_t ei[2];
     real_t e2[2];
     for (lda_t id = 0; id < 3; id++) {
-        for (level_t il = 1; il < 3; il++) {
+        for (level_t il = 2; il < 4; il++) {
             bool period[3] = {true, true, true};
             period[id]     = false;
             lid_t L[3]     = {1, 1, 1};
