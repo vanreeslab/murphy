@@ -27,8 +27,8 @@
  * 
  * The following filters are used:
  * - ha = compute the scaling from a given level -> coarsening
- * - ga = compute the details from a given level -> detail computation
- * - gs = reconstruction from the scaling and 0 detail of the scaling coef -> refinement
+ * - ga = compute the details from a given level -> detail computation: dual lifting only :-)
+ * - gs = reconstruction from the scaling and 0 detail of the scaling coef -> refinement: should be -ga!!
  * 
  * 
  * @warning we MUST satisfy Nt <= N
@@ -59,6 +59,34 @@ class Wavelet : public Interpolator {
     static constexpr real_t ha_[]   = {0.015625, 0.0, -0.125, 0.25, 0.71875, 0.25, -0.125, 0.0, 0.015625};
     static constexpr real_t ga_[]   = {0.0625, 0.0, -0.5625, 1.0, -0.5625, 0.0, 0.0625};
     static constexpr real_t gs_[]   = {-0.0625, 0.5625, 0.5625, -0.0625};
+#elif (M_WAVELET_N == 4) && (M_WAVELET_NT == 4)
+    static constexpr lid_t  len_ha_ = 13;
+    static constexpr lid_t  len_ga_ = 7;
+    static constexpr lid_t  len_gs_ = 4;
+    static constexpr real_t ha_[]   = {-1.0 / 512.0, 0.0, 9.0 / 256.0, -1.0 / 32.0, -63.0 / 512.0, 9.0 / 32.0, 87.0 / 128.0, 9.0 / 32.0, -63.0 / 512.0, -1.0 / 32.0, 9.0 / 256.0, 0.0, -1.0 / 512.0};
+    static constexpr real_t ga_[]   = {0.0625, 0.0, -0.5625, 1.0, -0.5625, 0.0, 0.0625};
+    static constexpr real_t gs_[]   = {-0.0625, 0.5625, 0.5625, -0.0625};
+#elif (M_WAVELET_N == 6) && (M_WAVELET_NT == 0)
+    static constexpr lid_t  len_ha_ = 1;
+    static constexpr lid_t  len_ga_ = 11;
+    static constexpr lid_t  len_gs_ = 6;
+    static constexpr real_t ha_[]   = {1.0};
+    static constexpr real_t ga_[]   = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
+    static constexpr real_t gs_[]   = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+#elif (M_WAVELET_N == 6) && (M_WAVELET_NT == 2)
+    static constexpr lid_t  len_ha_ = 13;
+    static constexpr lid_t  len_ga_ = 11;
+    static constexpr lid_t  len_gs_ = 6;
+    static constexpr real_t ha_[]   = {-3.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -125.0 / 1024.0, 1.0 / 4.0, 181.0 / 256.0, 1.0 / 4.0, -125.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -3.0 / 1024.0};
+    static constexpr real_t ga_[]   = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
+    static constexpr real_t gs_[]   = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+#elif (M_WAVELET_N == 6) && (M_WAVELET_NT == 4)
+    static constexpr lid_t  len_ha_ = 17;
+    static constexpr lid_t  len_ga_ = 11;
+    static constexpr lid_t  len_gs_ = 6;
+    static constexpr real_t ha_[]   = {3.0 / 8192.0, 0.0, -13.0 / 2048.0, 0.0, 87.0 / 2048.0, -1.0 / 32.0, -243.0 / 2048.0, 9.0 / 32.0, 2721.0 / 4096.0, 9.0 / 32.0, -243.0 / 2048.0, -1.0 / 32.0, 87.0 / 2048.0, 0.0, -13.0 / 2048.0, 0.0, 3.0 / 8192.0};
+    static constexpr real_t ga_[]   = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
+    static constexpr real_t gs_[]   = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
 #else
     static constexpr lid_t  len_ha_ = 0;
     static constexpr lid_t  len_ga_ = 0;
