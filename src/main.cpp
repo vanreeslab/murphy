@@ -60,8 +60,8 @@ int main(int argc, char** argv) {
 
 
         // set the BC for kiding
-        vort.bctype(M_BC_EXTRAP_3);
-        diff.bctype(M_BC_EXTRAP_3);
+        vort.bctype(M_BC_EXTRAP);
+        diff.bctype(M_BC_EXTRAP);
 
         // adapt the mesh
         grid.SetTol(1e-0, 1e-2);

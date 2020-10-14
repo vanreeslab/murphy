@@ -15,7 +15,7 @@ static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0},
  * 
  * @tparam npoint the number of points needed within the block to be used in @ref Stencil_()
  */
-template <int npoint>
+template <lda_t npoint>
 class Boundary {
    public:
     /**
@@ -41,7 +41,8 @@ class Boundary {
     * @param value the boundary condition value, evaluated at the interface
     * @return real_t the value to set to the ghost point
     */
-    virtual real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) = 0;
+    // virtual real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) = 0;
+    virtual inline real_t Stencil_(real_t* f, real_t* xf, const real_t xp, const real_t bc_value) = 0;
 
     /**
      * @brief Given a subblock and a boundary condition value, apply a physical BC on a face
@@ -80,6 +81,7 @@ class Boundary {
                 for (lid_t i0 = start[0]; i0 < end[0]; i0++) {
                     // we need three interpolations points in the face direction
                     real_t f[npoint];
+                    real_t xf[npoint];
                     for (sid_t ip = 0; ip < npoint; ip++) {
                         // if the direction is not physics, just consider the current ID,
                         // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
@@ -97,14 +99,19 @@ class Boundary {
                         m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block->stride() - block->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
                         m_assert((((fstart[2] + idx2) * isphys[2]) >= 0) && ((fstart[2] + idx2) * isphys[2]) < (block->stride() - block->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
 
+                        // store the result
                         f[ip] = ldata[m_midx(idx0, idx1, idx2, 0, block)];
+                        // get the data position
+                        real_t data_pos[3];
+                        m_pos_relative(data_pos, idx0, idx1, idx2, hgrid);
+                        xf[ip] = data_pos[dir];
                     }
-                    // get the ghost point position
+                    // get the position of the ghost
                     real_t pos[3];
                     m_pos_relative(pos, i0, i1, i2, hgrid);
 
                     // get the ghost value
-                    ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, pos[dir], hgrid[dir], fsign[dir], boundary_condition);
+                    ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, xf, pos[dir], boundary_condition);
                 }
             }
         }
@@ -112,33 +119,176 @@ class Boundary {
     //-------------------------------------------------------------------------
 };
 
-class EvenBoundary_4 : public Boundary<3> {
-   protected:
-    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t flux) override;
-};
-class OddBoundary_4 : public Boundary<3> {
-   protected:
-    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
-};
-
-class ExtrapBoundary_4 : public Boundary<4> {
-   protected:
-    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
-};
-
-class ExtrapBoundary_3 : public Boundary<3> {
-   protected:
-    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
-};
-
-class ExtrapBoundary_5 : public Boundary<5> {
-   protected:
-    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
-};
-
 class ZeroBoundary : public Boundary<0> {
    protected:
-    real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
+    // real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
+    real_t Stencil_(real_t* f, real_t* xf, const real_t xp, const real_t bc_value) override { return 0.0; };
+};
+
+
+template <lda_t npoint>
+class ExtrapBoundary : public Boundary<npoint> {
+   protected:
+    /**
+     * @brief Impletement the Neville algorithm to extrapolate the value of the polynomial with no boundary information
+     * 
+     * The Neville implementation constructs the Lagrange polynomial in a cheap and robust way.
+     * We refer to Numerical Recipes in C book for more details.
+     * 
+     * Compared to the version presented p109, we always have an ns = 0 as we always "extrapolate on the 0th side of the f array"
+     * 
+     * @param f 
+     * @param xf 
+     * @param xp 
+     * @param bc_value 
+     * @return real_t 
+     */
+    inline real_t Stencil_(real_t* f, real_t* xf, const real_t xp, const real_t bc_value) override {
+        //-------------------------------------------------------------------------
+        real_t d[npoint];
+        real_t c[npoint];
+        // m = 0
+        for (lda_t id = 0; id < npoint; ++id) {
+            d[id] = f[id];
+            c[id] = f[id];
+        }
+        real_t value = c[0];  // ns = 0
+        // m = 1 -> npoint
+        for (lda_t m = 1; m < npoint; ++m) {
+            for (lda_t i = 0; i < (npoint - m); ++i) {
+                const real_t ho  = xf[i] - xp;
+                const real_t hp  = xf[i + m] - xp;
+                const real_t den = xf[i] - xf[i + m];
+                const real_t w   = (c[i + 1] - d[i]) / den;
+                d[i] = hp * w;
+                c[i] = ho * w;
+            }
+            value += c[0];  // ns = 0
+        }
+        // m_log("return %e",f[0]);
+        return value;
+        //-------------------------------------------------------------------------
+    }
+};
+
+template <lda_t npoint>
+class OddBoundary : public Boundary<npoint> {
+   protected:
+    /**
+     * @brief Impletement the Neville algorithm to obtain an ODD polynomial around a value, i.e. a Dirichlet boundary condition
+     * 
+     * We refer to Numerical Recipes in C book for more details.
+     * Compared to the version presented p109, we always have an ns = 0 as we always "extrapolate on the 0th side of the f array"
+     * 
+     * :warning: this is quite overshoot as a method but one of the only general enough... -> the result is trivial
+     * 
+     * @param f 
+     * @param xf 
+     * @param xp 
+     * @param bc_value 
+     * @return real_t 
+     */
+    real_t Stencil_(real_t* f, real_t* xf, const real_t xp, const real_t bc_value) override {
+        //-------------------------------------------------------------------------
+        constexpr lda_t len  = 2 * npoint;
+        constexpr lda_t sym  = npoint - 1;
+        constexpr lda_t half = npoint;
+
+        // get the arrays
+        real_t d[len];
+        real_t c[len];
+        real_t xe[len];
+
+        // set the rest of the vector
+        for (lda_t id = 0; id < npoint; ++id) {
+            const real_t fval = f[id] - bc_value;
+            // store the value
+            c[half + id]  = fval;
+            d[half + id]  = fval;
+            xe[half + id] = xf[id];
+            // anti-symmetry
+            d[sym - id]  = -fval;
+            c[sym - id]  = -fval;
+            xe[sym - id] = -xf[id];
+        }
+
+        real_t value = bc_value + c[half];  // ns = 0
+        // m = 1 -> npoint
+        for (lda_t m = 1; m < len; ++m) {
+            for (lda_t i = 0; i < (len - m); ++i) {
+                const real_t ho  = xe[i] - xp;
+                const real_t hp  = xe[i + m] - xp;
+                const real_t den = xe[i] - xe[i + m];
+                const real_t w   = (c[i + 1] - d[i]) / den;
+                d[i]             = hp * w;
+                c[i]             = ho * w;
+            }
+            value += c[0];  // ns = 0
+        }
+        // m_log("return %e",f[0]);
+        return value;
+        //-------------------------------------------------------------------------
+    }
+};
+
+template <lda_t npoint>
+class EvenBoundary : public Boundary<npoint> {
+   protected:
+    /**
+     * @brief Impletement the Neville algorithm to obtain an EVEN polynomial around a flux, i.e. a Neuman boundary condition
+     * 
+     * We refer to Numerical Recipes in C book for more details.
+     * Compared to the version presented p109, we always have an ns = 0 as we always "extrapolate on the 0th side of the f array"
+     * 
+     * :warning: this is quite overshoot as a method but one of the only general enough... -> the result is trivial
+     * 
+     * @param f 
+     * @param xf 
+     * @param xp 
+     * @param bc_value 
+     * @return real_t 
+     */
+    real_t Stencil_(real_t* f, real_t* xf, const real_t xp, const real_t bc_value) override {
+        //-------------------------------------------------------------------------
+        constexpr lda_t len  = 2 * npoint;
+        constexpr lda_t sym  = npoint - 1;
+        constexpr lda_t half = npoint;
+
+        // get the arrays
+        real_t d[len];
+        real_t c[len];
+        real_t xe[len];
+
+        // set the rest of the vector
+        for (lda_t id = 0; id < npoint; ++id) {
+            const real_t fval = f[id] - bc_value;
+            // store the value
+            c[half + id]  = fval;
+            d[half + id]  = fval;
+            xe[half + id] = xf[id];
+            // anti-symmetry
+            d[sym - id]  = fval;
+            c[sym - id]  = fval;
+            xe[sym - id] = -xf[id];
+        }
+
+        real_t value = bc_value * xp + c[half];  // ns = 0
+        // m = 1 -> npoint
+        for (lda_t m = 1; m < len; ++m) {
+            for (lda_t i = 0; i < (len - m); ++i) {
+                const real_t ho  = xe[i] - xp;
+                const real_t hp  = xe[i + m] - xp;
+                const real_t den = xe[i] - xe[i + m];
+                const real_t w   = (c[i + 1] - d[i]) / den;
+                d[i]             = hp * w;
+                c[i]             = ho * w;
+            }
+            value += c[0];  // ns = 0
+        }
+        // m_log("return %e",f[0]);
+        return value;
+        //-------------------------------------------------------------------------
+    }
 };
 
 #endif  // SRC_BOUNDARY_HPP_

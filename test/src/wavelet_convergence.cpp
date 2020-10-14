@@ -79,7 +79,7 @@ TEST_F(valid_Wavelet_Convergence, periodic_sinus) {
         real_t conv2 = -log(err2[2] / err2[1]) / log(2);
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
-        m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
+        m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
         ASSERT_GE(conv2, M_WAVELET_N - 0.1);
         ASSERT_GE(convi, M_WAVELET_N - 0.1);
     }
@@ -142,7 +142,7 @@ TEST_F(valid_Wavelet_Convergence, periodic_cosinus) {
         real_t conv2 = -log(err2[2] / err2[1]) / log(2);
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
-        m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
+        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
         ASSERT_GE(conv2, M_WAVELET_N - 0.1);
         ASSERT_GE(convi, M_WAVELET_N - 0.1);
     }

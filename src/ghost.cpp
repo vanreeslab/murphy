@@ -1095,19 +1095,13 @@ inline void Ghost::Compute4Block_Phys2Myself_(const qid_t* qid, GridBlock* cur_b
         bctype_t bctype = fid->bctype(ida_, gblock->iface());
         // get the correct face_start
         if (bctype == M_BC_EVEN) {
-            EvenBoundary_4 bc = EvenBoundary_4();
+            EvenBoundary<M_WAVELET_N / 2> bc = EvenBoundary<M_WAVELET_N / 2>();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
         } else if (bctype == M_BC_ODD) {
-            OddBoundary_4 bc = OddBoundary_4();
+            OddBoundary<M_WAVELET_N / 2> bc = OddBoundary<M_WAVELET_N / 2>();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
-        } else if (bctype == M_BC_EXTRAP_3) {
-            ExtrapBoundary_3 bc = ExtrapBoundary_3();
-            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
-        } else if (bctype == M_BC_EXTRAP_4) {
-            ExtrapBoundary_4 bc = ExtrapBoundary_4();
-            bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
-        } else if (bctype == M_BC_EXTRAP_5) {
-            ExtrapBoundary_5 bc = ExtrapBoundary_5();
+        } else if (bctype == M_BC_EXTRAP) {
+            ExtrapBoundary<M_WAVELET_N> bc = ExtrapBoundary<M_WAVELET_N>();
             bc(gblock->iface(), face_start[gblock->iface()], cur_block->hgrid(), 0.0, gblock, data_trg);
         } else if (bctype == M_BC_ZERO) {
             ZeroBoundary bc = ZeroBoundary();
@@ -1165,19 +1159,13 @@ inline void Ghost::Compute4Block_Myself2Coarse_(const qid_t* qid, GridBlock* cur
         data_ptr data_trg = ptr_trg + m_zeroidx(0, &coarse_block);
         // get the correct face_start
         if (bctype == M_BC_EVEN) {
-            EvenBoundary_4 bc = EvenBoundary_4();
+            EvenBoundary<M_WAVELET_N / 2> bc = EvenBoundary<M_WAVELET_N / 2>();
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_ODD) {
-            OddBoundary_4 bc = OddBoundary_4();
+            OddBoundary<M_WAVELET_N / 2> bc = OddBoundary<M_WAVELET_N / 2>();
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_EXTRAP_3) {
-            ExtrapBoundary_3 bc = ExtrapBoundary_3();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_EXTRAP_4) {
-            ExtrapBoundary_4 bc = ExtrapBoundary_4();
-            bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_EXTRAP_5) {
-            ExtrapBoundary_5 bc = ExtrapBoundary_5();
+        } else if (bctype == M_BC_EXTRAP) {
+            ExtrapBoundary<M_WAVELET_N> bc = ExtrapBoundary<M_WAVELET_N>();
             bc(gblock->iface(), fstart, cur_block->hgrid(), 0.0, &coarse_block, data_trg);
         } else if (bctype == M_BC_ZERO) {
             ZeroBoundary bc = ZeroBoundary();

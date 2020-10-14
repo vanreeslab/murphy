@@ -21,24 +21,21 @@ class valid_Stencil : public ::testing::Test {
 
 using std::list;
 
-TEST_F(valid_Stencil,gradient_periodic_cosinus){
+TEST_F(valid_Stencil, gradient_periodic_cosinus) {
     for (lda_t id = 0; id < 3; ++id) {
-        
         // init the errors
         real_t erri[3] = {0.0, 0.0, 0.0};
         real_t err2[3] = {0.0, 0.0, 0.0};
 
         // setup the mesh
         bool  period[3] = {true, true, true};
-        lid_t L[3]      = {1, 1, 1};
-        L[id]           = 3;
+        lid_t L[3]      = {3, 3, 3};
 
         for (level_t il = 1; il < 3; ++il) {
             Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
-            real_t origin[3]      = {0.0, 0.0, 0.0};
-            origin[id]            = 1;
+            real_t      origin[3] = {1.0, 1.0, 1.0};
             real_t      length[3] = {1.0, 1.0, 1.0};
             Patch       p1(origin, length, il + 1);
             list<Patch> patch{p1};
@@ -94,7 +91,7 @@ TEST_F(valid_Stencil,gradient_periodic_cosinus){
         real_t conv2 = -log(err2[2] / err2[1]) / log(2);
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
-        m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
+        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
         ASSERT_GE(conv2, m_min(M_WAVELET_N - 1, 2) - 0.1);
         ASSERT_GE(convi, m_min(M_WAVELET_N-1,2) - 0.1);
     }
@@ -109,17 +106,15 @@ TEST_F(valid_Stencil,laplacian_periodic_cosinus){
 
         // setup the mesh
         bool  period[3] = {true, true, true};
-        lid_t L[3]      = {1, 1, 1};
-        L[id]           = 3;
+        lid_t L[3]      = {3, 3, 3};
 
         for (level_t il = 1; il < 3; ++il) {
             Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
-            real_t origin[3]      = {0.0, 0.0, 0.0};
-            origin[id]            = 1;
+            real_t      origin[3] = {1.0, 1.0, 1.0};
             real_t      length[3] = {1.0, 1.0, 1.0};
-            Patch       p1(origin, length, il+1);
+            Patch       p1(origin, length, il + 1);
             list<Patch> patch{p1};
             grid.Adapt(&patch);
 
@@ -164,7 +159,7 @@ TEST_F(valid_Stencil,laplacian_periodic_cosinus){
         real_t conv2 = -log(err2[2] / err2[1]) / log(2);
         real_t convi = -log(erri[2] / erri[1]) / log(2);
 
-        m_log("the convergence orders are: norm_2:%e norm_i:%e", convi, conv2);
+        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
         ASSERT_GE(conv2, m_min(M_WAVELET_N-2,2) - 0.1);
         ASSERT_GE(convi, m_min(M_WAVELET_N-2,2) - 0.1);
     }
