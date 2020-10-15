@@ -33,7 +33,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
         lid_t L[3]      = {1, 1, 1};
         L[id]           = 3;
 
-        for (level_t il = 0; il < 1; ++il) {
+        for (level_t il = 0; il < 2; ++il) {
             Grid grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
