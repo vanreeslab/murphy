@@ -11,8 +11,9 @@
 #include "subblock.hpp"
 #include "wavelet.hpp"
 
-#define ORDER_TOL 0.3
-#define BLVL 2
+#define ORDER2_TOL 0.25
+#define ORDERI_TOL 1.0
+#define BLVL 1
 
 using std::list;
 
@@ -80,8 +81,8 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
         real_t convi = -log(erri[1] / erri[0]) / log(2);
 
         m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, M_WAVELET_N - ORDER_TOL);
-        ASSERT_GE(convi, M_WAVELET_N - ORDER_TOL);
+        ASSERT_GE(conv2, M_WAVELET_N - ORDER2_TOL);
+        ASSERT_GE(convi, M_WAVELET_N - ORDERI_TOL);
     }
 }
 //==============================================================================================================================
@@ -142,8 +143,8 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_cos) {
         real_t convi = -log(erri[1] / erri[0]) / log(2);
 
         m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, M_WAVELET_N - ORDER_TOL);
-        ASSERT_GE(convi, M_WAVELET_N - ORDER_TOL);
+        ASSERT_GE(conv2, M_WAVELET_N - ORDER2_TOL);
+        ASSERT_GE(convi, M_WAVELET_N - ORDERI_TOL);
     }
 }
 
@@ -174,7 +175,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_extrap_cos) {
             const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
             const real_t freq[3]    = {2.0, 2.0, 2.0};
             const real_t alpha[3]   = {1.0, 1.0, 1.0};
-            SetCosinus     field_init(sin_len, freq, alpha);
+            SetCosinus   field_init(sin_len, freq, alpha);
             field_init(&grid, &test);
 
             // pull the ghosts
@@ -207,8 +208,8 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_extrap_cos) {
         real_t convi = -log(erri[1] / erri[0]) / log(2);
 
         m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, M_WAVELET_N - ORDER_TOL);
-        ASSERT_GE(convi, M_WAVELET_N - ORDER_TOL);
+        ASSERT_GE(conv2, M_WAVELET_N - ORDER2_TOL);
+        ASSERT_GE(convi, M_WAVELET_N - ORDERI_TOL);
     }
 }
 
@@ -281,8 +282,8 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_dirichlet0_polynom
         real_t convi = -log(erri[1] / erri[0]) / log(2);
 
         m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, M_WAVELET_N - ORDER_TOL);
-        ASSERT_GE(convi, M_WAVELET_N - ORDER_TOL);
+        ASSERT_GE(conv2, M_WAVELET_N - ORDER2_TOL);
+        ASSERT_GE(convi, M_WAVELET_N - ORDERI_TOL);
     }
 }
 
@@ -353,7 +354,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_neuman0_cos) {
         real_t convi = -log(erri[1] / erri[0]) / log(2);
 
         m_log("==> the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, M_WAVELET_N - ORDER_TOL);
-        ASSERT_GE(convi, M_WAVELET_N - ORDER_TOL);
+        ASSERT_GE(conv2, M_WAVELET_N - ORDER2_TOL);
+        ASSERT_GE(convi, M_WAVELET_N - ORDERI_TOL);
     }
 }
