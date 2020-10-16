@@ -1,0 +1,104 @@
+#include <mpi.h>
+
+#include "doop.hpp"
+#include "error.hpp"
+#include "grid.hpp"
+#include "gtest/gtest.h"
+#include "ioh5.hpp"
+#include "murphy.hpp"
+#include "setvalues.hpp"
+#include "subblock.hpp"
+#include "wavelet.hpp"
+
+#define DOUBLE_TOL 1e-13
+#define BLVL 1
+
+using std::list;
+
+class valid_Wavelet_Epsilon : public ::testing::Test {
+   protected:
+    void SetUp() override{};
+    void TearDown() override{};
+};
+
+static constexpr lid_t m_gs     = M_GS;
+static constexpr lid_t m_n      = M_N;
+static constexpr lid_t m_hn     = M_HN;
+static constexpr lid_t m_stride = m_n + 6 * m_gs;
+
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Epsilon, epsilon_coarsen) {
+    constexpr real_t hcoarse = 1.0 / (m_hn);
+    constexpr real_t hfine   = 1.0 / (m_n);
+
+    // create the memory, start in full configuration
+    SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
+    SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
+
+    real_p   ptr_fine    = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+    real_p   ptr_coarse  = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+    data_ptr data_fine   = ptr_fine + m_zeroidx(0, &block_fine);
+    data_ptr data_coarse = ptr_coarse + m_zeroidx(0, &block_coarse);
+
+    // fill the fine block!
+    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
+        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
+            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
+                real_t x      = i0 * hfine;
+                real_t y      = i1 * hfine;
+                real_t z      = i2 * hfine;
+                real_t pos[3] = {x, y, z};
+
+                data_fine[m_midx(i0, i1, i2, 0, &block_fine)] = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
+            }
+        }
+    }
+
+    // compute the max detail
+    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+    Wavelet interp;
+    real_t  detail_max;
+    interp.Details(&block_fine, data_fine, &detail_max);
+
+    // set the index for coarsening computation
+    block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
+
+    // do the coarsening
+    lid_t shift[3] = {0};
+    interp.Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
+
+    // set the index for refinement computation
+    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+    interp.Interpolate(-1, shift, &block_coarse, data_coarse, &block_fine, data_fine);
+
+    // now compute the error
+    real_t erri = 0.0;
+    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
+        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
+            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
+                real_t x      = i0 * hfine;
+                real_t y      = i1 * hfine;
+                real_t z      = i2 * hfine;
+                real_t pos[3] = {x, y, z};
+
+                real_t exact = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
+                real_t value = data_fine[m_midx(i0, i1, i2, 0, &block_fine)];
+
+                real_t err = fabs(exact - value);
+
+                if (err > erri) {
+                    m_log("update the value, I have %e instead of %e @ %d %d %d", value, exact, i0, i1, i2);
+                }
+                erri = m_max(erri, err);
+            }
+        }
+    }
+
+    m_log("[%s] erri = %e vs detail = %e",interp.Identity().c_str() ,erri, detail_max);
+
+    // ciao
+    m_free(ptr_fine);
+    m_free(ptr_coarse);
+
+    ASSERT_NEAR(0.0, 0.0, DOUBLE_TOL);
+}

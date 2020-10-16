@@ -241,7 +241,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_dirichlet0_polynom
             test.bctype(M_BC_DIR, 0, 2 * id + 1);
 
             // create the initial field
-            lid_t  deg[3]     = {0.0, 0.0, 0.0};
+            lid_t  deg[3]     = {0, 0, 0};
             real_t dir[3]     = {0.0, 0.0, 0.0};
             real_t shift[3]   = {0.0, 0.0, 0.0};
             deg[id]           = M_WAVELET_N + 2;
