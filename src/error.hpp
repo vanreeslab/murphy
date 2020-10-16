@@ -13,7 +13,7 @@ class ErrorCalculator : public BlockOperator{
 
    public:
     explicit ErrorCalculator();
-    explicit ErrorCalculator(const Interpolator* interp);
+    explicit ErrorCalculator(const InterpolatingWavelet* interp);
 
     void Normi(Grid* grid, const Field* field, const Field* sol, real_t* norm_i);
     void Norm2(Grid* grid, const Field* field, const Field* sol, real_t* norm_2);

@@ -27,7 +27,7 @@ class BlockOperator {
      * @param interp the interpolation driving the number of ghost point to operate on. If nullptr, we operates from 0 to M_N
      * @param profiler the profier
      */
-    explicit BlockOperator(const Interpolator* interp) {
+    explicit BlockOperator(const InterpolatingWavelet* interp) {
         m_begin;
         //-------------------------------------------------------------------------
         do_ghost_ = (interp != nullptr);

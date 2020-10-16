@@ -156,7 +156,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 }
 
 /**
- * @brief refine a block if @ref Interpolator::Criterion() is bigger than @ref Grid::rtol()
+ * @brief refine a block if @ref InterpolatingWavelet::Criterion() is bigger than @ref Grid::rtol()
  * 
  * @param forest 
  * @param which_tree 
@@ -169,7 +169,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
-    Interpolator* interp = grid->interp();
+    InterpolatingWavelet* interp = grid->interp();
     
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
@@ -208,7 +208,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 }
 
 /**
- * @brief reply that we should coarsen the group of 8 blocks if @ref Interpolator::Criterion() is lower than @ref Grid::ctol() for everyblock.
+ * @brief reply that we should coarsen the group of 8 blocks if @ref InterpolatingWavelet::Criterion() is lower than @ref Grid::ctol() for everyblock.
  * 
  * We do NOT coarsen if one of the block does not match the criterion
  * 
@@ -222,7 +222,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
-    Interpolator* interp = grid->interp();
+    InterpolatingWavelet* interp = grid->interp();
 
     m_profStart(grid->profiler(),"wavelet criterion");
 
@@ -265,7 +265,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
 }
 
 /**
- * @brief Interpolate one block to his children or 8 children to their parent, using the Interpolator of the @ref Grid.
+ * @brief Interpolate one block to his children or 8 children to their parent, using the InterpolatingWavelet of the @ref Grid.
  * 
  * If one of the outgoing block(s) is locked, then I lock the incomming block(s)
  * 
@@ -290,7 +290,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
     auto                  f_end   = grid->FieldEnd();
-    Interpolator*         interp  = grid->interp();
+    InterpolatingWavelet*         interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
     m_profStart(grid->profiler(), "wavelet interpolation");

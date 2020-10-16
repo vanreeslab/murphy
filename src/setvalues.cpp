@@ -8,7 +8,7 @@
  * @param interp the Interpolator object used to retrieve the objects
  * @param profiler the profiler used to time the operations
  */
-SetValue::SetValue(const Interpolator* interp) : BlockOperator(interp) {
+SetValue::SetValue(const InterpolatingWavelet* interp) : BlockOperator(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     // m_profCreate(profiler, "SetValue");
@@ -48,7 +48,7 @@ void SetValue::operator()(const ForestGrid* grid, Field* field, const lda_t ida)
 
 //=====================================================================================================
 SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, nullptr) {}
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Interpolator* interp) : SetValue(interp) {
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -87,7 +87,7 @@ void SetAbs::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 
 //=====================================================================================================
 SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]) : SetSinus(length, freq, alpha, nullptr) {}
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp) : SetValue(interp) {
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -125,7 +125,7 @@ void SetSinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 
 //=====================================================================================================
 SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]) : SetCosinus(length, freq, alpha, nullptr) {}
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp) : SetValue(interp) {
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -164,7 +164,7 @@ void SetCosinus::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 
 //=====================================================================================================
 SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3]) : SetPolynom(degree, direction, shift, nullptr) {}
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const Interpolator* interp) : SetValue(interp) {
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -201,7 +201,7 @@ void SetPolynom::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 
 //=====================================================================================================
 SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetExponential(center, sigma, alpha, nullptr) {}
-SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp) : SetValue(interp) {
+SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -246,7 +246,7 @@ void SetExponential::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fi
 
 //=====================================================================================================
 SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetErf(center, sigma, alpha, nullptr) {}
-SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp) : SetValue(interp) {
+SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -292,7 +292,7 @@ void SetErf::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
 
 //=====================================================================================================
 SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetVortexRing(normal, center, sigma, radius, nullptr) {}
-SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Interpolator* interp) : SetValue(interp) {
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const InterpolatingWavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;

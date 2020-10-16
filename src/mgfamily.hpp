@@ -25,8 +25,8 @@ class MGFamily {
 
     inline lid_t parent_count() const { return parent_count_; }
 
-    void ToParents(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Interpolator* interp);
-    void ToChildren(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Interpolator* interp);
+    void ToParents(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, InterpolatingWavelet* interp);
+    void ToChildren(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, InterpolatingWavelet* interp);
 };
 
 /**

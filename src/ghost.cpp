@@ -13,7 +13,7 @@
 /**
  * @brief returns the number of ghost points for the coarse block, front of the block
  */
-static lid_t CoarseNGhostFront(const Interpolator* interp) {
+static lid_t CoarseNGhostFront(const InterpolatingWavelet* interp) {
     // we need the max between the number of scaling in front
     //      = (interp->nghost_front() / 2)
     // and the number of details
@@ -25,7 +25,7 @@ static lid_t CoarseNGhostFront(const Interpolator* interp) {
 /**
  * @brief returns the number of ghost points for the coarse block, back of the block
  */
-static lid_t CoarseNGhostBack(const Interpolator* interp) {
+static lid_t CoarseNGhostBack(const InterpolatingWavelet* interp) {
     // we need the max between the number of scaling
     //      = (interp->nghost_back()+1) / 2
     const lid_t gp_scaling = ((interp->nghost_back() + 1) / 2);
@@ -39,7 +39,7 @@ static lid_t CoarseNGhostBack(const Interpolator* interp) {
  * @brief returns the stride of the coarse block
  * we need ghost points in front, at the back and M_HN points inbetween
  */
-static size_t CoarseStride(const Interpolator* interp) {
+static size_t CoarseStride(const InterpolatingWavelet* interp) {
     const lid_t gp_front = CoarseNGhostFront(interp);
     const lid_t gp_back  = CoarseNGhostBack(interp);
     return gp_front + M_HN + gp_back;
@@ -51,7 +51,7 @@ static size_t CoarseStride(const Interpolator* interp) {
  * @param interp 
  * @return size_t 
  */
-static size_t CoarseMemSize(Interpolator* interp) {
+static size_t CoarseMemSize(InterpolatingWavelet* interp) {
     return CoarseStride(interp) * CoarseStride(interp) * CoarseStride(interp) * sizeof(real_t);
 }
 
@@ -125,7 +125,7 @@ static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
  * @param interp the interpolator used
  * @return lid_t 
  */
-static inline lid_t CoarseFromBlock(const lid_t a, const Interpolator* interp) {
+static inline lid_t CoarseFromBlock(const lid_t a, const InterpolatingWavelet* interp) {
     const lid_t gp_front = CoarseNGhostFront(interp);
     const lid_t gp_back  = CoarseNGhostBack(interp);
     const lid_t b        = (a + M_N);
@@ -138,12 +138,12 @@ static inline lid_t CoarseFromBlock(const lid_t a, const Interpolator* interp) {
 /**
  * @brief Construct a new Ghost object 
  * 
- * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp) for details
+ * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, InterpolatingWavelet* interp) for details
  * 
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
  * @param interp the interpolator to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(ForestGrid* grid, Interpolator* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
+Ghost::Ghost(ForestGrid* grid, InterpolatingWavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
     //-------------------------------------------------------------------------
     // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp)
     //-------------------------------------------------------------------------
@@ -163,7 +163,7 @@ Ghost::Ghost(ForestGrid* grid, Interpolator* interp, Prof* profiler) : Ghost(gri
  * @param max_level the maximum level on which the GP are initiated
  * @param interp the interpolator to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp, Prof* profiler) {
+Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, InterpolatingWavelet* interp, Prof* profiler) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------

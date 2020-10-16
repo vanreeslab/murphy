@@ -7,7 +7,7 @@
  * 
  * @param interp the interpolator to use to get the number of actual ghost points, see BlockOperator::BlockOperator()
  */
-ErrorCalculator::ErrorCalculator(const Interpolator* interp) : BlockOperator(interp) {}
+ErrorCalculator::ErrorCalculator(const InterpolatingWavelet* interp) : BlockOperator(interp) {}
 ErrorCalculator::ErrorCalculator() : BlockOperator(nullptr) {}
 
 /**

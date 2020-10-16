@@ -53,7 +53,7 @@ class Ghost {
     MPI_Aint *local2disp_          = nullptr;         //!< for each quadrant, indicate its corresponding displacement ID (non null !only! during the initlist function, reset afterwards)
 
     ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
-    Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
+    InterpolatingWavelet *interp_;  //!< pointer to the associated @ref InterpolatingWavelet, shared, not owned
     Prof *        prof_;    //!< the profiler to time operations, not owned
 
     ListGBLocal ** block_sibling_;         //!<  list of local block on my resolution
@@ -66,8 +66,8 @@ class Ghost {
     listGBPhysic **phys_;                  //!<  physical boundary condition
 
    public:
-    Ghost(ForestGrid *grid, Interpolator *interp, Prof *profiler);
-    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, Interpolator *interp, Prof *profiler);
+    Ghost(ForestGrid *grid, InterpolatingWavelet *interp, Prof *profiler);
+    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, InterpolatingWavelet *interp, Prof *profiler);
     ~Ghost();
 
     /**

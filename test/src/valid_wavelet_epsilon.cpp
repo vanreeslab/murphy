@@ -21,80 +21,105 @@ class valid_Wavelet_Epsilon : public ::testing::Test {
     void TearDown() override{};
 };
 
-static constexpr lid_t m_gs     = M_GS;
+static constexpr lid_t m_gs     = 8;
 static constexpr lid_t m_n      = M_N;
 static constexpr lid_t m_hn     = M_HN;
 static constexpr lid_t m_stride = m_n + 6 * m_gs;
 
+static InterpolatingWavelet* GetWavelet(const sid_t n, const sid_t nt) {
+    if (n == 2 && nt == 2) {
+        return (new Wavelet<2, 2>);
+    } else if (n == 4 && nt == 0) {
+        return (new Wavelet<4, 0>);
+    } else if (n == 4 && nt == 2) {
+        return (new Wavelet<4, 2>);
+    } else if (n == 4 && nt == 4) {
+        return (new Wavelet<4, 4>);
+    } else if (n == 6 && nt == 0) {
+        return (new Wavelet<6, 0>);
+    } else if (n == 6 && nt == 2) {
+        return (new Wavelet<6, 2>);
+    } else if (n == 6 && nt == 4) {
+        return (new Wavelet<6, 4>);
+    }
+    return nullptr;
+};
+
 //==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_coarsen) {
+TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
     constexpr real_t hcoarse = 1.0 / (m_hn);
     constexpr real_t hfine   = 1.0 / (m_n);
 
-    // create the memory, start in full configuration
-    SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
-    SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
+    real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+    real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
-    real_p   ptr_fine    = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    real_p   ptr_coarse  = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    data_ptr data_fine   = ptr_fine + m_zeroidx(0, &block_fine);
-    data_ptr data_coarse = ptr_coarse + m_zeroidx(0, &block_coarse);
+    lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
 
-    // fill the fine block!
-    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
-        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
-            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
-                real_t x      = i0 * hfine;
-                real_t y      = i1 * hfine;
-                real_t z      = i2 * hfine;
-                real_t pos[3] = {x, y, z};
+    for (sid_t id = 0; id < 7; ++id) {
+        // create the memory, start in full configuration
+        SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
+        SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
 
-                data_fine[m_midx(i0, i1, i2, 0, &block_fine)] = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
-            }
-        }
-    }
+        data_ptr data_fine   = ptr_fine + m_zeroidx(0, &block_fine);
+        data_ptr data_coarse = ptr_coarse + m_zeroidx(0, &block_coarse);
 
-    // compute the max detail
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-    Wavelet interp;
-    real_t  detail_max;
-    interp.Details(&block_fine, data_fine, &detail_max);
+        // fill the fine block!
+        for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
+            for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
+                for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
+                    real_t x      = i0 * hfine;
+                    real_t y      = i1 * hfine;
+                    real_t z      = i2 * hfine;
+                    real_t pos[3] = {x, y, z};
 
-    // set the index for coarsening computation
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
-
-    // do the coarsening
-    lid_t shift[3] = {0};
-    interp.Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
-
-    // set the index for refinement computation
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-    interp.Interpolate(-1, shift, &block_coarse, data_coarse, &block_fine, data_fine);
-
-    // now compute the error
-    real_t erri = 0.0;
-    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
-        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
-            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
-                real_t x      = i0 * hfine;
-                real_t y      = i1 * hfine;
-                real_t z      = i2 * hfine;
-                real_t pos[3] = {x, y, z};
-
-                real_t exact = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
-                real_t value = data_fine[m_midx(i0, i1, i2, 0, &block_fine)];
-
-                real_t err = fabs(exact - value);
-
-                if (err > erri) {
-                    m_log("update the value, I have %e instead of %e @ %d %d %d", value, exact, i0, i1, i2);
+                    data_fine[m_midx(i0, i1, i2, 0, &block_fine)] = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
                 }
-                erri = m_max(erri, err);
             }
         }
-    }
 
-    m_log("[%s] erri = %e vs detail = %e",interp.Identity().c_str() ,erri, detail_max);
+        // compute the max detail
+        block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+        InterpolatingWavelet* interp = GetWavelet(n[id][0],n[id][1]);
+        real_t                detail_max;
+        interp->Details(&block_fine, data_fine, &detail_max);
+
+        // set the index for coarsening computation
+        block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
+
+        // do the coarsening
+        lid_t shift[3] = {0};
+        interp->Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
+
+        // set the index for refinement computation
+        block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+        interp->Interpolate(-1, shift, &block_coarse, data_coarse, &block_fine, data_fine);
+
+        // now compute the error
+        real_t erri = 0.0;
+        for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
+            for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
+                for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
+                    real_t x      = i0 * hfine;
+                    real_t y      = i1 * hfine;
+                    real_t z      = i2 * hfine;
+                    real_t pos[3] = {x, y, z};
+
+                    real_t exact = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
+                    real_t value = data_fine[m_midx(i0, i1, i2, 0, &block_fine)];
+
+                    real_t err = fabs(exact - value);
+
+                    // if (err > erri) {
+                    //     m_log("update the value, I have %e instead of %e @ %d %d %d", value, exact, i0, i1, i2);
+                    // }
+                    erri = m_max(erri, err);
+                }
+            }
+        }
+        m_log("[%s] erri = %e vs detail = %e", interp->Identity().c_str(), erri, detail_max);
+
+        delete (interp);
+    }
 
     // ciao
     m_free(ptr_fine);

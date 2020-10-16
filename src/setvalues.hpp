@@ -18,7 +18,7 @@ class SetValue : public BlockOperator {
     lda_t ida_end_;
 
    public:
-    explicit SetValue(const Interpolator* interp);
+    explicit SetValue(const InterpolatingWavelet* interp);
 
     void operator()(const ForestGrid* grid, Field* field);
     void operator()(const ForestGrid* grid, Field* field, const lda_t ida);
@@ -44,7 +44,7 @@ class SetAbs : public SetValue {
 
    public:
     SetAbs(const real_t alpha[3], const real_t center[3]);
-    SetAbs(const real_t alpha[3], const real_t center[3], const Interpolator* interp);
+    SetAbs(const real_t alpha[3], const real_t center[3], const InterpolatingWavelet* interp);
 };
 
 //=====================================================================================================
@@ -64,7 +64,7 @@ class SetSinus : public SetValue {
 
    public:
     SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]);
-    SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp);
+    SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const InterpolatingWavelet* interp);
 };
 
 //=====================================================================================================
@@ -84,7 +84,7 @@ class SetCosinus : public SetValue {
 
    public:
     SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]);
-    SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Interpolator* interp);
+    SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const InterpolatingWavelet* interp);
 };
 
 //=====================================================================================================
@@ -102,7 +102,7 @@ class SetPolynom : public SetValue {
 
    public:
     SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3]);
-    SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const Interpolator* interp);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const InterpolatingWavelet* interp);
 };
 
 //=====================================================================================================
@@ -119,7 +119,7 @@ class SetExponential : public SetValue {
 
    public:
     SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp);
+    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const InterpolatingWavelet* interp);
 };
 
 //=====================================================================================================
@@ -133,7 +133,7 @@ class SetErf : public SetValue {
 
    public:
     SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Interpolator* interp);
+    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const InterpolatingWavelet* interp);
 };
 
 //=====================================================================================================
@@ -148,7 +148,7 @@ class SetVortexRing : public SetValue {
 
    public:
     SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
-    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Interpolator* interp);
+    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const InterpolatingWavelet* interp);
 };
 
 #endif  // SRC_SETVALUES_HPP_
