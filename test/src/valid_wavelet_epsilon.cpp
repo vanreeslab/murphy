@@ -55,7 +55,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
 
     lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
 
-    for (sid_t id = 0; id < 7; ++id) {
+    // for (sid_t id = 0; id < 7; ++id) {
         // create the memory, start in full configuration
         SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
         SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
@@ -79,7 +79,8 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
 
         // compute the max detail
         block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-        InterpolatingWavelet* interp = GetWavelet(n[id][0],n[id][1]);
+        // InterpolatingWavelet* interp = GetWavelet(n[id][0], n[id][1]);
+        InterpolatingWavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
         real_t                detail_max;
         interp->Details(&block_fine, data_fine, &detail_max);
 
@@ -116,10 +117,10 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
                 }
             }
         }
+        ASSERT_LE(erri,detail_max);
         m_log("[%s] erri = %e vs detail = %e", interp->Identity().c_str(), erri, detail_max);
-
         delete (interp);
-    }
+    // }
 
     // ciao
     m_free(ptr_fine);

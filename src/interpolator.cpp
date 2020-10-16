@@ -457,23 +457,18 @@ void InterpolatingWavelet::Refine_(const interp_ctx_t* ctx) const {
  */
 void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max) const {
     //-------------------------------------------------------------------------
-    const sid_t   ga_lim   = ga_half_lim();
-    const_mem_ptr ga       = ga_filter();
+    const sid_t   gs_lim   = gs_half_lim();
+    const_mem_ptr gs       = gs_filter();
+    const real_t  one      = 1.0;
     const lid_t   start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
     const lid_t   end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-
-    // do a small sanity check
-    m_assert(ga[0] == 1.0, "we need that to ensure a correct result bellow");
 
     // for each of the data for the considered children
     (*details_max) = 0.0;
     for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
         for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
             for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
-                // get the current data
-                data_ptr ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                // m_assume_aligned(ltdata);
-
+            
                 // get 0 if odd, 1 if even (even if negative!!)
                 const lda_t iy = m_sign(ik1) * (ik1 % 2);
                 const lda_t ix = m_sign(ik0) * (ik0 % 2);
@@ -482,22 +477,64 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
                 m_assert(iy == 0 || iy == 1, "this are the two possible values");
                 m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
-                // get the filter, depending on if I am odd or even
-                const sid_t lim[3] = {ga_lim * ix, ga_lim * iy, ga_lim * iz};
+                // get the nearest even data
+                const lid_t ik0_s = (ik0 - ix);
+                const lid_t ik1_s = (ik1 - iy);
+                const lid_t ik2_s = (ik2 - iz);
 
-                // if one dim is even, id = 0, -> ga = 1 and that's it
-                // if one dim is odd, id=1, -> we loop on ga, business as usual
-                real_t detail = 0.0;
-                for (sid_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
-                    for (sid_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
-                        for (sid_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
-                            detail += ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(id0, id1, id2, 0, ctx->trgstr)];
+                // get it's location
+                const_mem_ptr ltdata = ctx->tdata + m_sidx(ik0_s, ik1_s, ik2_s, 0, ctx->trgstr);
+                m_assume_aligned(ltdata);
+
+                // get the filter, depending on if I am odd or even
+                const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
+                const_mem_ptr gs_y         = (iy == 1) ? (gs) : (&one);
+                const_mem_ptr gs_z         = (iz == 1) ? (gs) : (&one);
+                const sid_t   lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+                const sid_t   lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+
+                // if one dim is even, id = 0, -> gs[0] = 1 and that's it
+                // if one dim is odd, id = 1, -> we loop on gs, business as usual
+                real_t interp = 0.0;
+                for (sid_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+                    for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+                        for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
+                            const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
+                            interp += fact * ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
                         }
                     }
                 }
-                // update the max detail if needed and set the detail to 0.0 if we are even everywhere
-                detail         = ((ix + iy + iz) > 0) ? (detail) : (0.0);
+                real_t detail = ctx->tdata[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] - interp;
+
+                // check the maximum
                 (*details_max) = m_max(std::fabs(detail), (*details_max));
+
+                // // get the filter, depending on if I am odd or even
+                // // const sid_t lim[3] = {ga_lim * ix, ga_lim * iy, ga_lim * iz};
+
+                // m_log("@ %d %d %d : I used the filters lim: %d %d %d", ik0, ik1, ik2, lim[0], lim[1], lim[2]);
+
+                // // if one dim is even, id = 0, -> ga = 1 and that's it
+                // // if one dim is odd, id=1, -> we loop on ga, business as usual
+                // real_t detail = ltdata[0];
+                // m_log("data_start = %e", detail);
+                // for (sid_t id2 = -lim[2]; id2 <= lim[2]; id2 += 2) {
+                //     for (sid_t id1 = -lim[1]; id1 <= lim[1]; id1 += 2) {
+                //         for (sid_t id0 = -lim[0]; id0 <= lim[0]; id0 += 2) {
+                //             if (ik0 == 1) {
+                //                 m_log("data around: %e %e", ga[id0] * ga[id1] * ga[id2], ltdata[m_sidx(id0, id1, id2, 0, ctx->trgstr)]);
+                //             }
+                //             detail -= ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(id0, id1, id2, 0, ctx->trgstr)];
+                //         }
+                //     }
+                // }
+                // if (std::fabs(detail) > (*details_max) && (ix + iy + iz) > 0) {
+                if ((ix + iy + iz) > 0) {
+                    
+                }
+                // // update the max detail if needed and set the detail to 0.0 if we are even everywhere
+                // detail         = ((ix + iy + iz) > 0) ? (detail) : (0.0);
+                // (*details_max) = m_max(std::fabs(detail), (*details_max));
             }
         }
     }
