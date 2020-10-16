@@ -45,6 +45,9 @@ RUN cd /googletest &&\
     make install -j
 RUN rm -rf /googletest
 
+# add the user
+RUN useradd -ms /bin/bash murphy
+USER murphy
 
 # add an openMPI setting to make it run                                         
 ENV OMPI_MCA_btl_vader_single_copy_mechanism none  
