@@ -4,12 +4,6 @@
 #include "murphy.hpp"
 #include "physblock.hpp"
 
-static real_t face_sign[6][3] = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
-/**
- * @brief the localization of the interface
- */
-static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
-
 /**
  * @brief implements a boundary conditions that uses points inside the block to extrapolate a ghost value
  * 
@@ -17,6 +11,16 @@ static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0},
  */
 template <lda_t npoint>
 class Boundary {
+   protected:
+    static constexpr real_t face_sign[6][3] = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
+
+    /**
+     * @brief dictates if the first point in the grid, i.e. the point [0] in the physical direction is overwritten or not.
+     * 
+     * if the sign is different than 0, return true
+     */
+    virtual inline bool OverWriteFirst(const real_t sign) const { return (sign * sign) > 0.5; }
+
    public:
     /**
     * @brief has to be implemented by boundary condition classes
@@ -31,8 +35,10 @@ class Boundary {
     *           x (<0) |                                                  |   x (>0) 
     *     <----------->|                                                  |<-------->
     * ---o------o------o------o------o---   ...       -----o------o-------o------o------
-    *                       f[0]   f[1]     ...         f[1]    f[0]
+    *                  x    f[0]   f[1]     ...         f[1]    f[0]
     * ```
+    * 
+    * The point `x` is overwritten or not, given the boolean returned by OverWriteFirst().
     */
     virtual inline real_t Stencil_(real_t* f, real_t* xf, const real_t xp, const real_t bc_value) = 0;
 
@@ -43,7 +49,7 @@ class Boundary {
      * and the symmetry done on the left and on the right of it for the interpolation, hence we need both arguments
      * 
      * @param iface the index of the face on which we apply it (x-=0, x+=1, y-=2, y+=3, z-=4, z-=5)
-     * @param fstart the starting index of the face, i.e. the index of the last point wich is adjacent to the face (see @ref face_start)
+     * @param fstart the starting index of the face, i.e. the index of the last point wich is adjacent to the face (see @ref face_start in ghost.cpp)
      * @param hgrid the local grid spacing
      * @param boundary_condition the boundary condition value
      * @param block the sub-block on which we apply it
@@ -78,9 +84,12 @@ class Boundary {
                         // if the direction is not physics, just consider the current ID,
                         // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
                         // these are local increments on the source which is already in position fstart
-                        const lid_t idx0 = (!isphys[0]) ? i0 : (-(ip + 1) * fsign[0]);
-                        const lid_t idx1 = (!isphys[1]) ? i1 : (-(ip + 1) * fsign[1]);
-                        const lid_t idx2 = (!isphys[2]) ? i2 : (-(ip + 1) * fsign[2]);
+                        // m_assert(OverWriteFirst(fsign[dir]) == 1, "euuuh");
+                        m_assert(OverWriteFirst(fsign[(dir + 1) % 3]) == 0, "euuuh");
+                        m_assert(OverWriteFirst(fsign[(dir + 2) % 3]) == 0, "euuuh");
+                        const lid_t idx0 = (!isphys[0]) ? i0 : (-(ip + OverWriteFirst(fsign[0])) * fsign[0]);
+                        const lid_t idx1 = (!isphys[1]) ? i1 : (-(ip + OverWriteFirst(fsign[1])) * fsign[1]);
+                        const lid_t idx2 = (!isphys[2]) ? i2 : (-(ip + OverWriteFirst(fsign[2])) * fsign[2]);
 
                         // check that we stay at the correct sport for everybody
                         m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
@@ -140,6 +149,11 @@ real_t NevilleInterp(real_t* c, real_t* d, const real_t* x, const real_t xp) {
 template <lda_t npoint>
 class ExtrapBoundary : public Boundary<npoint> {
    protected:
+    /**
+    * @brief do not overwrite the first element if the face is oriented negatively (sign = -1)
+    */
+    virtual inline bool OverWriteFirst(const real_t sign) const override { return (sign > 0.5); }
+
     /**
      * @brief Impletement the Neville algorithm to extrapolate the value of the polynomial with no boundary information
      * 
