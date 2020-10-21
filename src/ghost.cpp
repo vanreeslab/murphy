@@ -11,6 +11,11 @@
 #define M_NNEIGHBOR 26
 
 /**
+ * @brief the localization of the interface
+ */
+static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
+
+/**
  * @brief returns the number of ghost points for the coarse block, front of the block
  */
 static lid_t CoarseNGhostFront(const InterpolatingWavelet* interp) {
@@ -568,8 +573,6 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     // start what can be done = sibling and parents copy
     m_profStart(prof_,"ghost computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Post, grid_, il, field, this);
-        // DoOpMeshLevel(&CallPutGhost4Block_Post, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::PutGhost4Block_Post, grid_, il, field);
     }
     m_profStop(prof_,"ghost computation");
@@ -586,8 +589,6 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     // we now have all the information needed, we finish with a physbc
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOp_F_<op_t<Ghost*, Field*>, Ghost*, Field*>(CallPutGhost4Block_Wait, grid_, il, field, this);
-        // DoOpMeshLevel(&CallPutGhost4Block_Wait, grid_, il, field, this);
         DoOpMeshLevel(this,&Ghost::PutGhost4Block_Wait, grid_, il, field);
     }
     m_profStop(prof_,"ghost computation");

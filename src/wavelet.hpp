@@ -34,12 +34,12 @@ class Wavelet : public InterpolatingWavelet {
     const sid_t Nt() const { return 0; }
 
     // filter
-    const sid_t   len_ha_() const override { return 0; };
-    const sid_t   len_ga_() const override { return 0; };
-    const sid_t   len_gs_() const override { return 0; };
-    const real_t* ha_() const override { return 0; };
-    const real_t* ga_() const override { return 0; };
-    const real_t* gs_() const override { return 0; };
+    const sid_t   len_ha() const override { return 0; };
+    const sid_t   len_ga() const override { return 0; };
+    const sid_t   len_gs() const override { return 0; };
+    const real_t* ha() const override { return 0; };
+    const real_t* ga() const override { return 0; };
+    const real_t* gs() const override { return 0; };
 };
 
 template <>

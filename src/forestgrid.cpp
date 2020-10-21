@@ -1,6 +1,7 @@
 #include "forestgrid.hpp"
 
 #include <cmath>
+#include "toolsp4est.hpp"
 
 /**
  * @brief Construct an empty ForestGrid
@@ -140,4 +141,30 @@ void ForestGrid::SetupP4estGhostMesh() {
     is_mesh_valid_ = true;
     //-------------------------------------------------------------------------
     m_end;
+}
+
+level_t ForestGrid::MaxLevel() const {
+    m_begin;
+    m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
+    //-------------------------------------------------------------------------
+    for (level_t il = P8EST_QMAXLEVEL; il >= 0; --il) {
+        if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
+            return il;
+        }
+    }
+    return 0;
+    //-------------------------------------------------------------------------
+}
+
+level_t ForestGrid::MinLevel() const {
+    m_begin;
+    m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
+    //-------------------------------------------------------------------------
+    for (level_t il = 0; il <= P8EST_QMAXLEVEL; ++il) {
+        if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
+            return il;
+        }
+    }
+    return P8EST_QMAXLEVEL;
+    //-------------------------------------------------------------------------
 }

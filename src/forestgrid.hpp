@@ -54,6 +54,8 @@ class ForestGrid {
     inline p8est_connectivity_t* p4est_connect() const { return p4est_forest_->connectivity; }
 
     inline lid_t local_num_quadrants() const { return p4est_forest_->local_num_quadrants; }
+    level_t      MaxLevel() const;
+    level_t      MinLevel() const;
     /** @} */
 
     /**

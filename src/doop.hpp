@@ -118,6 +118,8 @@ void DoOpMeshLevel(const O op, F memfunc,const ForestGrid* grid, const level_t l
         // the quadrants can be from differents trees -> get the correct one
         p8est_quadrant_t* quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
 
+        m_assert(quad->level == lvl, "the selected quadrant has the wrong level");
+
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
         if constexpr (do_gridblock) {

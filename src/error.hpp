@@ -18,6 +18,7 @@ class ErrorCalculator : public BlockOperator{
     void Normi(Grid* grid, const Field* field, const Field* sol, real_t* norm_i);
     void Norm2(Grid* grid, const Field* field, const Field* sol, real_t* norm_2);
     void Norms(Grid* grid, const Field* field, const Field* sol, real_t* norm_2, real_t* norm_i);
+    void Norms(Grid* grid, const level_t level, const Field* field, const Field* sol, real_t* norm_2, real_t* norm_i);
 
     void ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol);
 };

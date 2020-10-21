@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         diff.bctype(M_BC_EXTRAP);
 
         // adapt the mesh
-        grid.SetTol(1e-0, 1e-2);
+        grid.SetTol(1e-1, 1e-3);
         grid.SetRecursiveAdapt(true);
         grid.Adapt(&vort,&vr_init);
 
