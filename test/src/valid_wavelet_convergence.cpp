@@ -13,7 +13,7 @@
 
 #define DOUBLE_TOL 1e-14
 #define ORDER2_TOL 0.25
-#define ORDERI_TOL 1.0
+#define ORDERI_TOL 1.1
 #define BLVL 1
 
 using std::list;

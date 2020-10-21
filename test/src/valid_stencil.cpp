@@ -35,10 +35,13 @@ TEST_F(valid_Stencil, gradient_periodic_cosinus) {
             Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
-            real_t      origin[3] = {1.0, 1.0, 1.0};
-            real_t      length[3] = {1.0, 1.0, 1.0};
-            Patch       p1(origin, length, il + 1);
-            list<Patch> patch{p1};
+            real_t      origin1[3] = {1.0, 1.0, 1.0};
+            real_t      length1[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin1, length1, il + 1);
+            real_t      origin2[3] = {0.0, 0.0, 0.0};
+            real_t      length2[3] = {L[0], L[1], L[2]};
+            Patch       p2(origin2, length2, il);
+            list<Patch> patch{p1, p2};
             grid.Adapt(&patch);
 
             // create the test file
@@ -112,10 +115,13 @@ TEST_F(valid_Stencil,laplacian_periodic_cosinus){
             Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
-            real_t      origin[3] = {1.0, 1.0, 1.0};
-            real_t      length[3] = {1.0, 1.0, 1.0};
-            Patch       p1(origin, length, il + 1);
-            list<Patch> patch{p1};
+            real_t      origin1[3] = {1.0, 1.0, 1.0};
+            real_t      length1[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin1, length1, il + 1);
+            real_t      origin2[3] = {0.0, 0.0, 0.0};
+            real_t      length2[3] = {L[0], L[1], L[2]};
+            Patch       p2(origin2, length2, il);
+            list<Patch> patch{p1, p2};
             grid.Adapt(&patch);
 
             // create the test file
