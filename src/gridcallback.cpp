@@ -82,7 +82,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     //-------------------------------------------------------------------------
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_field());
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
     GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     m_assert(block->level() == quadrant->level, "the two levels must match");
 
@@ -121,7 +121,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
     //-------------------------------------------------------------------------
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_field());
+    list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
 
     // check every block, if one child needs to be coarsen, we return true for everybody
     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
@@ -163,11 +163,11 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
  * @param quadrant 
  * @return int 
  */
-int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
+int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
-    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
+    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     InterpolatingWavelet* interp = grid->interp();
     
@@ -181,7 +181,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
     bool refine = false;
     // if we are not locked, we are available for refinement
     // we refine the block if one of the field component needs it
-    m_profStart(grid->profiler(),"wavelet criterion");
+    m_profStart(grid->profiler(),"adapt criterion");
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
         real_t norm = interp->Criterion(block, data);
@@ -193,7 +193,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
             block->lock();
             m_verb("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
-            m_profStop(grid->profiler(),"wavelet criterion");
+            m_profStop(grid->profiler(),"adapt criterion");
             return true;
         }
         else{
@@ -201,7 +201,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         }
     }
     // if we reached here, we do not need to refine
-    m_profStop(grid->profiler(),"wavelet criterion");
+    m_profStop(grid->profiler(),"adapt criterion");
     return false;
     //-------------------------------------------------------------------------
     m_end;
@@ -217,14 +217,16 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
  * @param quadrant 
  * @return int 
  */
-int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
+int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     m_begin;
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
-    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_field());
+    Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     InterpolatingWavelet* interp = grid->interp();
 
-    m_profStart(grid->profiler(),"wavelet criterion");
+    // m_log("compute the detail on field %s",fid->name().c_str());
+
+    m_profStart(grid->profiler(),"adapt criterion");
 
     // for each of the children
     bool coarsen = true;
@@ -234,21 +236,21 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         // if one of the 8 block is locked, I cannot change it, neither the rest of the group
         if (block->locked()) {
             m_verb("block is locked, we do nothing!");
-            m_profStop(grid->profiler(),"wavelet criterion");
+            m_profStop(grid->profiler(),"adapt criterion");
             return false;
         }
 
         // check if I can coarsen
-        for (int ida = 0; ida < fid->lda(); ida++) {
-            real_p data = block->data(fid, ida);
-            real_t norm = interp->Criterion(block, data);
+        for (int ida = 0; ida < fid->lda(); ++ida) {
+            data_ptr data = block->data(fid, ida);
+            real_t   norm = interp->Criterion(block, data);
             // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
-            m_verb("coarsen? %e <? %e", norm, grid->ctol());
+            // m_log("block @ %f %f %f : coarsen %d? %e <? %e", block->xyz(0), block->xyz(1), block->xyz(2), coarsen, norm, grid->ctol());
 
             // if I cannot coarsen, I can give up on the whole group, so return false
             if (!coarsen) {
-                m_profStop(grid->profiler(),"wavelet criterion");
+                m_profStop(grid->profiler(), "adapt criterion");
                 return false;
             }
         }
@@ -258,7 +260,7 @@ int cback_Interpolator(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadr
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
         block->lock();
     }
-    m_profStop(grid->profiler(),"wavelet criterion");
+    m_profStop(grid->profiler(), "adapt criterion");
     return true;
     //-------------------------------------------------------------------------
     m_end;
@@ -290,7 +292,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
     auto                  f_end   = grid->FieldEnd();
-    InterpolatingWavelet*         interp  = grid->interp();
+    InterpolatingWavelet* interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
     m_profStart(grid->profiler(), "wavelet interpolation");
@@ -315,7 +317,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     }
 
     // if only one is leaving, it means we refine -> dlvl = -1
-    // if only one is entering, it means we coarse -> dlvl = +1
+    // if only one is entering, it means we coarsen -> dlvl = +1
     const sid_t dlvl = (num_outgoing == 1) ? -1 : 1;
 
     // do the required iterpolation
@@ -345,7 +347,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                 SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
 
                 // for every field, we interpolate it
-                for (auto fid = f_start; fid != f_end; fid++) {
+                for (auto fid = f_start; fid != f_end; ++fid) {
                     Field* current_field = fid->second;
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
@@ -393,7 +395,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         delete (block);
     }
 
-    // m_profStop(grid->profiler(), "wavelet interpolation");
+    m_profStop(grid->profiler(), "wavelet interpolation");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -470,7 +472,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     //-------------------------------------------------------------------------
     // retrieve the grid from the forest user-data pointer
     Grid*     grid  = reinterpret_cast<Grid*>(forest->user_pointer);
-    Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_field());
+    Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
     
     m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");

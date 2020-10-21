@@ -151,4 +151,20 @@ class SetVortexRing : public SetValue {
     SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const InterpolatingWavelet* interp);
 };
 
+//=====================================================================================================
+class SetCompactVortexRing : public SetValue {
+   protected:
+    lda_t  normal_    = 0;                //!< the direction normal to the ring, i.e. the z direction
+    real_t sigma_     = 0.0;              //!< the direction normal to the ring, i.e. the z direction
+    real_t radius_    = 0.0;              //!< the direction normal to the ring, i.e. the z direction
+    real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
+    real_t cutoff_    = 0.0;              //!< the cutoff distance, i.e. the distance after which the gaussian is set to 0.0
+
+    void FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) override;
+
+   public:
+    SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff);
+    SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, const InterpolatingWavelet* interp);
+};
+
 #endif  // SRC_SETVALUES_HPP_

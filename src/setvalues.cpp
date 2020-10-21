@@ -21,7 +21,7 @@ void SetValue::operator()(const ForestGrid* grid, Field* field) {
     //-------------------------------------------------------------------------
     // get the span of ida
     ida_start_ = 0;
-    ida_end_ = field->lda();
+    ida_end_   = field->lda();
     // go for it
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
@@ -36,7 +36,7 @@ void SetValue::operator()(const ForestGrid* grid, Field* field, const lda_t ida)
     //-------------------------------------------------------------------------
     // get the span of ida
     ida_start_ = ida;
-    ida_end_ = ida + 1;
+    ida_end_   = ida + 1;
     // go for it
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
@@ -337,12 +337,82 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
 
                 // const real_t r_plane = sqrt(x * x + y * y) - radius_;
                 const real_t r2   = (x * x + y * y + z * z);
-                const real_t vort = oo_pisigma2 * exp(-r2 * oo_sigma2);
+                const real_t rho2 = r2 * oo_sigma2;
+                const real_t vort = oo_pisigma2 * exp(-rho2);
                 // const real_t vort = oo_pisigma2 * exp(1.0 - 1.0 / (1.0 - r2 * oo_sigma2));
-
                 wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
                 wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
                 wz[m_idx(i0, i1, i2)] = 0.0;
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+//=====================================================================================================
+SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff) : SetCompactVortexRing(normal, center, sigma, radius, cutoff, nullptr) {}
+SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, const InterpolatingWavelet* interp) : SetValue(interp) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    normal_ = normal;
+    sigma_  = sigma;
+    radius_ = radius;
+    cutoff_ = cutoff;
+    for (lda_t id = 0; id < 3; ++id) {
+        center_[id] = center[id];
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void SetCompactVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
+    //-------------------------------------------------------------------------
+    real_t        pos[3];
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
+
+    const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
+    const real_t oo_R2       = 1.0 / (cutoff_ * cutoff_);
+    const real_t oo_pisigma2 = 1.0 / (M_PI * sigma_ * sigma_);
+
+    // compute the normal direction as being the z one and the two other as x and y
+    const lda_t idx = (normal_ + 1) % 3;
+    const lda_t idy = (normal_ + 2) % 3;
+    const lda_t idz = normal_;
+    // get the pointers correct
+    data_ptr wx = block->data(fid, idx);
+    data_ptr wy = block->data(fid, idy);
+    data_ptr wz = block->data(fid, idz);
+
+    for (lid_t i2 = start_; i2 < end_; i2++) {
+        for (lid_t i1 = start_; i1 < end_; i1++) {
+            for (lid_t i0 = start_; i0 < end_; i0++) {
+                // get the position
+                m_pos(pos, i0, i1, i2, hgrid, xyz);
+                // wrt to the center
+                const real_t alpha = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
+                const real_t x     = pos[idx] - (center_[idx] + radius_ * cos(alpha));
+                const real_t y     = pos[idy] - (center_[idy] + radius_ * sin(alpha));
+                const real_t z     = pos[idz] - (center_[idz]);
+                // get the local coords
+
+                // const real_t r_plane = sqrt(x * x + y * y) - radius_;
+                const real_t r2    = (x * x + y * y + z * z);
+                const real_t rho2  = r2 * oo_sigma2;
+                const real_t rhoR2 = r2 * oo_R2;
+
+                if (rhoR2 < 1.0) {
+                    const real_t vort = oo_pisigma2 * exp(-rho2 / (1.0 - rhoR2));
+                    // const real_t vort = oo_pisigma2 * exp(1.0 - 1.0 / (1.0 - r2 * oo_sigma2));
+                    wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
+                    wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
+                    wz[m_idx(i0, i1, i2)] = 0.0;
+
+                } else {
+                    wx[m_idx(i0, i1, i2)] = 0.0;
+                    wy[m_idx(i0, i1, i2)] = 0.0;
+                    wz[m_idx(i0, i1, i2)] = 0.0;
+                }
             }
         }
     }

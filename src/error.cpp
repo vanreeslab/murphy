@@ -131,10 +131,10 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
 
     // m_log("compute error %d to %d for block @ %f %f %f", start_, end_, block->xyz(0), block->xyz(1), block->xyz(2));
 
-    for (sid_t ida = 0; ida < fid->lda(); ida++) {
+    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
-        real_p data_field = block->data(fid, ida);
-        real_p data_sol   = block->data(sol, ida);
+        const data_ptr data_field = block->data(fid, ida);
+        const data_ptr data_sol   = block->data(sol, ida);
         m_assume_aligned(data_field);
         m_assume_aligned(data_sol);
         // get the correct place given the current thread and the dimension
@@ -149,8 +149,8 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
 
-                    // if (fabs(error) > 3.4e-5) {
-                    //     m_log("block %d @ %f %f %f , @ %d %d %d field = %e, sol = %e, error = %e", qid->cid, block->xyz(0),block->xyz(1),block->xyz(2), i0, i1, i2, data_field[m_idx(i0, i1, i2)], data_sol[m_idx(i0, i1, i2)], error);
+                    // if (fabs(error) > 0.09) {
+                    //     m_log("block %d @ %f %f %f (ida=%d) , @ %d %d %d field = %e, sol = %e, error = %e", qid->cid, block->xyz(0), block->xyz(1), block->xyz(2), ida, i0, i1, i2, data_field[m_idx(i0, i1, i2)], data_sol[m_idx(i0, i1, i2)], error);
                     // }
                 }
             }

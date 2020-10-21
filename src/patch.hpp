@@ -9,7 +9,7 @@ class Patch {
     real_t length_[3] = {0.0, 0.0, 0.0};
 
    public:
-    Patch(real_t origin[3], real_t length[3], lid_t level);
+    Patch(const real_t origin[3], const real_t length[3], const lid_t level);
 
     lid_t   level() { return level_; }
     real_t* origin() { return origin_; }

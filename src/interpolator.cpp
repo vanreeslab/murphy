@@ -529,9 +529,9 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
                 //     }
                 // }
                 // if (std::fabs(detail) > (*details_max) && (ix + iy + iz) > 0) {
-                if ((ix + iy + iz) > 0) {
-                    
-                }
+                // if ((ix + iy + iz) > 0) {
+
+                // }
                 // // update the max detail if needed and set the detail to 0.0 if we are even everywhere
                 // detail         = ((ix + iy + iz) > 0) ? (detail) : (0.0);
                 // (*details_max) = m_max(std::fabs(detail), (*details_max));

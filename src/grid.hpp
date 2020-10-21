@@ -15,8 +15,8 @@
 #include "murphy.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
-#include "operator.hpp"
 #include "setvalues.hpp"
+#include "gridcallback.hpp"
 
 /**
  * @brief implements the grid management and the related responsabilities on top of ForestGrid
@@ -24,17 +24,17 @@
  */
 class Grid : public ForestGrid {
    protected:
-    map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
-    Prof*         prof_   = nullptr;  //!< the profiler to use, may stay null
-    Ghost*        ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
+    Prof*                 prof_   = nullptr;  //!< the profiler to use, may stay null
+    Ghost*                ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     InterpolatingWavelet* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
 
     bool   recursive_adapt_ = false;   //!< recursive adaptation or not
     real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
 
-    void* cback_criterion_field_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
+    void* cback_criterion_ptr_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
    public:
@@ -97,17 +97,19 @@ class Grid : public ForestGrid {
     real_t rtol() const { return rtol_; }
     real_t ctol() const { return ctol_; }
     bool   recursive_adapt() const { return recursive_adapt_; }
-    void*  cback_criterion_field() const { return cback_criterion_field_; }
+    void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
     void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
-    void Refine(const sid_t delta_level);
-    void Coarsen(const sid_t delta_level);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
+    void Refine(Field* field);
+    void Coarsen(Field* field);
     void Adapt(Field* field);
     void Adapt(Field* field, SetValue* expression);
     void Adapt(std::list<Patch>* patches);
+
+    void Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, cback_interpolate_t interp);
     /**@}*/
 };
 
