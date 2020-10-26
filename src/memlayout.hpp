@@ -45,6 +45,7 @@ class MemLayout {
     virtual lid_t stride() const            = 0;  //!< the stride in memory
     virtual lid_t start(const int id) const = 0;  //!< the starting point for the region of interest
     virtual lid_t end(const int id) const   = 0;  //!< the end point of the region of interest
+
     virtual ~MemLayout(){};
 };
 

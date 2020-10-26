@@ -94,8 +94,12 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
         block_coarse_->Reset(m_gs, m_stride, coarse_start_, coarse_end_);
         block_fine_->Reset(m_gs, m_stride, fine_start_, fine_end_);
 
+        Wavelet interp;
+
         real_t* data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
         real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
+
+        real_p ptr_tmp    = (real_t*)m_calloc(interp.CoarseMemSize());
 
         // fill the fine block!
         for (int i2 = -m_gs; i2 < (m_n + m_gs); i2++) {
@@ -112,9 +116,9 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
         }
 
         // do the interpolation (-1 is refinement)
-        Wavelet interp;
+        
         real_t  detail_max;
-        interp.Details(block_fine_, data_fine, &detail_max);
+        interp.Details(block_fine_, data_fine,ptr_tmp, &detail_max);
         ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL) << "during test: dir = " << id << " detail max = " << detail_max;
 
         // reset the indexes for the fine

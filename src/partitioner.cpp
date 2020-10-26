@@ -3,6 +3,10 @@
 #include <cstring>
 #include <map>
 
+
+using std::unordered_map;
+using std::string;
+
 /**
  * @brief returns the rank that owns the value in the array of length commsize+1
  * 
@@ -42,7 +46,7 @@ using std::memcpy;
  * @param grid the grid on which the partitionning is done
  * @param destructive dictate if the partitioning is used to permanently change the grid or to go from one grid to another.
  */
-Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructive) {
+Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool destructive) {
     m_begin;
     //-------------------------------------------------------------------------
     const rank_t commsize = grid->mpisize();
@@ -346,7 +350,7 @@ Partitioner::~Partitioner() {
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
  */
-void Partitioner::Start(map<string, Field *> *fields, const m_direction_t dir) {
+void Partitioner::Start(unordered_map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
     m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
@@ -421,7 +425,7 @@ void Partitioner::Start(map<string, Field *> *fields, const m_direction_t dir) {
  * @param dir the direction, forward or backward
  * @param do_copy do we need to copy the non-traveling blocks or not
  */
-void Partitioner::End(map<string, Field *> *fields, const m_direction_t dir) {
+void Partitioner::End(unordered_map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
     m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");

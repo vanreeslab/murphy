@@ -17,6 +17,7 @@
 #define BLVL 1
 
 using std::list;
+using std::string;
 
 class valid_Wavelet_Convergence : public ::testing::Test {
    protected:

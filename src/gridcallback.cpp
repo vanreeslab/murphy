@@ -181,10 +181,10 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     bool refine = false;
     // if we are not locked, we are available for refinement
     // we refine the block if one of the field component needs it
-    m_profStart(grid->profiler(),"adapt criterion");
+    m_profStart(grid->profiler(), "adapt criterion");
     for (int ida = 0; ida < fid->lda(); ida++) {
         real_p data = block->data(fid, ida);
-        real_t norm = interp->Criterion(block, data);
+        real_t norm = interp->Criterion(block, data, block->coarse_ptr());
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
         // refine the block if one dimension needs to be refined
@@ -243,7 +243,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
         // check if I can coarsen
         for (int ida = 0; ida < fid->lda(); ++ida) {
             data_ptr data = block->data(fid, ida);
-            real_t   norm = interp->Criterion(block, data);
+            real_t norm = interp->Criterion(block, data, block->coarse_ptr());
             // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
             // m_log("block @ %f %f %f : coarsen %d? %e <? %e", block->xyz(0), block->xyz(1), block->xyz(2), coarsen, norm, grid->ctol());

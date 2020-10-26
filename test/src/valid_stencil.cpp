@@ -20,6 +20,7 @@ class valid_Stencil : public ::testing::Test {
 };
 
 using std::list;
+using std::string;
 
 TEST_F(valid_Stencil, gradient_periodic_cosinus) {
     for (lda_t id = 0; id < 3; ++id) {

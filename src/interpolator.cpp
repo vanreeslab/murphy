@@ -1,5 +1,7 @@
 #include "interpolator.hpp"
 
+#include "subblock.hpp"
+
 /**
  * @brief copy the data from data_src to data_trg
  * 
@@ -13,7 +15,7 @@
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void InterpolatingWavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) {
+void InterpolatingWavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const{
     m_assert(dlvl == 0 || dlvl == 1, "only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, true, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
@@ -32,7 +34,7 @@ void InterpolatingWavelet::Copy(const level_t dlvl, const lid_t shift[3], const 
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void InterpolatingWavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) {
+void InterpolatingWavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const{
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
@@ -53,7 +55,7 @@ void InterpolatingWavelet::Interpolate(const level_t dlvl, const lid_t shift[3],
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void InterpolatingWavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) {
+void InterpolatingWavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const{
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
 }
@@ -178,7 +180,7 @@ void InterpolatingWavelet::Copy_(const level_t dlvl, const interp_ctx_t* ctx)con
  * @param src_rank the rank of the source memory
  * @param win the window to use for the RMA calls
  */
-void InterpolatingWavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) {
+void InterpolatingWavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
@@ -223,7 +225,7 @@ void InterpolatingWavelet::GetRma(const level_t dlvl, const lid_t shift[3], cons
     //-------------------------------------------------------------------------
 }
 
-void InterpolatingWavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) {
+void InterpolatingWavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win)const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
@@ -279,7 +281,7 @@ void InterpolatingWavelet::PutRma(const level_t dlvl, const lid_t shift[3], cons
  * @param data the data
  * @return real_t the infinite norm of the max detail coefficient in the extended region
  */
-real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data) const {
+real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data,mem_ptr data_tmp) const {
     //-------------------------------------------------------------------------
     // get the extended memory layout
     const lid_t lift_len = (2 * Nt() - 1);
@@ -293,7 +295,7 @@ real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data) const {
 
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(&extended_block, data, &details_max);
+    Details(&extended_block, data,data_tmp, &details_max);
 
     return details_max;
     //-------------------------------------------------------------------------
@@ -304,12 +306,38 @@ real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data) const {
  * 
  * @param block the block on which we computed
  * @param data the memory pointer to the point (0,0,0) of that block
+ * @param data_tmp the temp memory of size CoarseStride()^3, see the ghosting
  * @param details_max an array of size 8 that will contain the detail coefficients: dx, dy, dz, dxy, dyz, dxz, dxyz, mean
  */
-void InterpolatingWavelet::Details(MemLayout* block, data_ptr data, real_t* details_max) const {
+void InterpolatingWavelet::Details(MemLayout* block, data_ptr data_block, mem_ptr data_tmp, real_t* details_max) const {
     //-------------------------------------------------------------------------
-    interp_ctx_t ctx;
+    // get the subblock for the coarse
+    const lid_t nghost_front = ncriterion_front() / 2;
+    const lid_t nghost_back  = ncriterion_back() / 2;
+    const lid_t stride       = nghost_front + M_HN + nghost_back;
+    const lid_t start        = -nghost_front;
+    const lid_t end          = M_HN + nghost_back;
+    m_assert(stride <= CoarseStride(), "there is not enough space in the tmp memory");
+    SubBlock coarse_block(nghost_front, stride, start, end);
+
+    // reset the memory to 0.0
+    memset(data_tmp, 0, CoarseMemSize());
+    mem_ptr tmp = data_tmp + m_zeroidx(0, &coarse_block);
+
+    // m_log("reading from %d to %d");
+
+    // // downsample the information, ghost included
+    // for (lda_t i2 = start; i2 < end; ++i2) {
+    //     for (lda_t i1 = start; i1 < end; ++i1) {
+    //         for (lda_t i0 = start; i0 < end; ++i0) {
+    //             tmp[m_sidx(i0, i1, i2, 0, coarse_block.stride())] = data_block[m_sidx(i0 * 2, i1 * 2, i2 * 2, 0, block->stride())];
+    //         }
+    //     }
+    // }
+    // need to compute here the physical boundary conditions...
+
     // get memory details
+    interp_ctx_t ctx;
     for (int id = 0; id < 3; id++) {
 #ifndef NDEBUG
         ctx.srcstart[id] = -1;
@@ -318,10 +346,10 @@ void InterpolatingWavelet::Details(MemLayout* block, data_ptr data, real_t* deta
         ctx.trgstart[id] = block->start(id);
         ctx.trgend[id]   = block->end(id);
     }
-    ctx.srcstr = -1;
-    ctx.sdata  = nullptr;
+    ctx.srcstr = coarse_block.stride();
+    ctx.sdata  = tmp;
     ctx.trgstr = block->stride();
-    ctx.tdata  = data;
+    ctx.tdata  = data_block;
     Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
@@ -508,33 +536,6 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
 
                 // check the maximum
                 (*details_max) = m_max(std::fabs(detail), (*details_max));
-
-                // // get the filter, depending on if I am odd or even
-                // // const sid_t lim[3] = {ga_lim * ix, ga_lim * iy, ga_lim * iz};
-
-                // m_log("@ %d %d %d : I used the filters lim: %d %d %d", ik0, ik1, ik2, lim[0], lim[1], lim[2]);
-
-                // // if one dim is even, id = 0, -> ga = 1 and that's it
-                // // if one dim is odd, id=1, -> we loop on ga, business as usual
-                // real_t detail = ltdata[0];
-                // m_log("data_start = %e", detail);
-                // for (sid_t id2 = -lim[2]; id2 <= lim[2]; id2 += 2) {
-                //     for (sid_t id1 = -lim[1]; id1 <= lim[1]; id1 += 2) {
-                //         for (sid_t id0 = -lim[0]; id0 <= lim[0]; id0 += 2) {
-                //             if (ik0 == 1) {
-                //                 m_log("data around: %e %e", ga[id0] * ga[id1] * ga[id2], ltdata[m_sidx(id0, id1, id2, 0, ctx->trgstr)]);
-                //             }
-                //             detail -= ga[id0] * ga[id1] * ga[id2] * ltdata[m_sidx(id0, id1, id2, 0, ctx->trgstr)];
-                //         }
-                //     }
-                // }
-                // if (std::fabs(detail) > (*details_max) && (ix + iy + iz) > 0) {
-                // if ((ix + iy + iz) > 0) {
-
-                // }
-                // // update the max detail if needed and set the detail to 0.0 if we are even everywhere
-                // detail         = ((ix + iy + iz) > 0) ? (detail) : (0.0);
-                // (*details_max) = m_max(std::fabs(detail), (*details_max));
             }
         }
     }

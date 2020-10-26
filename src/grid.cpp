@@ -8,6 +8,7 @@
 
 using std::list;
 using std::string;
+using std::unordered_map;
 
 /**
  * @brief Construct a new Grid which is empty, only the interpolators have been associated
@@ -238,7 +239,7 @@ void Grid::DeleteField(Field* field) {
  * 
  * @param fields 
  */
-void Grid::ResetFields(const map<string, Field*>* fields) {
+void Grid::ResetFields(const unordered_map<string, Field*>* fields) {
     m_begin;
     //-------------------------------------------------------------------------
     // clear the current map

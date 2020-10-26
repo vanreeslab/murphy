@@ -2,7 +2,7 @@
 #define SRC_BOUNDARY_HPP_
 
 #include "murphy.hpp"
-#include "physblock.hpp"
+#include "subblock.hpp"
 
 /**
  * @brief implements a boundary conditions that uses points inside the block to extrapolate a ghost value
@@ -35,7 +35,7 @@ class Boundary {
     *           x (<0) |                                                  |   x (>0) 
     *     <----------->|                                                  |<-------->
     * ---o------o------o------o------o---   ...       -----o------o-------o------o------
-    *                  x    f[0]   f[1]     ...         f[1]    f[0]
+    *                       f[0]   f[1]     ...         f[1]    f[0]
     * ```
     * 
     * The point `x` is overwritten or not, given the boolean returned by OverWriteFirst().
@@ -57,6 +57,7 @@ class Boundary {
      */
     virtual void operator()(const sid_t iface, const lid_t fstart[3], const real_t hgrid[3], const real_t boundary_condition, SubBlock* block, data_ptr data) {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
+        m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
         //-------------------------------------------------------------------------
         // get the face direction and a boolean array with it
         const sid_t   dir       = iface / 2;
@@ -84,9 +85,6 @@ class Boundary {
                         // if the direction is not physics, just consider the current ID,
                         // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
                         // these are local increments on the source which is already in position fstart
-                        // m_assert(OverWriteFirst(fsign[dir]) == 1, "euuuh");
-                        m_assert(OverWriteFirst(fsign[(dir + 1) % 3]) == 0, "euuuh");
-                        m_assert(OverWriteFirst(fsign[(dir + 2) % 3]) == 0, "euuuh");
                         const lid_t idx0 = (!isphys[0]) ? i0 : (-(ip + OverWriteFirst(fsign[0])) * fsign[0]);
                         const lid_t idx1 = (!isphys[1]) ? i1 : (-(ip + OverWriteFirst(fsign[1])) * fsign[1]);
                         const lid_t idx2 = (!isphys[2]) ? i2 : (-(ip + OverWriteFirst(fsign[2])) * fsign[2]);

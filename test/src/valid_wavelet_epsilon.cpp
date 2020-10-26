@@ -52,8 +52,11 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
     constexpr real_t hcoarse = 1.0 / (m_hn);
     constexpr real_t hfine   = 1.0 / (m_n);
 
+    InterpolatingWavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
+
     real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
     real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+    real_p ptr_tmp    = (real_t*)m_calloc(interp->CoarseMemSize());
 
     lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
 
@@ -82,9 +85,8 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
     // compute the max detail
     block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
     // InterpolatingWavelet* interp = GetWavelet(n[id][0], n[id][1]);
-    InterpolatingWavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
-    real_t                detail_max;
-    interp->Details(&block_fine, data_fine, &detail_max);
+    real_t detail_max;
+    interp->Details(&block_fine, data_fine, ptr_tmp, &detail_max);
 
     // set the index for coarsening computation
     block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
@@ -134,11 +136,11 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
 //==============================================================================================================================
 TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
     // adapt the mesh
-    real_t epsilon[3] = {1e+1, 1e-1, 1e-3};
+    real_t epsilon[2] = {1e-2, 1e-3};
     // real_t epsilon[1] = {1.0e-1};
     // lda_t  ieps       = 0;
-    for (lda_t ieps = 0; ieps < 3; ++ieps) {
-        level_t max_level   = 3;
+    for (lda_t ieps = 0; ieps < 2; ++ieps) {
+        level_t max_level   = 4;
         bool    periodic[3] = {true, true, true};
         lid_t   L[3]        = {1, 1, 1};
         Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
@@ -155,11 +157,89 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
 
         const real_t         center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
         const lda_t          normal    = 2;
-        const real_t         sigma     = 0.05;
+        const real_t         sigma     = 0.1;
         const real_t         radius    = 0.2;
         const real_t         cutoff    = (center[0] - radius) * 0.9;
         SetCompactVortexRing vr_init(normal, center, sigma, radius, cutoff);
         SetCompactVortexRing vr_init_full(normal, center, sigma, radius, cutoff, grid.interp());
+
+        vr_init(&grid, &vort);
+
+        grid.SetTol(1e+5, epsilon[ieps]);
+
+        // do the coarsening, go the the min level if needed
+        for (level_t il = max_level; il > 2; --il) {
+            grid.Coarsen(&vort);
+            // recreate the solution
+            // Field sol("sol", 3);
+            // grid.AddField(&sol);
+            // vr_init(&grid, &sol);
+            // // compute the error
+            // real_t          err2, erri;
+            // ErrorCalculator error;
+            // error.Norms(&grid, &vort, &sol, &err2, &erri);
+            // m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+        }
+
+        // grid.GhostPull(&vort);
+        // IOH5 io("data_test");
+        // io(&grid, &vort);
+
+        // go up again by forcing the refinement based on the patch
+        for (level_t sil = 2; sil < max_level; ++sil) {
+            grid.GhostPull(&vort);
+            grid.Adapt(reinterpret_cast<void*>(&patch), nullptr, nullptr, &cback_Patch, &cback_Interpolate);
+        }
+        m_log("\t re-adaptation done! we have block between %d and %d", grid.MinLevel(), grid.MaxLevel());
+
+        // recreate the solution
+        Field sol("sol", 3);
+        grid.AddField(&sol);
+        vr_init(&grid, &sol);
+        // compute the error
+        real_t          err2, erri;
+        ErrorCalculator error;
+        error.Norms(&grid, &vort, &sol, &err2, &erri);
+        m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+
+        grid.DeleteField(&sol);
+
+        ASSERT_LE(err2, epsilon[ieps]);
+        ASSERT_LE(erri, epsilon[ieps]);
+    }
+}
+
+//==============================================================================================================================
+TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
+    // adapt the mesh
+    real_t epsilon[3] = {1e-2, 1e-1, 1e-4};
+    // real_t epsilon[1] = {1.0e-1};
+    // lda_t  ieps       = 0;
+    for (lda_t ieps = 0; ieps < 1; ++ieps) {
+        level_t max_level   = 4;
+        bool    periodic[3] = {false, false, false};
+        lid_t   L[3]        = {1, 1, 1};
+        Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
+
+        // create the field + the solution
+        Field vort("vort", 3);
+        grid.AddField(&vort);
+
+        vort.bctype(M_BC_EXTRAP);
+
+        // create a patch of the current domain
+        list<Patch> patch;
+        real_t      origin[3] = {0.0, 0.0, 0.0};
+        real_t      length[3] = {L[0], L[1], L[2]};
+        patch.push_back(Patch(origin, length, max_level));
+
+        const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
+        const lda_t  normal    = 2;
+        const real_t sigma     = 0.1;
+        const real_t radius    = 0.2;
+        // const real_t  cutoff    = (center[0] - radius) * 0.9;
+        SetVortexRing vr_init(normal, center, sigma, radius);
+        SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
 
         vr_init(&grid, &vort);
 

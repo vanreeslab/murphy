@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <limits>
-#include <map>
+#include <unordered_map>
 #include <string>
 
 #include "field.hpp"
@@ -24,7 +24,7 @@
  */
 class Grid : public ForestGrid {
    protected:
-    std::map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::unordered_map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
     Prof*                 prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*                ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -62,13 +62,13 @@ class Grid : public ForestGrid {
      */
     lid_t NField() const { return (lid_t)(fields_.size()); }
 
-    map<std::string, Field*>::const_iterator FieldBegin() const { return fields_.begin(); }
-    map<std::string, Field*>::const_iterator FieldEnd() const { return fields_.end(); }
+    auto FieldBegin() const { return fields_.cbegin(); }
+    auto FieldEnd() const { return fields_.cend(); }
 
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
     void DeleteField(Field* field);
-    void ResetFields(const map<std::string, Field*>* fields);
+    void ResetFields(const std::unordered_map<std::string, Field*>* fields);
     /**@}*/
 
     /**

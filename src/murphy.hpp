@@ -36,7 +36,6 @@ using const_mem_ptr = const real_t* __restrict__;  //!< pointer type = root of t
 typedef int32_t lid_t;
 typedef int8_t  sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
-typedef std::map<std::string, real_p> datamap_t;
 
 /**
  * @brief id of a quadrant
