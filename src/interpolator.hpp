@@ -106,8 +106,8 @@ class InterpolatingWavelet {
     virtual void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     virtual void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    virtual real_t Criterion(MemLayout* block, data_ptr data, mem_ptr data_tmp) const;
-    void           Details(MemLayout* block, data_ptr data_block, mem_ptr data_tmp, real_t* details_max) const;
+    virtual real_t Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_block, data_ptr data_coarse) const;
+    void           Details(MemLayout* block, data_ptr data_block, MemLayout* coarse_block, data_ptr data_coarse, real_t* details_max) const;
 
     //................................................
    public:
@@ -135,12 +135,14 @@ class InterpolatingWavelet {
     const lid_t shift_back() const { return m_max((2 * Nt() - 1) / 2 - 1, 0); };  //!< return the num of detail to take into account outside the block, in the back
 
     // nghosts
-    const lid_t ncoarsen_front() const { return (len_ha() / 2); };                 //!< returns the number of gp needed for the coarsening operation, in front
-    const lid_t ncoarsen_back() const { return (len_ha() / 2 - 1); };              //!< returns the number of gp needed for the coarsening operation, in the back
-    const lid_t nrefine_front() const { return (len_gs() / 2 - 1); };              //!< returns the number of gp needed for the refinement operation, in front
-    const lid_t nrefine_back() const { return (len_gs() / 2); };                   //!< returns the number of gp needed for the refinement operation, in the back
-    const lid_t ncriterion_front() const { return shift_front() + len_gs() - 1; }  //!< returns the number of gp needed for the detail operation, in front
-    const lid_t ncriterion_back() const { return shift_back() + len_gs() - 1; }    //!< returns the number of gp needed for the detail operation, in the back
+    const lid_t ncoarsen_front() const { return (len_ha() / 2); };     //!< returns the number of gp needed for the coarsening operation, in front
+    const lid_t ncoarsen_back() const { return (len_ha() / 2 - 1); };  //!< returns the number of gp needed for the coarsening operation, in the back
+    const lid_t nrefine_front() const { return (len_gs() / 2 - 1); };  //!< returns the number of gp needed for the refinement operation, in front
+    const lid_t nrefine_back() const { return (len_gs() / 2); };       //!< returns the number of gp needed for the refinement operation, in the back
+    // const lid_t ncriterion_front() const { return shift_front() + nrefine_front()*2; }  //!< returns the number of gp needed for the detail operation, in front
+    // const lid_t ncriterion_back() const { return shift_back() + nrefine_back()*2; }    //!< returns the number of gp needed for the detail operation, in the back
+    const lid_t ncriterion_front() const { return (len_ga() / 2 - 1); };
+    const lid_t ncriterion_back() const { return (len_ga() / 2); };
 
     // half limits
     const sid_t ha_half_lim() const { return (len_ha() / 2); };

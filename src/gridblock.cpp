@@ -1,5 +1,7 @@
 #include "gridblock.hpp"
 
+#include <p8est_bits.h>
+
 #include <algorithm>
 
 #include "toolsp4est.hpp"
@@ -75,9 +77,14 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
     //-------------------------------------------------------------------------
     level_ = level;
     lock_  = false;
-    for (int id = 0; id < 3; id++) {
+    for (lda_t id = 0; id < 3; id++) {
         xyz_[id]   = xyz[id];
         hgrid_[id] = length / M_N;  // the grid spacing is still given by L/N
+    }
+    // init the dependencies
+    n_dependency_active_ = 0;
+    for (sid_t id = 0; id < P8EST_CHILDREN; ++id) {
+        dependency_[id] = nullptr;
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -273,6 +280,109 @@ void GridBlock::DeleteField(Field* fid) {
     //-------------------------------------------------------------------------
 }
 
+void GridBlock::SolveDependency(const InterpolatingWavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end) {
+    m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
+    //-------------------------------------------------------------------------
+    if (n_dependency_active_ == 1) {
+        // if I get only one dependency, I am a child and I need refinement from my parent
+        // we are the children of a group, we go to the parent
+        GridBlock* root = this->PopDependency(0);
+        m_assert(n_dependency_active_ == 0, "I should be empty now");
+
+        // from the parent, we interpolate to me
+        int childid = p4est_GetChildID(xyz_, level_);
+
+        // get the shift given the child id
+        const lid_t shift[3]     = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
+        const lid_t src_start[3] = {shift[0] - M_GS, shift[1] - M_GS, shift[2] - M_GS};
+        const lid_t src_end[3]   = {shift[0] + M_HN + M_GS, shift[1] + M_HN + M_GS, shift[2] + M_HN + M_GS};
+        SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
+
+        // for every field on my parent, interpolate it
+        m_assert(data_map_.size() == 0, "the block should be empty here");
+        for (auto fid = field_start; fid != field_end; ++fid) {
+            auto current_field = fid->second;
+            // allocate the field on me (has not been done yet)
+            this->AddField(current_field);
+            // refine for every dimension
+            for (sid_t ida = 0; ida < current_field->lda(); ida++) {
+                // get the pointers
+                interp->Interpolate(-1, shift, &mem_src, root->data(current_field, ida), this, this->data(current_field, ida));
+            }
+        }
+        // remove my ref from the parent
+        GridBlock* this_should_be_me = root->PopDependency(childid);
+        m_assert(this_should_be_me == this, "this should be me");
+
+        // destroy my parent if I was the last one
+        if (root->n_dependency_active() == 0) {
+            delete (root);
+        }
+    } else if (n_dependency_active_ == P8EST_CHILDREN) {
+        // I have 8 deps, I am a root, waiting data from coarsening of my children
+
+        //allocate the new fields
+            m_assert(data_map_.size() == 0, "the block should be empty here");
+        for (auto fid = field_start; fid != field_end; ++fid) {
+            auto current_field = fid->second;
+            // allocate the field on me (has not been done yet)
+            this->AddField(current_field);
+        }
+
+        // I am a parent and I need to fillout my children
+        for (sid_t childid = 0; childid < P8EST_CHILDREN; ++childid) {
+            GridBlock* child_block = this->PopDependency(childid);
+            m_assert(child_block->level()-this->level() == 1, "the child block is not a child");
+            m_assert(childid == p4est_GetChildID(child_block->xyz(),child_block->level()),"the two ids must match");
+
+            // get the shift for me
+            const lid_t shift[3] = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
+            const lid_t trg_start[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
+            const lid_t trg_end[3]   = {trg_start[0] + M_HN, trg_start[1] + M_HN, trg_start[2] + M_HN};
+            SubBlock    mem_trg(M_GS, M_STRIDE, trg_start, trg_end);
+            // and an extended source block for my child
+            const lid_t src_start[3] = {-M_GS, -M_GS, -M_GS};
+            const lid_t src_end[3]   = {M_N + M_GS, M_N + M_GS, M_N + M_GS};
+            SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
+
+            // for every field, we interpolate it
+            for (auto fid = field_start; fid != field_end; ++fid) {
+                auto current_field = fid->second;
+                // interpolate for every dimension
+                for (sid_t ida = 0; ida < current_field->lda(); ida++) {
+                    // get the pointers
+                    interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
+                }
+            }
+            // remove the ref to the child and my ref in the child
+            child_block->PopDependency(0);
+            m_assert(child_block->n_dependency_active() == 0, "the child must be empty now");
+            // delete the block as we are the only one to access it
+            delete (child_block);
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+GridBlock* GridBlock::PopDependency(const sid_t child_id) {
+    m_assert(0 <= child_id && child_id < P8EST_CHILDREN, "child id is out of bound");
+    m_assert(dependency_[child_id] != nullptr, "there is nobody here: dep[%d] = %p", child_id, dependency_[child_id]);
+    //-------------------------------------------------------------------------
+    --n_dependency_active_;
+    GridBlock* block      = dependency_[child_id];
+    dependency_[child_id] = nullptr;
+    return block;
+    //-------------------------------------------------------------------------
+}
+void GridBlock::PushDependency(const sid_t child_id, GridBlock* dependent_block) {
+    m_assert(0 <= child_id && child_id < P8EST_CHILDREN, "child id is out of bound");
+    m_assert(dependency_[child_id] == nullptr, "there is already someone here");
+    //-------------------------------------------------------------------------
+    ++n_dependency_active_;
+    dependency_[child_id] = dependent_block;
+    //-------------------------------------------------------------------------
+}
+
 void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const InterpolatingWavelet* interp, MPI_Win local2disp_window) {
     //-------------------------------------------------------------------------
     // allocate the ghost pointer
@@ -304,8 +414,8 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const I
         // set the number of ghost to compute
         block_min[id]    = -interp->nghost_front();
         block_max[id]    = M_N + interp->nghost_back();
-        block_len[id]    = m_quad_len(level());
-        coarse_hgrid[id] = m_quad_len(level()) / M_HN;
+        block_len[id]    = p4est_QuadLen(level());
+        coarse_hgrid[id] = p4est_QuadLen(level()) / M_HN;
     }
 
     for (iface_t ibidule = 0; ibidule < M_NNEIGHBORS; ibidule++) {
@@ -363,13 +473,13 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const I
                 // since it is my neighbor in this normal direction, I am 100% sure that it's origin corresponds to the end of my block
                 const real_t to_replace = sign[id] * sign[id] * grid->domain_periodic(id);  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
                 // get the expected position
-                const real_t expected_pos = xyz(id) + (sign[id] > 0.5) * m_quad_len(level()) - (sign[id] < -0.5) * m_quad_len(nghq->level);
+                const real_t expected_pos = xyz(id) + (sign[id] > 0.5) * p4est_QuadLen(level()) - (sign[id] < -0.5) * p4est_QuadLen(nghq->level);
                 // we override the position if a replacement is needed only
                 ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
             }
             // get the hgrid
-            const real_t ngh_len[3]   = {m_quad_len(nghq->level), m_quad_len(nghq->level), m_quad_len(nghq->level)};
-            const real_t ngh_hgrid[3] = {m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N};
+            const real_t ngh_len[3]   = {p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level)};
+            const real_t ngh_hgrid[3] = {p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N};
 
             //................................................
             // create the new block and push back
@@ -627,7 +737,6 @@ void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const Interpo
             } else {
                 m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
             }
-            //-------------------------------------------------------------------------
         }
         //................................................
         // refine from the coarse to the parents
@@ -734,6 +843,63 @@ void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const Interpo
             m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
         }
         //-------------------------------------------------------------------------
+    }
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief Downsample the block and re-evaluate the boundary conditions on the coarse version
+ * 
+ * @param field 
+ * @param ida 
+ * @param interp 
+ */
+void GridBlock::Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, SubBlock* coarse_block) {
+    //-------------------------------------------------------------------------
+    // reset the tmp value
+    memset(coarse_ptr_, 0, interp->CoarseStride());
+    // get the coarse and extended SubBlocks
+    const lid_t n_ghost_front = (interp->ncriterion_front() + 1) / 2;
+    const lid_t n_ghost_back  = (interp->ncriterion_back() + 1) / 2;  // if we have 3 ghosts, we need 2 coarse and not 1...
+    const lid_t stride        = n_ghost_back + n_ghost_front + M_HN;
+    coarse_block->Reset(n_ghost_front, stride, -n_ghost_front, M_HN + n_ghost_back);
+    m_assert(stride <= interp->CoarseStride(), "ohoh the Coarse block is too small: %d <= %ld", stride, interp->CoarseStride());
+
+    const SubBlock extended_src(M_GS, M_STRIDE, -M_GS, M_N + M_GS);
+    const lid_t    shift[3] = {0, 0, 0};
+    const data_ptr data_trg = coarse_ptr_ + m_zeroidx(0, coarse_block);
+    const data_ptr data_src = data(field, ida);
+
+    // interpolate
+    interp->Copy(1, shift, &extended_src, data_src, coarse_block, data_trg);
+
+    //................................................
+    // over-write the BC
+    for (auto gblock : phys_) {
+        m_assert(false, "we shouldn't be here");
+        // get the direction and the corresponding bctype
+        const bctype_t bctype = field->bctype(ida, gblock->iface());
+        // in the face direction, the start and the end are already correct, only the fstart changes
+        SubBlock coarse_block;
+        interp->CoarseFromFine(gblock, &coarse_block);
+        lid_t fstart[3];
+        interp->CoarseFromFine(face_start[gblock->iface()], fstart);
+        // apply the BC
+        if (bctype == M_BC_NEU) {
+            NeumanBoundary<M_WAVELET_N - 1> bc;
+            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+        } else if (bctype == M_BC_DIR) {
+            DirichletBoundary<M_WAVELET_N - 1> bc;
+            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+        } else if (bctype == M_BC_EXTRAP) {
+            ExtrapBoundary<M_WAVELET_N> bc;
+            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+        } else if (bctype == M_BC_ZERO) {
+            ZeroBoundary bc;
+            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+        } else {
+            m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
+        }
     }
     //-------------------------------------------------------------------------
 }

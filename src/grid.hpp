@@ -69,6 +69,7 @@ class Grid : public ForestGrid {
     void AddField(Field* field);
     void DeleteField(Field* field);
     void ResetFields(const std::unordered_map<std::string, Field*>* fields);
+    
     /**@}*/
 
     /**

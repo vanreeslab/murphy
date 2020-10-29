@@ -471,8 +471,8 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 //     //     nghost_back[id]  = interp_->nghost_back();
 //     //     block_min[id]    = -nghost_front[id];
 //     //     block_max[id]    = M_N + nghost_back[id];
-//     //     block_len[id]    = m_quad_len(block->level());
-//     //     coarse_hgrid[id] = m_quad_len(block->level()) / M_HN;
+//     //     block_len[id]    = p4est_QuadLen(block->level());
+//     //     coarse_hgrid[id] = p4est_QuadLen(block->level()) / M_HN;
 //     // }
 
 //     // for (iface_t ibidule = 0; ibidule < M_NNEIGHBOR; ibidule++) {
@@ -530,13 +530,13 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 //     //             // since it is my neighbor in this normal direction, I am 100% sure that it's origin corresponds to the end of my block
 //     //             const real_t to_replace = sign[id] * sign[id] * grid_->domain_periodic(id);  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
 //     //             // get the expected position
-//     //             const real_t expected_pos = block->xyz(id) + (sign[id] > 0.5) * m_quad_len(block->level()) - (sign[id] < -0.5) * m_quad_len(nghq->level);
+//     //             const real_t expected_pos = block->xyz(id) + (sign[id] > 0.5) * p4est_QuadLen(block->level()) - (sign[id] < -0.5) * p4est_QuadLen(nghq->level);
 //     //             // we override the position if a replacement is needed only
 //     //             ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
 //     //         }
 //     //         // get the hgrid
-//     //         const real_t ngh_len[3]   = {m_quad_len(nghq->level), m_quad_len(nghq->level), m_quad_len(nghq->level)};
-//     //         const real_t ngh_hgrid[3] = {m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N, m_quad_len(nghq->level) / M_N};
+//     //         const real_t ngh_len[3]   = {p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level)};
+//     //         const real_t ngh_hgrid[3] = {p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N};
 
 //     //         //................................................
 //     //         // create the new block and push back

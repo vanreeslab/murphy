@@ -56,7 +56,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
 
     real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
     real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    real_p ptr_tmp    = (real_t*)m_calloc(interp->CoarseMemSize());
+    real_p ptr_tmp    = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
     lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
 
@@ -81,16 +81,28 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
             }
         }
     }
-
+    //................................................
     // compute the max detail
     block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+    // get the coarse version of life
+    const lid_t m_hgs = m_gs / 2;
+    SubBlock tmp_block(3 * m_hgs, m_hn + 6 * m_hgs, -3 * m_hgs, m_hn + 3 * m_hgs);
+    data_ptr data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
+    for (lid_t i2 = tmp_block.start(2); i2 < tmp_block.end(2); i2++) {
+        for (lid_t i1 = tmp_block.start(1); i1 < tmp_block.end(1); i1++) {
+            for (lid_t i0 = tmp_block.start(0); i0 < tmp_block.end(0); i0++) {
+                data_tmp[m_midx(i0, i1, i2, 0, &tmp_block)] = data_fine[m_midx(i0 * 2, i1 * 2, i2 * 2, 0, &block_fine)];
+            }
+        }
+    }
+
     // InterpolatingWavelet* interp = GetWavelet(n[id][0], n[id][1]);
     real_t detail_max;
-    interp->Details(&block_fine, data_fine, ptr_tmp, &detail_max);
+    interp->Details(&block_fine, data_fine, &tmp_block, data_tmp, &detail_max);
 
+    //................................................
     // set the index for coarsening computation
     block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
-
     // do the coarsening
     lid_t shift[3] = {0};
     interp->Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
@@ -212,10 +224,10 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
 //==============================================================================================================================
 TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
     // adapt the mesh
-    real_t epsilon[3] = {1e-2, 1e-1, 1e-4};
+    real_t epsilon[3] = {1e-2, 1e-3};
     // real_t epsilon[1] = {1.0e-1};
     // lda_t  ieps       = 0;
-    for (lda_t ieps = 0; ieps < 1; ++ieps) {
+    for (lda_t ieps = 1; ieps < 2; ++ieps) {
         level_t max_level   = 4;
         bool    periodic[3] = {false, false, false};
         lid_t   L[3]        = {1, 1, 1};
@@ -248,16 +260,48 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
         // do the coarsening, go the the min level if needed
         for (level_t il = max_level; il > 2; --il) {
             grid.Coarsen(&vort);
+            // recreate the solution
+            Field sol("sol", 3);
+            grid.AddField(&sol);
+            vr_init(&grid, &sol);
+            // compute the error
+            real_t          err2, erri;
+            ErrorCalculator error;
+            error.Norms(&grid, &vort, &sol, &err2, &erri);
+            m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+            grid.DeleteField(&sol);
+
+            ASSERT_LE(err2, epsilon[ieps]);
+            ASSERT_LE(erri, epsilon[ieps]);
         }
 
-        // grid.GhostPull(&vort);
-        // IOH5 io("data_test");
-        // io(&grid, &vort);
+        grid.GhostPull(&vort);
+        IOH5 io("data_test");
+        io(&grid, &vort, "vort_coarse");
 
         // go up again by forcing the refinement based on the patch
         for (level_t sil = 2; sil < max_level; ++sil) {
             grid.GhostPull(&vort);
             grid.Adapt(reinterpret_cast<void*>(&patch), nullptr, nullptr, &cback_Patch, &cback_Interpolate);
+
+            // recreate the solution
+            Field sol("sol", 3);
+            grid.AddField(&sol);
+            vr_init(&grid, &sol);
+            // compute the error
+            real_t          err2, erri;
+            ErrorCalculator error;
+            error.Norms(&grid, &vort, &sol, &err2, &erri);
+            m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+
+            grid.GhostPull(&vort);
+            // IOH5 io("data_test");
+            io(&grid, &vort, "vort_fine");
+
+            ASSERT_LE(err2, epsilon[ieps]);
+            ASSERT_LE(erri, epsilon[ieps]);
+
+            grid.DeleteField(&sol);
         }
         m_log("\t re-adaptation done! we have block between %d and %d", grid.MinLevel(), grid.MaxLevel());
 
@@ -271,9 +315,13 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
         error.Norms(&grid, &vort, &sol, &err2, &erri);
         m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
 
-        grid.DeleteField(&sol);
+        // grid.GhostPull(&vort);
+        // IOH5 io("data_test");
+        // io(&grid, &vort, "vort_fine");
 
         ASSERT_LE(err2, epsilon[ieps]);
         ASSERT_LE(erri, epsilon[ieps]);
+
+        grid.DeleteField(&sol);
     }
 }

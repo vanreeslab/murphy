@@ -62,6 +62,7 @@ class valid_Wavelet_Kernel : public ::testing::Test {
         data_fine_   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
         data_coarse_ = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
+
         for (int id = 0; id < 3; id++) {
             coarse_start_[id] = -m_gs;
             coarse_end_[id]   = m_hn + m_gs;
@@ -99,7 +100,7 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
         real_t* data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
         real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
 
-        real_p ptr_tmp    = (real_t*)m_calloc(interp.CoarseMemSize());
+        real_p ptr_tmp    = (real_t*)m_calloc(m_stride*m_stride*m_stride*sizeof(real_t));
 
         // fill the fine block!
         for (int i2 = -m_gs; i2 < (m_n + m_gs); i2++) {
@@ -116,10 +117,23 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
         }
 
         // do the interpolation (-1 is refinement)
-        
-        real_t  detail_max;
-        interp.Details(block_fine_, data_fine,ptr_tmp, &detail_max);
+        //................................................
+        // get the coarse version of life
+        const lid_t m_hgs = m_gs / 2;
+        SubBlock    tmp_block(m_hgs, m_hn + 2 * m_hgs, -m_hgs, m_hn + m_hgs);
+        data_ptr    data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
+        for (lid_t i2 = tmp_block.start(2); i2 < tmp_block.end(2); i2++) {
+            for (lid_t i1 = tmp_block.start(1); i1 < tmp_block.end(1); i1++) {
+                for (lid_t i0 = tmp_block.start(0); i0 < tmp_block.end(0); i0++) {
+                    data_tmp[m_midx(i0, i1, i2, 0, &tmp_block)] = data_fine[m_midx(i0 * 2, i1 * 2, i2 * 2, 0, block_fine_)];
+                }
+            }
+        }
+        real_t detail_max;
+        interp.Details(block_fine_, data_fine, &tmp_block, data_tmp, &detail_max);
         ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL) << "during test: dir = " << id << " detail max = " << detail_max;
+
+        m_free(ptr_tmp);
 
         // reset the indexes for the fine
         for (int id = 0; id < 3; id++) {

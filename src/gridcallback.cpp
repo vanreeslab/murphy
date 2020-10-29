@@ -30,7 +30,7 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
 
-    real_t len = m_quad_len(quad->level);
+    real_t len = p4est_QuadLen(quad->level);
     // the user data points to the data defined by the grid = GridBlock*
     m_assert(sizeof(GridBlock*) == forest->data_size,"cannot cast the pointer, this is baaaad");
     *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = new GridBlock(len, xyz, quad->level);
@@ -88,7 +88,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
 
     // get the origin, the length and check if we are inside the patch
     const real_t* xyz = block->xyz();
-    real_t len = m_quad_len(block->level());
+    real_t len = p4est_QuadLen(block->level());
 
     for(auto iter=patches->begin(); iter!= patches->end(); iter++){
         Patch* patch = &(*iter);
@@ -130,7 +130,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 
         // get the origin, the length and check if we are inside the patch
         const real_t* xyz = block->xyz();
-        real_t        len = m_quad_len(block->level());
+        real_t        len = p4est_QuadLen(block->level());
 
         for (auto iter = patches->begin(); iter != patches->end(); iter++) {
             Patch* patch = &(*iter);
@@ -170,7 +170,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     InterpolatingWavelet* interp = grid->interp();
-    
+
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
         m_verb("block is locked, we do nothing!");
@@ -182,9 +182,16 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     // if we are not locked, we are available for refinement
     // we refine the block if one of the field component needs it
     m_profStart(grid->profiler(), "adapt criterion");
-    for (int ida = 0; ida < fid->lda(); ida++) {
-        real_p data = block->data(fid, ida);
-        real_t norm = interp->Criterion(block, data, block->coarse_ptr());
+    for (lda_t ida = 0; ida < fid->lda(); ida++) {
+        // obtain the coarse SubBlock
+        SubBlock coarse_block;
+        // block->Coarse_DownSampleWithBoundary(fid, ida, interp, &coarse_block);
+
+        // go to the computation
+        data_ptr data = block->data(fid, ida);
+        data_ptr tmp  = nullptr;//block->coarse_ptr() + m_zeroidx(0, &coarse_block);
+        real_t   norm = interp->Criterion(block, data, &coarse_block, tmp);
+        
         // refine if the norm is bigger
         refine = (norm > grid->rtol());
         // refine the block if one dimension needs to be refined
@@ -195,8 +202,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
             // return to refine
             m_profStop(grid->profiler(),"adapt criterion");
             return true;
-        }
-        else{
+        } else {
             m_verb("block %f %f %f: NO refine (%e < %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
         }
     }
@@ -208,7 +214,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
 }
 
 /**
- * @brief reply that we should coarsen the group of 8 blocks if @ref InterpolatingWavelet::Criterion() is lower than @ref Grid::ctol() for everyblock.
+ * @brief reply that we should coarsen the group of 8 blocks if @ref InterpolatingWavelet::Criterion() is lower than @ref Grid::ctol() for every block
  * 
  * We do NOT coarsen if one of the block does not match the criterion
  * 
@@ -226,27 +232,39 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
 
     // m_log("compute the detail on field %s",fid->name().c_str());
 
-    m_profStart(grid->profiler(),"adapt criterion");
+    m_profStart(grid->profiler(), "adapt criterion");
 
     // for each of the children
     bool coarsen = true;
-    for (int id = 0; id < P8EST_CHILDREN; id++) {
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
+    for (sid_t id = 0; id < P8EST_CHILDREN; id++) {
+        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
+        GridBlock* block = p4est_GetGridBlock(quadrant[id]);
 
         // if one of the 8 block is locked, I cannot change it, neither the rest of the group
         if (block->locked()) {
             m_verb("block is locked, we do nothing!");
-            m_profStop(grid->profiler(),"adapt criterion");
+            m_profStop(grid->profiler(), "adapt criterion");
             return false;
         }
 
         // check if I can coarsen
-        for (int ida = 0; ida < fid->lda(); ++ida) {
+        for (lda_t ida = 0; ida < fid->lda(); ++ida) {
+            // obtain the coarse SubBlock
+            SubBlock coarse_block;
+            // block->Coarse_DownSampleWithBoundary(fid, ida, interp, &coarse_block);
+
+            // go to the computation
             data_ptr data = block->data(fid, ida);
-            real_t norm = interp->Criterion(block, data, block->coarse_ptr());
+            data_ptr tmp  = nullptr;//block->coarse_ptr() + m_zeroidx(0, &coarse_block);
+            real_t   norm = interp->Criterion(block, data, &coarse_block, tmp);
+            // data_ptr data = block->data(fid, ida);
+            // real_t   norm = interp->Criterion(block, data, block->coarse_ptr());
             // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
-            // m_log("block @ %f %f %f : coarsen %d? %e <? %e", block->xyz(0), block->xyz(1), block->xyz(2), coarsen, norm, grid->ctol());
+
+            if (block->xyz(0) == 0.687500 && block->xyz(1) == 0.187500 && block->xyz(2) == 0.312500) {
+                m_log("block @ %f %f %f: dim %d coarsen = %d? %e < %e", block->xyz(0), block->xyz(1), block->xyz(2), ida, coarsen, norm, grid->ctol());
+            }
 
             // if I cannot coarsen, I can give up on the whole group, so return false
             if (!coarsen) {
@@ -265,6 +283,113 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     //-------------------------------------------------------------------------
     m_end;
 }
+
+/**
+ * @brief Update the depedency list of the incoming block by refering to the outgoing one.
+ * 
+ * The depedency list will be resolved once the grid structure is fixed.
+ * 
+ * @param forest 
+ * @param which_tree 
+ * @param num_outgoing 
+ * @param outgoing 
+ * @param num_incoming 
+ * @param incoming 
+ */
+void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    m_begin;
+    m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
+    m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
+    m_assert(forest->user_pointer != nullptr, "we need the grid in this function");
+    //-------------------------------------------------------------------------
+    // retrieve the grid from the forest user-data pointer
+    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(!grid->recursive_adapt(), "the dependency update does not support recursive adaptation as we eventually need the GP values");
+
+    // get needed grid info
+    p8est_connectivity_t* connect = forest->connectivity;
+
+    // create the incoming block
+    for (sid_t iin = 0; iin < num_incoming; ++iin) {
+        qdrt_t* quad = incoming[iin];
+
+        // get block informations and create it
+        real_t xyz[3];
+        p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        real_t     len      = p4est_QuadLen(quad->level);
+        GridBlock* block_in = new GridBlock(len, xyz, quad->level);
+
+        // store the block
+        p4est_SetGridBlock(quad, block_in);
+
+        // if (block_in->xyz(0) == 0.25 && block_in->xyz(1) == 0.5 && block_in->xyz(2) == 0.75) {
+        //     m_log("block @ %f %f %f : ", block_in->xyz(0), block_in->xyz(1), block_in->xyz(2));
+        // }
+    }
+
+    // need to count the number of already active dependencies on the leaving block
+    for (sid_t iout = 0; iout < num_outgoing; iout++) {
+        GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
+
+        // count the number of active dependency blocks
+        sid_t n_active = block_out->n_dependency_active();
+        m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
+
+        if (n_active == 0) {
+            // if we had no active dependencies, allocate new blocks, lock them and add them
+            for (sid_t iin = 0; iin < num_incoming; ++iin) {
+                GridBlock* block_in = p4est_GetGridBlock(incoming[iin]);
+
+                // update the lock status, we don't want to compute the criterion if we have no data at all
+                block_in->lock(block_out->locked());
+
+                // register the leaving block in the new one, using it's child id
+                m_assert(p4est_GetChildID(block_out->xyz(), block_out->level()) == p8est_quadrant_child_id(outgoing[iout]), "ouuups");
+                int childid_out = (num_outgoing == 1) ? 0 : p4est_GetChildID(block_out->xyz(), block_out->level());
+                block_in->PushDependency(childid_out, block_out);
+
+                // register the new block in the leaving one, using it's child id
+                m_assert(p4est_GetChildID(block_in->xyz(), block_in->level()) == p8est_quadrant_child_id(incoming[iin]), "ouuups");
+                int childid_in = (num_incoming == 1) ? 0 : p4est_GetChildID(block_in->xyz(), block_in->level());
+                block_out->PushDependency(childid_in, block_in);
+            }
+        } else if (n_active == 1) {
+            // if we have 1 active dependencies, we need to inverse them
+            m_assert(num_incoming == 1 && num_outgoing == P8EST_CHILDREN, "we cannot refine a block that has already been targeted for refinement!");
+
+            // store the old block and remove the dependency from the block (might be done several times, no prob)
+            GridBlock* parent = block_out->PopDependency(0);
+            p4est_SetGridBlock(incoming[0], parent);
+
+            // clear my name from my parent's list
+            m_assert(p4est_GetChildID(block_out->xyz(), block_out->level()) == p8est_quadrant_child_id(outgoing[iout]), "ouuups");
+            int childid = p4est_GetChildID(block_out->xyz(), block_out->level());
+            parent->PopDependency(childid);
+
+            // delete the created block
+            delete (block_out);
+
+        } else if (n_active == P8EST_CHILDREN) {
+            // if we have 1 active dependencies, we need to inverse them
+            m_assert(num_incoming == P8EST_CHILDREN && num_outgoing == 1, "we cannot refine a block that has already been targeted for refinement!");
+            for (sid_t iin = 0; iin < num_incoming; iin++) {
+                // get the correct child id
+                int childid = p8est_quadrant_child_id(incoming[iin]);
+                // pop the child id out
+                GridBlock* child = block_out->PopDependency(childid);
+                // store the child adress as the new block
+                p4est_SetGridBlock(incoming[iin], child);
+                // clear y name from the child list
+                child->PopDependency(0);
+            }
+            delete (block_out);
+        }
+
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+};
 
 /**
  * @brief Interpolate one block to his children or 8 children to their parent, using the InterpolatingWavelet of the @ref Grid.
@@ -305,7 +430,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         // get block informations and create it
         real_t xyz[3];
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-        real_t     len   = m_quad_len(quad->level);
+        real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
         *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
@@ -382,6 +507,34 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
                         // get the pointers
                         interp->Interpolate(dlvl, shift, &mem_src, block_out->data(current_field, ida), &mem_trg, block_in->data(current_field, ida));
                     }
+                    if (block_in->xyz(0) == 0.625000 && block_in->xyz(1) == 0.375000 && block_in->xyz(2) == 0.75) {
+                        // m_log("coucou from block fault: val = %f, coarse = %f ", block_in->data(current_field, 1)[m_midx(14, 14, 0, 0, block_in)],
+                        //       block_out->data(current_field, 1)[m_midx(shift[0] + 7, shift[1] + 7, shift[2] + 0, 0, block_out)]);
+                        m_log("coucou from block fault: val = %f", block_in->data(current_field, 1)[m_midx(15, 15, 0, 0, block_in)]);
+                    }
+                    if (block_in->xyz(0) == 0.375000 && block_in->xyz(1) == 0.625000 && block_in->xyz(2) == 0.75) {
+                        // m_log("coucou from block fault: val = %f, coarse = %f ", block_in->data(current_field, 1)[m_midx(14, 14, 0, 0, block_in)],
+                        //       block_out->data(current_field, 1)[m_midx(shift[0] + 7, shift[1] + 7, shift[2] + 0, 0, block_out)]);
+                        m_log("coucou from block fault: val = %f", block_in->data(current_field, 0)[m_midx(15, 15, 0, 0, block_in)]);
+                    }
+                    if (block_out->xyz(0) == 0.625000 && block_out->xyz(1) == 0.375000 && block_out->xyz(2) == 0.75) {
+                        // m_log("coucou from block fault: val = %f, coarse = %f ", block_in->data(current_field, 1)[m_midx(14, 14, 0, 0, block_in)],
+                        //       block_out->data(current_field, 1)[m_midx(shift[0] + 7, shift[1] + 7, shift[2] + 0, 0, block_out)]);
+                        m_log("coucou from block faulty, we will coarsen it!-> val = %f", block_in->data(current_field, 1)[m_midx(15, 15, 0, 0, block_in)]);
+                        m_log("the old block is in %f %f %f",block_out->xyz(0),block_out->xyz(1),block_out->xyz(2));
+                        m_log("the new block is in %f %f %f",block_in->xyz(0),block_in->xyz(1),block_in->xyz(2));
+                    }
+                    if (block_out->xyz(0) == 0.375000 && block_out->xyz(1) == 0.625000 && block_out->xyz(2) == 0.75) {
+                        // m_log("coucou from block fault: val = %f, coarse = %f ", block_in->data(current_field, 1)[m_midx(14, 14, 0, 0, block_in)],
+                        //       block_out->data(current_field, 1)[m_midx(shift[0] + 7, shift[1] + 7, shift[2] + 0, 0, block_out)]);
+                        m_log("coucou from block fault: val = %f", block_in->data(current_field, 0)[m_midx(15, 15, 0, 0, block_in)]);
+                        m_log("the old block is in %f %f %f",block_out->xyz(0),block_out->xyz(1),block_out->xyz(2));
+                        m_log("the new block is in %f %f %f",block_in->xyz(0),block_in->xyz(1),block_in->xyz(2));
+                    }
+                    // if (block_in->xyz(0) == 0.375000 && block_in->xyz(1) == 0.625000 && block_in->xyz(2) == 0.75) {
+                    //     m_log("coucou from block fault: val = %f, coarse = %f ", block_in->data(current_field, 0)[m_midx(14, 14, 0, 0, block_in)],
+                    //           block_out->data(current_field, 0)[m_midx(shift[0] + 7, shift[1] + 7, shift[2] + 0, 0, block_out)]);
+                    // }
                 }
             }
         }
@@ -434,7 +587,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // get block informations and create it
         real_t xyz[3];
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-        real_t     len   = m_quad_len(quad->level);
+        real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
         *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
@@ -490,7 +643,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         // get block informations and create it
         real_t xyz[3];
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-        real_t     len   = m_quad_len(quad->level);
+        real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
         *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
@@ -535,7 +688,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
 //     qdrt_t* quad = incoming[0];
 //     real_t xyz[3];
 //     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
-//     real_t     len      = m_quad_len(quad->level);
+//     real_t     len      = p4est_QuadLen(quad->level);
 //     GridBlock* parent = new GridBlock(len, xyz, quad->level);
 //     // allocate the correct fields
 //     parent->AddFields(grid->map_fields());

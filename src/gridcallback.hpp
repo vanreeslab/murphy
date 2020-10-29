@@ -35,6 +35,7 @@ int cback_WaveDetail(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadran
 void cback_Interpolate(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
 void cback_AllocateOnly(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
 void cback_ValueFill(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+void cback_UpdateDependency(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
 /**@}*/
 
 /**

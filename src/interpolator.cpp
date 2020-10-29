@@ -279,23 +279,24 @@ void InterpolatingWavelet::PutRma(const level_t dlvl, const lid_t shift[3], cons
  *
  * @param block the block to analyze
  * @param data the data
+ * @param coarse_block 
+ * @param data_coarse 
  * @return real_t the infinite norm of the max detail coefficient in the extended region
  */
-real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data,mem_ptr data_tmp) const {
+real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_block, data_ptr data_coarse) const {
     //-------------------------------------------------------------------------
     // get the extended memory layout
-    const lid_t lift_len = (2 * Nt() - 1);
     lid_t       start[3];
     lid_t       end[3];
     for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - m_max(lift_len / 2, 0);
-        end[id]   = block->end(id) + m_max((lift_len / 2) - 1, 0);
+        start[id] = block->start(id) - shift_front();
+        end[id]   = block->end(id) + shift_back();
     }
     SubBlock extended_block(block->gs(), block->stride(), start, end);
 
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(&extended_block, data,data_tmp, &details_max);
+    Details(&extended_block, data, coarse_block, data_coarse, &details_max);
 
     return details_max;
     //-------------------------------------------------------------------------
@@ -309,45 +310,20 @@ real_t InterpolatingWavelet::Criterion(MemLayout* block, data_ptr data,mem_ptr d
  * @param data_tmp the temp memory of size CoarseStride()^3, see the ghosting
  * @param details_max an array of size 8 that will contain the detail coefficients: dx, dy, dz, dxy, dyz, dxz, dxyz, mean
  */
-void InterpolatingWavelet::Details(MemLayout* block, data_ptr data_block, mem_ptr data_tmp, real_t* details_max) const {
+void InterpolatingWavelet::Details(MemLayout* block, data_ptr data_block, MemLayout* coarse_block, data_ptr data_coarse, real_t* details_max) const {
     //-------------------------------------------------------------------------
-    // get the subblock for the coarse
-    const lid_t nghost_front = ncriterion_front() / 2;
-    const lid_t nghost_back  = ncriterion_back() / 2;
-    const lid_t stride       = nghost_front + M_HN + nghost_back;
-    const lid_t start        = -nghost_front;
-    const lid_t end          = M_HN + nghost_back;
-    m_assert(stride <= CoarseStride(), "there is not enough space in the tmp memory");
-    SubBlock coarse_block(nghost_front, stride, start, end);
-
-    // reset the memory to 0.0
-    memset(data_tmp, 0, CoarseMemSize());
-    mem_ptr tmp = data_tmp + m_zeroidx(0, &coarse_block);
-
-    // m_log("reading from %d to %d");
-
-    // // downsample the information, ghost included
-    // for (lda_t i2 = start; i2 < end; ++i2) {
-    //     for (lda_t i1 = start; i1 < end; ++i1) {
-    //         for (lda_t i0 = start; i0 < end; ++i0) {
-    //             tmp[m_sidx(i0, i1, i2, 0, coarse_block.stride())] = data_block[m_sidx(i0 * 2, i1 * 2, i2 * 2, 0, block->stride())];
-    //         }
-    //     }
-    // }
-    // need to compute here the physical boundary conditions...
-
     // get memory details
     interp_ctx_t ctx;
     for (int id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = -1;
-        ctx.srcend[id]   = -2;
+        ctx.srcstart[id] = coarse_block->start(id);
+        ctx.srcend[id]   = coarse_block->end(id);
 #endif
         ctx.trgstart[id] = block->start(id);
         ctx.trgend[id]   = block->end(id);
     }
-    ctx.srcstr = coarse_block.stride();
-    ctx.sdata  = tmp;
+    ctx.srcstr = -1;//coarse_block->stride();
+    ctx.sdata  = nullptr;
     ctx.trgstr = block->stride();
     ctx.tdata  = data_block;
     Detail_(&ctx, details_max);
@@ -466,10 +442,15 @@ void InterpolatingWavelet::Refine_(const interp_ctx_t* ctx) const {
                     for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
                         for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                             const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
+                            // m_assert(lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)] == lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)], "the error cannot be nan: block @ %d %d %d: %f", ik0 / 2 + id0, ik1 / 2 + id1, ik2 / 2 + id2, lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)]);
                             ltdata[m_sidx(0, 0, 0, 0, ctx->trgstr)] += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
                         }
                     }
                 }
+                m_assert(ltdata[0] == ltdata[0], "the error cannot be nan: block @ %d %d %d: %f", ik0, ik1, ik2, ltdata[0]);
+                // if (ix == 0 && ix == 1 && ix == 2) {
+                //     m_assert(ltdata[0] == lsdata[0], "ouuups: %e vs %e",ltdata[0], lsdata[0]);
+                // }
             }
         }
     }
@@ -491,12 +472,14 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
     const lid_t   start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
     const lid_t   end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
+    const_mem_ptr tdata = ctx->tdata;
+    const_mem_ptr sdata = ctx->sdata;
+
     // for each of the data for the considered children
     (*details_max) = 0.0;
     for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
         for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
             for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
-            
                 // get 0 if odd, 1 if even (even if negative!!)
                 const lda_t iy = m_sign(ik1) * (ik1 % 2);
                 const lda_t ix = m_sign(ik0) * (ik0 % 2);
@@ -506,13 +489,22 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
                 m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
                 // get the nearest even data
+                // const lid_t ik0_s = (ik0 - ix) / 2;
+                // const lid_t ik1_s = (ik1 - iy) / 2;
+                // const lid_t ik2_s = (ik2 - iz) / 2;
+                // const_mem_ptr lsdata = sdata + m_sidx(ik0_s, ik1_s, ik2_s, 0, ctx->srcstr);
+                // const_mem_ptr ltdata = tdata + m_sidx(ik0_s * 2, ik1_s * 2, ik2_s * 2, 0, ctx->trgstr);
+                // m_assert(lsdata[0] == lsdata[0], "the value MUST be the same");
+
+
                 const lid_t ik0_s = (ik0 - ix);
                 const lid_t ik1_s = (ik1 - iy);
                 const lid_t ik2_s = (ik2 - iz);
+                const_mem_ptr ltdata = tdata + m_sidx(ik0_s, ik1_s, ik2_s, 0, ctx->trgstr);
 
                 // get it's location
-                const_mem_ptr ltdata = ctx->tdata + m_sidx(ik0_s, ik1_s, ik2_s, 0, ctx->trgstr);
-                m_assume_aligned(ltdata);
+                
+                
 
                 // get the filter, depending on if I am odd or even
                 const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
@@ -521,6 +513,10 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
                 const sid_t   lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
                 const sid_t   lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
 
+                // m_assert(((ik0_s - lim_start[0]) >= ctx->srcstart[0]) && ((ik0_s + lim_end[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0_s - lim_start[0], ctx->srcstart[0], ik0_s + lim_end[0], ctx->srcend[0]);
+                // m_assert(((ik1_s - lim_start[1]) >= ctx->srcstart[1]) && ((ik1_s + lim_end[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", ik1_s - lim_start[1], ctx->srcstart[1], ik1_s + lim_end[1], ctx->srcend[1]);
+                // m_assert(((ik2_s - lim_start[2]) >= ctx->srcstart[2]) && ((ik2_s + lim_end[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2_s - lim_start[2], ctx->srcstart[2], ik2_s + lim_end[2], ctx->srcend[2]);
+
                 // if one dim is even, id = 0, -> gs[0] = 1 and that's it
                 // if one dim is odd, id = 1, -> we loop on gs, business as usual
                 real_t interp = 0.0;
@@ -528,14 +524,16 @@ void InterpolatingWavelet::Detail_(const interp_ctx_t* ctx, real_t* details_max)
                     for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
                         for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                             const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-                            interp += fact * ltdata[m_sidx(2 * id0, 2 * id1, 2 * id2, 0, ctx->trgstr)];
+                            interp += fact * ltdata[m_sidx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->trgstr)];
+                            // interp += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                            // m_assert(lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)] == ltdata[m_sidx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->trgstr)], "this must be @%d %d %d + %d %d %d: %e vs %e", ik0, ik1, ik2, id0, id1, id2, lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)], ltdata[m_sidx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->trgstr)]);
                         }
                     }
                 }
                 real_t detail = ctx->tdata[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] - interp;
 
                 // check the maximum
-                (*details_max) = m_max(std::fabs(detail), (*details_max));
+                (*details_max) = m_max(fabs(detail), (*details_max));
             }
         }
     }

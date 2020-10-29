@@ -5,6 +5,7 @@
 
 #include <limits>
 #include <list>
+#include <array>
 #include <string>
 #include <unordered_map>
 
@@ -26,7 +27,7 @@
  */
 class GridBlock : public MemLayout {
    protected:
-    bool    lock_     = false;            //!< lock the block, indicating that no refinement/coarsening can happen on the block
+    bool    lock_     = false;            //!< lock the block, indicating that no criterion check is needed on the block
     level_t level_    = -1;               //!< the level of the block
     real_t  xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
     real_t  hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
@@ -44,6 +45,10 @@ class GridBlock : public MemLayout {
     std::list<GhostBlock<MPI_Aint>*>   ghost_children_;        //!<ghost neighbors coarser (neighbor to me)
     std::list<GhostBlock<MPI_Aint>*>   ghost_parent_reverse_;  //!<  ghost neighbors coarser (me to neighbors)
     std::list<PhysBlock*>              phys_;                  //!<  physical boundary condition
+
+    // list of dependency = how to create my information after refinement/coarsening
+    sid_t      n_dependency_active_ = 0;
+    GridBlock* dependency_[P8EST_CHILDREN];  //!< the pointer to the dependency block
 
    public:
     GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
@@ -72,6 +77,7 @@ class GridBlock : public MemLayout {
     void lock() { lock_ = true; }
     void unlock() { lock_ = false; }
     bool locked() const { return lock_; }
+    void lock(const bool status) { lock_ = status; }
     /**@} */
 
     /**
@@ -98,7 +104,18 @@ class GridBlock : public MemLayout {
     /** @} */
 
     /**
-     * @name handle the ghost data pointer
+     * @name dependency management
+     * 
+     * @{
+     */
+    sid_t      n_dependency_active() { return n_dependency_active_; }
+    GridBlock* PopDependency(const sid_t child_id);
+    void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
+    void       SolveDependency(const InterpolatingWavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end);
+    /** @} */
+
+    /**
+     * @name coarse pointer management
      * @{
      */
     mem_ptr coarse_ptr() const { return coarse_ptr_; }
@@ -126,6 +143,16 @@ class GridBlock : public MemLayout {
     void GhostGet_Wait(const Field* field, const lda_t ida, const InterpolatingWavelet* interp);
     void GhostPut_Post(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, MPI_Win mirrors_window);
     void GhostPut_Wait(const Field* field, const lda_t ida, const InterpolatingWavelet* interp);
+
+    void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, SubBlock* coarse_block);
 };
+
+static inline GridBlock* p4est_GetGridBlock(qdrt_t* quad) {
+    return *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+}
+
+static inline void p4est_SetGridBlock(qdrt_t* quad, GridBlock* block) {
+    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+}
 
 #endif  // SRC_GRIDBLOCK_HPP_

@@ -354,7 +354,8 @@ void Grid::Refine(Field* field) {
         GhostPull(fid->second);
     }
 
-    Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_Interpolate);
+    // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_Interpolate);
+    Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_UpdateDependency);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -375,7 +376,8 @@ void Grid::Coarsen(Field* field) {
         GhostPull(fid->second);
     }
 
-    Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_Interpolate);
+    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_Interpolate);
+    Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_UpdateDependency);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -397,7 +399,8 @@ void Grid::Adapt(Field* field) {
         GhostPull(fid->second);
     }
 
-    Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
+    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
+    Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_UpdateDependency);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -521,6 +524,10 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
     m_profStart(prof_, "p4est balance");
     p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
     m_profStop(prof_, "p4est balance");
+
+    // Solve the dependencies is some have been created
+    const InterpolatingWavelet* wavelet = interp_;
+    DoOpTree(nullptr,&GridBlock::SolveDependency,this,wavelet,FieldBegin(),FieldEnd());
 
     // partition the grid
     m_profStart(prof_, "partition init");

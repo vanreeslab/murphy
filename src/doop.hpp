@@ -33,9 +33,9 @@ void DoOpMesh(const O op, F memfunc, const ForestGrid* grid, T... data) {
     constexpr bool do_gridblock = std::is_same<O, std::nullptr_t>();
     if constexpr (do_gridblock) {
         constexpr bool is_member                = std::is_same<F, void (GridBlock::*)(T...)>();
-        constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...)>();
         constexpr bool is_member_const          = std::is_same<F, void (GridBlock::*)(T...) const>();
-        constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...) const>();
+        constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t*, T...)>();
+        constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t*, T...) const>();
         static_assert((is_member || is_member_const || is_member_with_qid || is_member_const_with_qid), "if the operator is nullptr, the function MUST be a member function of the GridBlock class");
     } else {
         static_assert(std::is_pointer<O>(), "the operator type must be a pointer");
@@ -45,8 +45,8 @@ void DoOpMesh(const O op, F memfunc, const ForestGrid* grid, T... data) {
         static_assert(is_member || is_member_const, "if the operator is null, the function MUST be a member function of the GridBlock class");
     }
     // check if we need to send the qid with it
-    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...)>();
-    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...) const>();
+    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t*, T...)>();
+    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t*, T...) const>();
     constexpr bool with_qid                 = is_member_const_with_qid || is_member_with_qid;
     //-------------------------------------------------------------------------
     // get the grid info
@@ -69,12 +69,10 @@ void DoOpMesh(const O op, F memfunc, const ForestGrid* grid, T... data) {
 
         GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
-        if constexpr (do_gridblock) {
-            if constexpr (with_qid) {
-                (block->*memfunc)(&myid, data...);
-            } else {
-                (block->*memfunc)(data...);
-            }
+        if constexpr (do_gridblock && with_qid) {
+            (block->*memfunc)(&myid, data...);
+        } else if constexpr (do_gridblock) {
+            (block->*memfunc)(data...);
         } else {
             (op->*memfunc)(&myid, block, data...);
         }
@@ -179,9 +177,9 @@ void DoOpTree(const O op, F memfunc, const ForestGrid* grid, T... data) {
     constexpr bool do_gridblock = std::is_same<O, std::nullptr_t>();
     if constexpr (do_gridblock) {
         constexpr bool is_member                = std::is_same<F, void (GridBlock::*)(T...)>();
-        constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...)>();
         constexpr bool is_member_const          = std::is_same<F, void (GridBlock::*)(T...) const>();
-        constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...) const>();
+        constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t*, T...)>();
+        constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t*, T...) const>();
         static_assert((is_member || is_member_const || is_member_with_qid || is_member_const_with_qid), "if the operator is nullptr, the function MUST be a member function of the GridBlock class");
     } else {
         static_assert(std::is_pointer<O>(), "the operator type must be a pointer");
@@ -191,8 +189,8 @@ void DoOpTree(const O op, F memfunc, const ForestGrid* grid, T... data) {
         static_assert(is_member || is_member_const, "if the operator is null, the function MUST be a member function of the GridBlock class");
     }
     // check if we need to send the qid with it
-    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...)>();
-    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* qid, T...) const>();
+    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t*, T...)>();
+    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t*, T...) const>();
     constexpr bool with_qid                 = is_member_const_with_qid || is_member_with_qid;
     //-------------------------------------------------------------------------
     // get the grid info
@@ -213,12 +211,10 @@ void DoOpTree(const O op, F memfunc, const ForestGrid* grid, T... data) {
             myid.tid = it;                            // tree id
 
             // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
-            if constexpr (do_gridblock) {
-                if constexpr (with_qid) {
-                    (block->*memfunc)(&myid, data...);
-                } else {
-                    (block->*memfunc)(data...);
-                }
+            if constexpr (do_gridblock && with_qid) {
+                (block->*memfunc)(&myid, data...);
+            } else if constexpr (do_gridblock) {
+                (block->*memfunc)(data...);
             } else {
                 (op->*memfunc)(&myid, block, data...);
             }
