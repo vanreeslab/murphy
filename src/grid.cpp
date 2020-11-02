@@ -529,20 +529,20 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
         p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
         m_profStop(prof_, "p4est balance");
 
+        // Solve the dependencies is some have been created
+        const InterpolatingWavelet* wavelet = interp_;
+        DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());
+
+        // partition the grid
+        m_profStart(prof_, "partition init");
+        Partitioner partition(&fields_, this, true);
+        m_profStop(prof_, "partition init");
+        m_profStart(prof_, "partition comm");
+        partition.Start(&fields_, M_FORWARD);
+        partition.End(&fields_, M_FORWARD);
+        m_profStop(prof_, "partition comm");
+
     } while (n_quad_to_adapt() != 0 && recursive_adapt());
-
-    // Solve the dependencies is some have been created
-    const InterpolatingWavelet* wavelet = interp_;
-    DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());
-
-    // partition the grid
-    m_profStart(prof_, "partition init");
-    Partitioner partition(&fields_, this, true);
-    m_profStop(prof_, "partition init");
-    m_profStart(prof_, "partition comm");
-    partition.Start(&fields_, M_FORWARD);
-    partition.End(&fields_, M_FORWARD);
-    m_profStop(prof_, "partition comm");
 
     // create a new ghost and mesh
     SetupGhost();
