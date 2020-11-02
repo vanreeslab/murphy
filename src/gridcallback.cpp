@@ -32,8 +32,9 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
 
     real_t len = p4est_QuadLen(quad->level);
     // the user data points to the data defined by the grid = GridBlock*
-    m_assert(sizeof(GridBlock*) == forest->data_size,"cannot cast the pointer, this is baaaad");
-    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = new GridBlock(len, xyz, quad->level);
+    m_assert(sizeof(GridBlock*) == forest->data_size, "cannot cast the pointer, this is baaaad");
+    // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = new GridBlock(len, xyz, quad->level);
+    p4est_SetGridBlock(quad, new GridBlock(len, xyz, quad->level));
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -44,11 +45,13 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
 void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
     m_begin;
     //-------------------------------------------------------------------------
-    p8est_quadrant_t* quad  = info->quad;
-    GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
-    m_assert(block != nullptr,"the block you are trying to free has already been free'ed");
+    p8est_quadrant_t* quad = info->quad;
+    // GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+    GridBlock* block = p4est_GetGridBlock(quad);
+    m_assert(block != nullptr, "the block you are trying to free has already been free'ed");
     delete (block);
-    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = nullptr;
+    // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = nullptr;
+    p4est_SetGridBlock(quad, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -87,7 +90,8 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
     list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
-    GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
+    // GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
+    GridBlock*   block   = p4est_GetGridBlock(quadrant);
     m_assert(block->level() == quadrant->level, "the two levels must match");
 
     // get the origin, the length and check if we are inside the patch
@@ -130,7 +134,8 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 
     // check every block, if one child needs to be coarsen, we return true for everybody
     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[ib]->p.user_data));
+        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[ib]->p.user_data));
+        GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
         m_assert(block->level() == quadrant[ib]->level, "the two levels must match");
 
         // get the origin, the length and check if we are inside the patch
@@ -174,7 +179,8 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
-    GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
+    // GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
+    GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
     InterpolatingWavelet* interp = grid->interp();
 
     // if the block is locked, I cannot touch it anymore
@@ -203,7 +209,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
         // refine the block if one dimension needs to be refined
         if (refine) {
             // lock the block indicate that it cannot be changed in res anymore
-            block->lock();
+            block->lock(grid->recursive_adapt());
             m_verb("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
             m_profStop(grid->profiler(),"adapt criterion");
@@ -442,7 +448,8 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        p4est_SetGridBlock(quad,block);
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
@@ -456,10 +463,12 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
 
     // do the required iterpolation
     for (sid_t iout = 0; iout < num_outgoing; iout++) {
-        GridBlock* block_out = *(reinterpret_cast<GridBlock**>(outgoing[iout]->p.user_data));
+        // GridBlock* block_out = *(reinterpret_cast<GridBlock**>(outgoing[iout]->p.user_data));
+        GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
 
         for (sid_t iin = 0; iin < num_incoming; iin++) {
-            GridBlock* block_in = *(reinterpret_cast<GridBlock**>(incoming[iin]->p.user_data));
+            // GridBlock* block_in = *(reinterpret_cast<GridBlock**>(incoming[iin]->p.user_data));
+            GridBlock* block_in = p4est_GetGridBlock(incoming[iin]);
 
             // get the correct child id: if 1 is going out, the children are the incoming
             int childid = p8est_quadrant_child_id((num_outgoing == 1) ? incoming[iin] : outgoing[iout]);
@@ -468,9 +477,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
             if (num_outgoing == 1) {
                 // check if the parent is locked and lock the child if this is the case
                 // this may happen if the parent has been tagged for refinement
-                if (block_out->locked()) {
-                    block_in->lock();
-                }
+                block_in->lock(block_out->locked());
 
                 // get the shift given the child id
                 const lid_t shift[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
@@ -492,9 +499,7 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
             } else if (num_incoming == 1) {
                 // check if the child is locked and lock the parent if this is the case
                 // this may happen if the parent has been tagged for refinement
-                if (block_out->locked()) {
-                    block_in->lock();
-                }
+                block_in->lock(block_out->locked());
 
                 // get the shift
                 const lid_t shift[3] = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
@@ -552,7 +557,8 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
         qdrt_t*    quad  = outgoing[id];
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        GridBlock* block = p4est_GetGridBlock(quad);
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
@@ -599,7 +605,8 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        p4est_SetGridBlock(quad,block);
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
@@ -617,7 +624,8 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
         qdrt_t*    quad  = outgoing[id];
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        GridBlock* block = p4est_GetGridBlock(quad);
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
@@ -655,7 +663,8 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+        p4est_SetGridBlock(quad, block);
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
@@ -674,8 +683,9 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
-        qdrt_t*    quad  = outgoing[id];
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        qdrt_t* quad = outgoing[id];
+        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        GridBlock* block = p4est_GetGridBlock(quad);
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
