@@ -509,6 +509,7 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
     // coarsen + refine the needed blocks recursivelly
+    lid_t global_n_quad_to_adapt = 0;
     do {
         // reset the adapt counter
         n_quad_to_adapt_ = 0;
@@ -529,7 +530,11 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
         p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
         m_profStop(prof_, "p4est balance");
 
-    } while (n_quad_to_adapt() != 0 && recursive_adapt());
+        // sum ove the ranks
+        m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+    } while (global_n_quad_to_adapt != 0 && recursive_adapt());
 
     // Solve the dependencies is some have been created
     const InterpolatingWavelet* wavelet = interp_;
