@@ -30,11 +30,12 @@ class Grid : public ForestGrid {
     Ghost*                ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     InterpolatingWavelet* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
 
-    bool   recursive_adapt_ = false;   //!< recursive adaptation or not
-    real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
-    real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    bool   recursive_adapt_   = false;   //!< recursive adaptation or not
+    real_t rtol_              = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
+    real_t ctol_              = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    lid_t  n_quad_to_adapt_  = 0;
 
-    void* cback_criterion_ptr_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
+    void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
    public:
@@ -100,6 +101,9 @@ class Grid : public ForestGrid {
     bool   recursive_adapt() const { return recursive_adapt_; }
     void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
     void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
+
+    lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
+    void  AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }

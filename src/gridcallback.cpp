@@ -59,6 +59,8 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
 int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     m_begin;
     //-------------------------------------------------------------------------
+    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    grid->AddOneQuadToAdapt();
     return (true);
     //-------------------------------------------------------------------------
     m_end;
@@ -70,6 +72,8 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
 int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     m_begin;
     //-------------------------------------------------------------------------
+    Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
+    grid->AddOneQuadToAdapt();
     return (true);
     //-------------------------------------------------------------------------
     m_end;
@@ -99,7 +103,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
         }
         // if not, we have a coarser block and we might want to refine if the location matches
         bool refine = true;
-        for (int id = 0; id < 3; id++) {
+        for (lda_t id = 0; id < 3; id++) {
             // we have to satisfy both the our max > min and the min < our max
             refine = refine &&
                      (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
@@ -107,6 +111,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
         }
         // m_log("should be refined? %d: levels %d vs %d",refine,block->level(),patch->level());
         if(refine){
+            grid->AddOneQuadToAdapt();
             return true;
         }
     }
@@ -140,13 +145,14 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
             }
             // if not, we have a finer block and we might want to coarsen if the location matches
             bool coarsen = false;
-            for (sid_t id = 0; id < 3; id++) {
+            for (lda_t id = 0; id < 3; id++) {
                 // we have to satisfy both the our max > min and the min < our max
                 coarsen = coarsen &&
                          (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
                          (patch->origin(id) < (block->xyz(id) + len));
             }
             if (coarsen) {
+                grid->AddOneQuadToAdapt();
                 return true;
             }
         }
@@ -201,6 +207,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
             m_verb("block %f %f %f: YES refine (%e > %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
             // return to refine
             m_profStop(grid->profiler(),"adapt criterion");
+            grid->AddOneQuadToAdapt();
             return true;
         } else {
             m_verb("block %f %f %f: NO refine (%e < %e)", block->xyz(0), block->xyz(1), block->xyz(2), norm, grid->rtol());
@@ -274,11 +281,13 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
         }
     }
     // if I arrived here, I can coarsen the whole group, so lock them and return true
+    // lock everybody if needed
     for (int id = 0; id < P8EST_CHILDREN; id++) {
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[id]->p.user_data));
-        block->lock();
+        GridBlock* block = p4est_GetGridBlock(quadrant[id]);
+        block->lock(grid->recursive_adapt());
     }
     m_profStop(grid->profiler(), "adapt criterion");
+    grid->AddOneQuadToAdapt();
     return true;
     //-------------------------------------------------------------------------
     m_end;
@@ -636,7 +645,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    m_profStart(grid->profiler(), "fill values");
+    m_profStart(grid->profiler(), "adapt interp");
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -670,7 +679,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    m_profStop(grid->profiler(), "fill values");
+    m_profStop(grid->profiler(), "adapt interp");
     //-------------------------------------------------------------------------
     m_end;
 }

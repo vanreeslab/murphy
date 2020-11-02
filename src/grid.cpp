@@ -509,25 +509,31 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
     // coarsen + refine the needed blocks recursivelly
-    if (coarsen_crit != nullptr) {
-        m_profStart(prof_, "p4est coarsen");
-        p8est_coarsen_ext(p4est_forest_, recursive_adapt(), 0, coarsen_crit, nullptr, interp);
-        m_profStop(prof_, "p4est coarsen");
-    }
-    if (refine_crit != nullptr) {
-        m_profStart(prof_, "p4est refine");
-        p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_MAXLEVEL, refine_crit, nullptr, interp);
-        m_profStop(prof_, "p4est refine");
-    }
+    do {
+        // reset the adapt counter
+        n_quad_to_adapt_ = 0;
+        // let's go!
+        if (coarsen_crit != nullptr) {
+            m_profStart(prof_, "p4est coarsen");
+            p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_crit, nullptr, interp);
+            m_profStop(prof_, "p4est coarsen");
+        }
+        if (refine_crit != nullptr) {
+            m_profStart(prof_, "p4est refine");
+            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
+            m_profStop(prof_, "p4est refine");
+        }
 
-    // balance the partition
-    m_profStart(prof_, "p4est balance");
-    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
-    m_profStop(prof_, "p4est balance");
+        // balance the partition
+        m_profStart(prof_, "p4est balance");
+        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
+        m_profStop(prof_, "p4est balance");
+
+    } while (n_quad_to_adapt() != 0 && recursive_adapt());
 
     // Solve the dependencies is some have been created
     const InterpolatingWavelet* wavelet = interp_;
-    DoOpTree(nullptr,&GridBlock::SolveDependency,this,wavelet,FieldBegin(),FieldEnd());
+    DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());
 
     // partition the grid
     m_profStart(prof_, "partition init");
