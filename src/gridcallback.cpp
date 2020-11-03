@@ -180,7 +180,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     // GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
-    GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
+    GridBlock* block = p4est_GetGridBlock(quadrant);
     InterpolatingWavelet* interp = grid->interp();
 
     // if the block is locked, I cannot touch it anymore
