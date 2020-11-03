@@ -129,10 +129,6 @@ void Ghost::InitList_() {
     // MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
     MPI_Info_free(&info);
     m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
-    // initiate the displacement
-    for (iblock_t ib = 0; ib < n_active_quad_; ib++) {
-        local2disp_[ib] = -1;
-    }
     // make sure everything is done
     MPI_Win_fence(0, local2disp_window_);
 
@@ -157,8 +153,15 @@ void Ghost::InitList_() {
     // post the exposure epoch and start the access one for local2mirrors
     m_assert(mirror_origin_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
     m_assert(mirror_target_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
+
+    // start the exposure epochs if any
     MPI_Win_post(mirror_origin_group_, 0, local2disp_window_);
-    MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
+    // we need to not start the access epochs if we are empty (if fails on the beast otherwise)
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
+    }
+    // check that we will NOT go for GhostInitLists
+    m_assert(!(n_active_quad_ != 0 && mirror_target_group_ == MPI_GROUP_EMPTY), "if we have some active quadrant, we need to start the get epochs");
 
     // init the list on every active block that matches the level requirements
     // const InterpolatingWavelet*
@@ -168,8 +171,11 @@ void Ghost::InitList_() {
         DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, mygrid, il, mygrid, interp_, local2disp_window_);
     }
 
-    // complete the access epoch and wait for the exposure one
-    MPI_Win_complete(local2disp_window_);
+    // complete the epoch and wait for the exposure one
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(local2disp_window_);
+    }
+    // stop the exposure epochs if any
     MPI_Win_wait(local2disp_window_);
 
     //................................................
