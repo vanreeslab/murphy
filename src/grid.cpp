@@ -508,45 +508,72 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
     cback_interpolate_ptr_      = interp_ptr;
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
-    // coarsen + refine the needed blocks recursivelly
+    //................................................
+    // refinement, can be done recursivelly no matter what the block distributions on the rank
+    // the refinement must be done outside otherwise it's an endless circle:
+    // refine-coarsen-balance - refine-coarsen-balance - etc
+    if (refine_crit != nullptr) {
+        m_profStart(prof_, "p4est refine");
+        p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
+        m_profStop(prof_, "p4est refine");
+    }
+
+    //................................................
+    // coarsening, need to have the 8 children on the same rank
+    lid_t iteration              = 0;
     lid_t global_n_quad_to_adapt = 0;
     do {
         // reset the adapt counter
-        n_quad_to_adapt_ = 0;
-        // let's go!
+        n_quad_to_adapt_       = 0;
+        global_n_quad_to_adapt = 0;
+
+        // coarsening
         if (coarsen_crit != nullptr) {
             m_profStart(prof_, "p4est coarsen");
             p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_crit, nullptr, interp);
             m_profStop(prof_, "p4est coarsen");
         }
-        if (refine_crit != nullptr) {
-            m_profStart(prof_, "p4est refine");
-            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
-            m_profStop(prof_, "p4est refine");
+
+        // if we are recursive, we need to update the rank partitioning and check for new block to change
+        if (recursive_adapt()) {
+            // if we balance the grid, it enters a endless circle as the coarsening and refinement corrects the balanced parition
+            // no balancing on the grid but corrects the proc distribution
+            m_profStart(prof_, "partition init");
+            Partitioner partition(&fields_, this, true);
+            m_profStop(prof_, "partition init");
+            m_profStart(prof_, "partition comm");
+            partition.Start(&fields_, M_FORWARD);
+            partition.End(&fields_, M_FORWARD);
+            m_profStop(prof_, "partition comm");
+
+            // sum over the ranks and see if we keep going
+            m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+            MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         }
 
-        // balance the partition
-        m_profStart(prof_, "p4est balance");
-        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
-        m_profStop(prof_, "p4est balance");
+        // increment the counter
+        ++iteration;
+    } while (global_n_quad_to_adapt != 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
 
-        // Solve the dependencies is some have been created
+    // balance the partition
+    m_profStart(prof_, "p4est balance");
+    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
+    m_profStop(prof_, "p4est balance");
+
+    // Solve the dependencies is some have been created -> no dep created if we are recursive
+    if (!recursive_adapt()) {
         const InterpolatingWavelet* wavelet = interp_;
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());
+    }
 
-        // partition the grid
-        m_profStart(prof_, "partition init");
-        Partitioner partition(&fields_, this, true);
-        m_profStop(prof_, "partition init");
-        m_profStart(prof_, "partition comm");
-        partition.Start(&fields_, M_FORWARD);
-        partition.End(&fields_, M_FORWARD);
-        m_profStop(prof_, "partition comm");
-        // sum ove the ranks
-        m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
-        MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-    } while (global_n_quad_to_adapt != 0 && recursive_adapt());
+    // finally fix the rank partition
+    m_profStart(prof_, "partition init");
+    Partitioner partition(&fields_, this, true);
+    m_profStop(prof_, "partition init");
+    m_profStart(prof_, "partition comm");
+    partition.Start(&fields_, M_FORWARD);
+    partition.End(&fields_, M_FORWARD);
+    m_profStop(prof_, "partition comm");
 
     // create a new ghost and mesh
     SetupGhost();
