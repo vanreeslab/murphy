@@ -14,7 +14,7 @@
 #define DOUBLE_TOL 1e-14
 #define ORDER2_TOL 0.25
 #define ORDERI_TOL 1.1
-#define BLVL 1
+#define BLVL 0
 
 using std::list;
 using std::string;
@@ -39,14 +39,18 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
             Grid grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
-            real_t origin1[3] = {1.0, 1.0, 1.0};
-            real_t length1[3] = {1.0, 1.0, 1.0};
-            Patch  p1(origin1, length1, il + BLVL + 1);
+            real_t origin11[3] = {0.0, 1.0, 1.0};
+            real_t length11[3] = {3.0, 1.0, 1.0};
+            Patch  p11(origin11, length11, il + BLVL + 1);
+            real_t origin12[3] = {1.0, 0.0, 1.0};
+            real_t length12[3] = {1.0, 3.0, 1.0};
+            Patch  p12(origin12, length12, il + BLVL + 1);
             real_t origin2[3] = {0.0, 0.0, 0.0};
-            real_t length2[3] = {3.0, 3.0, 3.0};
+            real_t length2[3] = {1.0, 1.0, 1.0};
             Patch  p2(origin2, length2, il + BLVL);
 
-            list<Patch> patch{p1,p2};
+            // list<Patch> patch{p11,p2};
+            list<Patch> patch{p11,p12,p2};
             grid.Adapt(&patch);
 
             // create the test file
@@ -69,10 +73,10 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
             // pull the ghosts
             grid.GhostPull(&test);
 
-            // IOH5 io("data_test");
-            // io(&grid, &test);
-            // io.dump_ghost(true);
-            // io(&grid, &test);
+            IOH5 io("data_test");
+            io(&grid, &test);
+            io.dump_ghost(true);
+            io(&grid, &test);
 
             // create the solution field
             Field sol("sol", 1);

@@ -161,7 +161,7 @@ void Ghost::InitList_() {
         MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
     }
     // check that we will NOT go for GhostInitLists
-    m_assert(!(n_active_quad_ != 0 && mirror_target_group_ == MPI_GROUP_EMPTY), "if we have some active quadrant, we need to start the get epochs");
+    m_assert(!(n_active_quad_ != 0 && mirror_target_group_ == MPI_GROUP_EMPTY && mpi_size > 1), "if we have some active quadrant, we need to start the get epochs");
 
     // init the list on every active block that matches the level requirements
     // const InterpolatingWavelet*

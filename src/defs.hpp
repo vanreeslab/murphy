@@ -316,16 +316,18 @@
 #define m_assert(cond, ...) \
     { ((void)0); }
 #else
-#define m_assert(cond, ...)                                                                                            \
-    ({                                                                                                                 \
-        bool m_assert_cond_ = (bool)(cond);                                                                            \
-        if (!(m_assert_cond_)) {                                                                                       \
-            char m_assert_msg_[1024];                                                                                  \
-            sprintf(m_assert_msg_, __VA_ARGS__);                                                                       \
-            fprintf(stdout, "[murphy-assert] '%s' FAILED: %s (at %s:%d)\n", #cond, m_assert_msg_, __FILE__, __LINE__); \
-            fflush(stdout);                                                                                            \
-            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                 \
-        }                                                                                                              \
+#define m_assert(cond, ...)                                                                                                               \
+    ({                                                                                                                                    \
+        bool m_assert_cond_ = (bool)(cond);                                                                                               \
+        if (!(m_assert_cond_)) {                                                                                                          \
+            char m_assert_msg_[1024];                                                                                                     \
+            int  m_assert_rank_;                                                                                                          \
+            MPI_Comm_rank(MPI_COMM_WORLD, &m_assert_rank_);                                                                               \
+            sprintf(m_assert_msg_, __VA_ARGS__);                                                                                          \
+            fprintf(stdout, "[%d murphy-assert] '%s' FAILED: %s (at %s:%d)\n", m_assert_rank_, #cond, m_assert_msg_, __FILE__, __LINE__); \
+            fflush(stdout);                                                                                                               \
+            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                                    \
+        }                                                                                                                                 \
     })
 #endif
 

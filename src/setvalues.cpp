@@ -328,6 +328,9 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
             for (lid_t i0 = start_; i0 < end_; i0++) {
                 // get the position
                 m_pos(pos, i0, i1, i2, hgrid, xyz);
+                pos[0] = fmod(pos[0]+1, 1.0);
+                pos[1] = fmod(pos[1]+1, 1.0);
+                pos[2] = fmod(pos[2]+1, 1.0);
                 // wrt to the center
                 const real_t alpha = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
                 const real_t x     = pos[idx] - (center_[idx] + radius_ * cos(alpha));

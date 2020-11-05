@@ -115,6 +115,7 @@ void ForestGrid::ResetP4estGhostMesh() {
     if (p4est_mesh_ != nullptr) {
         p8est_mesh_destroy(p4est_mesh_);
         p4est_mesh_ = nullptr;
+        m_log("destroyed the old mesh!!");
     }
     if (p4est_ghost_ != nullptr) {
         p8est_ghost_destroy(p4est_ghost_);
@@ -136,8 +137,10 @@ void ForestGrid::SetupP4estGhostMesh() {
     m_begin;
     m_assert(p4est_ghost_ == nullptr && p4est_mesh_ == nullptr, "cannot initialize something that already exist");
     //-------------------------------------------------------------------------
-    p4est_ghost_   = p8est_ghost_new(p4est_forest_, P8EST_CONNECT_FULL);
-    p4est_mesh_    = p8est_mesh_new_ext(p4est_forest_, p4est_ghost_, 1, 1, P8EST_CONNECT_FULL);
+    p4est_ghost_ = p8est_ghost_new(p4est_forest_, P8EST_CONNECT_FULL);
+    m_log("creating a new mesh");
+    p4est_mesh_ = p8est_mesh_new_ext(p4est_forest_, p4est_ghost_, 1, 1, P8EST_CONNECT_FULL);
+    m_log("done with mesh");
     is_mesh_valid_ = true;
     //-------------------------------------------------------------------------
     m_end;

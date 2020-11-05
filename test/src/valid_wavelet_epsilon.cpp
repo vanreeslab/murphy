@@ -229,7 +229,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
     // lda_t  ieps       = 0;
     for (lda_t ieps = 1; ieps < 2; ++ieps) {
         level_t max_level   = 4;
-        bool    periodic[3] = {false, false, false};
+        bool    periodic[3] = {true, true, true};
         lid_t   L[3]        = {1, 1, 1};
         Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
 
@@ -259,25 +259,66 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
 
         // do the coarsening, go the the min level if needed
         for (level_t il = max_level; il > 2; --il) {
-            grid.Coarsen(&vort);
-            // recreate the solution
-            Field sol("sol", 3);
-            grid.AddField(&sol);
-            vr_init(&grid, &sol);
-            // compute the error
-            real_t          err2, erri;
-            ErrorCalculator error;
-            error.Norms(&grid, &vort, &sol, &err2, &erri);
-            m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
-            grid.DeleteField(&sol);
 
-            ASSERT_LE(err2, epsilon[ieps]);
-            ASSERT_LE(erri, epsilon[ieps]);
+            grid.GhostPull(&vort);
+            {
+                // IOH5 io("data_test");
+                // io.dump_ghost(true);
+                // io(&grid, &vort, "vort_init");
+
+                // recreate the solution
+                Field sol("sol", 3);
+                grid.AddField(&sol);
+                vr_init_full(&grid, &sol);
+
+                real_t          err2, erri;
+                ErrorCalculator error_full(grid.interp());
+                for (level_t sil = max_level; sil >= il; --sil) {
+                    error_full.Norms(&grid, sil, &vort, &sol, &err2, &erri);
+                    m_log("==> error computation while going down (level %d): epsilon %e: err2 = %e, erri = %e", sil, epsilon[ieps], err2, erri);
+                }
+                // ErrorCalculator error;
+                error_full.Norms(&grid, &vort, &sol, &err2, &erri);
+                ASSERT_LE(err2, epsilon[ieps]);
+                ASSERT_LE(erri, epsilon[ieps]);
+
+                grid.DeleteField(&sol);
+            }
+
+            grid.Coarsen(&vort);
+            grid.GhostPull(&vort);
+           
+            // grid.GhostPull(&vort);
+            // IOH5 io("data_test");
+            // // io.dump_ghost(true);
+            // io(&grid, &vort, "vort_tmp");
+
+            // compute the error
+            {
+                // recreate the solution
+                Field sol("sol", 3);
+                grid.AddField(&sol);
+                vr_init_full(&grid, &sol);
+
+                real_t          err2, erri;
+                ErrorCalculator error_full(grid.interp());
+                for (level_t sil = max_level; sil >= il - 1; --sil) {
+                    error_full.Norms(&grid, sil, &vort, &sol, &err2, &erri);
+                    m_log("==> error computation while going down (level %d): epsilon %e: err2 = %e, erri = %e", sil, epsilon[ieps], err2, erri);
+                }
+                // ErrorCalculator error;
+                error_full.Norms(&grid, &vort, &sol, &err2, &erri);
+                ASSERT_LE(err2, epsilon[ieps]);
+                ASSERT_LE(erri, epsilon[ieps]);
+
+                grid.DeleteField(&sol);
+            }
         }
 
         grid.GhostPull(&vort);
         IOH5 io("data_test");
-        io(&grid, &vort, "vort_coarse");
+        std::string name = "vort_coarse" + std::to_string(epsilon[ieps]);
+        io(&grid, &vort, name);
 
         // go up again by forcing the refinement based on the patch
         for (level_t sil = 2; sil < max_level; ++sil) {
@@ -294,9 +335,9 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
             error.Norms(&grid, &vort, &sol, &err2, &erri);
             m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
 
-            grid.GhostPull(&vort);
-            // IOH5 io("data_test");
-            io(&grid, &vort, "vort_fine");
+            // grid.GhostPull(&vort);
+            // // IOH5 io("data_test");
+            // io(&grid, &vort, "vort_fine");
 
             ASSERT_LE(err2, epsilon[ieps]);
             ASSERT_LE(erri, epsilon[ieps]);
