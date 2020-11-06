@@ -170,7 +170,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
         const real_t         center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
         const lda_t          normal    = 2;
         const real_t         sigma     = 0.1;
-        const real_t         radius    = 0.2;
+        const real_t         radius    = 0.3;
         const real_t         cutoff    = (center[0] - radius) * 0.9;
         SetCompactVortexRing vr_init(normal, center, sigma, radius, cutoff);
         SetCompactVortexRing vr_init_full(normal, center, sigma, radius, cutoff, grid.interp());
@@ -182,20 +182,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
         // do the coarsening, go the the min level if needed
         for (level_t il = max_level; il > 2; --il) {
             grid.Coarsen(&vort);
-            // recreate the solution
-            // Field sol("sol", 3);
-            // grid.AddField(&sol);
-            // vr_init(&grid, &sol);
-            // // compute the error
-            // real_t          err2, erri;
-            // ErrorCalculator error;
-            // error.Norms(&grid, &vort, &sol, &err2, &erri);
-            // m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
         }
-
-        // grid.GhostPull(&vort);
-        // IOH5 io("data_test");
-        // io(&grid, &vort);
 
         // go up again by forcing the refinement based on the patch
         for (level_t sil = 2; sil < max_level; ++sil) {
@@ -227,7 +214,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
     real_t epsilon[3] = {1e-2, 1e-3};
     // real_t epsilon[1] = {1.0e-1};
     // lda_t  ieps       = 0;
-    for (lda_t ieps = 1; ieps < 2; ++ieps) {
+    for (lda_t ieps = 0; ieps < 2; ++ieps) {
         level_t max_level   = 4;
         bool    periodic[3] = {false, false, false};
         lid_t   L[3]        = {1, 1, 1};
@@ -248,7 +235,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
         const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
         const lda_t  normal    = 2;
         const real_t sigma     = 0.05;
-        const real_t radius    = 0.25;
+        const real_t radius    = 0.35;
         // const real_t  cutoff    = (center[0] - radius) * 0.9;
         SetVortexRing vr_init(normal, center, sigma, radius);
         SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
