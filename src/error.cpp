@@ -150,9 +150,9 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
 
-                    if (fabs(error) > 3.08e-1) {
-                        m_log("block %d @ %f %f %f (ida=%d) , @ %d %d %d field = %e, sol = %e, error = %e", qid->cid, block->xyz(0), block->xyz(1), block->xyz(2), ida, i0, i1, i2, data_field[m_idx(i0, i1, i2)], data_sol[m_idx(i0, i1, i2)], error);
-                    }
+                    // if (fabs(error) > 1.69e-3) {
+                    //     m_log("block %d @ %f %f %f (ida=%d) , @ %d %d %d field = %e, sol = %e, error = %e", qid->cid, block->xyz(0), block->xyz(1), block->xyz(2), ida, i0, i1, i2, data_field[m_idx(i0, i1, i2)], data_sol[m_idx(i0, i1, i2)], error);
+                    // }
                 }
             }
         }

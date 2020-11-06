@@ -91,7 +91,7 @@ class InterpolatingWavelet {
    public:
     //................................................
     // need for empty constructor/destructor to call the virtual ones
-    explicit InterpolatingWavelet(){};
+    explicit InterpolatingWavelet() {};
     virtual ~InterpolatingWavelet(){};
 
     //................................................
@@ -135,14 +135,14 @@ class InterpolatingWavelet {
     const lid_t shift_back() const { return m_max((2 * Nt() - 1) / 2 - 1, 0); };  //!< return the num of detail to take into account outside the block, in the back
 
     // nghosts
-    const lid_t ncoarsen_front() const { return (len_ha() / 2); };     //!< returns the number of gp needed for the coarsening operation, in front
-    const lid_t ncoarsen_back() const { return (len_ha() / 2 - 1); };  //!< returns the number of gp needed for the coarsening operation, in the back
-    const lid_t nrefine_front() const { return (len_gs() / 2 - 1); };  //!< returns the number of gp needed for the refinement operation, in front
-    const lid_t nrefine_back() const { return (len_gs() / 2); };       //!< returns the number of gp needed for the refinement operation, in the back
+    const lid_t ncoarsen_front() const { return m_max(len_ha() / 2, 0); };     //!< returns the number of gp needed for the coarsening operation, in front
+    const lid_t ncoarsen_back() const { return m_max(len_ha() / 2 - 1, 0); };  //!< returns the number of gp needed for the coarsening operation, in the back
+    const lid_t nrefine_front() const { return m_max(len_gs() / 2 - 1, 0); };  //!< returns the number of gp needed for the refinement operation, in front
+    const lid_t nrefine_back() const { return m_max(len_gs() / 2, 0); };       //!< returns the number of gp needed for the refinement operation, in the back
     // const lid_t ncriterion_front() const { return shift_front() + nrefine_front()*2; }  //!< returns the number of gp needed for the detail operation, in front
     // const lid_t ncriterion_back() const { return shift_back() + nrefine_back()*2; }    //!< returns the number of gp needed for the detail operation, in the back
-    const lid_t ncriterion_front() const { return (len_ga() / 2 - 1); };
-    const lid_t ncriterion_back() const { return (len_ga() / 2); };
+    const lid_t ncriterion_front() const { return m_max(len_ga() / 2 - 1, 0); };
+    const lid_t ncriterion_back() const { return m_max(len_ga() / 2, 0); };
 
     // half limits
     const sid_t ha_half_lim() const { return (len_ha() / 2); };

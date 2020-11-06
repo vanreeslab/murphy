@@ -331,21 +331,34 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
                 pos[0] = fmod(pos[0]+1, 1.0);
                 pos[1] = fmod(pos[1]+1, 1.0);
                 pos[2] = fmod(pos[2]+1, 1.0);
-                // wrt to the center
-                const real_t alpha = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
-                const real_t x     = pos[idx] - (center_[idx] + radius_ * cos(alpha));
-                const real_t y     = pos[idy] - (center_[idy] + radius_ * sin(alpha));
-                const real_t z     = pos[idz] - (center_[idz]);
-                // get the local coords
 
-                // const real_t r_plane = sqrt(x * x + y * y) - radius_;
-                const real_t r2   = (x * x + y * y + z * z);
-                const real_t rho2 = r2 * oo_sigma2;
-                const real_t vort = oo_pisigma2 * exp(-rho2);
-                // const real_t vort = oo_pisigma2 * exp(1.0 - 1.0 / (1.0 - r2 * oo_sigma2));
+                // wrt to the center
+                const real_t alpha   = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
+                const real_t rad1r   = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2)) - radius_;
+                const real_t rad2r   = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2)) + radius_;
+                const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center_[idz], 2);
+                const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center_[idz], 2);
+                const real_t vort    = oo_pisigma2 * (exp(-rad1_sq * oo_sigma2) - exp(-rad2_sq * oo_sigma2));
+
                 wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
                 wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
                 wz[m_idx(i0, i1, i2)] = 0.0;
+                
+                // // wrt to the center
+                // const real_t alpha = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
+                // const real_t x     = pos[idx] - (center_[idx] + radius_ * cos(alpha));
+                // const real_t y     = pos[idy] - (center_[idy] + radius_ * sin(alpha));
+                // const real_t z     = pos[idz] - (center_[idz]);
+                // // get the local coords
+
+                // // const real_t r_plane = sqrt(x * x + y * y) - radius_;
+                // const real_t r2   = (x * x + y * y + z * z);
+                // const real_t rho2 = r2 * oo_sigma2;
+                // const real_t vort = oo_pisigma2 * exp(-rho2);
+                // // const real_t vort = oo_pisigma2 * exp(1.0 - 1.0 / (1.0 - r2 * oo_sigma2));
+                // wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
+                // wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
+                // wz[m_idx(i0, i1, i2)] = 0.0;
             }
         }
     }

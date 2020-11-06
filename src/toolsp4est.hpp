@@ -118,7 +118,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
         p8est_quadrant_t* ngh = p4est_GetElement<p8est_quadrant_t*>(ngh_quad, ib);
 
         // finish the check
-        m_log("adding %p to the list",ngh);
+        m_verb("adding %p to the list",ngh);
         ngh_list->push_back(ngh);
 
         // find out the rank, if not ghost, myself, if ghost, take the piggy number
@@ -126,12 +126,12 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
         const bool isghost = (status < 0);
 
         if (!isghost) {
-            m_log("pushing to list: rank %d", my_rank);
+            m_verb("pushing to list: rank %d", my_rank);
             rank_list->push_back(my_rank);
         } else {
-            m_log("found block at level %d, local num = %d and tree %d", ngh->level, ngh->p.piggy3.local_num, ngh->p.piggy3.which_tree);
+            m_verb("found block at level %d, local num = %d and tree %d", ngh->level, ngh->p.piggy3.local_num, ngh->p.piggy3.which_tree);
             const int ngh_rank = p8est_quadrant_find_owner(forest, ngh->p.piggy3.which_tree, -1, ngh);
-            m_log("pushing to list: rank %d", ngh_rank);
+            m_verb("pushing to list: rank %d", ngh_rank);
             rank_list->push_back(ngh_rank);
         }
     }
@@ -149,8 +149,8 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
         // get the surrogate block
         const iface_t corner_id = ibidule - 18;
         p8est_quadrant_corner_neighbor_extra(quad, tree_id, corner_id, surrogate_list, treeid_list, NULL, connect);
-        m_log("looking for block @tree %d  and corner %d", tree_id, corner_id);
-        m_log("we found %d surrogate blocks", surrogate_list->elem_count);
+        m_verb("looking for block @tree %d  and corner %d", tree_id, corner_id);
+        m_verb("we found %d surrogate blocks", surrogate_list->elem_count);
 
         // for each surrogate block
         for (sid_t is = 0; is < surrogate_list->elem_count; is++) {
@@ -169,8 +169,8 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
             // actually search for it
             int is_valid = p8est_quadrant_exists(forest, ghost, tree_2_find, quad_2_find, exist_arr, rank_arr, quad_arr);
             m_assert(quad_arr->elem_count == 1, "there is %ld quad matching the needed one", quad_arr->elem_count);
-            m_log("the quadrant found is valid? %d", is_valid);
-            m_log("we have %d elements in the exist vector", exist_arr->elem_count);
+            m_verb("the quadrant found is valid? %d", is_valid);
+            m_verb("we have %d elements in the exist vector", exist_arr->elem_count);
             // for (int i = 0; i < exist_arr->elem_count; ++i) {
             //     m_log("value: %d", p4est_GetElement<int>(exist_arr, i));
             // }
@@ -182,7 +182,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
             p4est_topidx_t    rank_to_push = p4est_GetElement<int>(rank_arr, 0);
             if (is_valid && rank_to_push == my_rank) {
                 // we are not ghost use the piggy3 to recover the real quad
-                m_log("piggy3: tree id = %d, local_num = %d", quad_piggy->p.piggy3.which_tree, quad_piggy->p.piggy3.local_num);
+                m_verb("piggy3: tree id = %d, local_num = %d", quad_piggy->p.piggy3.which_tree, quad_piggy->p.piggy3.local_num);
                 p8est_tree_t*     tree_to_push = p8est_tree_array_index(forest->trees, quad_piggy->p.piggy3.which_tree);
                 p8est_quadrant_t* quad_to_push = p8est_quadrant_array_index(&tree_to_push->quadrants, quad_piggy->p.piggy3.local_num);
 
@@ -193,7 +193,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
                     rank_list->push_back(rank_to_push);
                 }
 
-                m_log("pushing to list: adress: %p  and rank %d", quad_to_push, rank_to_push);
+                m_verb("pushing to list: adress: %p  and rank %d", quad_to_push, rank_to_push);
 
             } else if (is_valid) {
                 // we are a ghost, we can push the piggy quad

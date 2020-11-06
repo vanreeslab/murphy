@@ -275,9 +275,16 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
             // coarsen if the norm is smaller than the tol
             coarsen = (norm < grid->ctol());
 
-            if (block->xyz(0) == 0.687500 && block->xyz(1) == 0.187500 && block->xyz(2) == 0.312500) {
-                m_log("block @ %f %f %f: dim %d coarsen = %d? %e < %e", block->xyz(0), block->xyz(1), block->xyz(2), ida, coarsen, norm, grid->ctol());
-            }
+            // if (p4est_GetGridBlock(quadrant[0])->xyz(0) == 0.25 &&
+            //     p4est_GetGridBlock(quadrant[0])->xyz(1) == 0.875 &&
+            //     p4est_GetGridBlock(quadrant[0])->xyz(2) == 0.375) {
+            //     m_log("block @ %f %f %f: dim %d coarsen = %d? %e < %e", block->xyz(0), block->xyz(1), block->xyz(2), ida, coarsen, norm, grid->ctol());
+            // }
+            // if (p4est_GetGridBlock(quadrant[0])->xyz(0) == 0.25 &&
+            //     p4est_GetGridBlock(quadrant[0])->xyz(1) == 0.0 &&
+            //     p4est_GetGridBlock(quadrant[0])->xyz(2) == 0.375) {
+            //     m_log("block @ %f %f %f: dim %d coarsen = %d? %e < %e", block->xyz(0), block->xyz(1), block->xyz(2), ida, coarsen, norm, grid->ctol());
+            // }
 
             // if I cannot coarsen, I can give up on the whole group, so return false
             if (!coarsen) {
@@ -337,6 +344,13 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
 
         // store the block
         p4est_SetGridBlock(quad, block_in);
+
+        // if (block_in->xyz(0) == 0.25 && block_in->xyz(1) == 0.875 && block_in->xyz(2) == 0.375) {
+        //     m_log("coarsening block @ %f %f %f: num_in %d num_out %d", block_in->xyz(0), block_in->xyz(1), block_in->xyz(2), num_incoming, num_outgoing);
+        // }
+        // if (block_in->xyz(0) == 0.25 && block_in->xyz(1) == 0.0 && block_in->xyz(2) == 0.375) {
+        //     m_log("coarsening block @ %f %f %f: num_in %d num_out %d", block_in->xyz(0), block_in->xyz(1), block_in->xyz(2), num_incoming, num_outgoing);
+        // }
 
         // if (block_in->xyz(0) == 0.25 && block_in->xyz(1) == 0.5 && block_in->xyz(2) == 0.75) {
         //     m_log("block @ %f %f %f : ", block_in->xyz(0), block_in->xyz(1), block_in->xyz(2));
