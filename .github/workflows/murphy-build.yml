@@ -1,0 +1,19 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  #----------------------------------------------------------------------------
+  build-debug:
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    timeout-minutes: 20
+    container:
+      image: vanreeslab/murphy-ci:v1.8
+    # define the steps
+    steps:
+      #checkout the repo
+      - uses: actions/checkout@v2
+      # do the build
+      - name: build
+        run: ARCH_FILE=make_arch/make.docker_gcc_test make -j12
