@@ -224,7 +224,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
 //==============================================================================================================================
 TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
     // adapt the mesh
-    real_t epsilon[3] = {1e-3, 6.60e-4};
+    real_t epsilon[3] = {1e-2, 1e-3};
     // real_t epsilon[1] = {1.0e-1};
     // lda_t  ieps       = 0;
     for (lda_t ieps = 1; ieps < 2; ++ieps) {
@@ -247,8 +247,8 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
 
         const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
         const lda_t  normal    = 2;
-        const real_t sigma     = 0.1;
-        const real_t radius    = 0.2;
+        const real_t sigma     = 0.05;
+        const real_t radius    = 0.25;
         // const real_t  cutoff    = (center[0] - radius) * 0.9;
         SetVortexRing vr_init(normal, center, sigma, radius);
         SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
@@ -259,68 +259,11 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
 
         // do the coarsening, go the the min level if needed
         for (level_t il = max_level; il > 2; --il) {
-
-            // grid.GhostPull(&vort);
-            // {
-            //     // IOH5 io("data_test");
-            //     // io.dump_ghost(true);
-            //     // io(&grid, &vort, "vort_init");
-
-            //     // recreate the solution
-            //     Field sol("sol", 3);
-            //     grid.AddField(&sol);
-            //     vr_init_full(&grid, &sol);
-
-            //     real_t          err2, erri;
-            //     ErrorCalculator error_full(grid.interp());
-            //     // for (level_t sil = max_level; sil >= il; --sil) {
-            //     //     error_full.Norms(&grid, sil, &vort, &sol, &err2, &erri);
-            //     //     m_log("==> error computation while going down (level %d): epsilon %e: err2 = %e, erri = %e", sil, epsilon[ieps], err2, erri);
-            //     // }
-            //     // this is only true at the finest level, because a coarse block might have a finer ghost and the ghost points there do not match the epsilon criterion.
-            //     error_full.Norms(&grid, max_level, &vort, &sol, &err2, &erri);
-            //     m_log("==> error computation while going down (level %d): epsilon %e: err2 = %e, erri = %e", max_level, epsilon[ieps], err2, erri);
-            //     // ErrorCalculator error;
-            //     error_full.Norms(&grid, &vort, &sol, &err2, &erri);
-            //     ASSERT_LE(err2, epsilon[ieps]);
-            //     ASSERT_LE(erri, epsilon[ieps]);
-
-            //     grid.DeleteField(&sol);
-            // }
-
             grid.Coarsen(&vort);
-            grid.GhostPull(&vort);
-           
-            grid.GhostPull(&vort);
-            // IOH5 io("data_test");
-            // // io.dump_ghost(true);
-            // io(&grid, &vort, "vort_tmp");
-
-            // compute the error
-            {
-                // recreate the solution
-                Field sol("sol", 3);
-                grid.AddField(&sol);
-                vr_init_full(&grid, &sol);
-
-                real_t          err2, erri;
-                ErrorCalculator error_full(grid.interp());
-                //this is only true at the finest level, because a coarse block might have a finer ghost and the ghost points there do not match the epsilon criterion.
-                // for (level_t sil = max_level; sil >= il - 1; --sil) {
-                    error_full.Norms(&grid, max_level, &vort, &sol, &err2, &erri);
-                    m_log("==> error computation while going down (level %d): epsilon %e: err2 = %e, erri = %e", max_level, epsilon[ieps], err2, erri);
-                // }
-                // ErrorCalculator error;
-                // error_full.Norms(&grid, &vort, &sol, &err2, &erri);
-                ASSERT_LE(err2, epsilon[ieps]);
-                ASSERT_LE(erri, epsilon[ieps]);
-
-                grid.DeleteField(&sol);
-            }
         }
 
         grid.GhostPull(&vort);
-        IOH5 io("data_test");
+        IOH5        io("data_test");
         std::string name = "vort_coarse" + std::to_string(epsilon[ieps]);
         io(&grid, &vort, name);
 
@@ -338,10 +281,6 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
             ErrorCalculator error;
             error.Norms(&grid, &vort, &sol, &err2, &erri);
             m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
-
-            // grid.GhostPull(&vort);
-            // // IOH5 io("data_test");
-            // io(&grid, &vort, "vort_fine");
 
             ASSERT_LE(err2, epsilon[ieps]);
             ASSERT_LE(erri, epsilon[ieps]);
