@@ -235,7 +235,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
         const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
         const lda_t  normal    = 2;
         const real_t sigma     = 0.05;
-        const real_t radius    = 0.35;
+        const real_t radius    = 0.3;
         // const real_t  cutoff    = (center[0] - radius) * 0.9;
         SetVortexRing vr_init(normal, center, sigma, radius);
         SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
