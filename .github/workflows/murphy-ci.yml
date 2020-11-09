@@ -1,6 +1,6 @@
 name: validation
 
-on: [pull_request]
+on: pull_request
 
   #----------------------------------------------------------------------------
   runtests_wavelet_2_2:
