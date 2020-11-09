@@ -134,10 +134,13 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool
             n_send_request_ = 0;
             for (rank_t ir = 0; ir < n_recver; ++ir) {
                 const rank_t c_recver = first_recver + ir;
+                if (c_recver == rank) {
+                    continue;
+                }
                 n_send_request_ += (forest->global_first_quadrant[c_recver + 1] - forest->global_first_quadrant[c_recver]) > 0;
             }
             // if I am among the list, remove myself from the request point of view
-            n_send_request_ -= (first_recver <= rank && rank <= last_recver);
+            // n_send_request_ -= (first_recver <= rank && rank <= last_recver);
             m_verb("I will do %d send reqests to send blocks to the %d detected receivers", n_send_request_, n_recver);
 
             // allocate the requests
@@ -160,11 +163,8 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool
                 const p4est_gloidx_t q_rightlimit = m_min(forest->global_first_quadrant[c_recver + 1], opart_end);
                 const lid_t          n_q2send     = q_rightlimit - q_leftlimit;
                 // if I want to allocate a send for myself, skip
-                if (c_recver == rank) {
+                if (c_recver == rank || n_q2send == 0) {
                     tqcount += n_q2send;
-                    continue;
-                }
-                if (n_q2send == 0) {
                     continue;
                 }
                 // remember the begin and end point
@@ -243,10 +243,13 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool
             n_recv_request_ = 0;
             for (rank_t ir = 0; ir < n_sender; ++ir) {
                 const rank_t c_sender = first_sender + ir;
+                if (c_sender == rank) {
+                    continue;
+                }
                 n_recv_request_ += (oldpart[c_sender + 1] - oldpart[c_sender]) > 0;
             }
             // remove myself
-            n_recv_request_ -= (first_sender <= rank && rank <= last_sender);
+            // n_recv_request_ -= (first_sender <= rank && rank <= last_sender);
             m_verb("I will do %d recv reqests to get blocks from %d senders", n_recv_request_, n_sender);
 
             // allocate the requests
@@ -270,12 +273,8 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool
                 const p4est_gloidx_t q_rightlimit = m_min(oldpart[c_sender + 1], cpart_end);
                 const lid_t          n_q2recv     = q_rightlimit - q_leftlimit;
                 // if I am the sender, advance the tqcount counter and skip
-                if (c_sender == rank) {
+                if (c_sender == rank || n_q2recv == 0) {
                     tqcount += n_q2recv;
-                    continue;
-                }
-                // if nothing has to be received, I skip
-                if (n_q2recv == 0) {
                     continue;
                 }
                 // store the memory accesses
