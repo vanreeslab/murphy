@@ -11,7 +11,7 @@
 #include "field.hpp"
 #include "ghost.hpp"
 #include "gridblock.hpp"
-#include "interpolator.hpp"
+#include "Wavelet.hpp"
 #include "murphy.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
@@ -28,7 +28,7 @@ class Grid : public ForestGrid {
 
     Prof*                 prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*                ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
-    InterpolatingWavelet* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
+    Wavelet* interp_ = nullptr;  //!< the Wavelet to use for all the multilevel operations
 
     bool   recursive_adapt_   = false;   //!< recursive adaptation or not
     real_t rtol_              = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
@@ -47,7 +47,7 @@ class Grid : public ForestGrid {
     size_t LocalNumDof() const;
     size_t GlobalNumDof() const;
 
-    InterpolatingWavelet* interp() { return interp_; }
+    Wavelet* interp() { return interp_; }
 
     Prof* profiler() { return prof_; }
     bool  HasProfiler() { return prof_ != nullptr; }

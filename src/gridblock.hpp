@@ -12,7 +12,7 @@
 #include "defs.hpp"
 #include "field.hpp"
 #include "ghostblock.hpp"
-#include "interpolator.hpp"
+#include "Wavelet.hpp"
 #include "memlayout.hpp"
 #include "murphy.hpp"
 #include "p8est.h"
@@ -111,7 +111,7 @@ class GridBlock : public MemLayout {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(const InterpolatingWavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end);
+    void       SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end);
     /** @} */
 
     /**
@@ -137,14 +137,14 @@ class GridBlock : public MemLayout {
     std::list<PhysBlock*>*              phys() { return &phys_; };
     /**@} */
 
-    void GhostInitLists(const qid_t* qid, const ForestGrid* grid, const InterpolatingWavelet* interp, MPI_Win local2disp_window);
+    void GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window);
     void GhostFreeLists();
-    void GhostGet_Post(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, MPI_Win mirrors_window);
-    void GhostGet_Wait(const Field* field, const lda_t ida, const InterpolatingWavelet* interp);
-    void GhostPut_Post(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, MPI_Win mirrors_window);
-    void GhostPut_Wait(const Field* field, const lda_t ida, const InterpolatingWavelet* interp);
+    void GhostGet_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
+    void GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
+    void GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
+    void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
 
-    void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, SubBlock* coarse_block);
+    void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
 static inline GridBlock* p4est_GetGridBlock(qdrt_t* quad) {

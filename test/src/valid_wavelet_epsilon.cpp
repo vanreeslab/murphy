@@ -28,21 +28,21 @@ static constexpr lid_t m_n      = M_N;
 static constexpr lid_t m_hn     = M_HN;
 static constexpr lid_t m_stride = m_n + 6 * m_gs;
 
-static InterpolatingWavelet* GetWavelet(const sid_t n, const sid_t nt) {
+static Wavelet* GetWavelet(const sid_t n, const sid_t nt) {
     if (n == 2 && nt == 2) {
-        return (new Wavelet<2, 2>);
+        return (new InterpolatingWavelet<2, 2>);
     } else if (n == 4 && nt == 0) {
-        return (new Wavelet<4, 0>);
+        return (new InterpolatingWavelet<4, 0>);
     } else if (n == 4 && nt == 2) {
-        return (new Wavelet<4, 2>);
+        return (new InterpolatingWavelet<4, 2>);
     } else if (n == 4 && nt == 4) {
-        return (new Wavelet<4, 4>);
+        return (new InterpolatingWavelet<4, 4>);
     } else if (n == 6 && nt == 0) {
-        return (new Wavelet<6, 0>);
+        return (new InterpolatingWavelet<6, 0>);
     } else if (n == 6 && nt == 2) {
-        return (new Wavelet<6, 2>);
+        return (new InterpolatingWavelet<6, 2>);
     } else if (n == 6 && nt == 4) {
-        return (new Wavelet<6, 4>);
+        return (new InterpolatingWavelet<6, 4>);
     }
     return nullptr;
 };
@@ -52,7 +52,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
     constexpr real_t hcoarse = 1.0 / (m_hn);
     constexpr real_t hfine   = 1.0 / (m_n);
 
-    InterpolatingWavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
+    Wavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
 
     real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
     real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
@@ -96,7 +96,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
         }
     }
 
-    // InterpolatingWavelet* interp = GetWavelet(n[id][0], n[id][1]);
+    // Wavelet* interp = GetWavelet(n[id][0], n[id][1]);
     real_t detail_max;
     interp->Details(&block_fine, data_fine, &tmp_block, data_tmp, &detail_max);
 

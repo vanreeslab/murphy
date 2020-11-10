@@ -1,7 +1,7 @@
 #include "blas.hpp"
 
 Dcopy::Dcopy() : BlockOperator(nullptr){};
-Dcopy::Dcopy(const InterpolatingWavelet* interp) : BlockOperator(interp){};
+Dcopy::Dcopy(const Wavelet* interp) : BlockOperator(interp){};
 
 void Dcopy::ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");

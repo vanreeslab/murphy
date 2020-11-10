@@ -15,7 +15,7 @@
 class Dcopy : public BlockOperator {
    public:
     explicit Dcopy();
-    explicit Dcopy(const InterpolatingWavelet* interp);
+    explicit Dcopy(const Wavelet* interp);
     void ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y);
 };
 

@@ -4,7 +4,7 @@
 #include "blockoperator.hpp"
 #include "field.hpp"
 #include "grid.hpp"
-#include "interpolator.hpp"
+#include "Wavelet.hpp"
 #include "murphy.hpp"
 
 class ErrorCalculator : public BlockOperator{
@@ -13,7 +13,7 @@ class ErrorCalculator : public BlockOperator{
 
    public:
     explicit ErrorCalculator();
-    explicit ErrorCalculator(const InterpolatingWavelet* interp);
+    explicit ErrorCalculator(const Wavelet* interp);
 
     void Normi(Grid* grid, const Field* field, const Field* sol, real_t* norm_i);
     void Norm2(Grid* grid, const Field* field, const Field* sol, real_t* norm_2);

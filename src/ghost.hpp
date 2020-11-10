@@ -8,7 +8,7 @@
 #include "forestgrid.hpp"
 #include "ghostblock.hpp"
 #include "gridblock.hpp"
-#include "interpolator.hpp"
+#include "Wavelet.hpp"
 #include "murphy.hpp"
 #include "prof.hpp"
 
@@ -52,11 +52,11 @@ class Ghost {
 
     ForestGrid *          grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
     Prof *                prof_;    //!< the profiler to time operations, not owned
-    const InterpolatingWavelet *interp_;  //!< pointer to the associated @ref InterpolatingWavelet, shared, not owned
+    const Wavelet *interp_;  //!< pointer to the associated @ref Wavelet, shared, not owned
 
    public:
-    Ghost(ForestGrid *grid, const InterpolatingWavelet *interp, Prof *profiler);
-    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, const InterpolatingWavelet *interp, Prof *profiler);
+    Ghost(ForestGrid *grid, const Wavelet *interp, Prof *profiler);
+    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, const Wavelet *interp, Prof *profiler);
     ~Ghost();
 
     /**

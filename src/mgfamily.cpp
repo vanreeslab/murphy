@@ -43,9 +43,9 @@ void MGFamily::AddMembers(GridBlock* parent, GridBlock* children[P8EST_CHILDREN]
  * @param field_trg a coarse field that will contain the interpolation + alpha * field_cst
  * @param field_cst a constant coarse field to add to the interpolation
  * @param alpha the multiplication factor for the constant field
- * @param interp the interpolator to use
+ * @param interp the Wavelet to use
  */
-void MGFamily::ToChildren(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, InterpolatingWavelet* interp) {
+void MGFamily::ToChildren(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Wavelet* interp) {
     m_begin;
     m_assert(field_src->lda() == field_trg->lda(), "the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------
@@ -87,7 +87,7 @@ void MGFamily::ToChildren(Field* field_src, Field* field_trg, Field* field_cst, 
     m_end;
 }
 
-void MGFamily::ToParents(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, InterpolatingWavelet* interp) {
+void MGFamily::ToParents(Field* field_src, Field* field_trg, Field* field_cst, const real_t alpha, Wavelet* interp) {
     m_begin;
     m_assert(field_src->lda() == field_trg->lda(),"the source and traget dimensions MUST match");
     //-------------------------------------------------------------------------

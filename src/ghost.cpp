@@ -19,14 +19,14 @@ static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0},
 /**
  * @brief Construct a new Ghost object 
  * 
- * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, InterpolatingWavelet* interp) for details
+ * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp) for details
  * 
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
- * @param interp the interpolator to use, will drive the number of ghost points to consider
+ * @param interp the Wavelet to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(ForestGrid* grid, const InterpolatingWavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
+Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
     //-------------------------------------------------------------------------
-    // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Interpolator* interp)
+    // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp)
     //-------------------------------------------------------------------------
 }
 
@@ -35,16 +35,16 @@ Ghost::Ghost(ForestGrid* grid, const InterpolatingWavelet* interp, Prof* profile
  * 
  * Once created, the ghost is fixed for a given grid. if the grid changes, a new Ghost objects has to be created.
  * 
- * @note: The Interpolator has to be given beforehands because the it drives the number of actual GP to consider.
+ * @note: The Wavelet has to be given beforehands because the it drives the number of actual GP to consider.
  * While for memory alignement, the number of ghost points is given by M_GS, the wavelet does not require that many ghost points to
  * be computed. To reduce the memory cost, only the needed ghost points will be computed.
  * 
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
  * @param min_level the minimum level on which the GP are initiated
  * @param max_level the maximum level on which the GP are initiated
- * @param interp the interpolator to use, will drive the number of ghost points to consider
+ * @param interp the Wavelet to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const InterpolatingWavelet* interp, Prof* profiler) : interp_(interp) {
+Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const Wavelet* interp, Prof* profiler) : interp_(interp) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
@@ -167,7 +167,7 @@ void Ghost::InitList_() {
     m_assert(!(n_active_quad_ != 0 && mirror_target_group_ == MPI_GROUP_EMPTY && mpi_size > 1), "if we have some active quadrant, we need to start the get epochs");
 
     // init the list on every active block that matches the level requirements
-    // const InterpolatingWavelet*
+    // const Wavelet*
     const ForestGrid* mygrid = grid_;
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOpMeshLevel(this, &Ghost::InitList4Block_, grid_, il);
@@ -886,7 +886,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
 // }
 
 // /**
-//  * @brief get the ghost values to my ghost area using the @ref Interpolator::GetRma() function
+//  * @brief get the ghost values to my ghost area using the @ref Wavelet::GetRma() function
 //  */
 // inline void Ghost::Compute4Block_GetRma2Myself_(const ListGBMirror* ghost_list, const Field* fid, data_ptr data_trg) const {
 //     //-------------------------------------------------------------------------
@@ -905,7 +905,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
 // }
 
 // /**
-//  * @brief get the ghost values to my coarse temp using the @ref Interpolator::GetRma() function
+//  * @brief get the ghost values to my coarse temp using the @ref Wavelet::GetRma() function
 //  */
 // inline void Ghost::Compute4Block_GetRma2Coarse_(const ListGBMirror* ghost_list, const Field* fid, mem_ptr ptr_trg) const {
 //     m_assert(ghost_list != nullptr, "the ghost list cannot be null");
@@ -1092,7 +1092,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
 // }
 
 // /**
-//  * @brief copy the data from the coarse to the parent location using RMA @ref Interpolator::PutRma()
+//  * @brief copy the data from the coarse to the parent location using RMA @ref Wavelet::PutRma()
 //  */
 // inline void Ghost::Compute4Block_PutRma2Parent_(const ListGBMirror* ghost_list, mem_ptr ptr_src) const {
 //     //-------------------------------------------------------------------------

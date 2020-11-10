@@ -11,22 +11,22 @@ using std::string;
 using std::unordered_map;
 
 /**
- * @brief Construct a new Grid which is empty, only the interpolators have been associated
+ * @brief Construct a new Grid which is empty, only the Wavelets have been associated
  * 
  */
 Grid::Grid() : ForestGrid() {
     //-------------------------------------------------------------------------
     prof_  = nullptr;
     ghost_ = nullptr;
-    // create a default interpolator
-    interp_ = new Wavelet();
+    // create a default Wavelet
+    interp_ = new InterpolatingWavelet();
     //-------------------------------------------------------------------------
 };
 
 /**
  * @brief Construct a new Grid as a uniform grid, distributed among the cpus
  * 
- * Initialize the ForestGrid, the interpolator, the profiler, the ghosts and the grid blocks.
+ * Initialize the ForestGrid, the Wavelet, the profiler, the ghosts and the grid blocks.
  * The grid is defined as a set of l[0]xl[1]xl[2] octrees, each of them refined up to level ilvl.
  * 
  * @param ilvl the starting initialization level
@@ -41,8 +41,8 @@ Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm com
     //-------------------------------------------------------------------------
     // profiler
     prof_ = prof;
-    // create a default interpolator -> default is M_WAVELET_N and M_WAVELET_NT
-    interp_ = new Wavelet();
+    // create a default Wavelet -> default is M_WAVELET_N and M_WAVELET_NT
+    interp_ = new InterpolatingWavelet();
 
     // create the associated blocks
     p8est_iterate(p4est_forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
@@ -89,7 +89,7 @@ void Grid::CopyFrom(Grid* grid) {
 Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
-    // destroy the interpolator and the details they are mine
+    // destroy the Wavelet and the details they are mine
     if (interp_ != nullptr) {
         m_verb("dealloc the interp");
         delete (interp_);
@@ -562,7 +562,7 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
 
     // Solve the dependencies is some have been created -> no dep created if we are recursive
     if (!recursive_adapt()) {
-        const InterpolatingWavelet* wavelet = interp_;
+        const Wavelet* wavelet = interp_;
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());
     }
 

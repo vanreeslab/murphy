@@ -286,7 +286,7 @@ void GridBlock::DeleteField(Field* fid) {
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::SolveDependency(const InterpolatingWavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end) {
+void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end) {
     m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
     //-------------------------------------------------------------------------
     if (n_dependency_active_ == 1) {
@@ -403,7 +403,7 @@ static void corner_test(p8est_iter_corner_info_t* info, void* user_data) {
     }
 };
 
-void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const InterpolatingWavelet* interp, MPI_Win local2disp_window) {
+void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window) {
     //-------------------------------------------------------------------------
     // allocate the ghost pointer
     AllocateCoarsePtr(interp->CoarseMemSize());
@@ -688,7 +688,7 @@ void GridBlock::GhostFreeLists() {
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, MPI_Win mirrors_window) {
+void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     // get the sibligngs
     if (xyz(0) == 1.0 && xyz(1) == 0.75 && xyz(2) == 1.5) {
@@ -777,7 +777,7 @@ void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Interpo
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const InterpolatingWavelet* interp) {
+void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet* interp) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
@@ -839,7 +839,7 @@ void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const Interpo
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, MPI_Win mirrors_window) {
+void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
@@ -903,7 +903,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Interpo
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const InterpolatingWavelet* interp) {
+void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp) {
     //-------------------------------------------------------------------------
     data_ptr data_trg = data(field, ida);
     for (auto gblock : phys_) {
@@ -936,7 +936,7 @@ void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const Interpo
  * @param ida 
  * @param interp 
  */
-void GridBlock::Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const InterpolatingWavelet* interp, SubBlock* coarse_block) {
+void GridBlock::Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block) {
     //-------------------------------------------------------------------------
     // reset the tmp value
     memset(coarse_ptr_, 0, interp->CoarseStride());

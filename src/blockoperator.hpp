@@ -3,7 +3,7 @@
 
 #include "gridblock.hpp"
 #include "murphy.hpp"
-#include "interpolator.hpp"
+#include "Wavelet.hpp"
 #include "prof.hpp"
 
 /**
@@ -27,7 +27,7 @@ class BlockOperator {
      * @param interp the interpolation driving the number of ghost point to operate on. If nullptr, we operates from 0 to M_N
      * @param profiler the profier
      */
-    explicit BlockOperator(const InterpolatingWavelet* interp) {
+    explicit BlockOperator(const Wavelet* interp) {
         m_begin;
         //-------------------------------------------------------------------------
         do_ghost_ = (interp != nullptr);

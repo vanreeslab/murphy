@@ -9,42 +9,6 @@
 #include "murphy.hpp"
 #include "p8est.h"
 
-// //................................................
-// // WAVELET 2.2
-// const static lid_t  len_ha_2_2 = 5;
-// const static lid_t  len_gs_2_2 = 2;
-// const static real_t ha_2_2[5]  = {-0.125, 0.25, 0.75, 0.25, -0.125};
-// const static real_t gs_2_2[2]  = {0.5, 0.5};
-// //................................................
-// // WAVELET 4.0
-// const static lid_t  len_ha_4_0 = 1;
-// const static lid_t  len_gs_4_0 = 4;
-// const static real_t ha_4_0[1]  = {1.0};
-// const static real_t gs_4_0[4]  = {-0.0625, 0.5625, 0.5625, -0.0625};
-// //................................................
-// // WAVELET 4.2
-// const static lid_t  len_ha_4_0 = 9;
-// const static lid_t  len_gs_4_0 = 4;
-// const static real_t ha_4_0[9]  = {0.015625, 0.0, -0.125, 0.25, 0.71875, 0.25, -0.125, 0.0, 0.015625};
-// const static real_t gs_4_0[4]  = {-0.0625, 0.5625, 0.5625, -0.0625};
-// //................................................
-// // WAVELET 4.4
-// const static lid_t  len_ha_4_4 = 13;
-// const static lid_t  len_gs_4_4 = 4;
-// const static real_t ha_4_4[13] = {-1.0 / 512.0, 0.0, 9.0 / 256.0, -1.0 / 32.0, -63.0 / 512.0, 9.0 / 32.0, 87.0 / 128.0, 9.0 / 32.0, -63.0 / 512.0, -1.0 / 32.0, 9.0 / 256.0, 0.0, -1.0 / 512.0};
-// const static real_t gs_4_4[4]  = {-0.0625, 0.5625, 0.5625, -0.0625};
-
-// //................................................
-// // WAVELET 6.0
-
-
-// //................................................
-// // WAVELET 6.2
-
-
-// //................................................
-// WAVELET 6.4
-
 /**
  * @brief Defines all the required information to perform an interpolation on a given block
  * 
@@ -76,7 +40,7 @@ typedef struct interp_ctx_t {
 } interp_ctx_t;
 
 /**
- * @brief defines the most basic Interpolating wavelet class
+ * @brief defines a generic wavelet class
  * 
  * The target field is computed as alpha * constant field + interpolation(source field).
  * The interpolation procedure is one of the following:
@@ -86,13 +50,12 @@ typedef struct interp_ctx_t {
  * - a coarsening (to be provided by the child class)
  * 
  */
-// template< lda_t N, lda_t NT>
-class InterpolatingWavelet {
+class Wavelet {
    public:
     //................................................
     // need for empty constructor/destructor to call the virtual ones
-    explicit InterpolatingWavelet() {};
-    virtual ~InterpolatingWavelet(){};
+    explicit Wavelet(){};
+    virtual ~Wavelet(){};
 
     //................................................
     /**
@@ -100,21 +63,21 @@ class InterpolatingWavelet {
     * @{
     */
    public:
-    virtual void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const;
-    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const;
-    virtual void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, data_ptr data_cst) const;
-    virtual void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
-    virtual void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, data_ptr data_cst) const;
+    void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
+    void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
     virtual real_t Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_block, data_ptr data_coarse) const;
     void           Details(MemLayout* block, data_ptr data_block, MemLayout* coarse_block, data_ptr data_coarse, real_t* details_max) const;
 
     //................................................
    public:
+    std::string Identity() const { return "interpolating wavelet " + std::to_string(N()) + "." + std::to_string(Nt()); }
+
     virtual const sid_t N() const  = 0;
     virtual const sid_t Nt() const = 0;
-    std::string         Identity() const { return "interpolating wavelet " + std::to_string(N()) + "." + std::to_string(Nt()); }
-
     /** @} */
 
     //................................................
@@ -124,10 +87,8 @@ class InterpolatingWavelet {
      */
    public:
     virtual const sid_t   len_ha() const = 0;
-    virtual const sid_t   len_ga() const = 0;
     virtual const sid_t   len_gs() const = 0;
     virtual const real_t* ha() const     = 0;  //!< ha = compute the scaling from a given level -> coarsening
-    virtual const real_t* ga() const     = 0;  //!< ga = compute the details from a given level -> detail computation: dual lifting only :-)
     virtual const real_t* gs() const     = 0;  //!< gs = reconstruction from the scaling and 0 detail of the scaling coef -> refinement: should be -ga!!
 
     // shift for the details
@@ -141,18 +102,16 @@ class InterpolatingWavelet {
     const lid_t nrefine_back() const { return m_max(len_gs() / 2, 0); };       //!< returns the number of gp needed for the refinement operation, in the back
     // const lid_t ncriterion_front() const { return shift_front() + nrefine_front()*2; }  //!< returns the number of gp needed for the detail operation, in front
     // const lid_t ncriterion_back() const { return shift_back() + nrefine_back()*2; }    //!< returns the number of gp needed for the detail operation, in the back
-    const lid_t ncriterion_front() const { return m_max(len_ga() / 2 - 1, 0); };
-    const lid_t ncriterion_back() const { return m_max(len_ga() / 2, 0); };
+    const lid_t ncriterion_front() const { return m_max(len_gs() / 2 - 1, 0); };
+    const lid_t ncriterion_back() const { return m_max(len_gs() / 2, 0); };
 
     // half limits
-    const sid_t ha_half_lim() const { return (len_ha() / 2); };
-    const sid_t ga_half_lim() const { return (len_ga() / 2); };
-    const sid_t gs_half_lim() const { return (len_gs() / 2) - 1; };
+    // const sid_t ha_half_lim() const { return (len_ha() / 2); };
+    // const sid_t gs_half_lim() const { return (len_gs() / 2) - 1; };
 
     // filters:
-    const real_t* ha_filter() const { return ha() + ha_half_lim(); };
-    const real_t* ga_filter() const { return ga() + ga_half_lim(); };
-    const real_t* gs_filter() const { return gs() + gs_half_lim(); };
+    // const real_t* ha_filter() const { return ha() + ha_half_lim(); };
+    // const real_t* gs_filter() const { return gs() + gs_half_lim(); };
 
     // nghosts
     const lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
@@ -207,7 +166,7 @@ class InterpolatingWavelet {
     * the correct ID is returned based on the value of c
     * 
     * @param a the id in the block
-    * @param interp the interpolator used
+    * @param interp the Wavelet used
     * @return lid_t 
     */
     inline lid_t CoarseFromBlock(const lid_t a) const {
@@ -241,16 +200,13 @@ class InterpolatingWavelet {
      * @name Interpolation functions, to be implemented
      * @{
      */
-    virtual void Coarsen_(const interp_ctx_t* ctx) const;
-    virtual void Refine_(const interp_ctx_t* ctx) const;
-    virtual void Detail_(const interp_ctx_t* ctx, real_t* details_max) const;
+    virtual void Coarsen_(const interp_ctx_t* ctx) const                     = 0;
+    virtual void Refine_(const interp_ctx_t* ctx) const                      = 0;
+    virtual void Detail_(const interp_ctx_t* ctx, real_t* details_max) const = 0;
     /** @} */
 
     // defined function -- might be overriden
     virtual void Copy_(const level_t dlvl, const interp_ctx_t* ctx) const;
 };
-
-
-
 
 #endif  // SRC_INTERPOLATE_HPP_

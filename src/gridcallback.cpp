@@ -167,7 +167,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 }
 
 /**
- * @brief refine a block if @ref InterpolatingWavelet::Criterion() is bigger than @ref Grid::rtol()
+ * @brief refine a block if @ref Wavelet::Criterion() is bigger than @ref Grid::rtol()
  * 
  * @param forest 
  * @param which_tree 
@@ -181,7 +181,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     // GridBlock*    block  = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     GridBlock* block = p4est_GetGridBlock(quadrant);
-    InterpolatingWavelet* interp = grid->interp();
+    Wavelet* interp = grid->interp();
 
     // if the block is locked, I cannot touch it anymore
     if (block->locked()) {
@@ -227,7 +227,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
 }
 
 /**
- * @brief reply that we should coarsen the group of 8 blocks if @ref InterpolatingWavelet::Criterion() is lower than @ref Grid::ctol() for every block
+ * @brief reply that we should coarsen the group of 8 blocks if @ref Wavelet::Criterion() is lower than @ref Grid::ctol() for every block
  * 
  * We do NOT coarsen if one of the block does not match the criterion
  * 
@@ -241,7 +241,7 @@ int cback_WaveDetail(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadran
     //-------------------------------------------------------------------------
     Grid*         grid   = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*        fid    = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
-    InterpolatingWavelet* interp = grid->interp();
+    Wavelet* interp = grid->interp();
 
     // m_log("compute the detail on field %s",fid->name().c_str());
 
@@ -326,7 +326,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     //-------------------------------------------------------------------------
     // retrieve the grid from the forest user-data pointer
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
-    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
     m_assert(!grid->recursive_adapt(), "the dependency update does not support recursive adaptation as we eventually need the GP values");
 
     // get needed grid info
@@ -421,7 +421,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
 };
 
 /**
- * @brief Interpolate one block to his children or 8 children to their parent, using the InterpolatingWavelet of the @ref Grid.
+ * @brief Interpolate one block to his children or 8 children to their parent, using the Wavelet of the @ref Grid.
  * 
  * If one of the outgoing block(s) is locked, then I lock the incomming block(s)
  * 
@@ -440,13 +440,13 @@ void cback_Interpolate(p8est_t* forest, p4est_topidx_t which_tree, int num_outgo
     //-------------------------------------------------------------------------
     // retrieve the grid from the forest user-data pointer
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
-    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
     m_assert(!grid->recursive_adapt(), "the wavelet refinement does not support recursive adaptation as no GP is filled");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
     auto                  f_end   = grid->FieldEnd();
-    InterpolatingWavelet* interp  = grid->interp();
+    Wavelet* interp  = grid->interp();
     p8est_connectivity_t* connect = forest->connectivity;
 
     m_profStart(grid->profiler(), "wavelet interpolation");
@@ -602,7 +602,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     //-------------------------------------------------------------------------
     // retrieve the grid from the forest user-data pointer
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
-    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
@@ -659,7 +659,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
     
-    m_assert(grid->interp() != nullptr, "a Grid interpolator is needed");
+    m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
     m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
 
     // get needed grid info
