@@ -4,7 +4,7 @@
 #include "blockoperator.hpp"
 #include "field.hpp"
 #include "grid.hpp"
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 #include "murphy.hpp"
 
 class ErrorCalculator : public BlockOperator{

@@ -3,7 +3,7 @@
 
 #include "gridblock.hpp"
 #include "murphy.hpp"
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 #include "prof.hpp"
 
 /**

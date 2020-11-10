@@ -12,7 +12,7 @@
 #include "defs.hpp"
 #include "field.hpp"
 #include "ghostblock.hpp"
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 #include "memlayout.hpp"
 #include "murphy.hpp"
 #include "p8est.h"

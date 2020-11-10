@@ -8,7 +8,7 @@
 #include "forestgrid.hpp"
 #include "ghostblock.hpp"
 #include "gridblock.hpp"
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 #include "murphy.hpp"
 #include "prof.hpp"
 

@@ -1,4 +1,4 @@
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 
 #include "subblock.hpp"
 

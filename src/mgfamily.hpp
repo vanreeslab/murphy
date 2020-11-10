@@ -2,7 +2,7 @@
 #define SRC_MGFAMILY_HPP_
 
 #include "gridblock.hpp"
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 #include "murphy.hpp"
 
 /**

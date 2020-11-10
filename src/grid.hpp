@@ -11,7 +11,7 @@
 #include "field.hpp"
 #include "ghost.hpp"
 #include "gridblock.hpp"
-#include "Wavelet.hpp"
+#include "wavelet.hpp"
 #include "murphy.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
