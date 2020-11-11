@@ -462,18 +462,18 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
         p4est_GetNeighbor(forest,connect,ghost,mesh,qid->tid,qid->qid,ibidule,&ngh_list,&rank_list);
         const iblock_t nghosts = ngh_list.size();
 
-        // if (qid->cid == 406) {
+        // if (qid->tid == 15 && qid->qid == 2) {
         //     // if (xyz(0) == 0.1875 && xyz(1) == 0.25 && xyz(2) == 0.5) {
         //     m_log("-----------------------------------");
         //     m_log("BLOCK %d: t= %d local = %d", qid->cid, qid->tid, qid->qid);
         //     m_log("looking for ghost number %d, I found %d ghosts", ibidule, nghosts);
-        //     if (ibidule < 6) {
-        //         m_log("looking by myself, I find %d", mesh->quad_to_face[P8EST_FACES * qid->cid + ibidule]);
-        //     } else if (ibidule < 18) {
-        //         m_log("looking by myself, I find %d", mesh->quad_to_edge[P8EST_EDGES * qid->cid + ibidule - 6]);
-        //     } else if (ibidule < 26) {
-        //         m_log("looking by myself, I find %d", mesh->quad_to_corner[P8EST_CHILDREN * qid->cid + ibidule - 18]);
-        //     }
+        //     // if (ibidule < 6) {
+        //     //     m_log("looking by myself, I find %d", mesh->quad_to_face[P8EST_FACES * qid->cid + ibidule]);
+        //     // } else if (ibidule < 18) {
+        //     //     m_log("looking by myself, I find %d", mesh->quad_to_edge[P8EST_EDGES * qid->cid + ibidule - 6]);
+        //     // } else if (ibidule < 26) {
+        //     //     m_log("looking by myself, I find %d", mesh->quad_to_corner[P8EST_CHILDREN * qid->cid + ibidule - 18]);
+        //     // }
         // }
 
         //................................................
@@ -489,7 +489,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             // else, the edges and corners will be filled through the face
         }
 
-        // if (qid->cid == 406) {
+        // if (qid->tid == 15 && qid->qid == 2) {
         //     real_t sign[3];
         //     GhostGetSign(ibidule, sign);
         //     m_log("looking for a ghost with sign %f %f %f", sign[0], sign[1], sign[2]);
@@ -541,7 +541,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             const real_t ngh_hgrid[3] = {p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N};
 
 
-            // if (qid->cid == 406) {
+            // if (qid->tid == 0 && qid->qid == 0) {
             //     m_log("the ghost has sign %f %f %f and is a ghost? %d, ngh level? %d", sign[0], sign[1], sign[2],isghost,nghq->level);
             // }
 
@@ -574,7 +574,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     //#pragma omp critical
                     local_parent_reverse_.push_back(invert_gb);
 
-                    // if (qid->cid == 406) {
+                    // if (qid->tid == 15 && qid->qid == 2) {
                     //     m_log("block min = %d %d %d -> block max = %d %d %d",block_min[0],block_min[1],block_min[2],block_max[0],block_max[1],block_max[2]);
                     //     m_log("me: lvl = %d, pos = %f %f %f, length = %f", level(), xyz(0), xyz(1), xyz(2), block_len[0]);
                     //     m_log("ngh: lvl = %d, pos = %f %f %f, length = %f", nghq->level, ngh_pos[0], ngh_pos[1], ngh_pos[2], ngh_len[0]);

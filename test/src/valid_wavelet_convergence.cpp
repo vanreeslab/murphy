@@ -89,11 +89,11 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
 
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
-            m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
-#if (M_WAVELET_NT == 0)
+            m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL + 1), erri[il], err2[il]);
             error.Norms(&grid, il + BLVL, &test, &sol, err2 + il, erri + il);
             m_log("checking in dim %d on LOW: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
-            // if NT==0, the lowest level has NO error
+// if NT==0, the lowest level has NO error
+#if (M_WAVELET_NT == 0)
             ASSERT_NEAR(erri[il], 0.0, DOUBLE_TOL);
             ASSERT_NEAR(err2[il], 0.0, DOUBLE_TOL);
 #endif

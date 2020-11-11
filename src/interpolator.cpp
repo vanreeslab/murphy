@@ -161,6 +161,9 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t* ctx) const {
                 m_assert(((ik1) >= ctx->trgstart[1]) && ((ik1) < ctx->trgend[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->trgstart[1], ik1, ctx->trgend[1]);
                 m_assert(((ik2) >= ctx->trgstart[2]) && ((ik2) < ctx->trgend[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->trgstart[2], ik2, ctx->trgend[2]);
                 ltdata[0] = alpha * lcdata[0] + lsdata[0];
+                m_assert(lsdata[0] == lsdata[0], "cannot be nan");
+                m_assert(lcdata[0] == lcdata[0], "cannot be nan");
+                m_assert(ltdata[0] == ltdata[0], "cannot be nan");
             }
         }
     }

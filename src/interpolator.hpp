@@ -88,8 +88,8 @@ class Wavelet {
    public:
     virtual const sid_t   len_ha() const = 0;
     virtual const sid_t   len_gs() const = 0;
-    virtual const real_t* filter_ha() const     = 0;  //!< ha = compute the scaling from a given level -> coarsening
-    virtual const real_t* filter_gs() const     = 0;  //!< gs = reconstruction from the scaling and 0 detail of the scaling coef -> refinement: should be -ga!!
+    // virtual const real_t* filter_ha() const     = 0;  //!< ha = compute the scaling from a given level -> coarsening
+    // virtual const real_t* filter_gs() const     = 0;  //!< gs = reconstruction from the scaling and 0 detail of the scaling coef -> refinement: should be -ga!!
 
     // shift for the details
     const lid_t shift_front() const { return m_max(Nt() - 1, 0); };  //!< return the num of detail to take into account outside the block, in front

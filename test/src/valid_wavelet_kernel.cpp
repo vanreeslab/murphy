@@ -89,7 +89,7 @@ TEST_F(valid_Wavelet_Kernel, filter_lentgh) {
     if (interp.N() == 2 && interp.Nt() == 2) {
         // coarsen
         ASSERT_EQ(interp.ncoarsen_front(), 2);
-        ASSERT_EQ(interp.ncoarsen_back(), 0);
+        ASSERT_EQ(interp.ncoarsen_back(), 1);
         // refine
         ASSERT_EQ(interp.nrefine_front(), 0);
         ASSERT_EQ(interp.nrefine_back(), 1);

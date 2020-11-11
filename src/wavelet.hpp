@@ -23,10 +23,10 @@ static constexpr sid_t len_ha_ = 0;
 template <lda_t N, lda_t NT>
 static constexpr sid_t len_gs_ = 0;
 
-// template <lda_t N, lda_t NT>
-// static constexpr real_t ha_[];
-// template <lda_t N, lda_t NT>
-// static constexpr real_t gs_[];
+template <lda_t N, lda_t NT>
+static constexpr real_t ha_[1] = {0.0};
+template <lda_t N, lda_t NT>
+static constexpr real_t gs_[1] = {0.0};
 
 //-----------------------------------------------------------------------------
 // Wavelet 2.2
@@ -35,8 +35,13 @@ constexpr sid_t len_ha_<2, 2> = 5;
 template <>
 constexpr sid_t len_gs_<2, 2> = 2;
 
-constexpr real_t ha_2_2_[5] = {-0.125, 0.25, 0.75, 0.25, -0.125};
-constexpr real_t gs_2_2_[2] = {0.5, 0.5};
+// static constexpr real_t ha_2_2_[5] = {-0.125, 0.25, 0.75, 0.25, -0.125};
+// static constexpr real_t gs_2_2_[2] = {0.5, 0.5};
+
+template <>
+constexpr real_t ha_<2, 2>[5] = {-0.125, 0.25, 0.75, 0.25, -0.125};
+template <>
+constexpr real_t gs_<2, 2>[2] = {0.5, 0.5};
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.0
@@ -45,8 +50,12 @@ constexpr sid_t len_ha_<4, 0> = 1;
 template <>
 constexpr sid_t len_gs_<4, 0> = 4;
 
-constexpr real_t ha_4_0_[1] = {1.0};
-constexpr real_t gs_4_0_[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
+// static constexpr real_t ha_4_0_[1] = {1.0};
+// static constexpr real_t gs_4_0_[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
+template <>
+constexpr real_t ha_<4, 0>[1] = {1.0};
+template <>
+constexpr real_t gs_<4, 0>[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.2
@@ -55,8 +64,12 @@ constexpr sid_t len_ha_<4, 2> = 9;
 template <>
 constexpr sid_t len_gs_<4, 2> = 4;
 
-constexpr real_t ha_4_2_[9] = {0.015625, 0.0, -0.125, 0.25, 0.71875, 0.25, -0.125, 0.0, 0.015625};
-constexpr real_t gs_4_2_[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
+// static constexpr real_t ha_4_2_[9] = {0.015625, 0.0, -0.125, 0.25, 0.71875, 0.25, -0.125, 0.0, 0.015625};
+// static constexpr real_t gs_4_2_[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
+template <>
+constexpr real_t ha_<4, 2>[9] = {0.015625, 0.0, -0.125, 0.25, 0.71875, 0.25, -0.125, 0.0, 0.015625};
+template <>
+constexpr real_t gs_<4, 2>[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.4
@@ -65,8 +78,12 @@ constexpr sid_t len_ha_<4, 4> = 13;
 template <>
 constexpr sid_t len_gs_<4, 4> = 4;
 
-constexpr real_t ha_4_4_[13] = {-1.0 / 512.0, 0.0, 9.0 / 256.0, -1.0 / 32.0, -63.0 / 512.0, 9.0 / 32.0, 87.0 / 128.0, 9.0 / 32.0, -63.0 / 512.0, -1.0 / 32.0, 9.0 / 256.0, 0.0, -1.0 / 512.0};
-constexpr real_t gs_4_4_[4]  = {-0.0625, 0.5625, 0.5625, -0.0625};
+// static constexpr real_t ha_4_4_[13] = {-1.0 / 512.0, 0.0, 9.0 / 256.0, -1.0 / 32.0, -63.0 / 512.0, 9.0 / 32.0, 87.0 / 128.0, 9.0 / 32.0, -63.0 / 512.0, -1.0 / 32.0, 9.0 / 256.0, 0.0, -1.0 / 512.0};
+// static constexpr real_t gs_4_4_[4]  = {-0.0625, 0.5625, 0.5625, -0.0625};
+template <>
+constexpr real_t ha_<4, 4>[13] = {-1.0 / 512.0, 0.0, 9.0 / 256.0, -1.0 / 32.0, -63.0 / 512.0, 9.0 / 32.0, 87.0 / 128.0, 9.0 / 32.0, -63.0 / 512.0, -1.0 / 32.0, 9.0 / 256.0, 0.0, -1.0 / 512.0};
+template <>
+constexpr real_t gs_<4, 4>[4] = {-0.0625, 0.5625, 0.5625, -0.0625};
 
 //-----------------------------------------------------------------------------
 // Wavelet 6.0
@@ -75,8 +92,12 @@ constexpr sid_t len_ha_<6, 0> = 1;
 template <>
 constexpr sid_t len_gs_<6, 0> = 6;
 
-constexpr real_t ha_6_0_[1] = {1.0};
-constexpr real_t gs_6_0_[6] = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+// static constexpr real_t ha_6_0_[1] = {1.0};
+// static constexpr real_t gs_6_0_[6] = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+template <>
+constexpr real_t ha_<6, 0>[1] = {1.0};
+template <>
+constexpr real_t gs_<6, 0>[6] = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
 
 //-----------------------------------------------------------------------------
 // Wavelet 6.2
@@ -85,8 +106,12 @@ constexpr sid_t len_ha_<6, 2> = 13;
 template <>
 constexpr sid_t len_gs_<6, 2> = 6;
 
-constexpr real_t ha_6_2_[13] = {-3.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -125.0 / 1024.0, 1.0 / 4.0, 181.0 / 256.0, 1.0 / 4.0, -125.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -3.0 / 1024.0};
-constexpr real_t gs_6_2_[6]  = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+// static constexpr real_t ha_6_2_[13] = {-3.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -125.0 / 1024.0, 1.0 / 4.0, 181.0 / 256.0, 1.0 / 4.0, -125.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -3.0 / 1024.0};
+// static constexpr real_t gs_6_2_[6]  = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+template <>
+constexpr real_t ha_<6, 2>[13] = {-3.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -125.0 / 1024.0, 1.0 / 4.0, 181.0 / 256.0, 1.0 / 4.0, -125.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -3.0 / 1024.0};
+template <>
+constexpr real_t gs_<6, 2>[6] = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
 
 //-----------------------------------------------------------------------------
 // Wavelet 6.4
@@ -95,8 +120,12 @@ constexpr sid_t len_ha_<6, 4> = 17;
 template <>
 constexpr sid_t len_gs_<6, 4> = 6;
 
-constexpr real_t ha_6_4_[17] = {3.0 / 8192.0, 0.0, -13.0 / 2048.0, 0.0, 87.0 / 2048.0, -1.0 / 32.0, -243.0 / 2048.0, 9.0 / 32.0, 2721.0 / 4096.0, 9.0 / 32.0, -243.0 / 2048.0, -1.0 / 32.0, 87.0 / 2048.0, 0.0, -13.0 / 2048.0, 0.0, 3.0 / 8192.0};
-constexpr real_t gs_6_4_[6]  = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+// static constexpr real_t ha_6_4_[17] = {3.0 / 8192.0, 0.0, -13.0 / 2048.0, 0.0, 87.0 / 2048.0, -1.0 / 32.0, -243.0 / 2048.0, 9.0 / 32.0, 2721.0 / 4096.0, 9.0 / 32.0, -243.0 / 2048.0, -1.0 / 32.0, 87.0 / 2048.0, 0.0, -13.0 / 2048.0, 0.0, 3.0 / 8192.0};
+// static constexpr real_t gs_6_4_[6]  = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
+template <>
+constexpr real_t ha_<6, 4>[17] = {3.0 / 8192.0, 0.0, -13.0 / 2048.0, 0.0, 87.0 / 2048.0, -1.0 / 32.0, -243.0 / 2048.0, 9.0 / 32.0, 2721.0 / 4096.0, 9.0 / 32.0, -243.0 / 2048.0, -1.0 / 32.0, 87.0 / 2048.0, 0.0, -13.0 / 2048.0, 0.0, 3.0 / 8192.0};
+template <>
+constexpr real_t gs_<6, 4>[6] = {3.0 / 256.0, -25.0 / 256.0, 75.0 / 128.0, 75.0 / 128.0, -25.0 / 256.0, 3.0 / 256.0};
 
 /**
  * @brief Implement the interpolating wavelets
@@ -119,41 +148,41 @@ class InterpolatingWavelet : public Wavelet {
     const sid_t len_ha() const override { return len_ha_<TN, TNT>; };
     const sid_t len_gs() const override { return len_gs_<TN, TNT>; };
 
-    // filters
-    const real_t* filter_ha() const override {
-        if constexpr (TN == 2, TNT == 2) {
-            return ha_2_2_;
-        } else if constexpr (TN == 4, TNT == 0) {
-            return ha_4_0_;
-        } else if constexpr (TN == 4, TNT == 2) {
-            return ha_4_2_;
-        } else if constexpr (TN == 4, TNT == 4) {
-            return ha_4_4_;
-        } else if constexpr (TN == 6, TNT == 0) {
-            return ha_6_0_;
-        } else if constexpr (TN == 6, TNT == 2) {
-            return ha_6_2_;
-        } else if constexpr (TN == 6, TNT == 4) {
-            return ha_6_4_;
-        }
-    };
-    const real_t* filter_gs() const override {
-        if constexpr (TN == 2, TNT == 2) {
-            return gs_2_2_;
-        } else if constexpr (TN == 4, TNT == 0) {
-            return gs_4_0_;
-        } else if constexpr (TN == 4, TNT == 2) {
-            return gs_4_2_;
-        } else if constexpr (TN == 4, TNT == 4) {
-            return gs_4_4_;
-        } else if constexpr (TN == 6, TNT == 0) {
-            return gs_6_0_;
-        } else if constexpr (TN == 6, TNT == 2) {
-            return gs_6_2_;
-        } else if constexpr (TN == 6, TNT == 4) {
-            return gs_6_4_;
-        }
-    };
+    // // filters
+    // const real_t* filter_ha() const override {
+    //     if constexpr (TN == 2, TNT == 2) {
+    //         return ha_2_2_;
+    //     } else if (TN == 4, TNT == 0) {
+    //         return ha_4_0_;
+    //     } else if (TN == 4, TNT == 2) {
+    //         return ha_4_2_;
+    //     } else if (TN == 4, TNT == 4) {
+    //         return ha_4_4_;
+    //     } else if (TN == 6, TNT == 0) {
+    //         return ha_6_0_;
+    //     } else if (TN == 6, TNT == 2) {
+    //         return ha_6_2_;
+    //     } else if (TN == 6, TNT == 4) {
+    //         return ha_6_4_;
+    //     }
+    // };
+    // const real_t* filter_gs() const override {
+    //     if constexpr (TN == 2, TNT == 2) {
+    //         return gs_2_2_;
+    //     } else if (TN == 4, TNT == 0) {
+    //         return gs_4_0_;
+    //     } else if (TN == 4, TNT == 2) {
+    //         return gs_4_2_;
+    //     } else if (TN == 4, TNT == 4) {
+    //         return gs_4_4_;
+    //     } else if (TN == 6, TNT == 0) {
+    //         return gs_6_0_;
+    //     } else if (TN == 6, TNT == 2) {
+    //         return gs_6_2_;
+    //     } else if (TN == 6, TNT == 4) {
+    //         return gs_6_4_;
+    //     }
+    // };
 
    protected:
     /**
@@ -176,7 +205,8 @@ class InterpolatingWavelet : public Wavelet {
         constexpr sid_t ha_lim = len_ha_<TN, TNT> / 2;
         const real_t    alpha  = ctx->alpha;
 
-        const_mem_ptr ha = filter_ha() + ha_lim;
+        // const_mem_ptr ha = filter_ha() + ha_lim;
+        const_mem_ptr ha = ha_<TN,TNT> + ha_lim;
 
         for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ++ik2) {
             for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ++ik1) {
@@ -198,9 +228,13 @@ class InterpolatingWavelet : public Wavelet {
                             for (sid_t id0 = -ha_lim; id0 <= ha_lim; id0++) {
                                 const real_t fact = ha[id0] * ha[id1] * ha[id2];
                                 ltdata[0] += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                                // check for nan's
+                                m_assert(lsdata[0] == lsdata[0], "nan detected");
+                                m_assert(fact == fact, "nan detected");
                             }
                         }
                     }
+                    m_assert(ltdata[0] == ltdata[0], "nan detected");
                 }
             }
         }
@@ -220,22 +254,13 @@ class InterpolatingWavelet : public Wavelet {
     void Refine_(const interp_ctx_t* ctx) const override {
         //-------------------------------------------------------------------------
         // assure alignment for the target, the source, the constant and the temp data
-        constexpr sid_t  gs_lim = len_gs_<TN, TNT> / 2 - 1;
-        const real_t one    = 1.0;
-
-        const_mem_ptr gs    = filter_gs() + gs_lim;
-        const real_t  alpha = ctx->alpha;
+        constexpr sid_t gs_lim = len_gs_<TN, TNT> / 2 - 1;
+        const real_t    one    = 1.0;
+        const_mem_ptr   gs     = gs_<TN,TNT> + gs_lim;
+        const real_t    alpha  = ctx->alpha;
 
         const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-
-        m_log("filter[%d] = ",gs_lim);
-        for (sid_t id2 = -gs_lim; id2 <= (gs_lim+1); ++id2) {
-            printf("%e ", gs[id2]);
-        }
-
-        m_log(" ");
-
 
         // for each of the data for the needed target
         for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
@@ -314,7 +339,7 @@ class InterpolatingWavelet : public Wavelet {
 
         const_mem_ptr tdata = ctx->tdata;
         const_mem_ptr sdata = ctx->sdata;
-        const_mem_ptr gs    = filter_gs() + gs_lim;
+        const_mem_ptr gs    = gs_<TN,TNT>  + gs_lim;
 
         // for each of the data for the considered children
         (*details_max) = 0.0;

@@ -146,7 +146,8 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
                     // we need to discard the physical BC for the edges
 
                     real_t error = data_field[m_idx(i0, i1, i2)] - data_sol[m_idx(i0, i1, i2)];
-                    m_assert(error == error, "the error cannot be nan: block %d @ %d %d %d: %f", qid->cid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
+
+                    m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
 
