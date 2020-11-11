@@ -62,7 +62,6 @@ class valid_Wavelet_Kernel : public ::testing::Test {
         data_fine_   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
         data_coarse_ = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
-
         for (int id = 0; id < 3; id++) {
             coarse_start_[id] = -m_gs;
             coarse_end_[id]   = m_hn + m_gs;
@@ -84,6 +83,103 @@ class valid_Wavelet_Kernel : public ::testing::Test {
     };
 };
 
+TEST_F(valid_Wavelet_Kernel, filter_lentgh) {
+    InterpolatingWavelet interp;
+
+    if (interp.N() == 2 && interp.Nt() == 2) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 2);
+        ASSERT_EQ(interp.ncoarsen_back(), 0);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 0);
+        ASSERT_EQ(interp.nrefine_back(), 1);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 2);
+        ASSERT_EQ(interp.ncriterion_back(), 1);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 1);
+        ASSERT_EQ(interp.shift_back(), 0);
+    } else if (interp.N() == 4 && interp.Nt() == 0) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 0);
+        ASSERT_EQ(interp.ncoarsen_back(), 0);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 1);
+        ASSERT_EQ(interp.nrefine_back(), 2);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 2);
+        ASSERT_EQ(interp.ncriterion_back(), 3);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 0);
+        ASSERT_EQ(interp.shift_back(), 0);
+    } else if (interp.N() == 4 && interp.Nt() == 2) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 4);
+        ASSERT_EQ(interp.ncoarsen_back(), 3);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 1);
+        ASSERT_EQ(interp.nrefine_back(), 2);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 4);
+        ASSERT_EQ(interp.ncriterion_back(), 3);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 1);
+        ASSERT_EQ(interp.shift_back(), 0);
+    } else if (interp.N() == 4 && interp.Nt() == 4) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 6);
+        ASSERT_EQ(interp.ncoarsen_back(), 5);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 1);
+        ASSERT_EQ(interp.nrefine_back(), 2);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 6);
+        ASSERT_EQ(interp.ncriterion_back(), 5);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 3);
+        ASSERT_EQ(interp.shift_back(), 2);
+    } else if (interp.N() == 6 && interp.Nt() == 0) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 0);
+        ASSERT_EQ(interp.ncoarsen_back(), 0);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 2);
+        ASSERT_EQ(interp.nrefine_back(), 3);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 4);
+        ASSERT_EQ(interp.ncriterion_back(), 5);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 0);
+        ASSERT_EQ(interp.shift_back(), 0);
+    } else if (interp.N() == 6 && interp.Nt() == 2) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 6);
+        ASSERT_EQ(interp.ncoarsen_back(), 5);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 2);
+        ASSERT_EQ(interp.nrefine_back(), 3);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 6);
+        ASSERT_EQ(interp.ncriterion_back(), 5);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 1);
+        ASSERT_EQ(interp.shift_back(), 0);
+    } else if (interp.N() == 6 && interp.Nt() == 4) {
+        // coarsen
+        ASSERT_EQ(interp.ncoarsen_front(), 8);
+        ASSERT_EQ(interp.ncoarsen_back(), 7);
+        // refine
+        ASSERT_EQ(interp.nrefine_front(), 2);
+        ASSERT_EQ(interp.nrefine_back(), 3);
+        // criterion
+        ASSERT_EQ(interp.ncriterion_front(), 8);
+        ASSERT_EQ(interp.ncriterion_back(), 7);
+        // shift
+        ASSERT_EQ(interp.shift_front(), 3);
+        ASSERT_EQ(interp.shift_back(), 2);
+    }
+}
+
 TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
     for (int id = 0; id < 3; id++) {
         for (int id = 0; id < 3; id++) {
@@ -100,7 +196,7 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
         real_t* data_coarse = data_coarse_ + m_zeroidx(0, block_coarse_);
         real_t* data_fine   = data_fine_ + m_zeroidx(0, block_fine_);
 
-        real_p ptr_tmp    = (real_t*)m_calloc(m_stride*m_stride*m_stride*sizeof(real_t));
+        real_p ptr_tmp = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
         // fill the fine block!
         for (int i2 = -m_gs; i2 < (m_n + m_gs); i2++) {
@@ -273,7 +369,7 @@ TEST_F(valid_Wavelet_Kernel, refine) {
 
         // do the coarsening
         InterpolatingWavelet interp;
-        lid_t   shift[3] = {0};
+        lid_t                shift[3] = {0};
         interp.Interpolate(-1, shift, block_coarse_, data_coarse, block_fine_, data_fine);
 
         // get the moment, must be the same along every dimension

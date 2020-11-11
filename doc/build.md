@@ -28,10 +28,12 @@ docker pull vanreeslab/murphy:v1.7
 ```
 To build the container and sync your murphy folder, `MY_MURPHY`, run
 ```
-docker run --name murphy -it -v MY_MURPHY:/murphy vanreeslab/murphy:v1.7
+docker run --name murphy -it -v MY_MURPHY:/murphy vanreeslab/murphy:v1.8
 ```
 You are now within the container and you can access the folder in `/murphy`, which is synced with your local machine.
 To exit, simply type `exit` and to relaunch it, enter `docker start -i murphy`.
+
+Two containers are available on the `vanreeslab` account: `murphy-ci` for the continuous integration and `murphy` which has a debugging version of p4est compiled as well as a user defined to improve the VSCode interface.
 
 #### The first build
 The first time you compiler, you need to create the `build` directory:
@@ -118,6 +120,13 @@ doxygen doc/Doxyfile
 ```
 You will need `dot` to get a visual graphs (see `HAVE_DOT` option in the Doxyfile).
 On MacOS, you can install it using homebrew: `brew install graphviz`.
+
+
+---------------------
+### Docker troubleshoot
+
+- the compilation fails and the error indicates that files change sizes during the compilation:
+you might be the victim of slow disk access between docker and your laptop. To solve that, you need to follow [this](https://code.visualstudio.com/docs/remote/containers-advanced#_update-the-mount-consistency-to-delegated-for-macos) and set the consistency to `delegated`.
 
 <!-- 
 -----------------------
