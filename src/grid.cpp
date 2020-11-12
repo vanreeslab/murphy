@@ -4,7 +4,7 @@
 #include <p8est_extended.h>
 
 #include "partitioner.hpp"
-#include "wavelet.hpp"
+#include "interpolating_wavelet.hpp"
 
 using std::list;
 using std::string;
