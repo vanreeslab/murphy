@@ -222,7 +222,7 @@ class InterpolatingWavelet : public Wavelet {
                     const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
                     const_mem_ptr gs_y         = (iy == 1) ? (gs) : (&one);
                     const_mem_ptr gs_z         = (iz == 1) ? (gs) : (&one);
-                    const sid_t   lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+                    const sid_t   lim_start[3] = {gs_lim * ix, gs_lim * iy, gs_lim * iz};
                     const sid_t   lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
 
                     m_assert(((ik0 / 2 - lim_start[0]) >= ctx->srcstart[0]) && ((ik0 / 2 + lim_end[0]) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", ik0 - gs_lim, ctx->srcstart[0], ik0 + gs_lim, ctx->srcend[0]);

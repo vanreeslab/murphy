@@ -3,7 +3,7 @@
 #include "gtest/gtest.h"
 #include "murphy.hpp"
 #include "subblock.hpp"
-#include "wavelet.hpp"
+#include "interpolating_wavelet.hpp"
 
 #define DOUBLE_TOL 1e-13
 
