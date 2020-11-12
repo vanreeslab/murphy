@@ -38,7 +38,6 @@ static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
     if (ibidule < 6) {
         iface_t dir = ibidule / 2;
         sign[dir]   = ((ibidule % 2) == 1) ? 1.0 : -1.0;
-
         m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 1, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
     } else if (ibidule < 18) {
         iface_t iedge = ibidule - 6;
@@ -57,7 +56,7 @@ static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
         iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
         sign[dir1]   = ((iedge % 4) % 2) == 1 ? +1.0 : -1.0;
         sign[dir2]   = ((iedge % 4) / 2) == 1 ? +1.0 : -1.0;
-        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 2, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d, dir = %d)", sign[0], sign[1], sign[2], ibidule,dir);
+        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 2, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d, dir = %d)", sign[0], sign[1], sign[2], ibidule, dir);
     } else {
         iface_t icorner = ibidule - 18;
         sign[0]         = (icorner % 2) == 1 ? +1.0 : -1.0;
@@ -97,7 +96,9 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
 }
 
 /**
- * @brief Destroy the Grid Block: delete the ghost ptr if present and delete the associated fields
+ * @brief Destroy the Grid Block
+ * 
+ * delete the ghost ptr if present and delete the associated fields
  * 
  */
 GridBlock::~GridBlock() {
@@ -119,7 +120,7 @@ GridBlock::~GridBlock() {
 }
 
 /**
- * @brief allocate the ptr for the ghost if not already exiting with the given size
+ * @brief allocate the ptr for the ghost if not already exiting
  * 
  * @param memsize the memory size (in BYTES)
  */
@@ -127,7 +128,6 @@ void GridBlock::AllocateCoarsePtr(const size_t memsize) {
     //-------------------------------------------------------------------------
     if (coarse_ptr_ == nullptr) {
         coarse_ptr_ = reinterpret_cast<mem_ptr>(m_calloc(memsize));
-        // MPI_Alloc_mem(memsize, MPI_INFO_NULL, reinterpret_cast<void*>(&coarse_ptr_));
         m_verb("allocating the ghost ptr of size %ld, @ %p", memsize, coarse_ptr_);
         m_assert(coarse_ptr_ != nullptr, "the pointer is still null, not possible");
     } else {
@@ -208,6 +208,7 @@ mem_ptr GridBlock::pointer(const Field* fid) {
     return data_map_.at(fid->name());
 #endif
 }
+
 /**
  * @brief returns the (aligned!) pointer for write access that corresponds to the actual data pointer, for the first dimension.
  * 
@@ -287,7 +288,7 @@ void GridBlock::DeleteField(Field* fid) {
 }
 
 /**
- * @brief compute the criterion and update the status if we need to refine/coarsen
+ * @brief compute the criterion and update GridBlock::status_lvl_ if we need to refine/coarsen
  * 
  * The criterion of the block must always be:
  *  rtol >= criterion >= ctol
@@ -327,6 +328,13 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief resolve the dependency list created while adapting the mesh (see cback_UpdateDependency() ) by interpolating the needed blocks
+ * 
+ * @param interp the Wavelet object to use for the interpolation/refinement
+ * @param field_start the first field to take into account
+ * @param field_end the last field to take into account
+ */
 void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end) {
     m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
     //-------------------------------------------------------------------------
@@ -411,6 +419,12 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief remove the dependency for the given child
+ * 
+ * @param child_id the id of the dependency to remove, 0 if the parent is removed
+ * @return GridBlock* 
+ */
 GridBlock* GridBlock::PopDependency(const sid_t child_id) {
     m_assert(0 <= child_id && child_id < P8EST_CHILDREN, "child id is out of bound");
     m_assert(dependency_[child_id] != nullptr, "there is nobody here: dep[%d] = %p", child_id, dependency_[child_id]);
@@ -421,6 +435,13 @@ GridBlock* GridBlock::PopDependency(const sid_t child_id) {
     return block;
     //-------------------------------------------------------------------------
 }
+
+/**
+ * @brief add a dependency for a given child
+ * 
+ * @param child_id the id of the dependency to add, 0 if the dependent is the parent
+ * @param dependent_block the pointer to the dependent block
+ */
 void GridBlock::PushDependency(const sid_t child_id, GridBlock* dependent_block) {
     m_assert(0 <= child_id && child_id < P8EST_CHILDREN, "child id is out of bound");
     m_assert(dependency_[child_id] == nullptr, "there is already someone here");
@@ -430,32 +451,20 @@ void GridBlock::PushDependency(const sid_t child_id, GridBlock* dependent_block)
     //-------------------------------------------------------------------------
 }
 
-static void corner_test(p8est_iter_corner_info_t* info, void* user_data) {
-    // 
-    for (int i = 0; i < info->sides.elem_count; ++i) {
-        p8est_iter_corner_side_t* side = (p8est_iter_corner_side_t*)sc_array_index(&info->sides, i);
-        p8est_tree_t*             tree = p8est_tree_array_index(info->p4est->trees, side->treeid);
-        p4est_locidx_t            qid1 = side->quadid + tree->quadrants_offset;
-
-        if(qid1 == 7){
-            m_log("I have %d corners, tree boundary? %d", info->sides.elem_count, info->tree_boundary);
-            m_log("found it!!, I am id number %d and is_ghost? %d -> corner ID =  %d",i,side->is_ghost,side->corner);
-        }
-    }
-};
-
+/**
+ * @brief build the list of ghosts
+ * 
+ * @param qid the current quadrant ID
+ * @param grid the grid to use to recover the ghosts etc
+ * @param interp the wavelet to use (for coarse ghost sizes etc)
+ * @param local2disp_window the displacement information for RMA
+ */
 void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window) {
     //-------------------------------------------------------------------------
     // allocate the ghost pointer
     AllocateCoarsePtr(interp->CoarseMemSize());
 
     //................................................
-    // // temporary sc array used to get the ghosts
-    // sc_array_t* ngh_quad = sc_array_new(sizeof(qdrt_t*));  // points to the quad
-    // // sc_array_t* ngh_qid  = sc_array_new(sizeof(int));      // give the ID of the quad or ghost
-    // // sc_array_t* ngh_enc  = sc_array_new(sizeof(int));      // get the status
-    // sc_array_t* ngh_rank  = sc_array_new(sizeof(int));      // get the rank of the ghost
-
     p8est_t*              forest  = grid->p4est_forest();
     p8est_mesh_t*         mesh    = grid->p4est_mesh();
     p8est_ghost_t*        ghost   = grid->p4est_ghost();
@@ -477,45 +486,13 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
         coarse_hgrid[id] = p4est_QuadLen(level()) / M_HN;
     }
 
-    // if (xyz(0) == 1.0 && xyz(1) == 0.5 && xyz(2) == 1.0) {
-    //     p8est_iterate(forest, /* p4est */
-    //                   ghost, /* ghost layer */
-    //                   mesh,  /* user_data */
-    //                   NULL, NULL, NULL, corner_test);
-    // }
-
     rank_t my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
     for (iface_t ibidule = 0; ibidule < M_NNEIGHBORS; ibidule++) {
         //................................................
-        //#pragma omp critical
-        // {
-        //     // get the neighboring quadrant
-        //     sc_array_reset(ngh_quad);
-        //     sc_array_reset(ngh_enc);
-        //     sc_array_reset(ngh_qid);
-        //     // m_log("I have a grid with %d blocks and %d ghosts. Looking for neighbor %d of block %d = %d, %d",mesh->local_num_quadrants,ghost->ghosts.elem_count,ibidule,qid->cid,qid->qid,qid->tid);
-        //     p8est_mesh_get_neighbors(forest, ghost, mesh, qid->cid, ibidule, ngh_quad, ngh_enc, ngh_qid);
-        // }
-        // const iblock_t nghosts = ngh_enc->elem_count;
-
         p4est_GetNeighbor(forest,connect,ghost,mesh,qid->tid,qid->qid,ibidule,&ngh_list,&rank_list);
         const iblock_t nghosts = ngh_list.size();
-
-        // if (qid->tid == 15 && qid->qid == 2) {
-        //     // if (xyz(0) == 0.1875 && xyz(1) == 0.25 && xyz(2) == 0.5) {
-        //     m_log("-----------------------------------");
-        //     m_log("BLOCK %d: t= %d local = %d", qid->cid, qid->tid, qid->qid);
-        //     m_log("looking for ghost number %d, I found %d ghosts", ibidule, nghosts);
-        //     // if (ibidule < 6) {
-        //     //     m_log("looking by myself, I find %d", mesh->quad_to_face[P8EST_FACES * qid->cid + ibidule]);
-        //     // } else if (ibidule < 18) {
-        //     //     m_log("looking by myself, I find %d", mesh->quad_to_edge[P8EST_EDGES * qid->cid + ibidule - 6]);
-        //     // } else if (ibidule < 26) {
-        //     //     m_log("looking by myself, I find %d", mesh->quad_to_corner[P8EST_CHILDREN * qid->cid + ibidule - 18]);
-        //     // }
-        // }
 
         //................................................
         // no ghosts? then is a physical BC
@@ -530,26 +507,13 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             // else, the edges and corners will be filled through the face
         }
 
-        // if (qid->tid == 15 && qid->qid == 2) {
-        //     real_t sign[3];
-        //     GhostGetSign(ibidule, sign);
-        //     m_log("looking for a ghost with sign %f %f %f", sign[0], sign[1], sign[2]);
-        // }
-
         //................................................
         // this is a real block or a ghost
-        for (iblock_t nid = 0; nid < nghosts; nid++) {
+        for (iblock_t nid = 0; nid < nghosts; ++nid) {
             qdrt_t*    nghq     = ngh_list.back();
             rank_t     ngh_rank = rank_list.back();
             const bool isghost  = (ngh_rank != my_rank);
-
             m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank,isghost);
-
-// #ifndef NDEBUG
-//             rank_t comm_size;
-//             MPI_Comm_size(MPI_COMM_WORLD,&comm_size);
-//             m_assert(!(comm_size==1 && isghost),"if the commsize is 1, we cannot have ghosts");
-// #endif
 
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
             real_t sign[3];
@@ -568,7 +532,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 p8est_qcoord_to_vertex(grid->p4est_connect(), nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
             }
             // fix the shift in coordinates needed if the domain is periodic
-            for (lda_t id = 0; id < 3; id++) {
+            for (lda_t id = 0; id < 3; ++id) {
                 // if we are periodic, we overwrite the position in the direction of the normal !!ONLY!!
                 // since it is my neighbor in this normal direction, I am 100% sure that it's origin corresponds to the end of my block
                 const real_t to_replace = sign[id] * sign[id] * grid->domain_periodic(id);  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
@@ -580,11 +544,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             // get the hgrid
             const real_t ngh_len[3]   = {p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level)};
             const real_t ngh_hgrid[3] = {p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N};
-
-
-            // if (qid->tid == 0 && qid->qid == 0) {
-            //     m_log("the ghost has sign %f %f %f and is a ghost? %d, ngh level? %d", sign[0], sign[1], sign[2],isghost,nghq->level);
-            // }
 
             //................................................
             // create the new block and push back
@@ -601,7 +560,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     //#pragma omp critical
                     local_sibling_.push_back(gb);
                 } else if (nghq->level < level()) {
-                    // TODO: change this to the coarse block to avoid any cast afterwards...
                     // parent: source = neighbor, target = me
                     GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                               /* target */ level_, xyz_, hgrid_, block_min, block_max, gs(), stride(), -1);
@@ -614,15 +572,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     invert_gb->data_src(ngh_block);
                     //#pragma omp critical
                     local_parent_reverse_.push_back(invert_gb);
-
-                    // if (qid->tid == 15 && qid->qid == 2) {
-                    //     m_log("block min = %d %d %d -> block max = %d %d %d",block_min[0],block_min[1],block_min[2],block_max[0],block_max[1],block_max[2]);
-                    //     m_log("me: lvl = %d, pos = %f %f %f, length = %f", level(), xyz(0), xyz(1), xyz(2), block_len[0]);
-                    //     m_log("ngh: lvl = %d, pos = %f %f %f, length = %f", nghq->level, ngh_pos[0], ngh_pos[1], ngh_pos[2], ngh_len[0]);
-                    //     m_log("we have a local parent ghost: from %d %d %d to %d %d %d", gb->start(0), gb->start(1), gb->start(2), gb->end(0), gb->end(1), gb->end(2));
-                    //     m_log("we have a reversed ghost: from %d %d %d to %d %d %d", invert_gb->start(0), invert_gb->start(1), invert_gb->start(2), invert_gb->end(0), invert_gb->end(1), invert_gb->end(2));
-                    //     m_log("\n");
-                    // }
 
                 } else {
                     m_assert((nghq->level - level_) == 1, "The delta level is not correct: %d - %d", nghq->level, level_);
@@ -673,11 +622,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                                                 /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride(), ngh_rank);
                     //#pragma omp critical
                     ghost_children_.push_back(gb);
-
-                    m_verb("me: lvl = %d, pos = %f %f %f, length = %f", level(), xyz(0), xyz(1), xyz(2), block_len[0]);
-                    m_verb("ngh: lvl = %d, pos = %f %f %f, length = %f", nghq->level, ngh_pos[0], ngh_pos[1], ngh_pos[2], ngh_len[0]);
-                    m_verb("we have a children ghost: from %d %d %d to %d %d %d", gb->start(0), gb->start(1), gb->start(2), gb->end(0), gb->end(1), gb->end(2));
-                    m_verb("\n");
                 }
                 //................................................
                 else {
@@ -689,19 +633,11 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             rank_list.pop_back();
         }
     }
-    //#pragma omp critical
-    {
-        // sc_array_destroy(ngh_quad);
-        // sc_array_destroy(ngh_enc);
-        // sc_array_destroy(ngh_qid);
-    }
     //-------------------------------------------------------------------------
 }
 
 /**
  * @brief free and clear the ghost list
- * 
- * free the GhostBlock and PhysBlock stored in the lists an clear the lists
  * 
  */
 void GridBlock::GhostFreeLists() {
@@ -729,13 +665,20 @@ void GridBlock::GhostFreeLists() {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Do the first part of GhostGet and start the RMA requests
+ * 
+ * - get the siblings values (both local and RMA)
+ * - get the coarser values to my temp array
+ * 
+ * @param field the field to interpolate
+ * @param ida the current dimension
+ * @param interp the wavelet
+ * @param mirrors_window the window where to find the mirrors
+ */
 void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     // get the sibligngs
-    if (xyz(0) == 1.0 && xyz(1) == 0.75 && xyz(2) == 1.5) {
-    // if (xyz(0) == 0.1875 && xyz(1) == 0.25 && xyz(2) == 0.5) {
-        m_log("I have %d same neighbors and %d coarse ones", local_sibling_.size(), local_parent_.size());
-    }
     {
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
         const data_ptr data_trg = data(field, ida);
@@ -818,6 +761,17 @@ void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Do the second part of the GhostGet
+ * 
+ * - wait for the com to be over
+ * - add the physical BC to my coarse temp
+ * - interpolate to my ghost points
+ * 
+ * @param field 
+ * @param ida 
+ * @param interp 
+ */
 void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet* interp) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
@@ -880,6 +834,18 @@ void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Do the first part of GhostPut: start the RMA put communications
+ * 
+ * - apply the physical BC to the best of my knowledge
+ * - coarsen my data to obtain the scaling coefficient (interpolate, not copy!)
+ * - put the obtained values to my neighbor's ghost points
+ * 
+ * @param field 
+ * @param ida 
+ * @param interp 
+ * @param mirrors_window 
+ */
 void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
@@ -944,6 +910,15 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Do the second part of GhostPut
+ * 
+ * - the comm are over, I now have everything I need to compute the physical BC
+ * 
+ * @param field 
+ * @param ida 
+ * @param interp 
+ */
 void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp) {
     //-------------------------------------------------------------------------
     data_ptr data_trg = data(field, ida);
@@ -970,59 +945,59 @@ void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet
     //-------------------------------------------------------------------------
 }
 
-/**
- * @brief Downsample the block and re-evaluate the boundary conditions on the coarse version
- * 
- * @param field 
- * @param ida 
- * @param interp 
- */
-void GridBlock::Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block) {
-    //-------------------------------------------------------------------------
-    // reset the tmp value
-    memset(coarse_ptr_, 0, interp->CoarseStride());
-    // get the coarse and extended SubBlocks
-    const lid_t n_ghost_front = (interp->ncriterion_front() + 1) / 2;
-    const lid_t n_ghost_back  = (interp->ncriterion_back() + 1) / 2;  // if we have 3 ghosts, we need 2 coarse and not 1...
-    const lid_t stride        = n_ghost_back + n_ghost_front + M_HN;
-    coarse_block->Reset(n_ghost_front, stride, -n_ghost_front, M_HN + n_ghost_back);
-    m_assert(stride <= interp->CoarseStride(), "ohoh the Coarse block is too small: %d <= %ld", stride, interp->CoarseStride());
+// /**
+//  * @brief Downsample the block and re-evaluate the boundary conditions on the coarse version
+//  * 
+//  * @param field 
+//  * @param ida 
+//  * @param interp 
+//  */
+// void GridBlock::Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block) {
+//     //-------------------------------------------------------------------------
+//     // reset the tmp value
+//     memset(coarse_ptr_, 0, interp->CoarseStride());
+//     // get the coarse and extended SubBlocks
+//     const lid_t n_ghost_front = (interp->ncriterion_front() + 1) / 2;
+//     const lid_t n_ghost_back  = (interp->ncriterion_back() + 1) / 2;  // if we have 3 ghosts, we need 2 coarse and not 1...
+//     const lid_t stride        = n_ghost_back + n_ghost_front + M_HN;
+//     coarse_block->Reset(n_ghost_front, stride, -n_ghost_front, M_HN + n_ghost_back);
+//     m_assert(stride <= interp->CoarseStride(), "ohoh the Coarse block is too small: %d <= %ld", stride, interp->CoarseStride());
 
-    const SubBlock extended_src(M_GS, M_STRIDE, -M_GS, M_N + M_GS);
-    const lid_t    shift[3] = {0, 0, 0};
-    const data_ptr data_trg = coarse_ptr_ + m_zeroidx(0, coarse_block);
-    const data_ptr data_src = data(field, ida);
+//     const SubBlock extended_src(M_GS, M_STRIDE, -M_GS, M_N + M_GS);
+//     const lid_t    shift[3] = {0, 0, 0};
+//     const data_ptr data_trg = coarse_ptr_ + m_zeroidx(0, coarse_block);
+//     const data_ptr data_src = data(field, ida);
 
-    // interpolate
-    interp->Copy(1, shift, &extended_src, data_src, coarse_block, data_trg);
+//     // interpolate
+//     interp->Copy(1, shift, &extended_src, data_src, coarse_block, data_trg);
 
-    //................................................
-    // over-write the BC
-    for (auto gblock : phys_) {
-        m_assert(false, "we shouldn't be here");
-        // get the direction and the corresponding bctype
-        const bctype_t bctype = field->bctype(ida, gblock->iface());
-        // in the face direction, the start and the end are already correct, only the fstart changes
-        SubBlock coarse_block;
-        interp->CoarseFromFine(gblock, &coarse_block);
-        lid_t fstart[3];
-        interp->CoarseFromFine(face_start[gblock->iface()], fstart);
-        // apply the BC
-        if (bctype == M_BC_NEU) {
-            NeumanBoundary<M_WAVELET_N - 1> bc;
-            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_DIR) {
-            DirichletBoundary<M_WAVELET_N - 1> bc;
-            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_EXTRAP) {
-            ExtrapBoundary<M_WAVELET_N> bc;
-            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
-        } else if (bctype == M_BC_ZERO) {
-            ZeroBoundary bc;
-            bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
-        } else {
-            m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
-        }
-    }
-    //-------------------------------------------------------------------------
-}
+//     //................................................
+//     // over-write the BC
+//     for (auto gblock : phys_) {
+//         m_assert(false, "we shouldn't be here");
+//         // get the direction and the corresponding bctype
+//         const bctype_t bctype = field->bctype(ida, gblock->iface());
+//         // in the face direction, the start and the end are already correct, only the fstart changes
+//         SubBlock coarse_block;
+//         interp->CoarseFromFine(gblock, &coarse_block);
+//         lid_t fstart[3];
+//         interp->CoarseFromFine(face_start[gblock->iface()], fstart);
+//         // apply the BC
+//         if (bctype == M_BC_NEU) {
+//             NeumanBoundary<M_WAVELET_N - 1> bc;
+//             bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+//         } else if (bctype == M_BC_DIR) {
+//             DirichletBoundary<M_WAVELET_N - 1> bc;
+//             bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+//         } else if (bctype == M_BC_EXTRAP) {
+//             ExtrapBoundary<M_WAVELET_N> bc;
+//             bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+//         } else if (bctype == M_BC_ZERO) {
+//             ZeroBoundary bc;
+//             bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
+//         } else {
+//             m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
+//         }
+//     }
+//     //-------------------------------------------------------------------------
+// }

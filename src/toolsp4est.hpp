@@ -68,7 +68,6 @@ inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, co
 inline static real_t p4est_QuadLen(const level_t level) {
     //---------------------------------------------------------------------
     const real_t val = 1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(level));
-    m_assert(val == m_quad_len(level), "euuh");
     return val;
     //---------------------------------------------------------------------
 }

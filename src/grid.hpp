@@ -26,14 +26,14 @@ class Grid : public ForestGrid {
    protected:
     std::unordered_map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
-    Prof*                 prof_   = nullptr;  //!< the profiler to use, may stay null
-    Ghost*                ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
+    Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
+    Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     Wavelet* interp_ = nullptr;  //!< the Wavelet to use for all the multilevel operations
 
-    bool   recursive_adapt_   = false;   //!< recursive adaptation or not
-    real_t rtol_              = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
-    real_t ctol_              = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
-    lid_t  n_quad_to_adapt_  = 0;
+    bool   recursive_adapt_ = false;   //!< recursive adaptation or not
+    real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
+    real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    lid_t  n_quad_to_adapt_ = 0;
 
     void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions

@@ -79,17 +79,9 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
 void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
-    // m_assert(nghost_back() <= M_GS, "the number of BLOCK_GS is too low, should be at least %d, here %d", nghost_back(), M_GS);
-    // m_assert(nghost_front() <= M_GS, "the number of BLOCK_GS is too low, should be at least %d, here %d", nghost_front(), M_GS);
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
-    // m_log("-----------------");
-    // m_log("entering Wavelet with shift = %d %d %d", shift[0], shift[1], shift[2]);
-    // m_log("entering Wavelet with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
-    // m_log("entering Wavelet with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
-    // m_log("entering Wavelet with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
-    // m_log("entering Wavelet with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
 
     // get memory details
     for (sid_t id = 0; id < 3; id++) {
@@ -107,7 +99,6 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
 
     // store the multiplication factor and the normal
     ctx.alpha = alpha;
-    // ctx.normal = normal;
 
     // get the correct aligned arrays
     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
@@ -137,10 +128,6 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t* ctx) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     //-------------------------------------------------------------------------
-    // ensure alignment for target, constant and source
-    // m_assume_aligned(ctx->tdata);
-    // // m_assume_aligned(ctx->sdata);
-    // m_assume_aligned(ctx->cdata);
 
     const lid_t  scaling = pow(2, dlvl);
     const real_t alpha   = ctx->alpha;
@@ -187,13 +174,6 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
     //-------------------------------------------------------------------------
-    // m_log("-----------------");
-    // m_log("entering Wavelet with shift = %d %d %d", shift[0], shift[1], shift[2]);
-    // m_log("entering Wavelet with srcstart = %d %d %d", block_src->start(0), block_src->start(1), block_src->start(2));
-    // m_log("entering Wavelet with srcend = %d %d %d", block_src->end(0), block_src->end(1), block_src->end(2));
-    // m_log("entering Wavelet with trgstart = %d %d %d", block_trg->start(0), block_trg->start(1), block_trg->start(2));
-    // m_log("entering Wavelet with trgend = %d %d %d", block_trg->end(0), block_trg->end(1), block_trg->end(2));
-
     //................................................
     // get the corresponding MPI_Datatype for the target
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
@@ -227,7 +207,19 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     //-------------------------------------------------------------------------
 }
 
-void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win)const {
+/**
+ * @brief use the MPI RMA Put function to copy the data from the disp_src to data_trg
+ * 
+ * @param dlvl the level gap = source level - target level (must be 0 or 1)
+ * @param shift the shift, i.e. the position of the (0,0,0) of the target in the source framework (and resolution!)
+ * @param block_src the memory layout corresponding to the source layout, only the ghost size and the stride are used
+ * @param disp_src the displacement wrt to the target's window base pointer (the units are given by the disp_unit provided at the creation of the window on the target rank)
+ * @param block_trg the memory layout corresponding to the target layout
+ * @param data_trg the data memory pointer, i.e. the memory position of (0,0,0)
+ * @param src_rank the rank of the source memory
+ * @param win the window to use for the RMA calls
+ */
+void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
@@ -269,20 +261,12 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
 /**
  * @brief return the biggest detail coefficient (infinite norm) as a refinement/coarsening criterion
  * 
- * The max/min is computed on an extension of the memory Layout (by lifting_len/2).
- * The reason for that comes from the coarsening of a block. 
- * While coarsening a block, we implicitly assume that all detail coefficients involved in the refinement are 0.0.
- * By doing so, we can coarsen the block, forget the detail coefficients and still retreive a perfect information.
- * Practically, it means that the lifting step, i.e. the contribution of the detail coefficients to my scaling coeff, is useless.
- * 
- * The lifting step is driven by the lifting coefficient, whose total length is (2*Nt-1).
- * In front of the block, I need to ensure that the details from my neighbor are 0.0, which means (2*Nt-1)/2 detail are zero
- * At the back of the block, I need to ensure (2*Nt-1)/2 -1 details are 0 (as the last point is a detail)
+ * The max detail is computed on an extension of the memory layout ( by shift_front and shift_back).
+ * The reason for that comes from the coarsening of a block and that the scaling values are the function values
+ * only if the contributing details are zero.
  *
  * @param block the block to analyze
  * @param data the data
- * @param coarse_block 
- * @param data_coarse 
  * @return real_t the infinite norm of the max detail coefficient in the extended region
  */
 real_t Wavelet::Criterion(MemLayout* block, data_ptr data) const {

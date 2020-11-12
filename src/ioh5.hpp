@@ -23,9 +23,6 @@
  * 
  * The IO will appear in Paraview as a MultiBlock dataset. In order to enable most of the filters, you have to options:
  * 
- * - the `Merge Blocks` filter will create an `Unstructured` dataset. That enables almost all the filters (except the volume rending!!) while preserving the info quality.
- * However, it might require a large amount of memory to perfom!
- * 
  * - the `Resample to Image` filter will downsample the dataset to a uniform representation. This is currently the only way to use the volume rendering filter.
  * The amount of needed memory is smaller but so is the image quality.
  * 

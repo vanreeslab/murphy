@@ -17,7 +17,6 @@
 #include "murphy.hpp"
 #include "p8est.h"
 #include "physblock.hpp"
-#include "wavelet.hpp"
 #include "forestgrid.hpp"
 
 /**
@@ -26,11 +25,10 @@
  */
 class GridBlock : public MemLayout {
    protected:
+    sid_t   status_lvl_ = 0;                //!< indicate if the block has to change: +1 -> must be refined, -1 must be coarsened, 0 stays like that
     level_t level_      = -1;               //!< the level of the block
     real_t  xyz_[3]     = {0.0, 0.0, 0.0};  //!< the origin of the block
     real_t  hgrid_[3]   = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
-
-    sid_t   status_lvl_ = 0;                //!< indicate if the block has to change: +1 -> must be refined, -1 must be coarsened, 0 stays like that
 
     std::unordered_map<std::string, mem_ptr> data_map_;  //<! a map of the pointers to the actual data
 
@@ -70,26 +68,23 @@ class GridBlock : public MemLayout {
     const real_t* hgrid() const { return hgrid_; }
     const real_t* xyz() const { return xyz_; }
 
-    // /**
-    //  * @name Lock management
-    //  *
-    //  * @{ */
-    // void lock() { lock_ = true; }
-    // void unlock() { lock_ = false; }
-    // bool locked() const { return lock_; }
-    // void lock(const bool status) { lock_ = status; }
-    // /**@} */
-
+    /**
+     * @name Status level management
+     *
+     * @{ */
     sid_t status_level() const { return status_lvl_; };
     void  ResetStatus() { status_lvl_ = 0; };
     void  UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion);
+    /** @} */
 
     /**
      * @name datamap access
      * 
+     * data is the memory address of (0,0,0)
+     * pointer is the `raw` memoru address
+     * 
      * @{
      */
-    // data = memory address of (0,0,0)
     data_ptr data(const Field* fid);
     data_ptr data(const Field* fid, const sid_t ida);
     // pointer = raw data pointe
@@ -148,7 +143,7 @@ class GridBlock : public MemLayout {
     void GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
     void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
 
-    void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
+    // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
 static inline GridBlock* p4est_GetGridBlock(qdrt_t* quad) {
