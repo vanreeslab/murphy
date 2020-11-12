@@ -69,8 +69,8 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    virtual real_t Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_block, data_ptr data_coarse) const;
-    void           Details(MemLayout* block, data_ptr data_block, MemLayout* coarse_block, data_ptr data_coarse, real_t* details_max) const;
+    virtual real_t Criterion(MemLayout* block, data_ptr data) const;
+    void           Details(MemLayout* block, data_ptr data_block, real_t* details_max) const;
 
     //................................................
    public:

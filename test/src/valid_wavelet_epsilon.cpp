@@ -98,7 +98,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
 
     // Wavelet* interp = GetWavelet(n[id][0], n[id][1]);
     real_t detail_max;
-    interp->Details(&block_fine, data_fine, &tmp_block, data_tmp, &detail_max);
+    interp->Details(&block_fine, data_fine, &detail_max);
 
     //................................................
     // set the index for coarsening computation
@@ -187,7 +187,8 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
         // go up again by forcing the refinement based on the patch
         for (level_t sil = 2; sil < max_level; ++sil) {
             grid.GhostPull(&vort);
-            grid.Adapt(reinterpret_cast<void*>(&patch), nullptr, nullptr, &cback_Patch, &cback_Interpolate);
+            // grid.Adapt(reinterpret_cast<void*>(&patch), nullptr, nullptr, &cback_Patch, &cback_Interpolate);
+            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_Interpolate, nullptr);
         }
         m_log("\t re-adaptation done! we have block between %d and %d", grid.MinLevel(), grid.MaxLevel());
 
@@ -257,7 +258,8 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
         // go up again by forcing the refinement based on the patch
         for (level_t sil = 2; sil < max_level; ++sil) {
             grid.GhostPull(&vort);
-            grid.Adapt(reinterpret_cast<void*>(&patch), nullptr, nullptr, &cback_Patch, &cback_Interpolate);
+            // grid.Adapt(reinterpret_cast<void*>(&patch), nullptr, nullptr, &cback_Patch, &cback_Interpolate);
+            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_Interpolate, nullptr);
 
             // recreate the solution
             Field sol("sol", 3);

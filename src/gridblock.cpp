@@ -81,8 +81,8 @@ static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
 GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level) {
     m_begin;
     //-------------------------------------------------------------------------
-    level_ = level;
-    lock_  = false;
+    level_      = level;
+    status_lvl_ = 0;
     for (lda_t id = 0; id < 3; id++) {
         xyz_[id]   = xyz[id];
         hgrid_[id] = length / M_N;  // the grid spacing is still given by L/N
@@ -283,6 +283,47 @@ void GridBlock::DeleteField(Field* fid) {
     } else {
         m_verb("no field %s in the block", name.c_str());
     }
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief compute the criterion and update the status if we need to refine/coarsen
+ * 
+ * The criterion of the block must always be:
+ *  rtol >= criterion >= ctol
+ * 
+ * if citerion > rtol, we must refine, whatever the other field's dimension value
+ * if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
+ * 
+ * @param interp the wavelet to use to compute the criterion
+ * @param rtol the refinement tolerance
+ * @param ctol the coarsening tolerance
+ * @param field_citerion the field that will be used as a criterion
+ */
+void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion) {
+    m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
+    m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
+    //-------------------------------------------------------------------------
+    for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
+        // go to the computation
+        data_ptr data = this->data(field_citerion, ida);
+        real_t   norm = interp->Criterion(this, data);
+
+        // if the norm is bigger than the refinement tol, we must refine
+        bool refine = norm > rtol;
+        if (refine) {
+            status_lvl_ = +1;
+            return;
+        }
+        // if one dimension is preventing the coarsening, register
+        bool coarsen = norm < ctol;
+        if (!coarsen) {
+            status_lvl_ = 0;
+            return;
+        }
+    }
+    // if we reach this point, we can coarsen the block
+    status_lvl_ = -1;
     //-------------------------------------------------------------------------
 }
 

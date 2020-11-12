@@ -20,17 +20,17 @@
 #include "wavelet.hpp"
 #include "forestgrid.hpp"
 
-
 /**
  * @brief implements a @ref Block that is used as a leaf for the tree
  * 
  */
 class GridBlock : public MemLayout {
    protected:
-    bool    lock_     = false;            //!< lock the block, indicating that no criterion check is needed on the block
-    level_t level_    = -1;               //!< the level of the block
-    real_t  xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
-    real_t  hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
+    level_t level_      = -1;               //!< the level of the block
+    real_t  xyz_[3]     = {0.0, 0.0, 0.0};  //!< the origin of the block
+    real_t  hgrid_[3]   = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
+
+    sid_t   status_lvl_ = 0;                //!< indicate if the block has to change: +1 -> must be refined, -1 must be coarsened, 0 stays like that
 
     std::unordered_map<std::string, mem_ptr> data_map_;  //<! a map of the pointers to the actual data
 
@@ -70,15 +70,19 @@ class GridBlock : public MemLayout {
     const real_t* hgrid() const { return hgrid_; }
     const real_t* xyz() const { return xyz_; }
 
-    /**
-     * @name Lock management
-     * 
-     * @{ */
-    void lock() { lock_ = true; }
-    void unlock() { lock_ = false; }
-    bool locked() const { return lock_; }
-    void lock(const bool status) { lock_ = status; }
-    /**@} */
+    // /**
+    //  * @name Lock management
+    //  *
+    //  * @{ */
+    // void lock() { lock_ = true; }
+    // void unlock() { lock_ = false; }
+    // bool locked() const { return lock_; }
+    // void lock(const bool status) { lock_ = status; }
+    // /**@} */
+
+    sid_t status_level() const { return status_lvl_; };
+    void  ResetStatus() { status_lvl_ = 0; };
+    void  UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion);
 
     /**
      * @name datamap access

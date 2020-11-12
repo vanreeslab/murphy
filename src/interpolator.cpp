@@ -285,7 +285,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
  * @param data_coarse 
  * @return real_t the infinite norm of the max detail coefficient in the extended region
  */
-real_t Wavelet::Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_block, data_ptr data_coarse) const {
+real_t Wavelet::Criterion(MemLayout* block, data_ptr data) const {
     //-------------------------------------------------------------------------
     // get the extended memory layout
     lid_t       start[3];
@@ -298,7 +298,7 @@ real_t Wavelet::Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_blo
 
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(&extended_block, data, coarse_block, data_coarse, &details_max);
+    Details(&extended_block, data, &details_max);
 
     return details_max;
     //-------------------------------------------------------------------------
@@ -312,14 +312,14 @@ real_t Wavelet::Criterion(MemLayout* block, data_ptr data, MemLayout* coarse_blo
  * @param data_tmp the temp memory of size CoarseStride()^3, see the ghosting
  * @param details_max an array of size 8 that will contain the detail coefficients: dx, dy, dz, dxy, dyz, dxz, dxyz, mean
  */
-void Wavelet::Details(MemLayout* block, data_ptr data_block, MemLayout* coarse_block, data_ptr data_coarse, real_t* details_max) const {
+void Wavelet::Details(MemLayout* block, data_ptr data_block, real_t* details_max) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (int id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = coarse_block->start(id);
-        ctx.srcend[id]   = coarse_block->end(id);
+        ctx.srcstart[id] = -1;
+        ctx.srcend[id]   = -1;
 #endif
         ctx.trgstart[id] = block->start(id);
         ctx.trgend[id]   = block->end(id);

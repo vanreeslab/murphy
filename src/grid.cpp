@@ -355,7 +355,8 @@ void Grid::Refine(Field* field) {
     }
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_Interpolate);
-    Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_UpdateDependency);
+    // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_UpdateDependency);
+    Adapt(field, nullptr, &cback_StatusCheck, reinterpret_cast<void*>(field), cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -377,7 +378,8 @@ void Grid::Coarsen(Field* field) {
     }
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_Interpolate);
-    Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_UpdateDependency);
+    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_UpdateDependency);
+    Adapt(field, &cback_StatusCheck, nullptr, reinterpret_cast<void*>(field), cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -393,25 +395,18 @@ void Grid::Adapt(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         GhostPull(fid->second);
     }
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
-    Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_UpdateDependency);
+    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_UpdateDependency);
+    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field), cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
 }
-/**
- * @brief Adapt the grid given an analytical boundary condition for the only field present in the grid
- * 
- * @warning only field will be set to the value, the rest will be set to 0.0 or kept as such
- * 
- * @param expression 
- */
 
 /**
  * @brief Adapt the grid given an analytical expression for the designated field
@@ -431,7 +426,8 @@ void Grid::Adapt(Field* field, SetValue* expression) {
     m_assert(field->ghost_status(), "the ghost status should be valid here...");
 
     // refine given the value
-    Adapt(reinterpret_cast<void*>(field), reinterpret_cast<void*>(expression), &cback_WaveDetail, &cback_WaveDetail, &cback_ValueFill);
+    // Adapt(reinterpret_cast<void*>(field), reinterpret_cast<void*>(expression), &cback_WaveDetail, &cback_WaveDetail, &cback_ValueFill);
+    Adapt(nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_ValueFill, reinterpret_cast<void*>(expression));
 
     // we modified one block after another, so we set the ghost value from the SetValue
     field->ghost_status(expression->do_ghost());
@@ -457,28 +453,31 @@ void Grid::Adapt(list<Patch>* patches) {
     }
     // set the recursive mode to true
     SetRecursiveAdapt(true);
-
     // go to the magical adapt function
-    Adapt(reinterpret_cast<void*>(patches), nullptr, &cback_Patch, &cback_Patch, &cback_AllocateOnly);
+    Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches), &cback_AllocateOnly, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Adapt the grid using the given function for the criterion and the interpolation
+ * @brief 
  * 
- * @param criterion_ptr the criterion pointer to the needed object, might be nullptr
- * @param interp_ptr the interpolation pointer to the needed object, might be nulltpr
- * @param coarsen_crit the coarsening criterion function, might be nullptr
- * @param refine_crit the 
+ * if the refinement is recursive, I cannot have interp = cback_UpdateDependency
+ * 
+ * @param field 
+ * @param coarsen_crit 
+ * @param refine_crit 
+ * @param criterion_ptr 
  * @param interp 
+ * @param interp_ptr 
  */
-void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, cback_interpolate_t interp) {
+void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr) {
     m_begin;
     m_assert(interp != nullptr, "the interpolation function cannot be a nullptr");
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_assert(!(recursive_adapt() && interp == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
@@ -497,9 +496,6 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
     // log
     m_log("--> grid adaptation started... (recursive = %d)", recursive_adapt());
     //................................................
-    // unlock all the blocks
-    DoOpTree(nullptr, &GridBlock::unlock, this);
-
     // delete the soon-to be outdated ghost and mesh
     DestroyGhost();
 
@@ -512,11 +508,6 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
     // refinement, can be done recursivelly no matter what the block distributions on the rank
     // the refinement must be done outside otherwise it's an endless circle:
     // refine-coarsen-balance - refine-coarsen-balance - etc
-    if (refine_crit != nullptr) {
-        m_profStart(prof_, "p4est refine");
-        p8est_refine_ext(p4est_forest_, recursive_adapt(), P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
-        m_profStop(prof_, "p4est refine");
-    }
 
     //................................................
     // coarsening, need to have the 8 children on the same rank
@@ -527,7 +518,21 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
         n_quad_to_adapt_       = 0;
         global_n_quad_to_adapt = 0;
 
-        // coarsening
+        // if we consider a field, reset the status and comptue the criterion for each block
+        if (field != nullptr) {
+            const Wavelet* wavelet_interp = interp_;
+            DoOpTree(nullptr, &GridBlock::ResetStatus, this);
+            DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, wavelet_interp, rtol_, ctol_, field);
+        }
+
+        // refinement -> only one level
+        if (refine_crit != nullptr) {
+            m_profStart(prof_, "p4est refine");
+            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
+            m_profStop(prof_, "p4est refine");
+        }
+
+        // coarsening -> only one level
         if (coarsen_crit != nullptr) {
             m_profStart(prof_, "p4est coarsen");
             p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_crit, nullptr, interp);
@@ -555,12 +560,13 @@ void Grid::Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t
         ++iteration;
     } while (global_n_quad_to_adapt != 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
 
-    // balance the partition
+    // get the 2:1 constrain on the grid
     m_profStart(prof_, "p4est balance");
     p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
     m_profStop(prof_, "p4est balance");
 
     // Solve the dependencies is some have been created -> no dep created if we are recursive
+    // this is check in the callback UpdateDependency function
     if (!recursive_adapt()) {
         const Wavelet* wavelet = interp_;
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());

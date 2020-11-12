@@ -104,6 +104,7 @@ class Grid : public ForestGrid {
 
     lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
     void  AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
+    void  AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
@@ -114,7 +115,7 @@ class Grid : public ForestGrid {
     void Adapt(Field* field, SetValue* expression);
     void Adapt(std::list<Patch>* patches);
 
-    void Adapt(void* criterion_ptr, void* interp_ptr, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, cback_interpolate_t interp);
+    void Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
     /**@}*/
 };
 
