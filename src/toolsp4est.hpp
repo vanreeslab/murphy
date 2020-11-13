@@ -100,8 +100,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
     //................................................
-    // if (ibidule < 18) {
-    // this is a face or an edge, we are good to go old style
+    // we always try first the good old way and correct afterwards if needed
     // temporary sc array used to get the ghosts
     sc_array_t* ngh_quad = sc_array_new(sizeof(p8est_quadrant_t*));  // points to the quad
     sc_array_t* ngh_qid  = sc_array_new(sizeof(int));                // give the ID of the quad or ghost
@@ -117,7 +116,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
         p8est_quadrant_t* ngh = p4est_GetElement<p8est_quadrant_t*>(ngh_quad, ib);
 
         // finish the check
-        m_verb("adding %p to the list",ngh);
+        m_verb("adding %p to the list", ngh);
         ngh_list->push_back(ngh);
 
         // find out the rank, if not ghost, myself, if ghost, take the piggy number
@@ -134,7 +133,6 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
             rank_list->push_back(ngh_rank);
         }
     }
-    
     // if it's a corner, do an extra check with the new method
     if (ibidule >= 18) {
         // we are looking for a corner
@@ -154,9 +152,6 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
         // for each surrogate block
         for (sid_t is = 0; is < surrogate_list->elem_count; is++) {
             // get the quad and the tree info
-
-            // p8est_quadrant_t* quad_2_find = p8est_quadrant_array_index(surrogate_list, is);
-            // p4est_topidx_t    tree_2_find = *(p4est_topidx_t*)sc_array_index(treeid_list, is);
             p8est_quadrant_t* quad_2_find = p4est_GetPointer<p8est_quadrant_t>(surrogate_list, is);
             p4est_topidx_t    tree_2_find = p4est_GetElement<p4est_topidx_t>(treeid_list, is);
 
@@ -168,13 +163,8 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
             // actually search for it
             int is_valid = p8est_quadrant_exists(forest, ghost, tree_2_find, quad_2_find, exist_arr, rank_arr, quad_arr);
             m_assert(quad_arr->elem_count == 1, "there is %ld quad matching the needed one", quad_arr->elem_count);
-            m_verb("the quadrant found is valid? %d", is_valid);
+            m_verb("the quadrant found is valid? %d", is_valid);  // i don't understand this value....
             m_verb("we have %d elements in the exist vector", exist_arr->elem_count);
-            // for (int i = 0; i < exist_arr->elem_count; ++i) {
-            //     m_log("value: %d", p4est_GetElement<int>(exist_arr, i));
-            // }
-            // m_assert(exist_arr->elem_count == 1, "there is more than 1 quad matching the needed one");
-            // m_assert(*((int*)sc_array_index_int(exist_arr, 0)) == 1, "the quadrant must exist");
 
             // store the quadrant and the rank -> use the piggy3 to get the correct quad
             p8est_quadrant_t* quad_piggy   = p4est_GetPointer<p8est_quadrant_t>(quad_arr, 0);
@@ -193,13 +183,12 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
                 }
 
                 m_verb("pushing to list: adress: %p  and rank %d", quad_to_push, rank_to_push);
-
             } else if (is_valid) {
                 // we are a ghost, we can push the piggy quad
                 // search for the quad in the ghost then
-                p8est_tree_t* tree_to_push = p8est_tree_array_index(forest->trees, quad_piggy->p.piggy3.which_tree);
-                ssize_t       ghost_offset = p8est_ghost_bsearch(ghost, rank_to_push, quad_piggy->p.which_tree, quad_piggy);
-                p8est_quadrant_t* ghost_to_push = p8est_quadrant_array_index(&ghost->ghosts,ghost_offset);
+                p8est_tree_t*     tree_to_push  = p8est_tree_array_index(forest->trees, quad_piggy->p.piggy3.which_tree);
+                ssize_t           ghost_offset  = p8est_ghost_bsearch(ghost, rank_to_push, quad_piggy->p.which_tree, quad_piggy);
+                p8est_quadrant_t* ghost_to_push = p8est_quadrant_array_index(&ghost->ghosts, ghost_offset);
 
                 if (ngh_quad->elem_count > 0) {
                     m_assert(ghost_to_push == ngh_list->back(), "the quad should be the same...: %p vs %p, piggy 3 = %d %d vs %d %d", quad_piggy, ngh_list->back(),
