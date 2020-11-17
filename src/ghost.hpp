@@ -40,7 +40,7 @@ class Ghost {
     lda_t    ida_           = -1;                  //!< current ghosting dimension
     level_t  min_level_     = -1;                  //!< minimum active level, min_level included
     level_t  max_level_     = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
-    iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
+    // iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
 
     MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors
     MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be targeted by my RMA calls to access mirrors

@@ -57,13 +57,12 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     max_level_ = m_min(max_level, P8EST_QMAXLEVEL);
 
     //................................................
-    // get how many active quads should be considered and allocate the ghost ptr
-    p8est_mesh_t* mesh = grid_->p4est_mesh();
-    n_active_quad_     = 0;
-    for (level_t il = min_level_; il <= max_level_; il++) {
-        n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
-    }
-    m_verb("I will ghost %d local active quads", n_active_quad_);
+    // get how many active quads should be considered
+    // n_active_quad_     = 0;
+    // for (level_t il = min_level_; il <= max_level_; il++) {
+    //     n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
+    // }
+    // m_verb("I will ghost %d local active quads", n_active_quad_);
 
     // store the number of ghosts needed
     m_assert(interp_->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_front());
@@ -106,24 +105,22 @@ void Ghost::InitList_() {
     m_begin;
     m_verb("Ghost lists initialization started...");
     //-------------------------------------------------------------------------
-    // allocate the lists for the corresponding quads
-    m_assert(n_active_quad_ >= 0, "the number of active quad must be >= 0");
-
-    //................................................
     // get stupid MPI info
     rank_t         mpi_size = grid_->mpisize();
     MPI_Comm       mpi_comm = grid_->mpicomm();
     p8est_t*       forest   = grid_->p4est_forest();
     p8est_ghost_t* ghost    = grid_->p4est_ghost();
+    p8est_mesh_t* mesh = grid_->p4est_mesh();
 
     // sanity checks
     m_assert(mpi_comm == MPI_COMM_WORLD, "the comm should be a comm world");
 
+    //................................................
     // allocate the array to link the local_id to the mirror displacement and init it
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
-    MPI_Aint win_mem_size = n_active_quad_ * sizeof(MPI_Aint);
+    MPI_Aint win_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
     // check the size
     m_assert(win_mem_size >= 0, "the memory size should be >=0");
     // allocate the array and the window with the offsets
@@ -131,13 +128,13 @@ void Ghost::InitList_() {
     MPI_Win_create(local2disp_, win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
     // MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
     MPI_Info_free(&info);
-    m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, n_active_quad_);
+    m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, mesh->local_num_quadrants);
     // make sure everything is done
     MPI_Win_fence(0, local2disp_window_);
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
-    iblock_t count = 0;
+    iblock_t active_mirror_count = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
         level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
@@ -146,7 +143,7 @@ void Ghost::InitList_() {
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             // store the displacement in the local2disp_ array
             iblock_t local_id     = mirror->p.piggy3.local_num;
-            local2disp_[local_id] = (count++) * m_blockmemsize(1);
+            local2disp_[local_id] = (active_mirror_count++) * m_blockmemsize(1);
         }
     }
     // make sure everybody did it
@@ -159,12 +156,12 @@ void Ghost::InitList_() {
 
     // start the exposure epochs if any
     MPI_Win_post(mirror_origin_group_, 0, local2disp_window_);
-    // we need to not start the access epochs if we are empty (if fails on the beast otherwise)
+    // we need to not start the access epochs if we are empty (it fails on the beast otherwise)
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
     }
     // check that we will NOT go for GhostInitLists
-    m_assert(!(n_active_quad_ != 0 && mirror_target_group_ == MPI_GROUP_EMPTY && mpi_size > 1), "if we have some active quadrant, we need to start the get epochs");
+    m_assert(!(active_mirror_count != 0 && mirror_target_group_ == MPI_GROUP_EMPTY && mpi_size > 1), "if we have some active quadrant, we need to start the get epochs: active_mirror_count = %d", active_mirror_count);
 
     // init the list on every active block that matches the level requirements
     // const Wavelet*
@@ -211,7 +208,7 @@ void Ghost::FreeList_() {
  */
 void Ghost::InitComm_() {
     m_begin;
-    m_assert(n_active_quad_ >= 0, "the number of active quads must be computed beforehand");
+    // m_assert(n_active_quad_ >= 0, "the number of active quads must be computed beforehand");
     //-------------------------------------------------------------------------
     // get stupid information
     int            mpi_size = grid_->mpisize();
