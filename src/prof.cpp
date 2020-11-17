@@ -251,7 +251,7 @@ void Prof::Start(string name) {
  * @brief stop the timer of the TimerBlock
  */
 void Prof::Stop(string name) {
-    m_assert(name == current_->name(), "we are trying to stop %s which is not the most recent timer started", name.c_str());
+    m_assert(name == current_->name(), "we are trying to stop %s which is not the most recent timer started = %s", name.c_str(),current_->name().c_str());
     current_->Stop();
 }
 

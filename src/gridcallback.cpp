@@ -339,7 +339,6 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    m_profStart(grid->profiler(), "allocate only");
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -349,7 +348,6 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
         p4est_SetGridBlock(quad,block);
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
@@ -357,7 +355,6 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
             block->AddField(fid->second);
         }
     }
-
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
         qdrt_t*    quad  = outgoing[id];
@@ -366,7 +363,6 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    m_profStop(grid->profiler(), "allocate only");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -384,13 +380,14 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     
     m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
     m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
+    m_assert(field != nullptr, "the field to fill shouldn't be nullptr");
+    m_assert(grid->IsAField(field), "the field to fill must exist");
 
     // get needed grid info
     auto                  f_start = grid->FieldBegin();
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    m_profStart(grid->profiler(), "adapt interp");
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -400,7 +397,6 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
-        // *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
         p4est_SetGridBlock(quad, block);
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
@@ -419,7 +415,6 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }
-    m_profStop(grid->profiler(), "adapt interp");
     //-------------------------------------------------------------------------
     m_end;
 }

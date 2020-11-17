@@ -4,9 +4,8 @@
 
 #include <algorithm>
 
-#include "toolsp4est.hpp"
-
 #include "p8est_iterate.h"
+#include "toolsp4est.hpp"
 
 using std::string;
 using std::unordered_map;
@@ -244,10 +243,10 @@ void GridBlock::AddField(Field* fid) {
     auto it = data_map_.find(name);
     // if not found, create it
     if (it == data_map_.end()) {
-        m_verb("adding field %s to the block", name.c_str());
+        m_verb("adding field %s to the block (dim=%d)", name.c_str(),fid->lda());
         data_map_[name] = (real_p)m_calloc(m_blockmemsize(fid->lda()) * sizeof(real_t));
     } else {
-        m_verb("field %s already in the block", name.c_str());
+        m_verb("field %s already in the block (dim=%d)", name.c_str(),fid->lda());
     }
     //-------------------------------------------------------------------------
 }
@@ -301,10 +300,11 @@ void GridBlock::DeleteField(Field* fid) {
  * @param ctol the coarsening tolerance
  * @param field_citerion the field that will be used as a criterion
  */
-void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion) {
+void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, Prof* profiler) {
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
     //-------------------------------------------------------------------------
+    m_profStart(profiler, "adapt detail");
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
         data_ptr data = this->data(field_citerion, ida);
@@ -314,17 +314,21 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
         bool refine = norm > rtol;
         if (refine) {
             status_lvl_ = +1;
+            m_profStop(profiler, "adapt detail");
             return;
         }
         // if one dimension is preventing the coarsening, register
         bool coarsen = norm < ctol;
         if (!coarsen) {
             status_lvl_ = 0;
+            m_profStop(profiler, "adapt detail");
             return;
         }
     }
     // if we reach this point, we can coarsen the block
     status_lvl_ = -1;
+    //
+    m_profStop(profiler, "adapt detail");
     //-------------------------------------------------------------------------
 }
 
@@ -335,8 +339,9 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
  * @param field_start the first field to take into account
  * @param field_end the last field to take into account
  */
-void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end) {
+void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end, Prof* profiler) {
     m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
+    m_profStart(profiler, "adapt dependency");
     //-------------------------------------------------------------------------
     if (n_dependency_active_ == 1) {
         // if I get only one dependency, I am a child and I need refinement from my parent
@@ -377,7 +382,7 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
         // I have 8 deps, I am a root, waiting data from coarsening of my children
 
         //allocate the new fields
-            m_assert(data_map_.size() == 0, "the block should be empty here");
+        m_assert(data_map_.size() == 0, "the block should be empty here");
         for (auto fid = field_start; fid != field_end; ++fid) {
             auto current_field = fid->second;
             // allocate the field on me (has not been done yet)
@@ -387,11 +392,11 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
         // I am a parent and I need to fillout my children
         for (sid_t childid = 0; childid < P8EST_CHILDREN; ++childid) {
             GridBlock* child_block = this->PopDependency(childid);
-            m_assert(child_block->level()-this->level() == 1, "the child block is not a child");
-            m_assert(childid == p4est_GetChildID(child_block->xyz(),child_block->level()),"the two ids must match");
+            m_assert(child_block->level() - this->level() == 1, "the child block is not a child");
+            m_assert(childid == p4est_GetChildID(child_block->xyz(), child_block->level()), "the two ids must match");
 
             // get the shift for me
-            const lid_t shift[3] = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
+            const lid_t shift[3]     = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
             const lid_t trg_start[3] = {M_HN * ((childid % 2)), M_HN * ((childid % 4) / 2), M_HN * ((childid / 4))};
             const lid_t trg_end[3]   = {trg_start[0] + M_HN, trg_start[1] + M_HN, trg_start[2] + M_HN};
             SubBlock    mem_trg(M_GS, M_STRIDE, trg_start, trg_end);
@@ -416,6 +421,7 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
             delete (child_block);
         }
     }
+    m_profStop(profiler, "adapt dependency");
     //-------------------------------------------------------------------------
 }
 
@@ -491,7 +497,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
 
     for (iface_t ibidule = 0; ibidule < M_NNEIGHBORS; ibidule++) {
         //................................................
-        p4est_GetNeighbor(forest,connect,ghost,mesh,qid->tid,qid->qid,ibidule,&ngh_list,&rank_list);
+        p4est_GetNeighbor(forest, connect, ghost, mesh, qid->tid, qid->qid, ibidule, &ngh_list, &rank_list);
         const iblock_t nghosts = ngh_list.size();
 
         //................................................
@@ -513,7 +519,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             qdrt_t*    nghq     = ngh_list.back();
             rank_t     ngh_rank = rank_list.back();
             const bool isghost  = (ngh_rank != my_rank);
-            m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank,isghost);
+            m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
 
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
             real_t sign[3];

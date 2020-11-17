@@ -87,7 +87,6 @@ int main(int argc, char** argv) {
         dump(&grid, &diff);
         // grid.GhostPull(&vort);
 
-
     }
     // display the profiler
     prof->Disp();

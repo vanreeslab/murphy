@@ -426,8 +426,7 @@ void Grid::Adapt(Field* field, SetValue* expression) {
     m_assert(field->ghost_status(), "the ghost status should be valid here...");
 
     // refine given the value
-    // Adapt(reinterpret_cast<void*>(field), reinterpret_cast<void*>(expression), &cback_WaveDetail, &cback_WaveDetail, &cback_ValueFill);
-    Adapt(nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_ValueFill, reinterpret_cast<void*>(expression));
+    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field), &cback_ValueFill, reinterpret_cast<void*>(expression));
 
     // we modified one block after another, so we set the ghost value from the SetValue
     field->ghost_status(expression->do_ghost());
@@ -481,17 +480,11 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
-    m_profInit(prof_, "p4est coarsen");
-    m_profInitLeave(prof_, "adapt interp");
-    m_profInitLeave(prof_, "adapt criterion");
-    m_profLeave(prof_, "p4est coarsen");
-    m_profInit(prof_, "p4est refine");
-    m_profInitLeave(prof_, "adapt interp");
-    m_profInitLeave(prof_, "criterion");
-    m_profLeave(prof_, "p4est refine");
-    m_profInit(prof_, "p4est balance");
-    m_profInitLeave(prof_, "adapt interp");
-    m_profLeave(prof_, "p4est balance");
+    m_profInitLeave(prof_, "adapt detail");
+    m_profInitLeave(prof_, "adapt dependency");
+    // m_profInitLeave(prof_, "p4est coarsen");
+    // m_profInitLeave(prof_, "p4est refine");
+    // m_profInitLeave(prof_, "p4est balance");
     //................................................
     // log
     m_log("--> grid adaptation started... (recursive = %d)", recursive_adapt());
@@ -522,7 +515,7 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
         if (field != nullptr) {
             const Wavelet* wavelet_interp = interp_;
             DoOpTree(nullptr, &GridBlock::ResetStatus, this);
-            DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, wavelet_interp, rtol_, ctol_, field);
+            DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, wavelet_interp, rtol_, ctol_, field, prof_);
         }
 
         // refinement -> only one level
@@ -569,7 +562,7 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     // this is check in the callback UpdateDependency function
     if (!recursive_adapt()) {
         const Wavelet* wavelet = interp_;
-        DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd());
+        DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd(), prof_);
     }
 
     // finally fix the rank partition
@@ -595,7 +588,7 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     // reset the recursive to false
     SetRecursiveAdapt(false);
 
-    m_profStop(prof_, "adapt patch");
+    m_profStop(prof_, "adaptation");
     //-------------------------------------------------------------------------
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");

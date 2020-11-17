@@ -18,6 +18,7 @@
 #include "p8est.h"
 #include "physblock.hpp"
 #include "forestgrid.hpp"
+#include "prof.hpp"
 
 /**
  * @brief implements a @ref Block that is used as a leaf for the tree
@@ -74,7 +75,7 @@ class GridBlock : public MemLayout {
      * @{ */
     sid_t status_level() const { return status_lvl_; };
     void  ResetStatus() { status_lvl_ = 0; };
-    void  UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion);
+    void  UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, Prof* profiler);
     /** @} */
 
     /**
@@ -110,7 +111,7 @@ class GridBlock : public MemLayout {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end);
+    void       SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end, Prof* profiler);
     /** @} */
 
     /**
