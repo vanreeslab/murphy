@@ -63,6 +63,10 @@ int main(int argc, char** argv) {
         vort.bctype(M_BC_EXTRAP);
         diff.bctype(M_BC_EXTRAP);
 
+        // vr_init(&grid,&vort);
+        // IOH5 dump("data");
+        // dump(&grid, &vort,"vort_before");
+
         // adapt the mesh
         grid.SetTol(1e-1, 1e-3);
         grid.SetRecursiveAdapt(true);

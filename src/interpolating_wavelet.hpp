@@ -268,7 +268,6 @@ class InterpolatingWavelet : public Wavelet {
         const lid_t  end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
         const data_ptr tdata = ctx->tdata;
-        const data_ptr sdata = ctx->sdata;
         const_mem_ptr  gs    = gs_<TN, TNT> + gs_lim;
 
         // for each of the data for the considered children
@@ -307,7 +306,7 @@ class InterpolatingWavelet : public Wavelet {
                             }
                         }
                     }
-                    real_t detail = ctx->tdata[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] - interp;
+                    real_t detail = tdata[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] - interp;
 
                     // check the maximum
                     (*details_max) = m_max(fabs(detail), (*details_max));

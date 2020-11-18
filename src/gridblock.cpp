@@ -295,6 +295,10 @@ void GridBlock::DeleteField(Field* fid) {
  * if citerion > rtol, we must refine, whatever the other field's dimension value
  * if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
  * 
+ * We loop over the field dimensions and we take the conservative approach:
+ * if we need to refine, we always do it, even if other dimension may be coarsened
+ * if we need to coarsen, we make sure that every dimension feels ok with it.
+ * 
  * @param interp the wavelet to use to compute the criterion
  * @param rtol the refinement tolerance
  * @param ctol the coarsening tolerance
@@ -305,6 +309,10 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
     m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
     //-------------------------------------------------------------------------
     m_profStart(profiler, "adapt detail");
+
+    // I need to visit every dimension and determine if we have to refine and/or coarsen.
+    // afterthat we choose given the conservative approach
+    bool coarsen = true;
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
         data_ptr data = this->data(field_citerion, ida);
@@ -314,20 +322,16 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
         bool refine = norm > rtol;
         if (refine) {
             status_lvl_ = +1;
+            // finito
             m_profStop(profiler, "adapt detail");
             return;
         }
         // if one dimension is preventing the coarsening, register
-        bool coarsen = norm < ctol;
-        if (!coarsen) {
-            status_lvl_ = 0;
-            m_profStop(profiler, "adapt detail");
-            return;
-        }
+        coarsen &= (norm < ctol);
     }
-    // if we reach this point, we can coarsen the block
-    status_lvl_ = -1;
-    //
+    // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
+    status_lvl_ = (coarsen) ? -1 : 0;
+
     m_profStop(profiler, "adapt detail");
     //-------------------------------------------------------------------------
 }

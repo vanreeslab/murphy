@@ -334,8 +334,9 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
 
                 // wrt to the center
                 const real_t alpha   = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
-                const real_t rad1r   = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2)) - radius_;
-                const real_t rad2r   = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2)) + radius_;
+                const real_t radr    = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2));
+                const real_t rad1r   = radr - radius_;
+                const real_t rad2r   = radr + radius_;
                 const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center_[idz], 2);
                 const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center_[idz], 2);
                 const real_t vort    = oo_pisigma2 * (exp(-rad1_sq * oo_sigma2) - exp(-rad2_sq * oo_sigma2));
