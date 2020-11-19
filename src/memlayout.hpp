@@ -45,6 +45,7 @@ class MemLayout {
     virtual lid_t stride() const            = 0;  //!< the stride in memory
     virtual lid_t start(const int id) const = 0;  //!< the starting point for the region of interest
     virtual lid_t end(const int id) const   = 0;  //!< the end point of the region of interest
+
     virtual ~MemLayout(){};
 };
 
@@ -61,7 +62,7 @@ class MemLayout {
  * @param scale the scaling coefficient (1 or 2). If 2, we take one points out of 2 in each direction
  * @return MPI_Datatype the corresponding datattype
  */
-inline void ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t gs, const lid_t stride, const lid_t scale, MPI_Datatype* xyz_type) {
+inline void ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t stride, const lid_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
     m_assert(start[0] < end[0],"the end = %d is smaller than the start = %d",end[0],start[0]);

@@ -27,7 +27,8 @@ RUN cd /p4est &&\
     git checkout feature-mesh-edge &&\
     git submodule init && git submodule update &&\
     ./bootstrap &&\
-    CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-openmp --enable-valgrind-clean &&\
+    CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-openmp --enable-debug &&\
+    #CC=mpicc CXX=mpic++ ./configure --prefix=/soft/p4est-github CFLAGS="-O3 -Wall" --enable-mpi --enable-openmp&&\
     make install -j
 RUN rm -rf /p4est
 
@@ -45,6 +46,9 @@ RUN cd /googletest &&\
     make install -j
 RUN rm -rf /googletest
 
+# add the user
+RUN useradd -ms /bin/bash murphy
+USER murphy
 
 # add an openMPI setting to make it run                                         
 ENV OMPI_MCA_btl_vader_single_copy_mechanism none  

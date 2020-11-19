@@ -14,24 +14,26 @@ You can also use Google Test library to run the tests (optional).
 #### Get the dependencies and the `ARCH` file
 To compile Murphy you have three different options. Each of them will give you a different `ARCH` file that is used to compile the library.
 1. **Local libraries**: install the depencies yourself (you should use a `make_arch/make.YourArchitecture` to indicate the library paths, see `make.docker_gcc` as an example). Then, use the your created file for the `ARCH` file: `ARCH_FILE=make_arch/make.YourArchitecture`.
-2. **Docker**: use the `Dockerfile` in the folder `docker/` or you can also download the image from DockerHub (run `docker pull vanreeslab/murphy:v1.6`). Then, the default `ARCH` file (`make_arch/make.docker_gcc`) is valid, no need to change.
+2. **Docker**: use the `Dockerfile` in the folder `docker/` or you can also download the image from DockerHub (run `docker pull vanreeslab/murphy:v1.7`). Then, the default `ARCH` file (`make_arch/make.docker_gcc`) is valid, no need to change.
 3. **VSCode**: You can use the remote container extension to open, build and run the code direction into a Docker container:
     - install the *Remote Container* extension in VSCode,
-    - get the DockerHub image (run `docker pull vanreeslab/murphy:v1.6`),
+    - get the DockerHub image (run `docker pull vanreeslab/murphy:v1.7`),
     - open the murphy folder in VSCode and accept to open in a container. For more information about compiling in a remote
 
 #### Docker exemple
 We recommend to use the last one as it provides the fastest hand-on approach. However, for advance debugging, the first option is usually the more reliable choice.
 To download the image, simply use
 ```
-docker pull vanreeslab/murphy:v1.6
+docker pull vanreeslab/murphy:v1.7
 ```
 To build the container and sync your murphy folder, `MY_MURPHY`, run
 ```
-docker run --name murphy -it -v MY_MURPHY:/murphy vanreeslab/murphy:v1.6
+docker run --name murphy -it -v MY_MURPHY:/murphy vanreeslab/murphy:v1.8
 ```
 You are now within the container and you can access the folder in `/murphy`, which is synced with your local machine.
 To exit, simply type `exit` and to relaunch it, enter `docker start -i murphy`.
+
+Two containers are available on the `vanreeslab` account: `murphy-ci` for the continuous integration and `murphy` which has a debugging version of p4est compiled as well as a user defined to improve the VSCode interface.
 
 #### The first build
 The first time you compiler, you need to create the `build` directory:
@@ -118,6 +120,13 @@ doxygen doc/Doxyfile
 ```
 You will need `dot` to get a visual graphs (see `HAVE_DOT` option in the Doxyfile).
 On MacOS, you can install it using homebrew: `brew install graphviz`.
+
+
+---------------------
+### Docker troubleshoot
+
+- the compilation fails and the error indicates that files change sizes during the compilation:
+you might be the victim of slow disk access between docker and your laptop. To solve that, you need to follow [this](https://code.visualstudio.com/docs/remote/containers-advanced#_update-the-mount-consistency-to-delegated-for-macos) and set the consistency to `delegated`.
 
 <!-- 
 -----------------------

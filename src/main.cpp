@@ -46,28 +46,50 @@ int main(int argc, char** argv) {
 
         // create a field
         Field vort("vorticity", 3);
+        Field diff("diffusion", 3);
         grid.AddField(&vort);
+        grid.AddField(&diff);
 
         const real_t  center[3] = {argument.length_[0] / 2.0, argument.length_[1] / 2.0, argument.length_[2] / 2.0};
         const lda_t   normal    = 2;
         const real_t  sigma     = 0.05;
         const real_t  radius    = 0.25;
         SetVortexRing vr_init(normal, center, sigma, radius, grid.interp());
+        vr_init.Profile(grid.profiler());
+        // SetVortexRing vr_init(normal, center, sigma, radius);
+
 
         // set the BC for kiding
-        vort.bctype(M_BC_EXTRAP_3);
+        vort.bctype(M_BC_EXTRAP);
+        diff.bctype(M_BC_EXTRAP);
+
+        // vr_init(&grid,&vort);
+        // IOH5 dump("data");
+        // dump(&grid, &vort,"vort_before");
 
         // adapt the mesh
-        grid.SetTol(1e-0, 1e-2);
+        grid.SetTol(1e-1, 1e-3);
         grid.SetRecursiveAdapt(true);
         grid.Adapt(&vort,&vr_init);
 
         // create the IO
         IOH5 dump("data");
         dump(&grid, &vort);
-        grid.GhostPull(&vort);
+        // grid.GhostPull(&vort);
         // dump.dump_ghost(true);
         // dump(&grid, &vort);
+
+        // reset the field on the final mesh but no ghost point is filled this time
+        SetVortexRing vr_init2(normal, center, sigma, radius);
+        vr_init2(&grid,&vort);
+
+        LaplacianCross<3> diffusion;
+        diffusion.Profile(grid.profiler());
+        diffusion(&grid,&vort,&diff);
+
+        grid.GhostPull(&diff);
+        dump(&grid, &diff);
+        // grid.GhostPull(&vort);
 
     }
     // display the profiler

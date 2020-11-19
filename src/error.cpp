@@ -5,9 +5,9 @@
 /**
  * @brief Construct a new Error Calculator, if the grid is not nullptr, compute the error on the ghost points as well
  * 
- * @param interp the interpolator to use to get the number of actual ghost points, see BlockOperator::BlockOperator()
+ * @param interp the Wavelet to use to get the number of actual ghost points, see BlockOperator::BlockOperator()
  */
-ErrorCalculator::ErrorCalculator(const Interpolator* interp) : BlockOperator(interp) {}
+ErrorCalculator::ErrorCalculator(const Wavelet* interp) : BlockOperator(interp) {}
 ErrorCalculator::ErrorCalculator() : BlockOperator(nullptr) {}
 
 /**
@@ -64,10 +64,48 @@ void ErrorCalculator::Norms(Grid* grid, const Field* field, const Field* sol, re
 
     // do the gathering into
     if (norm_2 != nullptr) {
+        (*norm_2) = 0.0;
         MPI_Allreduce(&error_2_, norm_2, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
-        *norm_2 = std::sqrt(norm_2[0]);
+        (*norm_2) = std::sqrt(norm_2[0]);
     }
     if (norm_i != nullptr) {
+        (*norm_i) = 0.0;
+        MPI_Allreduce(&error_i_, norm_i, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief same as Norms(Grid* grid, const Field* field, const Field* sol, real_t* norm_2, real_t* norm_i) but operates on the given level only
+ * 
+ * @param grid 
+ * @param level the operation level
+ * @param field 
+ * @param sol 
+ * @param norm_2 
+ * @param norm_i 
+ */
+void ErrorCalculator::Norms(Grid* grid,const level_t level, const Field* field, const Field* sol, real_t* norm_2, real_t* norm_i) {
+    m_begin;
+    m_assert(field->lda() == sol->lda(), "the two fields must have the same dimension");
+    //-------------------------------------------------------------------------
+    error_2_ = 0.0;
+    error_i_ = 0.0;
+
+    // check that if we do the ghost, the ghost are updated
+    m_assert(!(do_ghost_ && (!field->ghost_status())), "we cannot compute the ghost");
+    // call the operator
+    DoOpMeshLevel(this, &ErrorCalculator::ErrorOnGridBlock, grid, level, field, sol);
+
+    // do the gathering into
+    if (norm_2 != nullptr) {
+        (*norm_2) = 0.0;
+        MPI_Allreduce(&error_2_, norm_2, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+        (*norm_2) = std::sqrt(norm_2[0]);
+    }
+    if (norm_i != nullptr) {
+        (*norm_i) = 0.0;
         MPI_Allreduce(&error_i_, norm_i, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
     }
     //-------------------------------------------------------------------------
@@ -91,10 +129,12 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
     real_t e2 = 0.0;
     real_t ei = 0.0;
 
-    for (sid_t ida = 0; ida < fid->lda(); ida++) {
+    // m_log("compute error %d to %d for block @ %f %f %f", start_, end_, block->xyz(0), block->xyz(1), block->xyz(2));
+
+    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
-        real_p data_field = block->data(fid, ida);
-        real_p data_sol   = block->data(sol, ida);
+        const data_ptr data_field = block->data(fid, ida);
+        const data_ptr data_sol   = block->data(sol, ida);
         m_assume_aligned(data_field);
         m_assume_aligned(data_sol);
         // get the correct place given the current thread and the dimension
@@ -106,8 +146,14 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
                     // we need to discard the physical BC for the edges
 
                     real_t error = data_field[m_idx(i0, i1, i2)] - data_sol[m_idx(i0, i1, i2)];
+
+                    m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
+
+                    // if (fabs(error) > 8.1e-3) {
+                    //     m_log("block %d @ %f %f %f (ida=%d) , @ %d %d %d field = %e, sol = %e, error = %e", qid->cid, block->xyz(0), block->xyz(1), block->xyz(2), ida, i0, i1, i2, data_field[m_idx(i0, i1, i2)], data_sol[m_idx(i0, i1, i2)], error);
+                    // }
                 }
             }
         }
@@ -120,5 +166,8 @@ void ErrorCalculator::ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const
     {  // no max atomic in OpenMP
         error_i_ = m_max(error_i_, ei);
     }
+
+    // m_log("compute error done: err2 = %e, erri = %e (local: %e %e)", error_2_, error_i_, e2, ei);
+
     //-------------------------------------------------------------------------
 }

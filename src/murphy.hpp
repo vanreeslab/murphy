@@ -36,7 +36,6 @@ using const_mem_ptr = const real_t* __restrict__;  //!< pointer type = root of t
 typedef int32_t lid_t;
 typedef int8_t  sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
-typedef std::map<std::string, real_p> datamap_t;
 
 /**
  * @brief id of a quadrant
@@ -54,20 +53,14 @@ typedef struct qid_t {
 } qid_t;
 
 /**
- * @brief defines the different supported boundary conditions
- * 
- * The values matches the FLUPS values
- * 
+ * @brief defines the different supported boundary conditions, the order is driven by M_WAVELET_N
  */
-typedef enum bctype_t
-{
-    M_BC_NONE,     //!< no boundary condition is given
-    M_BC_EVEN,     //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
-    M_BC_ODD,      //!< ODD condition: imposes a zero value wrt the interface
-    M_BC_ZERO,     //!< set 0 outside the computational domain
-    M_BC_EXTRAP_3, //!< extrapolate outside the computational domain with polynomial x^2
-    M_BC_EXTRAP_4, //!< extrapolate outside the computational domain with polynomial x^3
-    M_BC_EXTRAP_5  //!< extrapolate outside the computational domain with polynomial x^4
+typedef enum bctype_t {
+    M_BC_NONE,    //!< no boundary condition is given
+    M_BC_NEU,    //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
+    M_BC_DIR,     //!< ODD condition: imposes a zero value wrt the interface
+    M_BC_ZERO,    //!< set 0 outside the computational domain
+    M_BC_EXTRAP,  //!< extrapolate outside the computational domain with polynomial
 } bctype_t;
 
 typedef enum m_direction_t {

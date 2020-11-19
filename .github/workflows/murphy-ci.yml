@@ -1,23 +1,8 @@
-name: murphy - CI
+name: validation
 
-on: [push]
+on: [pull_request]
 
 jobs:
-  #----------------------------------------------------------------------------
-  build-debug:
-    #indicate to run on the beast using the correct docker
-    runs-on: beast-tower
-    timeout-minutes: 20
-    container:
-      image: vanreeslab/murphy:v1.6
-    # define the steps
-    steps:
-      #checkout the repo
-      - uses: actions/checkout@v2
-      # do the build
-      - name: build
-        run: ARCH_FILE=make_arch/make.docker_gcc_test make -j12
-
   #----------------------------------------------------------------------------
   runtests_wavelet_2_2:
     # needs: build-test
@@ -25,7 +10,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.6
+      image: vanreeslab/murphy-ci:v1.8
     # define the steps
     steps:
       #checkout the repo
@@ -34,11 +19,14 @@ jobs:
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2"
       # run the tests
-      - name: run_sequential
-        run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
       # run the tests
-      - name: run_mpi
-        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test
 
   #----------------------------------------------------------------------------
   runtests_wavelet_4_0:
@@ -47,7 +35,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.6
+      image: vanreeslab/murphy-ci:v1.8
     # define the steps
     steps:
       #checkout the repo
@@ -56,11 +44,14 @@ jobs:
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
       # run the tests
-      - name: run_sequential
-        run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
       # run the tests
-      - name: run_mpi
-        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test
 
   #----------------------------------------------------------------------------
   runtests_wavelet_4_2:
@@ -69,7 +60,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy:v1.6
+      image: vanreeslab/murphy-ci:v1.8
     # define the steps
     steps:
       #checkout the repo
@@ -78,8 +69,113 @@ jobs:
       - name: build
         run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4"
       # run the tests
-      - name: run_sequential
-        run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
       # run the tests
-      - name: run_mpi
-        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test
+
+#----------------------------------------------------------------------------
+  runtests_wavelet_4_4:
+    # needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    timeout-minutes: 20
+    container:
+      image: vanreeslab/murphy-ci:v1.8
+    # define the steps
+    steps:
+      #checkout the repo
+      - uses: actions/checkout@v2
+      # do the build
+      - name: build
+        run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=4 -DBLOCK_GS=6"
+      # # run the tests
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # run the tests
+      # run the tests
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test
+
+#----------------------------------------------------------------------------
+  runtests_wavelet_6_0:
+    # needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    timeout-minutes: 20
+    container:
+      image: vanreeslab/murphy-ci:v1.8
+    # define the steps
+    steps:
+      #checkout the repo
+      - uses: actions/checkout@v2
+      # do the build
+      - name: build
+        run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=6"
+      # # run the tests
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # run the tests
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test
+
+#----------------------------------------------------------------------------
+  runtests_wavelet_6_2:
+    # needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    timeout-minutes: 20
+    container:
+      image: vanreeslab/murphy-ci:v1.8
+    # define the steps
+    steps:
+      #checkout the repo
+      - uses: actions/checkout@v2
+      # do the build
+      - name: build
+        run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=6"
+      # # run the tests
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # run the tests
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test
+
+#----------------------------------------------------------------------------
+  runtests_wavelet_6_4:
+    # needs: build-test
+    #indicate to run on the beast using the correct docker
+    runs-on: beast-tower
+    timeout-minutes: 20
+    container:
+      image: vanreeslab/murphy-ci:v1.8
+    # define the steps
+    steps:
+      #checkout the repo
+      - uses: actions/checkout@v2
+      # do the build
+      - name: build
+        run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=4 -DBLOCK_GS=8"
+      # # run the tests
+      # - name: run_sequential
+      #   run: OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 1 ./murphy_test
+      # run the tests
+      # - name: run_mpi_low
+      #   run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 3 ./murphy_test
+      # run the tests
+      - name: run_mpi_high
+        run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 11 ./murphy_test

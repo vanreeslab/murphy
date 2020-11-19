@@ -7,12 +7,10 @@
 #include "field.hpp"
 #include "forestgrid.hpp"
 #include "ghostblock.hpp"
-#include "interpolator.hpp"
+#include "gridblock.hpp"
+#include "wavelet.hpp"
 #include "murphy.hpp"
-#include "physblock.hpp"
 #include "prof.hpp"
-
-// #define M_NGHOST (M_N * M_N * M_N)
 
 // alias boring names
 using GBLocal      = GhostBlock<GridBlock *>;
@@ -27,7 +25,7 @@ class Ghost;
 /**
  * @brief pointer to an member function of the class @ref Ghost
  */
-using gop_t = void (Ghost::*)(const qid_t *qid, GridBlock *block,const Field *fid);
+using gop_t = void (Ghost::*)(const qid_t *qid, GridBlock *block, const Field *fid) const;
 
 /**
  * @brief given an associated grid, performs the ghost update for a given field, in a given component
@@ -42,7 +40,7 @@ class Ghost {
     lda_t    ida_           = -1;                  //!< current ghosting dimension
     level_t  min_level_     = -1;                  //!< minimum active level, min_level included
     level_t  max_level_     = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
-    iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
+    // iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
 
     MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors
     MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be targeted by my RMA calls to access mirrors
@@ -52,21 +50,13 @@ class Ghost {
     MPI_Win   local2disp_window_   = MPI_WIN_NULL;    //!< MPI Window for the RMA communication (non null only during the initlist function)
     MPI_Aint *local2disp_          = nullptr;         //!< for each quadrant, indicate its corresponding displacement ID (non null !only! during the initlist function, reset afterwards)
 
-    ForestGrid *  grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
-    Interpolator *interp_;  //!< pointer to the associated @ref Interpolator, shared, not owned
-
-    ListGBLocal ** block_sibling_;         //!<  list of local block on my resolution
-    ListGBLocal ** block_parent_;          //!<  list of local block coarser (neighbors to me)
-    ListGBLocal ** block_parent_reverse_;  //!<  list of local block coarser (me to neighbors)
-    ListGBMirror **ghost_sibling_;         //!<  list of mirror ghosts on my resolution
-    ListGBMirror **ghost_children_;        //!<  list of mirror ghosts finer than me
-    ListGBMirror **ghost_parent_;          //!<  list of mirror ghost coarser (neighbors to me)
-    ListGBMirror **ghost_parent_reverse_;  //!<  list of mirror ghost coarser (neighbors to me)
-    listGBPhysic **phys_;                  //!<  physical boundary condition
+    ForestGrid *          grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
+    Prof *                prof_;    //!< the profiler to time operations, not owned
+    const Wavelet *interp_;  //!< pointer to the associated @ref Wavelet, shared, not owned
 
    public:
-    Ghost(ForestGrid *grid, Interpolator *interp);
-    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, Interpolator *interp);
+    Ghost(ForestGrid *grid, const Wavelet *interp, Prof *profiler);
+    Ghost(ForestGrid *grid, const level_t min_level, const level_t max_level, const Wavelet *interp, Prof *profiler);
     ~Ghost();
 
     /**
@@ -81,13 +71,12 @@ class Ghost {
      * @name RMA-based low-level ghosting - get and put the values
      * @{
      */
-    void InitList4Block(const qid_t *qid, GridBlock *block);
-    void PushToWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid);
-    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, const Field *fid);
-    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, const Field *fid);
-    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, const Field *fid);
-    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, const Field *fid);
-    void PullFromWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid);
+    void PushToWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid) const;
+    void GetGhost4Block_Post(const qid_t *qid, GridBlock *block, const Field *fid) const;
+    void GetGhost4Block_Wait(const qid_t *qid, GridBlock *block, const Field *fid) const;
+    void PutGhost4Block_Post(const qid_t *qid, GridBlock *block, const Field *fid) const;
+    void PutGhost4Block_Wait(const qid_t *qid, GridBlock *block, const Field *fid) const;
+    void PullFromWindow4Block(const qid_t *qid, GridBlock *block, const Field *fid) const;
     /** @}*/
 
    protected:
@@ -105,17 +94,19 @@ class Ghost {
      * @name Different operations needed on the block itself, given a ghost list
      * @{
      */
-    inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, const Field *fid, mem_ptr ptr_trg);
-    inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, const Field *fid, data_ptr data_trg);
-    inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, const Field *fid, mem_ptr ptr_trg);
-    inline void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, const Field *fid, data_ptr data_trg);
-    inline void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, const Field *fid, mem_ptr ptr_trg);
-    inline void Compute4Block_Refine_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, data_ptr data_trg);
-    inline void Compute4Block_Refine_(const ListGBMirror *ghost_list, const mem_ptr ptr_src, data_ptr data_trg);
-    inline void Compute4Block_Coarsen2Coarse_(data_ptr data_src, data_ptr ptr_trg);
-    inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, const Field *fid);
-    inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, const mem_ptr ptr_src);
-    inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, const Field *fid);
+    // inline void InitList4Block_(const qid_t *qid, GridBlock *block) const;
+    // inline void FreeList4Block_(const qid_t *qid, GridBlock *block) const;
+    // inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, const Field *fid, mem_ptr ptr_trg) const;
+    // inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, const Field *fid, data_ptr data_trg) const;
+    // inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, const Field *fid, mem_ptr ptr_trg) const;
+    // inline void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, const Field *fid, data_ptr data_trg) const;
+    // inline void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, const Field *fid, mem_ptr ptr_trg) const;
+    // inline void Compute4Block_Refine_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, data_ptr data_trg) const;
+    // inline void Compute4Block_Refine_(const ListGBMirror *ghost_list, const mem_ptr ptr_src, data_ptr data_trg) const;
+    // inline void Compute4Block_Coarsen2Coarse_(data_ptr data_src, data_ptr ptr_trg) const;
+    // inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, const Field *fid) const;
+    // inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, const mem_ptr ptr_src) const;
+    // inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, const Field *fid) const;
     /** @}*/
 
     void LoopOnMirrorBlock_(const gop_t op, const Field *field);

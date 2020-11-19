@@ -18,7 +18,7 @@
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 2  //!< number of ghost points
+#define M_GS 4  //!< number of ghost points
 #else
 #define M_GS BLOCK_GS
 #endif
@@ -208,7 +208,7 @@
 /**
  * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a stride (str).
  * 
- * This macro is to be used with the function GridBlock::data()
+ * The ghost point position is not taken into account here as we already have the (0,0,0) position with GridBlock::data().
  * 
  * @note: we cast the stride to size_t to ensure a proper conversion while computing the adress
  */
@@ -226,6 +226,7 @@
  * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a @ref MemLayout
  * 
  * This macro is equivalent to @ref m_sidx with a stride given by MemLayout::stride()
+ * The ghost point position is not taken into account here as we already have the (0,0,0) position with GridBlock::data().
  * 
  */
 #define m_midx(i0, i1, i2, ida, mem)                    \
@@ -235,22 +236,14 @@
     })
 
 /**
- * @brief returns the memory index given 3D position, for a GridBlock object (only!)
+ * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a @ref MemLayout
+ * 
+ * The ghost point position is not taken into account here as we already have the (0,0,0) position with GridBlock::data().
  * 
  */
 #define m_idx(i0, i1, i2)                \
     ({                                   \
         m_sidx(i0, i1, i2, 0, M_STRIDE); \
-    })
-
-/**
- * @brief returns the lenght of a quadrant at a given level,
- * assuming one octree is a cubic domain: (1 x 1 x 1)
- */
-#define m_quad_len(level)                                             \
-    ({                                                                \
-        level_t m_quad_len_lvl_ = (level_t)(level);                   \
-        1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(m_quad_len_lvl_)); \
     })
 
 /** @} */
@@ -316,16 +309,18 @@
 #define m_assert(cond, ...) \
     { ((void)0); }
 #else
-#define m_assert(cond, ...)                                                                                              \
-    ({                                                                                                                   \
-        bool m_assert_cond_ = (bool)(cond);                                                                              \
-        if (!(m_assert_cond_)) {                                                                                         \
-            char m_assert_msg_[1024];                                                                                    \
-            sprintf(m_assert_msg_, __VA_ARGS__);                                                                         \
-            fprintf(stdout, "[murphy-assert] '%s' FAILED: %s at %s (l:%d)\n", #cond, m_assert_msg_, __FILE__, __LINE__); \
-            fflush(stdout);                                                                                              \
-            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                   \
-        }                                                                                                                \
+#define m_assert(cond, ...)                                                                                                               \
+    ({                                                                                                                                    \
+        bool m_assert_cond_ = (bool)(cond);                                                                                               \
+        if (!(m_assert_cond_)) {                                                                                                          \
+            char m_assert_msg_[1024];                                                                                                     \
+            int  m_assert_rank_;                                                                                                          \
+            MPI_Comm_rank(MPI_COMM_WORLD, &m_assert_rank_);                                                                               \
+            sprintf(m_assert_msg_, __VA_ARGS__);                                                                                          \
+            fprintf(stdout, "[%d murphy-assert] '%s' FAILED: %s (at %s:%d)\n", m_assert_rank_, #cond, m_assert_msg_, __FILE__, __LINE__); \
+            fflush(stdout);                                                                                                               \
+            MPI_Abort(MPI_COMM_WORLD, MPI_ERR_ASSERT);                                                                                    \
+        }                                                                                                                                 \
     })
 #endif
 

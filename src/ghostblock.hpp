@@ -16,8 +16,8 @@
 template <typename T>
 class GhostBlock : public SubBlock {
    protected:
-    level_t dlvl_;      //!< delta level = neighbor level - my level (see @ref Interpolator)
-    lid_t   shift_[3];  //!<  my (0,0,0) in the framework of my neighbour  (see @ref Interpolator::interpolate_())
+    level_t dlvl_;      //!< delta level = neighbor level - my level (see @ref Wavelet)
+    lid_t   shift_[3];  //!<  my (0,0,0) in the framework of my neighbour  (see @ref Wavelet::interpolate_())
     rank_t  rank_rma_;  //!< the source rank of the info
     T       data_src_;  //!< provide a mean to access the source data (in practice a GridBlock* or a displacement MPI_Aint)
 

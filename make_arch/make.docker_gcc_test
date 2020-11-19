@@ -3,7 +3,7 @@ CC = mpicc
 
 # CXXFLAGS := -O3 -g --debug -DVERBOSE -Wno-format-security -fopenmp
 # CXXFLAGS := -O0 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage -Wextra
-CXXFLAGS := -O0 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage -DLOG_ALLRANKS
+CXXFLAGS := -O3 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage -DLOG_ALLRANKS
 
 # -DLOG_MUTE
 #  

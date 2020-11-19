@@ -1,48 +1,178 @@
-// #include <cmath>
+#include <cmath>
 
-// #include "boundary.hpp"
-// #include "error.hpp"
-// #include "field.hpp"
-// #include "gtest/gtest.h"
-// #include "ioh5.hpp"
-// #include "laplacian.hpp"
-// #include "murphy.hpp"
-// #include "setvalues.hpp"
-// #include "subblock.hpp"
-// #include "wavelet.hpp"
+#include "doop.hpp"
+#include "error.hpp"
+#include "grid.hpp"
+#include "gtest/gtest.h"
+#include "ioh5.hpp"
+#include "murphy.hpp"
+#include "setvalues.hpp"
+#include "subblock.hpp"
+#include "wavelet.hpp"
+#include "laplacian.hpp"
+#include "gradient.hpp"
 
-// #define DOUBLE_TOL 1e-9
+#define DOUBLE_TOL 1e-11
 
-// class valid_Stencil : public ::testing::Test {
-//    protected:
-//     Grid* grid_;
+class valid_Stencil : public ::testing::Test {
+    void SetUp() override {};
+    void TearDown() override {};
+};
 
-//     int  lvl_         = 1;
-//     bool periodic_[3] = {false, false, false};
-//     int  l_[3]        = {1, 1, 1};
+using std::list;
+using std::string;
 
-//     Field* vort_;
-//     Field* diff_;
-//     Field* sol_;
+TEST_F(valid_Stencil, gradient_periodic_cosinus) {
+    for (lda_t id = 0; id < 3; ++id) {
+        // init the errors
+        real_t erri[3] = {0.0, 0.0, 0.0};
+        real_t err2[3] = {0.0, 0.0, 0.0};
 
-//     void SetUp() override {
-//         grid_     = new Grid(lvl_, periodic_, l_, MPI_COMM_WORLD, nullptr);
+        // setup the mesh
+        bool  period[3] = {true, true, true};
+        lid_t L[3]      = {3, 3, 3};
 
-//         //add the field
-//         vort_ = new Field("vorticity", 1);
-//         diff_ = new Field("diffusion", 1);
-//         sol_  = new Field("solution", 1);
-//         grid_->AddField(vort_);
-//         grid_->AddField(diff_);
-//         grid_->AddField(sol_);
-//     };
-//     void TearDown() override {
-//         delete (vort_);
-//         delete (diff_);
-//         delete (sol_);
-//         delete (grid_);
-//     };
-// };
+        for (level_t il = 1; il < 3; ++il) {
+            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+
+            // create the patch refinement to refine the middle tree
+            real_t      origin1[3] = {1.0, 1.0, 1.0};
+            real_t      length1[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin1, length1, il + 1);
+            real_t      origin2[3] = {0.0, 0.0, 0.0};
+            real_t      length2[3] = {L[0], L[1], L[2]};
+            Patch       p2(origin2, length2, il);
+            list<Patch> patch{p1, p2};
+            grid.Adapt(&patch);
+
+            // create the test file
+            string fieldName = "field" + std::to_string(id) + "__" + std::to_string(il);
+            string solName   = "sol" + std::to_string(id) + "__" + std::to_string(il);
+            string diffName  = "deriv" + std::to_string(id) + "__" + std::to_string(il);
+            Field  test(fieldName, 1);
+            Field  sol(solName, 3);
+            Field  dtest(diffName, 3);
+            grid.AddField(&test);
+            grid.AddField(&sol);
+            grid.AddField(&dtest);
+
+            // put a sinus -> the field
+            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t freq[3]    = {3.0, 2.0, 2.0};
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetCosinus   field_init(sin_len, freq, alpha);
+            field_init(&grid, &test);
+
+            // -> the solution
+            const real_t alpha_sol_0[3] = {-(2 * M_PI * freq[0]) / L[0], 0.0, 0.0};
+            SetSinus     sol_init0(sin_len, freq, alpha_sol_0, grid.interp());
+            sol_init0(&grid, &sol, 0);
+
+            const real_t alpha_sol_1[3] = {0.0, -(2 * M_PI * freq[1]) / L[1], 0.0};
+            SetSinus     sol_init1(sin_len, freq, alpha_sol_1, grid.interp());
+            sol_init1(&grid, &sol, 1);
+
+            const real_t alpha_sol_2[3] = {0.0, 0.0, -(2 * M_PI * freq[2]) / L[2]};
+            SetSinus     sol_init2(sin_len, freq, alpha_sol_2, grid.interp());
+            sol_init2(&grid, &sol, 2);
+
+            // compue the grad
+            Gradient<3> grad;
+            grad(&grid, &test, &dtest);
+
+            // grid.GhostPull(&dtest);
+            // IOH5 io("data_test");
+            // io(&grid, &test);
+            // io(&grid, &dtest);
+            // io(&grid, &sol);
+
+            // now, we need to check
+            ErrorCalculator error;
+            error.Norms(&grid, &dtest, &sol, err2 + il, erri + il);
+
+            m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
+        }
+        real_t conv2 = -log(err2[2] / err2[1]) / log(2);
+        real_t convi = -log(erri[2] / erri[1]) / log(2);
+
+        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
+        ASSERT_GE(conv2, m_min(M_WAVELET_N - 1, 2) - 0.1);
+        ASSERT_GE(convi, m_min(M_WAVELET_N-1,2) - 0.1);
+    }
+}
+
+TEST_F(valid_Stencil,laplacian_periodic_cosinus){
+    for (lda_t id = 0; id < 3; ++id) {
+        
+        // init the errors
+        real_t erri[3] = {0.0, 0.0, 0.0};
+        real_t err2[3] = {0.0, 0.0, 0.0};
+
+        // setup the mesh
+        bool  period[3] = {true, true, true};
+        lid_t L[3]      = {3, 3, 3};
+
+        for (level_t il = 1; il < 3; ++il) {
+            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+
+            // create the patch refinement to refine the middle tree
+            real_t      origin1[3] = {1.0, 1.0, 1.0};
+            real_t      length1[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin1, length1, il + 1);
+            real_t      origin2[3] = {0.0, 0.0, 0.0};
+            real_t      length2[3] = {L[0], L[1], L[2]};
+            Patch       p2(origin2, length2, il);
+            list<Patch> patch{p1, p2};
+            grid.Adapt(&patch);
+
+            // create the test file
+            string fieldName = "field" + std::to_string(id) + "__" + std::to_string(il);
+            string solName   = "sol" + std::to_string(id) + "__" + std::to_string(il);
+            string diffName  = "diff" + std::to_string(id) + "__" + std::to_string(il);
+            Field  test(fieldName, 3);
+            Field  sol(solName, 3);
+            Field  diff(diffName, 3);
+            grid.AddField(&test);
+            grid.AddField(&sol);
+            grid.AddField(&diff);
+
+            // put a sinus -> the field
+            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t freq[3]    = {3.0, 1.0, 1.0};
+            const real_t alpha[3]    = {1.0, 1.0, 1.0};
+            SetCosinus     field_init(sin_len, freq,alpha);
+            field_init(&grid, &test);
+
+            // -> the solution
+            const real_t alpha_sol[3] = {-pow((2 * M_PI * freq[0]) / L[0], 2), -pow((2 * M_PI * freq[1]) / L[1], 2), -pow((2 * M_PI * freq[2]) / L[2], 2)};
+            SetCosinus     sol_init(sin_len, freq,alpha_sol,grid.interp());
+            sol_init(&grid, &sol);
+
+            // compue the laplacian
+            LaplacianCross<3> diffusion;
+            diffusion(&grid,&test,&diff);
+
+            // grid.GhostPull(&diff);
+            // IOH5 io("data_test");
+            // io(&grid,&diff);
+            // io(&grid,&sol);
+
+            // now, we need to check
+            ErrorCalculator error;
+            error.Norms(&grid, &diff, &sol, err2 + il, erri + il);
+
+            m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
+        }
+        real_t conv2 = -log(err2[2] / err2[1]) / log(2);
+        real_t convi = -log(erri[2] / erri[1]) / log(2);
+
+        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
+        ASSERT_GE(conv2, m_min(M_WAVELET_N-2,2) - 0.1);
+        ASSERT_GE(convi, m_min(M_WAVELET_N-2,2) - 0.1);
+    }
+}
+
+// #endif
 
 // TEST_F(valid_Stencil, laplacian_o2) {
 //     vort_->bctype(M_BC_EXTRAP_3);

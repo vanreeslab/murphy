@@ -32,6 +32,8 @@ Compilation / makefile | :wrench: `:wrench:`
 Docker | :whale: `:whale:`
 Refactor | :recycle: `:recycle:`
 Work in Progress | :construction: `:construction:`
+Cleanup the code | :wastebasket: `:wastebasket:`
+Refactor the code | :building_construction: `:::building_construction:::`
 
 <!-- ----------------------------
 ### Typing variables

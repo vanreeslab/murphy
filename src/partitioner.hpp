@@ -2,6 +2,7 @@
 #define SRC_PARTITIONER_HPP_
 
 #include <string>
+#include <unordered_map>
 
 #include "grid.hpp"
 #include "gridblock.hpp"
@@ -47,11 +48,11 @@ class Partitioner {
     GridBlock** new_blocks_         = nullptr;
 
    public:
-    Partitioner(map<string, Field*>* fields, Grid* grid, bool destructive);
+    Partitioner(std::unordered_map<std::string, Field*>* fields, Grid* grid, bool destructive);
     ~Partitioner();
 
-    void Start(map<string, Field*>* fields, const m_direction_t dir);
-    void End(map<string, Field*>* fields, const m_direction_t dir);
+    void Start(std::unordered_map<std::string, Field*>* fields, const m_direction_t dir);
+    void End(std::unordered_map<std::string, Field*>* fields, const m_direction_t dir);
 
    protected:
     void DeallocOldies_();

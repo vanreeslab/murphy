@@ -5,6 +5,7 @@
 #include <string>
 
 #include "murphy.hpp"
+#include "boundary.hpp"
 
 /**
  * @brief Contains all the required information about a physical field

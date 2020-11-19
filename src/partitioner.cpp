@@ -3,6 +3,10 @@
 #include <cstring>
 #include <map>
 
+
+using std::unordered_map;
+using std::string;
+
 /**
  * @brief returns the rank that owns the value in the array of length commsize+1
  * 
@@ -42,7 +46,7 @@ using std::memcpy;
  * @param grid the grid on which the partitionning is done
  * @param destructive dictate if the partitioning is used to permanently change the grid or to go from one grid to another.
  */
-Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructive) {
+Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool destructive) {
     m_begin;
     //-------------------------------------------------------------------------
     const rank_t commsize = grid->mpisize();
@@ -91,13 +95,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
     }
 
     //................................................
-    m_log("current status: %d quads locally", forest->local_num_quadrants);
+    m_verb("current status: %d quads locally", forest->local_num_quadrants);
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, true, NULL);
     m_assert(nqshipped >= 0,"the number of quads to send must be >= 0");
     // p4est_gloidx_t nqshipped = p8est_partition_for_coarsening(forest, 0, NULL);
-    m_log("we decided to move %ld blocks", nqshipped);
-    m_log("new status: %d quads locally", forest->local_num_quadrants);
+    m_verb("we decided to move %ld blocks", nqshipped);
+    m_verb("new status: %d quads locally", forest->local_num_quadrants);
 
     if (nqshipped > 0) {
         // get the NEW number of quads
@@ -130,10 +134,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
             n_send_request_ = 0;
             for (rank_t ir = 0; ir < n_recver; ++ir) {
                 const rank_t c_recver = first_recver + ir;
+                if (c_recver == rank) {
+                    continue;
+                }
                 n_send_request_ += (forest->global_first_quadrant[c_recver + 1] - forest->global_first_quadrant[c_recver]) > 0;
             }
             // if I am among the list, remove myself from the request point of view
-            n_send_request_ -= (first_recver <= rank && rank <= last_recver);
+            // n_send_request_ -= (first_recver <= rank && rank <= last_recver);
             m_verb("I will do %d send reqests to send blocks to the %d detected receivers", n_send_request_, n_recver);
 
             // allocate the requests
@@ -156,11 +163,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
                 const p4est_gloidx_t q_rightlimit = m_min(forest->global_first_quadrant[c_recver + 1], opart_end);
                 const lid_t          n_q2send     = q_rightlimit - q_leftlimit;
                 // if I want to allocate a send for myself, skip
-                if (c_recver == rank) {
+                if (c_recver == rank || n_q2send == 0) {
                     tqcount += n_q2send;
-                    continue;
-                }
-                if (n_q2send == 0) {
                     continue;
                 }
                 // remember the begin and end point
@@ -207,7 +211,7 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
                         // create a new block
                         real_t xyz[3];
                         p8est_qcoord_to_vertex(forest->connectivity, it, quad->x, quad->y, quad->z, xyz);
-                        real_t     len   = m_quad_len(quad->level);
+                        real_t     len   = p4est_QuadLen(quad->level);
                         GridBlock *block = new GridBlock(len, xyz, quad->level);
                         // add the fields to the block
                         block->AddFields(fields);
@@ -239,10 +243,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
             n_recv_request_ = 0;
             for (rank_t ir = 0; ir < n_sender; ++ir) {
                 const rank_t c_sender = first_sender + ir;
+                if (c_sender == rank) {
+                    continue;
+                }
                 n_recv_request_ += (oldpart[c_sender + 1] - oldpart[c_sender]) > 0;
             }
             // remove myself
-            n_recv_request_ -= (first_sender <= rank && rank <= last_sender);
+            // n_recv_request_ -= (first_sender <= rank && rank <= last_sender);
             m_verb("I will do %d recv reqests to get blocks from %d senders", n_recv_request_, n_sender);
 
             // allocate the requests
@@ -266,12 +273,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid,bool destructi
                 const p4est_gloidx_t q_rightlimit = m_min(oldpart[c_sender + 1], cpart_end);
                 const lid_t          n_q2recv     = q_rightlimit - q_leftlimit;
                 // if I am the sender, advance the tqcount counter and skip
-                if (c_sender == rank) {
+                if (c_sender == rank || n_q2recv == 0) {
                     tqcount += n_q2recv;
-                    continue;
-                }
-                // if nothing has to be received, I skip
-                if (n_q2recv == 0) {
                     continue;
                 }
                 // store the memory accesses
@@ -346,7 +349,7 @@ Partitioner::~Partitioner() {
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
  */
-void Partitioner::Start(map<string, Field *> *fields, const m_direction_t dir) {
+void Partitioner::Start(unordered_map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
     m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
@@ -421,7 +424,7 @@ void Partitioner::Start(map<string, Field *> *fields, const m_direction_t dir) {
  * @param dir the direction, forward or backward
  * @param do_copy do we need to copy the non-traveling blocks or not
  */
-void Partitioner::End(map<string, Field *> *fields, const m_direction_t dir) {
+void Partitioner::End(unordered_map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
     m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");

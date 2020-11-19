@@ -5,18 +5,18 @@
 
 #include <iostream>
 #include <limits>
-#include <map>
+#include <unordered_map>
 #include <string>
 
 #include "field.hpp"
 #include "ghost.hpp"
 #include "gridblock.hpp"
-#include "interpolator.hpp"
+#include "wavelet.hpp"
 #include "murphy.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
-#include "operator.hpp"
 #include "setvalues.hpp"
+#include "gridcallback.hpp"
 
 /**
  * @brief implements the grid management and the related responsabilities on top of ForestGrid
@@ -24,17 +24,18 @@
  */
 class Grid : public ForestGrid {
    protected:
-    map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::unordered_map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
-    Prof*         prof_   = nullptr;  //!< the profiler to use, may stay null
-    Ghost*        ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
-    Interpolator* interp_ = nullptr;  //!< the interpolator to use for all the multilevel operations
+    Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
+    Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
+    Wavelet* interp_ = nullptr;  //!< the Wavelet to use for all the multilevel operations
 
     bool   recursive_adapt_ = false;   //!< recursive adaptation or not
     real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    lid_t  n_quad_to_adapt_ = 0;
 
-    void* cback_criterion_field_ = nullptr;  //!< temporary pointer to be used in the criterion callback functions
+    void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
    public:
@@ -46,7 +47,7 @@ class Grid : public ForestGrid {
     size_t LocalNumDof() const;
     size_t GlobalNumDof() const;
 
-    Interpolator* interp() { return interp_; }
+    Wavelet* interp() { return interp_; }
 
     Prof* profiler() { return prof_; }
     bool  HasProfiler() { return prof_ != nullptr; }
@@ -62,13 +63,14 @@ class Grid : public ForestGrid {
      */
     lid_t NField() const { return (lid_t)(fields_.size()); }
 
-    map<std::string, Field*>::const_iterator FieldBegin() const { return fields_.begin(); }
-    map<std::string, Field*>::const_iterator FieldEnd() const { return fields_.end(); }
+    auto FieldBegin() const { return fields_.cbegin(); }
+    auto FieldEnd() const { return fields_.cend(); }
 
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
     void DeleteField(Field* field);
-    void ResetFields(const map<std::string, Field*>* fields);
+    void ResetFields(const std::unordered_map<std::string, Field*>* fields);
+    
     /**@}*/
 
     /**
@@ -97,17 +99,23 @@ class Grid : public ForestGrid {
     real_t rtol() const { return rtol_; }
     real_t ctol() const { return ctol_; }
     bool   recursive_adapt() const { return recursive_adapt_; }
-    void*  cback_criterion_field() const { return cback_criterion_field_; }
+    void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
     void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
+    lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
+    void  AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
+    void  AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
+
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
-    void Refine(const sid_t delta_level);
-    void Coarsen(const sid_t delta_level);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
+    void Refine(Field* field);
+    void Coarsen(Field* field);
     void Adapt(Field* field);
     void Adapt(Field* field, SetValue* expression);
     void Adapt(std::list<Patch>* patches);
+
+    void Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
     /**@}*/
 };
 
