@@ -83,6 +83,7 @@ Some compilations flags are available to change the behavior of the code:
 - `-DVERBOSE` enable extended logs
 - `-DNDEBUG` disable the assertion checks and the other debuging sections
 - `-DLOG_MUTE` disable every logs
+- `-DCOLOR_PROF` enable color output in the profiler (disabled by default)
 <!-- - ```-DMG_GAUSSSEIDEL``` uses the gauss-seidel smoother instead of the Jacobi one -->
 
 To use them, you can append the make command, e.g. to change the wavelet behavior

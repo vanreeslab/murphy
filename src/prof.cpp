@@ -105,16 +105,24 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // setup the displayed name
+// setup the displayed name
+#ifdef COLOR_PROF
     string shifter = "\033[0;35m";
+#else
+    string shifter;
+#endif
     for (int l = 1; l < level - 1; l++) {
         shifter = shifter + "|   ";
     }
     if (level > 1) {
         shifter = shifter + "|-> ";
     }
-    // string myname = shifter + "\033[0m" + "\033[1m" + name_ + "\033[0m";
-    string myname = shifter + "\033[0m" + name_ ;
+// string myname = shifter + "\033[0m" + "\033[1m" + name_ + "\033[0m";
+#ifdef COLOR_PROF
+    string myname = shifter + "\033[0m" + name_;
+#else
+    string myname  = shifter + name_;
+#endif
 
     //................................................
     // compute my numbers
@@ -139,16 +147,20 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
 
         // printf the important information
         if (rank == 0) {
+#ifdef COLOR_PROF
             // printf("%-25.25s|  %9.4f\t%9.4f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%09.1f\t%9.2f\n", myname.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
-            if (icol == 0) { // go red
+            if (icol == 0) {  // go red
                 printf("%-45.45s %s\033[0;31m%09.6f\033[0m %% (\033[0;31m%07.4f\033[0m [s]) \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
             }
-            if (icol == 1) { // go orange
+            if (icol == 1) {  // go orange
                 printf("%-45.45s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
             }
-            if (icol == 2) { // go normal
+            if (icol == 2) {  // go normal
                 printf("%-45.45s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
             }
+#else
+            printf("%-45.45s %s%09.6f %% -> %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+#endif
             // printf in the file
             if (file != nullptr) {
                 fprintf(file, "%s;%.6f;%.6f;%.6f;%.0f\n", name_.c_str(), max_time, glob_percent, mean_time_per_count, max_count);
@@ -313,7 +325,11 @@ void Prof::Disp() const {
     // display the header
     if (rank == 0) {
         printf("===================================================================================================================================================\n");
+#ifdef COLOR_PROF
         printf("        PROFILER %s --> total time = \033[0;33m%.4f\033[m [s] \n\n", name_.c_str(), total_time);
+#else
+        printf("        PROFILER %s --> total time = %.4f [s] \n\n", name_.c_str(), total_time);
+#endif
     }
 
     // display root with the total time, root is the only block which is common to everybody
@@ -321,11 +337,14 @@ void Prof::Disp() const {
 
     // display footer
     if (rank == 0) {
+#ifdef COLOR_PROF
         printf("===================================================================================================================================================\n");
         printf("legend:\n");
+
         printf("  - \033[0;31mthis indicates the most expensive step of the most expensive operation\033[0m\n");
         printf("  - \033[0;33mthis indicates the most expensive step of the parent operation\033[0m\n");
         printf("===================================================================================================================================================\n");
+#endif
 
         if (file != nullptr) {
             fclose(file);
