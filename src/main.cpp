@@ -12,6 +12,8 @@
 #include "parser.hpp"
 #include "multigrid.hpp"
 
+#include "advection_diffusion.hpp"
+
 using std::string;
 using std::to_string;
 
