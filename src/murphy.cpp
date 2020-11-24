@@ -1,9 +1,29 @@
 #include "murphy.hpp"
 
+#include <argp.h>
 #include <mpi.h>
 
+#include "navier_stokes.hpp"
+#include "advection.hpp"
 #include "p8est.h"
 
+//-----------------------------------------------------------------------------
+// main documentation
+static char doc[] = "MURPHY - a MUltiResolution multiPHYsics framework.";
+
+// typedef struct parse_arg_t {
+// } parse_arg_t;
+
+// add the children testcases
+static struct argp_child testcase_parsers[] = {
+    {&extern_ns_argp, 0, ns_doc, 0},
+    {&extern_adv_argp, 0, adv_doc, 0},
+    {0}};
+
+// create the empty murphy options
+static struct argp murphy_argp = {0, 0, 0, doc, testcase_parsers};
+
+//-----------------------------------------------------------------------------
 void murphy_init(int argc, char** argv) {
     //-------------------------------------------------------------------------
     int provided;
@@ -24,6 +44,11 @@ void murphy_init(int argc, char** argv) {
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
     m_assert(M_N >= M_GS, "we cannot have ghost points that span more than 1 block");
     m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
+
+    // parse arguments, just simply display the help, nothing more at that stage
+    // parse_arg_t arguments;
+    argp_parse(&murphy_argp, argc, argv, 0, 0, 0);
+
     //-------------------------------------------------------------------------
 }
 

@@ -9,6 +9,7 @@
 
 #include "defs.hpp"
 
+//-------------------------------------------------------------------------
 /**
  * @name typename for indexes
  * @{
@@ -21,6 +22,7 @@ using iblock_t = p4est_locidx_t;  //!< datatype to index blocks, ghosts and quad
 using qdrt_t   = p8est_quadrant_t;
 /**@}*/
 
+//-------------------------------------------------------------------------
 /**
  * @name typename for data pointers
  * @{
@@ -32,11 +34,11 @@ using const_mem_ptr = const real_t* __restrict__;  //!< pointer type = root of t
 /**@}*/
 
 // must be removed from the code
-
 typedef int32_t lid_t;
 typedef int8_t  sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
 
+//-------------------------------------------------------------------------
 /**
  * @brief id of a quadrant
  * 
@@ -52,12 +54,13 @@ typedef struct qid_t {
     };
 } qid_t;
 
+//-------------------------------------------------------------------------
 /**
  * @brief defines the different supported boundary conditions, the order is driven by M_WAVELET_N
  */
 typedef enum bctype_t {
     M_BC_NONE,    //!< no boundary condition is given
-    M_BC_NEU,    //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
+    M_BC_NEU,     //!< EVEN condition: an EVEN bondary condition with respect to a given flux at the interface
     M_BC_DIR,     //!< ODD condition: imposes a zero value wrt the interface
     M_BC_ZERO,    //!< set 0 outside the computational domain
     M_BC_EXTRAP,  //!< extrapolate outside the computational domain with polynomial
@@ -68,16 +71,7 @@ typedef enum m_direction_t {
     M_BACKWARD
 } m_direction_t;
 
-// template <typename T>
-// class m_shared_ptr {
-//    public:
-//     T* ptr;
-//     T* operator()() { return ptr; };
-// }
-
-// template <typename T>
-// class m_owned_ptr:public m_shared_ptr{};
-
+//-------------------------------------------------------------------------
 void murphy_init(int argc, char* argv[]);
 void murphy_finalize();
 
