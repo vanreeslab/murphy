@@ -3,7 +3,7 @@
 
 #include "blockoperator.hpp"
 #include "grid.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief defines a stencil application, that will compute the ghosts on a source field and fill the result in a target field

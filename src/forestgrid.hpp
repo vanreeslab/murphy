@@ -4,7 +4,7 @@
 #include <p8est.h>
 #include <p8est_extended.h>
 
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief handles the p4est structures. This class is a minimal grid, intended to be used by every other class

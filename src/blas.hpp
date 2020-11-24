@@ -4,7 +4,7 @@
 #include "blockoperator.hpp"
 #include "doop.hpp"
 #include "gridblock.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief perform the dcopy operation on a block

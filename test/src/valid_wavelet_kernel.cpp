@@ -1,7 +1,7 @@
 
 #include "error.hpp"
 #include "gtest/gtest.h"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "subblock.hpp"
 #include "interpolating_wavelet.hpp"
 

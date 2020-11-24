@@ -2,7 +2,7 @@
 #define SRC_ITERATIVESOLVER_HPP_
 
 #include "grid.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 class IterativeSolver{
    protected:

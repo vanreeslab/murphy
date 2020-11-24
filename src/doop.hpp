@@ -6,7 +6,7 @@
 #include "blockoperator.hpp"
 #include "forestgrid.hpp"
 #include "gridblock.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "toolsp4est.hpp"
 
 /**

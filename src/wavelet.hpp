@@ -5,7 +5,7 @@
 
 #include "field.hpp"
 #include "memlayout.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "p8est.h"
 
 /**

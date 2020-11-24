@@ -1,6 +1,7 @@
 #ifndef SRC_PATCH_HPP_
 #define SRC_PATCH_HPP_
-#include "murphy.hpp"
+
+#include "defs.hpp"
 
 class Patch {
    protected:

@@ -12,7 +12,7 @@
 #include "ghost.hpp"
 #include "gridblock.hpp"
 #include "wavelet.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "patch.hpp"
 #include "prof.hpp"
 #include "setvalues.hpp"

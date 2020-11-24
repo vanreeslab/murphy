@@ -4,7 +4,7 @@
 #include <p8est.h>
 #include <p8est_extended.h>
 
-#include "murphy.hpp"
+#include "defs.hpp"
 
 using cback_coarsen_citerion_t = int (*)(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
 using cback_refine_criterion_t = int (*)(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);

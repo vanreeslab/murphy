@@ -1,13 +1,13 @@
-#ifndef SRC_ADVECTION_HPP_
-#define SRC_ADVECTION_HPP_
+// #ifndef SRC_ADVECTION_HPP_
+// #define SRC_ADVECTION_HPP_
 
-#include "murphy.hpp"
+// #include "defs.hpp"
 
-static char        adv_doc[] = "Advection";
-extern struct argp extern_adv_argp;
+// static char        adv_doc[] = "Advection";
+// extern struct argp extern_adv_argp;
 
-class Advection {
-    explicit Advection();
-};
+// class Advection {
+//     explicit Advection();
+// };
 
-#endif  // SRC_NAVIER_STOKES_HPP_
+// #endif  // SRC_NAVIER_STOKES_HPP_

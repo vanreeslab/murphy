@@ -2,7 +2,7 @@
 #define SRC_ADVECTION_DIFFUSION_HPP_
 
 #include "forloop.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "stencil.hpp"
 
 template <sid_t length>

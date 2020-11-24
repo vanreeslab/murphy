@@ -2,7 +2,7 @@
 #define SRC_BLOCKOPERATOR_HPP
 
 #include "gridblock.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "wavelet.hpp"
 #include "prof.hpp"
 

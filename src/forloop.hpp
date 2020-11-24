@@ -1,7 +1,7 @@
 #ifndef SRC_FORLOOP_HPP_
 #define SRC_FORLOOP_HPP_
 
-#include "murphy.hpp"
+#include "defs.hpp"
 
 template <typename T, lid_t S0, lid_t E0, lid_t S1 = S0, lid_t E1 = E0, lid_t S2 = S0, lid_t E2 = E0>
 inline void for_loop(T core) {

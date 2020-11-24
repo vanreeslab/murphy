@@ -9,7 +9,7 @@
 #include "ghostblock.hpp"
 #include "gridblock.hpp"
 #include "wavelet.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "prof.hpp"
 
 // alias boring names

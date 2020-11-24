@@ -11,7 +11,7 @@
 #include <map>
 #include <string>
 
-#include "murphy.hpp"
+#include "defs.hpp"
 
 class TimerBlock {
    protected:

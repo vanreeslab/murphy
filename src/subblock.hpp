@@ -2,7 +2,7 @@
 #define SRC_SUBBLOCK_HPP_
 
 #include "memlayout.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief Implementation of a @ref MemLayout as any part of a memory block

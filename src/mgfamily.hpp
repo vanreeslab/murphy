@@ -3,7 +3,7 @@
 
 #include "gridblock.hpp"
 #include "wavelet.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief A familly is an association of one parent and 8 children

@@ -5,7 +5,7 @@
 #include "field.hpp"
 #include "grid.hpp"
 #include "wavelet.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 class ErrorCalculator : public BlockOperator{
     real_t error_2_ = 0.0;  //!< the 2 norm of the error on the grid

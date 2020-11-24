@@ -2,7 +2,7 @@
 #define SRC_INTERPOLATING_WAVELET_HPP_
 
 #include "wavelet.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 template <lda_t N, lda_t NT>
 static constexpr sid_t len_ha_ = 0;

@@ -1,7 +1,7 @@
 #ifndef SRC_JACOBI_HPP_
 #define SRC_JACOBI_HPP_
 
-#include "murphy.hpp"
+#include "defs.hpp"
 
 template <sid_t length>
 class Jacobi : public IterativeSolver {

@@ -12,7 +12,7 @@
 #include "forestgrid.hpp"
 #include "gridblock.hpp"
 #include "hdf5.h"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 #define M_IOH5_LINE_LEN 128
 

@@ -1,7 +1,7 @@
 #ifndef SRC_GRADIENT_HPP_
 #define SRC_GRADIENT_HPP_
 
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "stencil.hpp"
 
 /**

@@ -2,7 +2,7 @@
 #define SRC_MEMLAYOUT_HPP_
 
 #include "mpi.h"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief descibes the most fundamental 3D memory layout and a region of interest (start-end)

@@ -2,7 +2,7 @@
 #define SRC_GHOST_BLOCK_HPP_
 
 #include "boundary.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "subblock.hpp"
 
 /**

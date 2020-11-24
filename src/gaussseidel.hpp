@@ -2,7 +2,7 @@
 #define SRC_GAUSSSEIDEL_HPP_
 
 #include "iterativesolver.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 template <sid_t length>
 class GaussSeidel : public IterativeSolver {

@@ -1,7 +1,7 @@
 #include <mpi.h>
 
 #include "gtest/gtest.h"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 int main(int argc, char** argv) {
     murphy_init(argc,argv);

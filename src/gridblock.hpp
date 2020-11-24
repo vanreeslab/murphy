@@ -14,7 +14,7 @@
 #include "ghostblock.hpp"
 #include "wavelet.hpp"
 #include "memlayout.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "p8est.h"
 #include "physblock.hpp"
 #include "forestgrid.hpp"

@@ -3,7 +3,7 @@
 
 #include "field.hpp"
 #include "grid.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "stencil.hpp"
 
 /**

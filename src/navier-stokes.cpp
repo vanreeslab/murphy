@@ -1,47 +1,56 @@
 #include <argp.h>
 
+#include <string>
+
 #include "navier_stokes.hpp"
 #include "parser.hpp"
 
-static struct argp_option options[] = {
-    {"domain", 'd', "d_x,d_y,d_z", 0, "dimension of the domain in x,y,z (int)"},
-    {"reynolds", 'r', "num", 0, "the Reynolds number (double)"},
-    {0}};
+using std::string;
+using std::to_string;
 
-typedef struct NavierStokesParam {
-    real_t Re_   = 0.0;        //!< the Reynolds number
-    lid_t  L_[3] = {1, 1, 5};  //!< the dimension of the domain
-} NavierStokesParam;
+NavierStokes::~NavierStokes() {
+    //-------------------------------------------------------------------------
+    delete (vort_);
+    delete (grid_);
+    delete (prof_);
 
-static error_t parse_opt(int key, char* arg, struct argp_state* state) {
-    NavierStokesParam* arguments = reinterpret_cast<NavierStokesParam*>(state->input);
-
-    switch (key) {
-        case 'r': {
-            real_t* Re  = &arguments->Re_;
-            error_t err = atof_list(1, arg, Re);
-            m_log("Reynolds: %f", *Re);
-            return err;
-        }
-        case 'd': {
-            int*    length = arguments->L_;
-            error_t err    = atoi_list(3, arg, length);
-            m_log("domain length: %d %d %d", length[0], length[1], length[2]);
-            return err;
-        }
-        default:
-            return ARGP_ERR_UNKNOWN;
-    }
-    return 0;
+    m_log("Navier Stokes is dead");
+    //-------------------------------------------------------------------------
 }
 
-// need to define a global void argp
-struct argp extern_ns_argp = {options, 0, 0, 0, 0};          //!< structure used to display the help
-struct argp ns_argp        = {options, parse_opt, 0, 0, 0};  //!< structure used to parse the meaningful information
-
-NavierStokes::NavierStokes() {
+void NavierStokes::InitParam(ParserArguments* param) {
+    m_begin;
     //-------------------------------------------------------------------------
-    // parse the command line to get info
+    // setup the profiler
+    if (param->profile) {
+        int comm_size;
+        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        string name = string("MURPHY_") + to_string(comm_size) + string("ranks");
+        prof_       = new Prof(name);
+    }
+
+    // setup the grid
+    grid_ = new Grid(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
+
+    // the vorticity with the vortex ring
+    vort_ = new Field("vorticity", 3);
+    vort_->bctype(M_BC_EXTRAP);
+    grid_->AddField(vort_);
+    SetVortexRing vr_init(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
+    vr_init.Profile(prof_);
+
+    // setup the grid with the given initial condition
+    grid_->SetTol(param->refine_tol, param->coarsen_tol);
+    grid_->SetRecursiveAdapt(true);
+    grid_->Adapt(vort_, &vr_init);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void NavierStokes::Run() {
+    m_begin;
+    //-------------------------------------------------------------------------
 
     //-------------------------------------------------------------------------
+    m_end;
 }

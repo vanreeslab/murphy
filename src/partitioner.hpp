@@ -6,7 +6,7 @@
 
 #include "grid.hpp"
 #include "gridblock.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 
 /**
  * @brief Paritions a @ref Grid by distributing it on the available processors and send/recv the associated GridBlock*

@@ -1,7 +1,7 @@
 #ifndef SRC_BOUNDARY_HPP_
 #define SRC_BOUNDARY_HPP_
 
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "subblock.hpp"
 
 /**

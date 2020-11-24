@@ -1,58 +1,58 @@
-#include "murphy.hpp"
-
 #include <argp.h>
 #include <mpi.h>
 
-#include "navier_stokes.hpp"
+#include <string>
+
 #include "advection.hpp"
+#include "defs.hpp"
+#include "navier_stokes.hpp"
 #include "p8est.h"
+#include "parser.hpp"
 
-//-----------------------------------------------------------------------------
-// main documentation
-static char doc[] = "MURPHY - a MUltiResolution multiPHYsics framework.";
+using std::string;
 
-// typedef struct parse_arg_t {
-// } parse_arg_t;
-
-// add the children testcases
-static struct argp_child testcase_parsers[] = {
-    {&extern_ns_argp, 0, ns_doc, 0},
-    {&extern_adv_argp, 0, adv_doc, 0},
-    {0}};
-
-// create the empty murphy options
-static struct argp murphy_argp = {0, 0, 0, doc, testcase_parsers};
-
-//-----------------------------------------------------------------------------
-void murphy_init(int argc, char** argv) {
+TestCase* MurphyInit(int argc, char** argv) {
     //-------------------------------------------------------------------------
     int provided;
     // set MPI_THREAD_SERIALIZED
     int requested = MPI_THREAD_SERIALIZED;
-    // MPI_Init_thread(&argc, &argv, requested, &provided);
-    // if (provided != requested) {
-    //     printf("The MPI-provided thread behavior does not match\n");
-    //     MPI_Abort(MPI_COMM_WORLD, 1);
-    // }
     MPI_Init(&argc, &argv);
     MPI_Comm comm = MPI_COMM_WORLD;
+
     // sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
     sc_init(comm, 1, 1, NULL, SC_LP_INFO);
     // p4est_init(NULL, SC_LP_SILENT);
     p4est_init(NULL, SC_LP_INFO);
+
     // so dome checks for the aligment, the constants etc
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
     m_assert(M_N >= M_GS, "we cannot have ghost points that span more than 1 block");
     m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
 
     // parse arguments, just simply display the help, nothing more at that stage
-    // parse_arg_t arguments;
-    argp_parse(&murphy_argp, argc, argv, 0, 0, 0);
+    ParserArguments argument;
+    ParseArgument(argc, argv, &argument);
 
+    // init the testcase
+    TestCase* testcase;
+    if (argument.do_navier_stokes) {
+        testcase = new NavierStokes();
+    } else {
+        m_assert(false, "no testcase has been choosen");
+    }
+
+    testcase->InitParam(&argument);
+
+    return testcase;
     //-------------------------------------------------------------------------
 }
 
-void murphy_finalize() {
+void MurphyFinalize(TestCase* testcase) {
+    //-------------------------------------------------------------------------
+    delete (testcase);
+    m_log("bye bye MURPHY");
+    
     sc_finalize();
     MPI_Finalize();
+    //-------------------------------------------------------------------------
 }

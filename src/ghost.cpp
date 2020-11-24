@@ -4,7 +4,7 @@
 #include <limits>
 
 #include "boundary.hpp"
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "omp.h"
 #include "toolsp4est.hpp"
 #include "wavelet.hpp"

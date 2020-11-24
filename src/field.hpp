@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#include "murphy.hpp"
+#include "defs.hpp"
 #include "boundary.hpp"
 
 /**
