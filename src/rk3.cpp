@@ -1,6 +1,7 @@
 #include "rk3.hpp"
 
 #include "blas.hpp"
+#include "ioh5.hpp"
 
 /**
  * @brief Construct a new Runge Kutta 3 object
@@ -9,12 +10,13 @@
  * 
  * @param grid 
  */
-RungeKutta3::RungeKutta3(Grid* grid, Field* state, Stencil* f) {
+RungeKutta3::RungeKutta3(Grid* grid, Field* state, Stencil* f, Prof* prof) {
     m_begin;
     m_assert(grid != nullptr, "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
     //-------------------------------------------------------------------------
     grid_    = grid;
+    prof_    = prof;
     field_u_ = state;
     f_       = f;  // store the stencil
 
@@ -35,62 +37,142 @@ RungeKutta3::~RungeKutta3() {
 }
 
 void RungeKutta3::DoDt(const real_t dt, real_t* time) {
+    m_begin;
     m_assert(*time >= 0, "the time cannot be negative");
     m_assert(dt > 0, "the dt cannot be negative, nor 0");
     //-------------------------------------------------------------------------
+
+    // create the scale and the daxpy
+    Scale scale;
+    Daxpy daxpy;
+
+    m_profStart(prof_, "rk3");
     //................................................
     // step 1
     // y = 0.0 * y + F(t,u)
     // u = u + 1/3 * dt * y
+
+    m_profStart(prof_, "scale");
+    scale(grid_, 0.0, field_y_);
+    m_profStop(prof_, "scale");
+
+    // {
+    //     field_y_->bctype(M_BC_EXTRAP);
+    //     grid_->GhostPull(field_y_);
+    //     IOH5 io("data");
+    //     char name[128];
+    //     sprintf(name, "y_1b");
+    //     io(grid_, field_y_, name);
+    // }
+
+    m_profStart(prof_, "rhs");
+    (*f_)(grid_, field_u_, field_y_);
+    m_profStop(prof_, "rhs");
+
+    // m_assert(false,"C'est finiii");
+
     {
-        // update the y using the stencil operator
-        Scale scale(0.0);
-        DoOpMesh(&scale, &Scale::ComputeScaleGridBlock, grid_, field_y_);
-        (*f_)(grid_, field_u_, field_y_);
-
-        // update the u
-        Daxpy update_u(1.0 / 3.0 * dt);
-        DoOpMesh(&update_u, &Daxpy::ComputeDaxpyGridBlock, grid_, field_y_, field_u_, field_u_);
-
-        // udpate time
-        (*time) += 1.0 / 3.0 * dt;
+        field_y_->bctype(M_BC_EXTRAP);
+        grid_->GhostPull(field_y_);
+        IOH5 io("data");
+        char name[128];
+        sprintf(name, "y_1");
+        io(grid_, field_y_, name);
     }
+
+    // update the u
+    m_profStart(prof_, "update");
+    daxpy(grid_, 1.0 / 3.0 * dt, field_y_, field_u_, field_u_);
+    m_profStop(prof_, "update");
+
+    // udpate time
+    (*time) += 1.0 / 3.0 * dt;
 
     //................................................
     // step 2
     // y = -5/9 * y + F(t,u)
     // u = u + 15/16 * dt * y
+
+    m_profStart(prof_, "scale");
+    scale(grid_, -5.0 / 9.0, field_y_);
+    m_profStop(prof_, "scale");
+
+    m_profStart(prof_, "rhs");
+    (*f_)(grid_, field_u_, field_y_);
+    m_profStop(prof_, "rhs");
+
     {
-        // update the y using the stencil operator
-        Scale scale(-5.0 / 9.0);
-        DoOpMesh(&scale, &Scale::ComputeScaleGridBlock, grid_, field_y_);
-        (*f_)(grid_, field_u_, field_y_);
-
-        // update the u
-        Daxpy update_u(15.0 / 16.0 * dt);
-        DoOpMesh(&update_u, &Daxpy::ComputeDaxpyGridBlock, grid_, field_y_, field_u_, field_u_);
-
-        // udpate time: 3/4 - 1/3 = 5/12
-        (*time) += 5.0 / 12.0 * dt;
+        field_y_->bctype(M_BC_EXTRAP);
+        grid_->GhostPull(field_y_);
+        IOH5 io("data");
+        char name[128];
+        sprintf(name, "y_2");
+        io(grid_, field_y_, name);
     }
+
+    // update the u
+    m_profStart(prof_, "update");
+    daxpy(grid_, 15.0 / 16.0 * dt, field_y_, field_u_, field_u_);
+    m_profStop(prof_, "update");
+
+    // udpate time: 3/4 - 1/3 = 5/12
+    (*time) += 5.0 / 12.0 * dt;
 
     //................................................
     // step 3
     // y = -153/128 * y + F(t,u)
     // u = u + 8/15 * dt * y
+
+    // update the y using the stencil operator
+    m_profStart(prof_, "scale");
+    scale(grid_, -153.0 / 128.0, field_y_);
+    m_profStop(prof_, "scale");
+
+    m_profStart(prof_, "rhs");
+    (*f_)(grid_, field_u_, field_y_);
+    m_profStop(prof_, "rhs");
+
     {
-        // update the y using the stencil operator
-        Scale scale(-153.0 / 128.0);
-        DoOpMesh(&scale, &Scale::ComputeScaleGridBlock, grid_, field_y_);
-        (*f_)(grid_, field_u_, field_y_);
-
-        // update the u
-        Daxpy update_u(8.0 / 15.0 * dt);
-        DoOpMesh(&update_u, &Daxpy::ComputeDaxpyGridBlock, grid_, field_y_, field_u_, field_u_);
-
-        // udpate time: 1 - 3/4 = 1/4
-        (*time) += 1.0 / 4.0 * dt;
+        field_y_->bctype(M_BC_EXTRAP);
+        grid_->GhostPull(field_y_);
+        IOH5 io("data");
+        char name[128];
+        sprintf(name, "y_3");
+        io(grid_, field_y_, name);
     }
 
+    // update the u
+    m_profStart(prof_, "update");
+    daxpy(grid_, 8.0 / 15.0 * dt, field_y_, field_u_, field_u_);
+    m_profStop(prof_, "update");
+
+    // udpate time: 1 - 3/4 = 1/4
+    (*time) += 1.0 / 4.0 * dt;
+
+    m_profStop(prof_, "rk3");
     //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief compute the permited time-step
+ * 
+ * @return real_t 
+ */
+real_t RungeKutta3::ComputeDt() {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // know the limits
+    real_t cfl_limit = sqrt(3) * 0.9;  // CFL = max_vel * dt / h
+    // real_t r_limit = 2.5; // r = nu * dt / h^2
+
+    // get the finest h in the grid
+    real_t h_fine = grid_->FinestH();
+
+    // get the fastest velocity
+    real_t max_vel = 1.0;  //todo change
+    real_t cfl_dt  = cfl_limit * h_fine / max_vel;
+    //-------------------------------------------------------------------------
+    m_end;
+    return cfl_dt;
 }

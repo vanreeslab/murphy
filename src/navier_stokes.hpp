@@ -11,6 +11,10 @@
 // extern struct argp extern_ns_argp; //!< promise the declaration of a struct argp somewhere
 
 class NavierStokes : public TestCase {
+
+    real_t reynolds_ = 0.0;
+    real_t u_stream_[3];
+
     Grid*  grid_ = nullptr;
     Prof*  prof_ = nullptr;
     Field* vort_ = nullptr;

@@ -56,6 +56,8 @@ class ForestGrid {
     inline lid_t local_num_quadrants() const { return p4est_forest_->local_num_quadrants; }
     level_t      MaxLevel() const;
     level_t      MinLevel() const;
+    real_t       FinestH() const;
+    real_t       CoarsestH() const;
     /** @} */
 
     /**

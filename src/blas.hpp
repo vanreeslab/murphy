@@ -2,9 +2,10 @@
 #define SRC_BLAS_HPP_
 
 #include "blockoperator.hpp"
+#include "defs.hpp"
 #include "doop.hpp"
 #include "gridblock.hpp"
-#include "defs.hpp"
+#include "forestgrid.hpp"
 
 /**
  * @brief perform the dcopy operation on a block
@@ -16,6 +17,8 @@ class Dcopy : public BlockOperator {
    public:
     explicit Dcopy();
     explicit Dcopy(const Wavelet* interp);
+
+    void operator()(const ForestGrid* grid, Field* fid_x, Field* fid_y);
     void ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y);
 };
 
@@ -30,7 +33,10 @@ class Daxpy : public BlockOperator {
     real_t alpha_ = 0.0;
 
    public:
-    explicit Daxpy(real_t alpha);
+    explicit Daxpy();
+    explicit Daxpy(const Wavelet* interp);
+
+    void operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x, Field* fid_y, Field* fid_z);
     void ComputeDaxpyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z);
 };
 
@@ -45,7 +51,10 @@ class Scale : public BlockOperator {
     real_t alpha_ = 0.0;
 
    public:
-    explicit Scale(real_t alpha);
+    explicit Scale();
+    explicit Scale(const Wavelet* interp);
+
+    void operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x);
     void ComputeScaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x);
 };
 

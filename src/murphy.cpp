@@ -3,7 +3,6 @@
 
 #include <string>
 
-#include "advection.hpp"
 #include "defs.hpp"
 #include "navier_stokes.hpp"
 #include "p8est.h"
@@ -21,8 +20,8 @@ TestCase* MurphyInit(int argc, char** argv) {
 
     // sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
     sc_init(comm, 1, 1, NULL, SC_LP_INFO);
-    // p4est_init(NULL, SC_LP_SILENT);
-    p4est_init(NULL, SC_LP_INFO);
+    p4est_init(NULL, SC_LP_SILENT);
+    // p4est_init(NULL, SC_LP_INFO);
 
     // so dome checks for the aligment, the constants etc
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
@@ -51,7 +50,7 @@ void MurphyFinalize(TestCase* testcase) {
     //-------------------------------------------------------------------------
     delete (testcase);
     m_log("bye bye MURPHY");
-    
+
     sc_finalize();
     MPI_Finalize();
     //-------------------------------------------------------------------------

@@ -27,6 +27,7 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     m_assert(field_trg != nullptr, "the source field cannot be null");
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
     //-------------------------------------------------------------------------
+    m_log("ghost check: field %s is %s",field_src->name().c_str(),field_src->ghost_status()?"OK":"to be computed");
     m_profStart(prof_, "stencil");
     // init the prof if not already done
     for (lda_t ida = 0; ida < field_src->lda(); ++ida) {

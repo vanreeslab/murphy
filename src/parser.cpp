@@ -75,7 +75,7 @@ static char doc[] = "MURPHY - a MUltiResolution multiPHYsics framework.";
 static struct argp_option options[] = {
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Options:", 1},
-    {"profile", 1001, 0, OPTION_ARG_OPTIONAL, "enables the program profiling", 1},
+    {"profile", 'p', 0, OPTION_ARG_OPTIONAL, "enables the program profiling", 1},
 
     /* general param */
     {0, 0, 0, OPTION_DOC, "General parameters:", 2},
@@ -108,7 +108,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
     switch (key) {
         //................................................
-        case 1001: { /* profiler */
+        case 'p': { /* profiler */
             arguments->profile = true;
             m_log("profiler set to true");
             return 0;
@@ -143,18 +143,18 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 2005: { /* rtol */
             real_t* tol = &arguments->refine_tol;
             error_t err = atof_list(1, arg, tol);
-            m_log("refinement tolerance: %d", tol[0]);
+            m_log("refinement tolerance: %f", tol[0]);
             return err;
         }
         case 2006: { /* ctol */
             real_t* tol = &arguments->coarsen_tol;
             error_t err = atof_list(1, arg, tol);
-            m_log("coarsening tolerance: %d", tol[0]);
+            m_log("coarsening tolerance: %f", tol[0]);
             return err;
         }
         //................................................
         case 3000: { /* Navier-Stockes */
-            m_log("Navier-Stockes");
+            m_log("Navier-Stokes testcase selected");
             arguments->do_navier_stokes = true;
             return 0;
         }
@@ -162,6 +162,30 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             double* reynolds = &arguments->reynolds;
             error_t err      = atof_list(1, arg, reynolds);
             m_log("Reynolds number: %f", reynolds[0]);
+            return err;
+        }
+        case 3002: { /* VR normal */
+            int* normal = &arguments->vr_normal;
+            error_t err      = atoi_list(1, arg, normal);
+            m_log("vortex-ring normal: %d", normal[0]);
+            return err;
+        }
+        case 3003: { /* VR center */
+            real_t* center = arguments->vr_center;
+            error_t err      = atof_list(3, arg, center);
+            m_log("vortex-ring center: %f %f %f", center[0], center[1], center[2]);
+            return err;
+        }
+        case 3004: { /* VR radius */
+            real_t* rad = &arguments->vr_radius;
+            error_t err      = atof_list(1, arg, rad);
+            m_log("vortex-ring radius: %f", rad[0]);
+            return err;
+        }
+        case 3005: { /* VR sigma */
+            real_t* sigma = &arguments->vr_sigma;
+            error_t err      = atof_list(1, arg, sigma);
+            m_log("vortex-ring sigma: %f", sigma[0]);
             return err;
         }
         default:

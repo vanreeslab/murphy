@@ -1,9 +1,10 @@
 #ifndef SRC_RK3_HPP_
 #define SRC_RK3_HPP_
 
+#include "defs.hpp"
 #include "field.hpp"
 #include "grid.hpp"
-#include "defs.hpp"
+#include "prof.hpp"
 #include "stencil.hpp"
 
 /**
@@ -30,17 +31,20 @@
  *      t = t0 + dt
  * 
  */
-class RungeKutta3{
-    Grid*  grid_       = nullptr;
-    Field* field_u_    = nullptr;
-    Field* field_y_    = nullptr;
-    Stencil* f_ = nullptr;
+class RungeKutta3 {
+    Grid*    grid_    = nullptr;
+    Field*   field_u_ = nullptr;
+    Field*   field_y_ = nullptr;
+    Stencil* f_       = nullptr;
+    Prof*    prof_    = nullptr;
 
    public:
-    explicit RungeKutta3(Grid* grid, Field* state, Stencil* f);
+    explicit RungeKutta3(Grid* grid, Field* state, Stencil* f, Prof* prof);
     virtual ~RungeKutta3();
 
     void DoDt(const real_t dt, real_t* time);
+
+    real_t ComputeDt();
 };
 
 #endif  // SRC_RK3_HPP_

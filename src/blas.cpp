@@ -1,7 +1,18 @@
 #include "blas.hpp"
 
+//-----------------------------------------------------------------------------
 Dcopy::Dcopy() : BlockOperator(nullptr){};
 Dcopy::Dcopy(const Wavelet* interp) : BlockOperator(interp){};
+
+void Dcopy::operator()(const ForestGrid* grid, Field* fid_x, Field* fid_y) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    DoOpMesh(this, &Dcopy::ComputeDcopyGridBlock, grid, fid_x, fid_y);
+    // update the ghost
+    fid_y->ghost_status(false);
+    //-------------------------------------------------------------------------
+    m_end;
+}
 
 void Dcopy::ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
@@ -25,10 +36,20 @@ void Dcopy::ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, Field* fid
     }
 }
 
-Daxpy::Daxpy(real_t alpha) : BlockOperator(nullptr) {
+//-----------------------------------------------------------------------------
+Daxpy::Daxpy() : BlockOperator(nullptr){};
+Daxpy::Daxpy(const Wavelet* interp) : BlockOperator(interp){};
+
+void Daxpy::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x, Field* fid_y, Field* fid_z) {
+    m_begin;
     //-------------------------------------------------------------------------
     alpha_ = alpha;
+    DoOpMesh(this, &Daxpy::ComputeDaxpyGridBlock, grid, fid_x, fid_y, fid_z);
+
+    // update the ghost
+    fid_z->ghost_status(false);
     //-------------------------------------------------------------------------
+    m_end;
 }
 
 void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x, Field* fid_y, Field* fid_z) {
@@ -57,10 +78,19 @@ void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, GridBlock* block, Field* fid
     //-------------------------------------------------------------------------
 }
 
-Scale::Scale(real_t alpha) : BlockOperator(nullptr) {
+//-----------------------------------------------------------------------------
+Scale::Scale() : BlockOperator(nullptr){};
+Scale::Scale(const Wavelet* interp) : BlockOperator(interp){};
+
+void Scale::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x) {
+    m_begin;
     //-------------------------------------------------------------------------
     alpha_ = alpha;
+    DoOpMesh(this, &Scale::ComputeScaleGridBlock, grid, fid_x);
+    // update the ghost
+    fid_x->ghost_status(false);
     //-------------------------------------------------------------------------
+    m_end;
 }
 
 void Scale::ComputeScaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x) {

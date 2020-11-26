@@ -1,6 +1,7 @@
 #include "forestgrid.hpp"
 
 #include <cmath>
+
 #include "toolsp4est.hpp"
 
 /**
@@ -146,8 +147,13 @@ void ForestGrid::SetupP4estGhostMesh() {
     m_end;
 }
 
+/**
+ * @brief returns the max active level on the current grid
+ * 
+ * @return level_t 
+ */
 level_t ForestGrid::MaxLevel() const {
-    m_begin;
+    // m_begin;
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
     //-------------------------------------------------------------------------
     for (level_t il = P8EST_QMAXLEVEL; il >= 0; --il) {
@@ -159,8 +165,13 @@ level_t ForestGrid::MaxLevel() const {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief returns the min active level on the current grid
+ * 
+ * @return level_t 
+ */
 level_t ForestGrid::MinLevel() const {
-    m_begin;
+    // m_begin;
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
     //-------------------------------------------------------------------------
     for (level_t il = 0; il <= P8EST_QMAXLEVEL; ++il) {
@@ -170,4 +181,22 @@ level_t ForestGrid::MinLevel() const {
     }
     return P8EST_QMAXLEVEL;
     //-------------------------------------------------------------------------
+    // m_end;
+}
+
+real_t ForestGrid::FinestH() const {
+    // m_begin;
+    //-------------------------------------------------------------------------
+    level_t max_level = MaxLevel();
+    return p4est_QuadLen(max_level)/((real_t)M_N);
+    //-------------------------------------------------------------------------
+    // m_end;
+}
+real_t ForestGrid::CoarsestH() const {
+    // m_begin;
+    //-------------------------------------------------------------------------
+    level_t min_level = MinLevel();
+    return p4est_QuadLen(min_level)/((real_t)M_N);
+    //-------------------------------------------------------------------------
+    // m_end;
 }
