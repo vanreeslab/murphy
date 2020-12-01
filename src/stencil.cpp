@@ -26,8 +26,10 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
     m_assert(field_src != nullptr, "the source field cannot be null");
     m_assert(field_trg != nullptr, "the source field cannot be null");
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
+    m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
+    m_assert(grid->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
     //-------------------------------------------------------------------------
-    m_log("ghost check: field %s is %s",field_src->name().c_str(),field_src->ghost_status()?"OK":"to be computed");
+    m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status() ? "OK" : "to be computed");
     m_profStart(prof_, "stencil");
     // init the prof if not already done
     for (lda_t ida = 0; ida < field_src->lda(); ++ida) {
@@ -40,7 +42,8 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         m_profStart(prof_, "inner");
         if (field_trg != nullptr) {
             ida_ = ida;
-            DoOpMesh(this, &Stencil::ApplyStencilInner, grid, field_src, field_trg);
+            // DoOpMesh(this, &Stencil::ApplyStencilInner, grid, field_src, field_trg);
+            DoOpMesh(this, &Stencil::DoMagic, grid, false, field_src, field_trg);
         }
         m_profStop(prof_, "inner");
 
@@ -52,7 +55,8 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         // inner operation on the now received dimension
         ida_ = ida;
         m_profStart(prof_, "outer");
-        DoOpMesh(this, &Stencil::ApplyStencilOuter, grid, field_src, field_trg);
+        // DoOpMesh(this, &Stencil::ApplyStencilOuter, grid, field_src, field_trg);
+        DoOpMesh(this, &Stencil::DoMagic, grid, true, field_src, field_trg);
         m_profStop(prof_, "outer");
     }
     m_profStop(prof_, "stencil");

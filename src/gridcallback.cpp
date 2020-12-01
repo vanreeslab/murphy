@@ -238,8 +238,16 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     // get needed grid info
     p8est_connectivity_t* connect = forest->connectivity;
 
-    // create the incoming block
-    for (sid_t iin = 0; iin < num_incoming; ++iin) {
+    // count the number of blocks that have already been registered as depencies
+    iblock_t n_active_total = 0;
+    for (iblock_t iout = 0; iout < num_outgoing; iout++) {
+        GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
+        n_active_total += block_out->n_dependency_active();
+    }
+    m_assert(n_active_total == 0 || n_active_total == P8EST_CHILDREN, "the number of existing dependences (=%d) must be 0 or P8EST_CHILDREN", n_active_total);
+
+    // create the incoming block if we have not existing blocks
+    for (sid_t iin = 0; iin < num_incoming * (n_active_total == 0); ++iin) {
         qdrt_t* quad = incoming[iin];
 
         // get block informations and create it
@@ -261,9 +269,11 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
 
         if (n_active == 0) {
+            m_assert(n_active_total == 0, "we must have created the associated block");
             // if we had no active dependencies, allocate new blocks, lock them and add them
             for (sid_t iin = 0; iin < num_incoming; ++iin) {
                 GridBlock* block_in = p4est_GetGridBlock(incoming[iin]);
+                m_assert(block_in != nullptr, "block is null, ohoh");
 
                 // register the leaving block in the new one, using it's child id
                 m_assert(p4est_GetChildID(block_out->xyz(), block_out->level()) == p8est_quadrant_child_id(outgoing[iout]), "ouuups");
@@ -275,8 +285,8 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
                 int childid_in = (num_incoming == 1) ? 0 : p4est_GetChildID(block_in->xyz(), block_in->level());
                 block_out->PushDependency(childid_in, block_in);
             }
-        } else if (n_active == 1) {
-            // if we have 1 active dependencies, we need to inverse them
+        } else if (n_active == 1) { /* we want to coarsen blocks that have been asked for refinement */
+            m_assert(n_active_total == P8EST_CHILDREN, "we must found a total of P8EST_CHILDREN blocks");
             m_assert(num_incoming == 1 && num_outgoing == P8EST_CHILDREN, "we cannot refine a block that has already been targeted for refinement!");
 
             // store the old block and remove the dependency from the block (might be done several times, no prob)
@@ -291,9 +301,10 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
             // delete the created block
             delete (block_out);
 
-        } else if (n_active == P8EST_CHILDREN) {
-            // if we have 1 active dependencies, we need to inverse them
+        } else if (n_active == P8EST_CHILDREN) { /* we want to refine blocks that have been asked for coarsening */
+            m_assert(n_active_total == P8EST_CHILDREN, "we must found a total of P8EST_CHILDREN blocks");
             m_assert(num_incoming == P8EST_CHILDREN && num_outgoing == 1, "we cannot refine a block that has already been targeted for refinement!");
+
             for (sid_t iin = 0; iin < num_incoming; iin++) {
                 // get the correct child id
                 int childid = p8est_quadrant_child_id(incoming[iin]);
@@ -306,7 +317,6 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
             }
             delete (block_out);
         }
-
     }
     //-------------------------------------------------------------------------
     m_end;

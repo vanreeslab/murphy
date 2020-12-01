@@ -307,6 +307,7 @@ void GridBlock::DeleteField(Field* fid) {
 void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, Prof* profiler) {
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
+    m_assert(field_citerion->ghost_status(),"the ghost of <%s> must be up-to-date",field_citerion->name().c_str());
     //-------------------------------------------------------------------------
     m_profStart(profiler, "adapt detail");
 
@@ -369,9 +370,11 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
             // allocate the field on me (has not been done yet)
             this->AddField(current_field);
             // refine for every dimension
-            for (sid_t ida = 0; ida < current_field->lda(); ida++) {
-                // get the pointers
-                interp->Interpolate(-1, shift, &mem_src, root->data(current_field, ida), this, this->data(current_field, ida));
+            if (!current_field->is_temp()) {
+                for (sid_t ida = 0; ida < current_field->lda(); ida++) {
+                    // get the pointers
+                    interp->Interpolate(-1, shift, &mem_src, root->data(current_field, ida), this, this->data(current_field, ida));
+                }
             }
         }
         // remove my ref from the parent
@@ -412,10 +415,12 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
             // for every field, we interpolate it
             for (auto fid = field_start; fid != field_end; ++fid) {
                 auto current_field = fid->second;
-                // interpolate for every dimension
-                for (sid_t ida = 0; ida < current_field->lda(); ida++) {
-                    // get the pointers
-                    interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
+                if (!current_field->is_temp()) {
+                    // interpolate for every dimension
+                    for (sid_t ida = 0; ida < current_field->lda(); ida++) {
+                        // get the pointers
+                        interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
+                    }
                 }
             }
             // remove the ref to the child and my ref in the child

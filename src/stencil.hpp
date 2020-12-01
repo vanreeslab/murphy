@@ -2,8 +2,8 @@
 #define SRC_STENCIL_HPP_
 
 #include "blockoperator.hpp"
-#include "grid.hpp"
 #include "defs.hpp"
+#include "grid.hpp"
 
 /**
  * @brief defines a stencil application, that will compute the ghosts on a source field and fill the result in a target field
@@ -16,11 +16,18 @@
  */
 class Stencil : public BlockOperator {
    protected:
-    sid_t ida_  = 0;  //!< current source dimension
-    
+    sid_t ida_ = 0;  //!< current source dimension
+
    public:
     // default void constructor
     explicit Stencil();
+
+    /**
+     * @brief returns the number of ghost point needed by the stencil
+     * 
+     * @return lid_t 
+     */
+    virtual lid_t NGhost() const = 0;
 
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
@@ -29,24 +36,38 @@ class Stencil : public BlockOperator {
     void operator()(Grid* grid, Field* field_src, Field* field_trg);
 
     /**
-    * @brief applies the inner part of the stencil on the field_src, in the dimension ida_ only, i.e. the part that doesn't require ghost values
-    * 
-    * @param qid the id of the block
-    * @param block the GridBlock on which we execute
-    * @param fid_src the source field, only its dimension ida_ should be used
-    * @param fid_trg the target field where all dimensions can be filled
-    */
-    virtual void ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
-
-    /**
-     * @brief applies the outer part of the stencil on the field_src, in the dimension ida_ only, i.e. the part that does require ghost values
+     * @brief applies the magic of the stencil on the field_src, in the dimension ida_ only! (inner computation or outer computation depending on is_outer)
      * 
-     * @param qid the ID of the block to fill
-     * @param block the considered block
-     * @param fid_src the source field, only its dimension ida_ MUST BE used (the others don't have valid ghost point values!!)
-     * @param fid_trg the target field, every dimension can be filled
+     * @warning for the inner computation, no ghost point can be used.
+     * @warning only the dimension ida_ of the source field can be used for the outer computations
+     * 
+     * @param qid the id of the block
+     * @param block the id of the block
+     * @param is_outer indicate if we want to apply the inner or the outer part of the stencil
+     * @param fid_src the source field, only its dimension ida_ should be used
+     * @param fid_trg the target field where all dimensions can be filled
      */
-    virtual void ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
+    virtual void DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, Field* fid_src, Field* fid_trg) = 0;
+
+    // /**
+    // * @brief applies the inner part of the stencil on the field_src, in the dimension ida_ only, i.e. the part that doesn't require ghost values
+    // *
+    // * @param qid the id of the block
+    // * @param block the GridBlock on which we execute
+    // * @param fid_src the source field, only its dimension ida_ should be used
+    // * @param fid_trg the target field where all dimensions can be filled
+    // */
+    // virtual void ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
+
+    // /**
+    //  * @brief applies the outer part of the stencil on the field_src, in the dimension ida_ only, i.e. the part that does require ghost values
+    //  * 
+    //  * @param qid the ID of the block to fill
+    //  * @param block the considered block
+    //  * @param fid_src the source field, only its dimension ida_ MUST BE used (the others don't have valid ghost point values!!)
+    //  * @param fid_trg the target field, every dimension can be filled
+    //  */
+    // virtual void ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
 };
 
 #endif  // SRC_STENCIL_HPP_

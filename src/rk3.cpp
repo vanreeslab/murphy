@@ -23,6 +23,7 @@ RungeKutta3::RungeKutta3(Grid* grid, Field* state, Stencil* f, Prof* prof) {
     // add a temp field to the grid
     field_y_ = new Field("rk3_y", field_u_->lda());
     grid_->AddField(field_y_);
+    field_y_->is_temp(true);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -71,14 +72,14 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // m_assert(false,"C'est finiii");
 
-    {
-        field_y_->bctype(M_BC_EXTRAP);
-        grid_->GhostPull(field_y_);
-        IOH5 io("data");
-        char name[128];
-        sprintf(name, "y_1");
-        io(grid_, field_y_, name);
-    }
+    // {
+    //     field_y_->bctype(M_BC_EXTRAP);
+    //     grid_->GhostPull(field_y_);
+    //     IOH5 io("data");
+    //     char name[128];
+    //     sprintf(name, "y_1");
+    //     io(grid_, field_y_, name);
+    // }
 
     // update the u
     m_profStart(prof_, "update");
@@ -101,14 +102,14 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_, "rhs");
 
-    {
-        field_y_->bctype(M_BC_EXTRAP);
-        grid_->GhostPull(field_y_);
-        IOH5 io("data");
-        char name[128];
-        sprintf(name, "y_2");
-        io(grid_, field_y_, name);
-    }
+    // {
+    //     field_y_->bctype(M_BC_EXTRAP);
+    //     grid_->GhostPull(field_y_);
+    //     IOH5 io("data");
+    //     char name[128];
+    //     sprintf(name, "y_2");
+    //     io(grid_, field_y_, name);
+    // }
 
     // update the u
     m_profStart(prof_, "update");
@@ -132,14 +133,14 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_, "rhs");
 
-    {
-        field_y_->bctype(M_BC_EXTRAP);
-        grid_->GhostPull(field_y_);
-        IOH5 io("data");
-        char name[128];
-        sprintf(name, "y_3");
-        io(grid_, field_y_, name);
-    }
+    // {
+    //     field_y_->bctype(M_BC_EXTRAP);
+    //     grid_->GhostPull(field_y_);
+    //     IOH5 io("data");
+    //     char name[128];
+    //     sprintf(name, "y_3");
+    //     io(grid_, field_y_, name);
+    // }
 
     // update the u
     m_profStart(prof_, "update");

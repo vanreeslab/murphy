@@ -305,6 +305,7 @@ void Grid::GhostPull(Field* field) {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     // start the send in the first dimension
+    m_log("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status() ? "OK" : "to be computed");
     m_profStart(prof_, "pull ghost");
     for (int ida = 0; ida < field->lda(); ++ida) {
         GhostPull_Post(field, ida);
@@ -388,6 +389,8 @@ void Grid::Coarsen(Field* field) {
 /**
  * @brief adapt each block by one level, based on the given field and on the detail coefficient
  * 
+ * Interpolate the field (which are not temporary) to match the new mesh structure
+ * 
  * @param field the field used for the criterion
  */
 void Grid::Adapt(Field* field) {
@@ -397,7 +400,10 @@ void Grid::Adapt(Field* field) {
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        GhostPull(fid->second);
+        Field* field = fid->second;
+        if (!field->is_temp()) {
+            GhostPull(fid->second);
+        }
     }
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
@@ -513,6 +519,7 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
 
         // if we consider a field, reset the status and comptue the criterion for each block
         if (field != nullptr) {
+            m_log("computing the criterion on field <%s>", field->name().c_str());
             const Wavelet* wavelet_interp = interp_;
             DoOpTree(nullptr, &GridBlock::ResetStatus, this);
             DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, wavelet_interp, rtol_, ctol_, field, prof_);
@@ -549,6 +556,8 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
             MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         }
 
+        m_log("we have %d blocks to adapt locally and %d globally", n_quad_to_adapt_, global_n_quad_to_adapt);
+
         // increment the counter
         ++iteration;
     } while (global_n_quad_to_adapt != 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
@@ -561,6 +570,9 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     // Solve the dependencies is some have been created -> no dep created if we are recursive
     // this is check in the callback UpdateDependency function
     if (!recursive_adapt()) {
+        for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
+            m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
+        }
         const Wavelet* wavelet = interp_;
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, wavelet, FieldBegin(), FieldEnd(), prof_);
     }
@@ -576,6 +588,7 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
 
     // create a new ghost and mesh
     SetupGhost();
+
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
