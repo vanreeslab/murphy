@@ -34,6 +34,8 @@ class LaplacianCross : public Stencil {
         }
     }
 
+    virtual lid_t NGhost() const override { return length / 2; }
+
     virtual void ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
     virtual void ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) override;
 };

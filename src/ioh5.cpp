@@ -61,17 +61,34 @@ IOH5::~IOH5() {
 }
 
 /**
- * @brief dump the field (xdmf+h5) in the predefined folder, using the name fo the field for the filename
- * 
- * A prefix `g_` is added ot the filename if the ghosts are dumped as well
- * 
- * @param grid the grid supporting the field
- * @param field the field to dump, the file will be named after using @ref Field::name()
+ * @brief dump the field with its name and an index = 0, see IOH5::operator()(ForestGrid* grid, const Field* field, const string name, const lid_t index)
  */
-void IOH5::operator()(ForestGrid* grid,const Field* field) {
+void IOH5::operator()(ForestGrid* grid, const Field* field) {
     m_begin;
     //-------------------------------------------------------------------------
-    IOH5::operator()(grid, field, field->name());
+    IOH5::operator()(grid, field, field->name(), 0);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief dump the field with its name, see IOH5::operator()(ForestGrid* grid, const Field* field, const string name, const lid_t index)
+ */
+void IOH5::operator()(ForestGrid* grid, const Field* field, const lid_t index) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    IOH5::operator()(grid, field, field->name(), index);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief dump the field with an index = 0, see IOH5::operator()(ForestGrid* grid, const Field* field, const string name, const lid_t index)
+ */
+void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    IOH5::operator()(grid, field, name, 0);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -86,11 +103,12 @@ void IOH5::operator()(ForestGrid* grid,const Field* field) {
  * @param grid the grid supporting the field
  * @param field the field to dump
  * @param name the filename to use
+ * @param index the index to append to the file's name
  */
-void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
+void IOH5::operator()(ForestGrid* grid, const Field* field, const string name, const lid_t index) {
     m_begin;
     //-------------------------------------------------------------------------
-    m_assert(field->ghost_status(), "the field has outdated ghosts, please update them, even if dump ghost is false");
+    m_assert(field->ghost_status(), "the field <%s> has outdated ghosts, please update them, even if dump ghost is false",field->name().c_str());
     m_log("dumping field %s to disk (ghost = %d)", name.c_str(), dump_ghost_);
     // get the field name
     rank_t mpirank = grid->mpirank();
@@ -100,12 +118,14 @@ void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
 
     //................................................
     // get the filename
+    char index_char[256];
+    sprintf(index_char, "%6.6d", index);
     if (dump_ghost_) {
-        filename_hdf5_ = "g_" + name + ".h5";
-        filename_xdmf_ = "g_" + name + ".xmf";
+        filename_hdf5_ = "g_" + name + "_" + string(index_char) + ".h5";
+        filename_xdmf_ = "g_" + name + "_" + string(index_char) + ".xmf";
     } else {
-        filename_hdf5_ = name + ".h5";
-        filename_xdmf_ = name + ".xmf";
+        filename_hdf5_ = name + "_" + string(index_char) + ".h5";
+        filename_xdmf_ = name + "_" + string(index_char) + ".xmf";
     }
 
     // if the folder does not exist, create it

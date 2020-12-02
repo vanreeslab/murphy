@@ -46,7 +46,7 @@ using std::memcpy;
  * @param grid the grid on which the partitionning is done
  * @param destructive dictate if the partitioning is used to permanently change the grid or to go from one grid to another.
  */
-Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool destructive) {
+Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid, bool destructive) {
     m_begin;
     //-------------------------------------------------------------------------
     const rank_t commsize = grid->mpisize();
@@ -59,11 +59,11 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool
     // count how many ldas we have to forecast for the exchange, depend on the destructive mode
     if (destructive_) {
         // if destructive, we move all the fields
-        m_assert(fields->size() == grid->NField(),"the number of fields must match so we don't loose information during the partitioning");
+        m_assert(fields->size() == grid->NField(), "the number of fields must match so we don't loose information during the partitioning");
         for (auto fid = fields->begin(); fid != fields->end(); fid++) {
             // add the total count
             n_lda_ += fid->second->lda();
-            m_assert(grid->IsAField(fid->second),"the field MUST be present in the grid");
+            m_assert(grid->IsAField(fid->second), "the field MUST be present in the grid");
         }
     } else {
         // create the struct to send the max out of the fields
@@ -73,7 +73,7 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid,bool
         }
     }
     // we might have to send no field, but never a negative one!!
-    m_assert(n_lda_ >= 0,"I cannot send a negative dimension");
+    m_assert(n_lda_ >= 0, "I cannot send a negative dimension");
 
     // store the location of the quads in the old partition
     // note: we have to know the new partition to use it

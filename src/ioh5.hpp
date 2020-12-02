@@ -66,8 +66,11 @@ class IOH5 {
 
     void dump_ghost(const bool dump_ghost);
 
+    void operator()(ForestGrid* grid, const Field* field, const std::string name,const lid_t index);
     void operator()(ForestGrid* grid, const Field* field, const std::string name);
+    void operator()(ForestGrid* grid, const Field* field, const lid_t index);
     void operator()(ForestGrid* grid, const Field* field);
+
 
    protected:
     size_t xmf_core_(const std::string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const lid_t stride, const lid_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg);

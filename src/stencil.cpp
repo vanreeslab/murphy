@@ -52,7 +52,7 @@ void Stencil::operator()(Grid* grid, Field* field_src, Field* field_trg) {
         grid->GhostPull_Wait(field_src, ida);
         m_profStop(prof_, "ghost");
 
-        // inner operation on the now received dimension
+        // outer operation on the now received dimension
         ida_ = ida;
         m_profStart(prof_, "outer");
         // DoOpMesh(this, &Stencil::ApplyStencilOuter, grid, field_src, field_trg);

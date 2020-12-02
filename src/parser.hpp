@@ -20,11 +20,11 @@ class ParserArguments {
     real_t reynolds         = 0.0;
 
     real_t refine_tol  = 1e-1;
-    real_t coarsen_tol = 1e-3;
+    real_t coarsen_tol = 1e-4;
 
     int    vr_normal    = 2;
     real_t vr_radius    = 0.25;
-    real_t vr_sigma     = 0.05;
+    real_t vr_sigma     = 0.025;
     real_t vr_center[3] = {0.5, 0.5, 0.5};
 };
 

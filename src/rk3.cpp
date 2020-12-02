@@ -57,29 +57,9 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     scale(grid_, 0.0, field_y_);
     m_profStop(prof_, "scale");
 
-    // {
-    //     field_y_->bctype(M_BC_EXTRAP);
-    //     grid_->GhostPull(field_y_);
-    //     IOH5 io("data");
-    //     char name[128];
-    //     sprintf(name, "y_1b");
-    //     io(grid_, field_y_, name);
-    // }
-
     m_profStart(prof_, "rhs");
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_, "rhs");
-
-    // m_assert(false,"C'est finiii");
-
-    // {
-    //     field_y_->bctype(M_BC_EXTRAP);
-    //     grid_->GhostPull(field_y_);
-    //     IOH5 io("data");
-    //     char name[128];
-    //     sprintf(name, "y_1");
-    //     io(grid_, field_y_, name);
-    // }
 
     // update the u
     m_profStart(prof_, "update");
@@ -101,15 +81,6 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     m_profStart(prof_, "rhs");
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_, "rhs");
-
-    // {
-    //     field_y_->bctype(M_BC_EXTRAP);
-    //     grid_->GhostPull(field_y_);
-    //     IOH5 io("data");
-    //     char name[128];
-    //     sprintf(name, "y_2");
-    //     io(grid_, field_y_, name);
-    // }
 
     // update the u
     m_profStart(prof_, "update");
@@ -133,15 +104,6 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_, "rhs");
 
-    // {
-    //     field_y_->bctype(M_BC_EXTRAP);
-    //     grid_->GhostPull(field_y_);
-    //     IOH5 io("data");
-    //     char name[128];
-    //     sprintf(name, "y_3");
-    //     io(grid_, field_y_, name);
-    // }
-
     // update the u
     m_profStart(prof_, "update");
     daxpy(grid_, 8.0 / 15.0 * dt, field_y_, field_u_, field_u_);
@@ -164,7 +126,7 @@ real_t RungeKutta3::ComputeDt() {
     m_begin;
     //-------------------------------------------------------------------------
     // know the limits
-    real_t cfl_limit = sqrt(3) * 0.9;  // CFL = max_vel * dt / h
+    real_t cfl_limit = sqrt(3) * 0.98;  // CFL = max_vel * dt / h
     // real_t r_limit = 2.5; // r = nu * dt / h^2
 
     // get the finest h in the grid

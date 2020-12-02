@@ -276,12 +276,12 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
                 m_assert(block_in != nullptr, "block is null, ohoh");
 
                 // register the leaving block in the new one, using it's child id
-                m_assert(p4est_GetChildID(block_out->xyz(), block_out->level()) == p8est_quadrant_child_id(outgoing[iout]), "ouuups");
+                m_assert(p4est_GetChildID(block_out->xyz(), block_out->level()) == p8est_quadrant_child_id(outgoing[iout]), "oups: %d vs %d", p4est_GetChildID(block_out->xyz(), block_out->level()), p8est_quadrant_child_id(outgoing[iout]));
                 int childid_out = (num_outgoing == 1) ? 0 : p4est_GetChildID(block_out->xyz(), block_out->level());
                 block_in->PushDependency(childid_out, block_out);
 
                 // register the new block in the leaving one, using it's child id
-                m_assert(p4est_GetChildID(block_in->xyz(), block_in->level()) == p8est_quadrant_child_id(incoming[iin]), "ouuups");
+                m_assert(p4est_GetChildID(block_in->xyz(), block_in->level()) == p8est_quadrant_child_id(incoming[iin]), "oups: %d vs %d. pos = %f %f %f and level %d, length = %e", p4est_GetChildID(block_in->xyz(), block_in->level()), p8est_quadrant_child_id(incoming[iin]), block_in->xyz(0), block_in->xyz(1), block_in->xyz(2), block_in->level(),p4est_QuadLen(block_in->level() - 1));
                 int childid_in = (num_incoming == 1) ? 0 : p4est_GetChildID(block_in->xyz(), block_in->level());
                 block_out->PushDependency(childid_in, block_in);
             }

@@ -67,7 +67,8 @@ inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, co
 
 inline static real_t p4est_QuadLen(const level_t level) {
     //---------------------------------------------------------------------
-    const real_t val = 1.0 / (P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(level));
+    // const real_t val = 1.0 / (real_t)(P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(level));
+    const real_t val = 1.0 / ((real_t)(1 << (level)));
     return val;
     //---------------------------------------------------------------------
 }
@@ -76,7 +77,8 @@ inline static int p4est_GetChildID(const real_t xyz[3], const level_t level) {
     //---------------------------------------------------------------------
     // mimic the behavior of p8est_quadrant_child_id (p4est_bits.c)
     const real_t len_coarse = p4est_QuadLen(level - 1);
-    int          id         = 0;
+
+    int id = 0;
     id += (fmod(xyz[0], len_coarse) == 0.0) ? 0 : 1;
     id += (fmod(xyz[1], len_coarse) == 0.0) ? 0 : 2;
     id += (fmod(xyz[2], len_coarse) == 0.0) ? 0 : 4;
