@@ -609,3 +609,23 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), this->MinLevel(), this->MaxLevel());
     m_end;
 }
+
+void Grid::DumpDetails(Field* criterion, Field* details) {
+    m_begin;
+    m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
+    //-------------------------------------------------------------------------
+
+    this->GhostPull(criterion);
+
+    const Wavelet* const_interp    = interp_;
+    const Field*   const_criterion = criterion;
+    const Field*   const_details   = details;
+
+    DoOpMesh(nullptr, &GridBlock::ComputeDetails, this, const_interp, const_criterion, const_details);
+
+    criterion->ghost_status(true);
+    details->ghost_status(false);
+
+    //-------------------------------------------------------------------------
+    m_end;
+}

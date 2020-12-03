@@ -312,7 +312,7 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
     const real_t* hgrid = block->hgrid();
 
     const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
-    const real_t oo_pisigma2 = 1.0 ;/// sqrt(M_PI * sigma_ * sigma_);
+    const real_t oo_pisigma2 = 1.0 ;/// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
 
     // compute the normal direction as being the z one and the two other as x and y
     const lda_t idx = (normal_ + 1) % 3;
@@ -333,7 +333,7 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
                 // pos[2] = fmod(pos[2]+2, 1.0);
 
                 // wrt to the center
-                const real_t alpha   = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
+                const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
                 const real_t radr    = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2));
                 const real_t rad1r   = radr - radius_;
                 const real_t rad2r   = radr + radius_;
@@ -344,7 +344,7 @@ void SetVortexRing::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid
                 wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
                 wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
                 wz[m_idx(i0, i1, i2)] = 0.0;
-                
+
                 // // wrt to the center
                 // const real_t alpha = atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
                 // const real_t x     = pos[idx] - (center_[idx] + radius_ * cos(alpha));

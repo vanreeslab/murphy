@@ -4,7 +4,7 @@
 
 #include "advection_diffusion.hpp"
 #include "defs.hpp"
-#include "eno_advection_diffusion.hpp"
+#include "conservative_advection_diffusion.hpp"
 #include "error.hpp"
 #include "ioh5.hpp"
 #include "navier_stokes.hpp"
@@ -76,10 +76,10 @@ void NavierStokes::Run() {
     real_t t       = 0.0;
     // iterations
     lid_t iter     = 0;
-    lid_t iter_max = 100;
+    lid_t iter_max = 10;
 
-    // AdvectionDiffusion<5, 3> adv_diff(nu, u_stream_);
-    ENO_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
+    // AdvectionDiffusion<5, 3> adv_diff(nu_, u_stream_);
+    Conservative_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
     RungeKutta3                  rk3(grid_, vort_, &adv_diff, prof_);
 
     // let's gooo
@@ -108,6 +108,17 @@ void NavierStokes::Run() {
         //................................................
         // adapt the mesh
         if (iter % 1 == 0) {
+            Field details("detail", 3);
+            details.bctype(M_BC_EXTRAP);
+            grid_->AddField(&details);
+            grid_->DumpDetails(vort_, &details);
+
+            grid_->GhostPull(&details);
+            IOH5 dump("data");
+            dump(grid_, &details, iter);
+
+            grid_->DeleteField(&details);
+
             m_log("---- adapt mesh");
             grid_->Adapt(vort_);
         }
@@ -134,12 +145,11 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
     FILE* file_error;
     FILE* file_diag;
     if (rank == 0) {
-        string name = folder_diag_ + "/ns-diag.data";
-        file_error  = fopen(name.c_str(), "a+");
-        file_diag   = fopen(name.c_str(), "a+");
+        file_error  = fopen(string(folder_diag_ + "/0a_ns-error.data").c_str(), "a+");
+        file_diag   = fopen(string(folder_diag_ + "/0a_ns-diag.data").c_str(), "a+");
 
         // iter, time, dt, total quad, level min, level max
-        fprintf(file_diag, "%6.6d %e %e %ld %d %d", iter, time, dt, grid_->global_num_quadrants(), grid_->MinLevel(), grid_->MaxLevel());
+        fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), grid_->MinLevel(), grid_->MaxLevel());
         fclose(file_diag);
     }
 
@@ -155,8 +165,8 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
     grid_->AddField(&err);
     real_t        center[3] = {0.5 + u_stream_[0] * time, 0.5 + u_stream_[1] * time, 0.5 + u_stream_[2] * time};
     real_t        radius    = 0.25;
-    real_t        sigma     = 0.05 + sqrt(4.0 * nu_ * time);
-    SetVortexRing vr_init(2, center, 0.05, 0.25, grid_->interp());
+    real_t        sigma     = 0.025 + sqrt(4.0 * nu_ * time);
+    SetVortexRing vr_init(2, center,sigma, radius, grid_->interp());
     vr_init(grid_, &anal);
 
     // compute the error wrt to the analytical solution

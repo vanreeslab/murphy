@@ -14,9 +14,9 @@ Field::Field(string name, sid_t lda) {
     ghost_status_ = false;
 
     // create an empty BC array
-    for (sid_t id = 0; id < 6; id++) {
+    for (iface_t id = 0; id < 6; id++) {
         bctype_[id] = reinterpret_cast<bctype_t*>(m_calloc(sizeof(bctype_t) * lda));
-        for(sid_t ida=0; ida<lda; ida++){
+        for(iface_t ida=0; ida<lda; ida++){
             bctype_[id][ida] = M_BC_NONE;
         }
     }
@@ -28,7 +28,7 @@ Field::Field(string name, sid_t lda) {
  */
 Field::~Field() {
     // create an empty BC array
-    for (sid_t id = 0; id < 6; id++) {
+    for (iface_t id = 0; id < 6; id++) {
         m_free(bctype_[id]);
     }
 }
@@ -42,7 +42,7 @@ Field::~Field() {
  * @param ida the dimension of the field
  */
 void Field::bctype(bctype_t type, const sid_t ida) {
-    for (int iloc = 0; iloc < 6; iloc++) {
+    for (iface_t iloc = 0; iloc < 6; iloc++) {
         bctype_[iloc][ida] = type;
     }
 }
@@ -55,8 +55,8 @@ void Field::bctype(bctype_t type, const sid_t ida) {
  * @param type the boundary condition to set in every direction for every dimension
  */
 void Field::bctype(bctype_t type) {
-    for (int ida = 0; ida < lda_; ida++) {
-        for (int iloc = 0; iloc < 6; iloc++) {
+    for (lda_t ida = 0; ida < lda_; ida++) {
+        for (iface_t iloc = 0; iloc < 6; iloc++) {
             bctype_[iloc][ida] = type;
         }
     }

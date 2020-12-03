@@ -70,7 +70,7 @@ class Boundary {
         const lid_t end[3]   = {block->end(0) - fstart[0], block->end(1) - fstart[1], block->end(2) - fstart[2]};
 
         // move the data around fstart
-        int rank;
+        rank_t rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
         data_ptr ldata = data + m_midx(fstart[0], fstart[1], fstart[2], 0, block);

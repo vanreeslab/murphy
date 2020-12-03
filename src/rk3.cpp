@@ -61,6 +61,11 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_, "rhs");
 
+    // IOH5 dump("data");
+    // field_y_->bctype(M_BC_EXTRAP);
+    // grid_->GhostPull(field_y_);
+    // dump(grid_,field_y_);
+
     // update the u
     m_profStart(prof_, "update");
     daxpy(grid_, 1.0 / 3.0 * dt, field_y_, field_u_, field_u_);

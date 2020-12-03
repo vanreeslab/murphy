@@ -76,6 +76,7 @@ class GridBlock : public MemLayout {
     sid_t status_level() const { return status_lvl_; };
     void  ResetStatus() { status_lvl_ = 0; };
     void  UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, Prof* profiler);
+    void  ComputeDetails(const Wavelet* interp, const Field* criterion, const Field* details);
     /** @} */
 
     /**

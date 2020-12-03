@@ -338,6 +338,22 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
 }
 
 /**
+ * @brief Compute the detail coefficient and store them in the field details
+ * 
+ * @param interp the wavelet object
+ * @param criterion the criterion field
+ * @param details the detail field with the compute detail values
+ */
+void GridBlock::ComputeDetails(const Wavelet* interp, const Field* criterion, const Field* details) {
+    m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
+    //-------------------------------------------------------------------------
+    for (lda_t ida = 0; ida < criterion->lda(); ida++) {
+        interp->WriteDetails(this, this->data(criterion, ida), this->data(details, ida));
+    }
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief resolve the dependency list created while adapting the mesh (see cback_UpdateDependency() ) by interpolating the needed blocks
  * 
  * @param interp the Wavelet object to use for the interpolation/refinement

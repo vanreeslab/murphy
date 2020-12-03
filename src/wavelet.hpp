@@ -81,8 +81,9 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    virtual real_t Criterion(MemLayout* block, data_ptr data) const;
-    void           Details(MemLayout* block, data_ptr data_block, real_t* details_max) const;
+    real_t Criterion(MemLayout* block, data_ptr data) const;
+    void   Details(MemLayout* block, data_ptr data_block, real_t* details_max) const;
+    void   WriteDetails(MemLayout* block, data_ptr data_src, data_ptr data_trg) const;
 
     /** @} */
 
@@ -213,6 +214,7 @@ class Wavelet {
     virtual void Coarsen_(const interp_ctx_t* ctx) const                     = 0;
     virtual void Refine_(const interp_ctx_t* ctx) const                      = 0;
     virtual void Detail_(const interp_ctx_t* ctx, real_t* details_max) const = 0;
+    virtual void WriteDetail_(const interp_ctx_t* ctx) const                 = 0;
     /** @} */
 
     // defined function -- might be overriden

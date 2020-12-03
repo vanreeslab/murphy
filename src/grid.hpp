@@ -114,8 +114,9 @@ class Grid : public ForestGrid {
     void Adapt(Field* field);
     void Adapt(Field* field, SetValue* expression);
     void Adapt(std::list<Patch>* patches);
-
     void Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
+
+    void DumpDetails(Field* criterion, Field* details);
     /**@}*/
 };
 

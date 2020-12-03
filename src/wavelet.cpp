@@ -300,7 +300,7 @@ void Wavelet::Details(MemLayout* block, data_ptr data_block, real_t* details_max
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
-    for (int id = 0; id < 3; id++) {
+    for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
         ctx.srcstart[id] = -1;
         ctx.srcend[id]   = -1;
@@ -313,5 +313,33 @@ void Wavelet::Details(MemLayout* block, data_ptr data_block, real_t* details_max
     ctx.trgstr = block->stride();
     ctx.tdata  = data_block;
     Detail_(&ctx, details_max);
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief Compute and store the details in the data_trg field
+ * 
+ * @param block 
+ * @param data_trg 
+ * @param data_src 
+ */
+void Wavelet::WriteDetails(MemLayout* block, data_ptr data_src, data_ptr data_trg) const {
+    //-------------------------------------------------------------------------
+    // get memory details
+    interp_ctx_t ctx;
+    for (lda_t id = 0; id < 3; id++) {
+#ifndef NDEBUG
+        ctx.srcstart[id] = block->start(id);
+        ctx.srcend[id]   = block->end(id);
+#endif
+        ctx.trgstart[id] = block->start(id);
+        ctx.trgend[id]   = block->end(id);
+    }
+    ctx.srcstr = block->stride();
+
+    ctx.trgstr = block->stride();
+    ctx.sdata  = data_src;
+    ctx.tdata  = data_trg;
+    WriteDetail_(&ctx);
     //-------------------------------------------------------------------------
 }

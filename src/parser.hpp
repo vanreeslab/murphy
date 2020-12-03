@@ -19,7 +19,7 @@ class ParserArguments {
     bool   do_navier_stokes = false;
     real_t reynolds         = 0.0;
 
-    real_t refine_tol  = 1e-1;
+    real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
     int    vr_normal    = 2;

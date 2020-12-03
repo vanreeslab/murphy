@@ -315,6 +315,70 @@ class InterpolatingWavelet : public Wavelet {
         }
         //-------------------------------------------------------------------------
     }
+
+    /**
+     * @brief Compute the details using the source field and write them in the target field
+     * 
+     * @param ctx the interpolation context
+     */
+    void WriteDetail_(const interp_ctx_t* ctx) const override {
+        m_assert(ctx->srcstart[0] == 0 && ctx->srcend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[0], ctx->srcend[0]);
+        m_assert(ctx->srcstart[1] == 0 && ctx->srcend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[1], ctx->srcend[1]);
+        m_assert(ctx->srcstart[2] == 0 && ctx->srcend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[2], ctx->srcend[2]);
+        m_assert(ctx->trgstart[0] == 0 && ctx->trgend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[0], ctx->trgend[0]);
+        m_assert(ctx->trgstart[1] == 0 && ctx->trgend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[1], ctx->trgend[1]);
+        m_assert(ctx->trgstart[2] == 0 && ctx->trgend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[2], ctx->trgend[2]);
+        //-------------------------------------------------------------------------
+        // the size is know @ compiler time
+        constexpr sid_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
+
+        const real_t  one = 1.0;
+        const_mem_ptr gs  = gs_<TN, TNT> + gs_lim;
+
+        // get the target + criterion field
+        const data_ptr source = ctx->sdata;
+        data_ptr       target = ctx->tdata;
+
+        // declare the lambda to run
+        auto lambda = [=, &target](const lid_t ik0, const lid_t ik1, const lid_t ik2) -> void {
+            // get 0 if odd, 1 if even (even if negative!!)
+            const lda_t iy = m_sign(ik1) * (ik1 % 2);
+            const lda_t ix = m_sign(ik0) * (ik0 % 2);
+            const lda_t iz = m_sign(ik2) * (ik2 % 2);
+            m_assert(ix == 0 || ix == 1, "this are the two possible values");
+            m_assert(iy == 0 || iy == 1, "this are the two possible values");
+            m_assert(iz == 0 || iz == 1, "this are the two possible values");
+
+            const lid_t   ik0_s  = (ik0 - ix);
+            const lid_t   ik1_s  = (ik1 - iy);
+            const lid_t   ik2_s  = (ik2 - iz);
+            const_mem_ptr lsdata = source + m_sidx(ik0_s, ik1_s, ik2_s, 0, ctx->srcstr);
+
+            // get the filter, depending on if I am odd or even
+            const_mem_ptr gs_x         = (ix == 1) ? (gs) : (&one);
+            const_mem_ptr gs_y         = (iy == 1) ? (gs) : (&one);
+            const_mem_ptr gs_z         = (iz == 1) ? (gs) : (&one);
+            const sid_t   lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+            const sid_t   lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+
+            // if one dim is even, id = 0, -> gs[0] = 1 and that's it
+            // if one dim is odd, id = 1, -> we loop on gs, business as usual
+            real_t interp = 0.0;
+            for (sid_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+                for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+                    for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
+                        const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
+                        interp += fact * lsdata[m_sidx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
+                    }
+                }
+            }
+            target[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] = source[m_sidx(ik0, ik1, ik2, 0, ctx->srcstr)] - interp;
+        };
+
+        // do the loop
+        for_loop<0, M_N>(&lambda);
+    }
+    //-------------------------------------------------------------------------
 };
 
 #endif  // SRC_INTERPOLATING_WAVELET_HPP_
