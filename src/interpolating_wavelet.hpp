@@ -4,6 +4,9 @@
 #include "wavelet.hpp"
 #include "defs.hpp"
 
+#include "forloop.hpp"
+#include "gridblock.hpp"
+
 template <lda_t N, lda_t NT>
 static constexpr sid_t len_ha_ = 0;
 template <lda_t N, lda_t NT>
