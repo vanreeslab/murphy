@@ -83,7 +83,6 @@ void NavierStokes::Run() {
     real_t t       = 0.0;
     // iterations
     lid_t iter     = 0;
-    lid_t iter_max = 10;
 
     // AdvectionDiffusion<5, 3> adv_diff(nu_, u_stream_);
     Conservative_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
@@ -91,7 +90,7 @@ void NavierStokes::Run() {
 
     // let's gooo
     m_profStart(prof_, "Navier-Stokes run");
-    while (t < t_final && iter < iter_max) {
+    while (t < t_final && iter < iter_max_) {
         //................................................
         // get the time-step given the field
         real_t dt = rk3.ComputeDt();
@@ -148,15 +147,17 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
     // open the file
     FILE* file_error;
     FILE* file_diag;
+    level_t min_level = grid_->MinLevel();
+    level_t max_level = grid_->MaxLevel();
     if (rank == 0) {
-        file_diag = fopen(string(folder_diag_ + "/0a_ns-diag.data").c_str(), "a+");
+        file_diag = fopen(string(folder_diag_ + "/ns-diag.data").c_str(), "a+");
 
         // iter, time, dt, total quad, level min, level max
-        fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), grid_->MinLevel(), grid_->MaxLevel());
+        fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
         fclose(file_diag);
 
         if (compute_error_) {
-            file_error = fopen(string(folder_diag_ + "/0a_ns-error.data").c_str(), "a+");
+            file_error = fopen(string(folder_diag_ + "/ns-error.data").c_str(), "a+");
         }
     }
 

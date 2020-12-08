@@ -153,15 +153,17 @@ void ForestGrid::SetupP4estGhostMesh() {
  * @return level_t 
  */
 level_t ForestGrid::MaxLevel() const {
-    // m_begin;
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
     //-------------------------------------------------------------------------
-    for (level_t il = P8EST_QMAXLEVEL; il >= 0; --il) {
+    level_t il;
+    for (il = P8EST_QMAXLEVEL; il >= 0; --il) {
         if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
-            return il;
+            break;
         }
     }
-    return 0;
+    level_t global_level = P8EST_QMAXLEVEL;
+    MPI_Allreduce(&il, &global_level, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    return global_level;
     //-------------------------------------------------------------------------
 }
 
@@ -171,17 +173,18 @@ level_t ForestGrid::MaxLevel() const {
  * @return level_t 
  */
 level_t ForestGrid::MinLevel() const {
-    // m_begin;
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
     //-------------------------------------------------------------------------
-    for (level_t il = 0; il <= P8EST_QMAXLEVEL; ++il) {
+    level_t il;
+    for (il = 0; il <= P8EST_QMAXLEVEL; ++il) {
         if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
-            return il;
+            break;
         }
     }
-    return P8EST_QMAXLEVEL;
+    level_t global_level = 0;
+    MPI_Allreduce(&il, &global_level, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    return global_level;
     //-------------------------------------------------------------------------
-    // m_end;
 }
 
 real_t ForestGrid::FinestH() const {

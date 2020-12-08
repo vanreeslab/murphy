@@ -606,7 +606,9 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
-    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), this->MinLevel(), this->MaxLevel());
+    level_t min_level = this->MinLevel();
+    level_t max_level = this->MaxLevel();
+    m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
     m_end;
 }
 
