@@ -85,27 +85,34 @@ void Conservative_AdvectionDiffusion<length_advection, length_diffusion>::DoMagi
             const real_t f_pz_m = (one_third * src[m_idx(0, 0, 0)] + five_sixth * src[m_idx(0, 0, +1)] - one_sixth * src[m_idx(0, 0, +2)]);
 
             // add
-            // (*trg) -= scale_d[0] * (m_max(0.0, u[0]) * (f_px_p - f_mx_p) + m_min(0.0, u[0]) * (f_px_m - f_mx_m));
-            // (*trg) -= scale_d[1] * (m_max(0.0, u[1]) * (f_py_p - f_my_p) + m_min(0.0, u[1]) * (f_py_m - f_my_m));
-            (*trg) -= scale_d[2] * (m_max(0.0, u[2]) * (f_pz_p - f_mz_p)) ;//+ m_min(0.0, u[2]) * (f_pz_m - f_mz_m));
-
-            // if(block->xyz(0)==0.625 &&block->xyz(1)==0.5 &&block->xyz(2)==0.375 && i0==15 && i2==5){
-            //     m_log("trg(%d,%d,%d) = %e",i0,i1,i2,trg[0]);
-            // }
-            // if(block->xyz(0)==0.625 &&block->xyz(1)==0.5 &&block->xyz(2)==0.375 && i0==15 && i2==6){
-            //     m_log("trg(%d,%d,%d) = %e",i0,i1,i2,trg[0]);
-            // }
+            (*trg) -= scale_d[0] * (m_max(0.0, u[0]) * (f_px_p - f_mx_p) + m_min(0.0, u[0]) * (f_px_m - f_mx_m));
+            (*trg) -= scale_d[1] * (m_max(0.0, u[1]) * (f_py_p - f_my_p) + m_min(0.0, u[1]) * (f_py_m - f_my_m));
+            (*trg) -= scale_d[2] * (m_max(0.0, u[2]) * (f_pz_p - f_mz_p) + m_min(0.0, u[2]) * (f_pz_m - f_mz_m));
         }
-        // // diffusion
-        // if constexpr (length_diffusion == 3) {
-        //     (*trg) += scale_d2[0] * (src[m_idx(+1, 0, 0)] - 2.0 * src[m_idx(0, 0, 0)] + src[m_idx(-1, 0, 0)]);
-        //     (*trg) += scale_d2[1] * (src[m_idx(0, +1, 0)] - 2.0 * src[m_idx(0, 0, 0)] + src[m_idx(0, -1, 0)]);
-        //     (*trg) += scale_d2[2] * (src[m_idx(0, 0, +1)] - 2.0 * src[m_idx(0, 0, 0)] + src[m_idx(0, 0, -1)]);
-        // } else if constexpr (length_diffusion == 5) {
-        //     (*trg) += scale_d2[0] * (-one_twelve * src[m_idx(+2, 0, 0)] + four_third * src[m_idx(+1, 0, 0)] - five_half * src[m_idx(0, 0, 0)] + four_third * src[m_idx(-1, 0, 0)] - one_twelve * src[m_idx(-2, 0, 0)]);
-        //     (*trg) += scale_d2[1] * (-one_twelve * src[m_idx(0, +2, 0)] + four_third * src[m_idx(0, +1, 0)] - five_half * src[m_idx(0, 0, 0)] + four_third * src[m_idx(0, -1, 0)] - one_twelve * src[m_idx(0, -2, 0)]);
-        //     (*trg) += scale_d2[2] * (-one_twelve * src[m_idx(0, 0, +2)] + four_third * src[m_idx(0, 0, +1)] - five_half * src[m_idx(0, 0, 0)] + four_third * src[m_idx(0, 0, -1)] - one_twelve * src[m_idx(0, 0, -2)]);
+        // if (pos[0] == 0.75 && pos[1] == 0.75 && pos[2] == 0.5 && i0 == 1 && i1 == 1 && i2 == 0) {
+        //     // m_log("block num %d", qid->cid);
+        //     m_log("block num %d (ida = %d): trg = %e, src = %e", qid->cid, ida_, (*trg), (*src));
         // }
+        // if (pos[0] == 0.125 && pos[1] == 0.125 && pos[2] == 0.5 && i0 == 15 && i1 == 15 && i2 == 0) {
+        //     m_log("block num %d (ida = %d): trg = %e, src = %e", qid->cid, ida_, (*trg), (*src));
+        // }
+        // if (pos[0] == 0.75 && pos[1] == 0.75 && pos[2] == 0.5 && i0 == 0 && i1 == 0 && i2 == 0) {
+        //     // m_log("block num %d", qid->cid);
+        //     m_log("block num %d (ida = %d): trg = %e, src = %e", qid->cid, ida_, (*trg), (*src));
+        // }
+        // if (pos[0] == 0.25 && pos[1] == 0.25 && pos[2] == 0.5 && i0 == 0 && i1 == 0 && i2 == 0) {
+        //     m_log("block num %d (ida = %d): trg = %e, src = %e", qid->cid, ida_, (*trg), (*src));
+        // }
+        // diffusion
+        if constexpr (length_diffusion == 3) {
+            (*trg) += scale_d2[0] * (src[m_idx(+1, 0, 0)] - 2.0 * src[m_idx(0, 0, 0)] + src[m_idx(-1, 0, 0)]);
+            (*trg) += scale_d2[1] * (src[m_idx(0, +1, 0)] - 2.0 * src[m_idx(0, 0, 0)] + src[m_idx(0, -1, 0)]);
+            (*trg) += scale_d2[2] * (src[m_idx(0, 0, +1)] - 2.0 * src[m_idx(0, 0, 0)] + src[m_idx(0, 0, -1)]);
+        } else if constexpr (length_diffusion == 5) {
+            (*trg) += scale_d2[0] * (-one_twelve * src[m_idx(+2, 0, 0)] + four_third * src[m_idx(+1, 0, 0)] - five_half * src[m_idx(0, 0, 0)] + four_third * src[m_idx(-1, 0, 0)] - one_twelve * src[m_idx(-2, 0, 0)]);
+            (*trg) += scale_d2[1] * (-one_twelve * src[m_idx(0, +2, 0)] + four_third * src[m_idx(0, +1, 0)] - five_half * src[m_idx(0, 0, 0)] + four_third * src[m_idx(0, -1, 0)] - one_twelve * src[m_idx(0, -2, 0)]);
+            (*trg) += scale_d2[2] * (-one_twelve * src[m_idx(0, 0, +2)] + four_third * src[m_idx(0, 0, +1)] - five_half * src[m_idx(0, 0, 0)] + four_third * src[m_idx(0, 0, -1)] - one_twelve * src[m_idx(0, 0, -2)]);
+        }
     };
 
     if (!is_outer) {

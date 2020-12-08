@@ -1,10 +1,10 @@
 #include <mpi.h>
 
 #include "gtest/gtest.h"
-#include "defs.hpp"
+#include "murphy.hpp"
 
 int main(int argc, char** argv) {
-    murphy_init(argc,argv);
+    MurphyInit(argc,argv);
     //-------------------------------------------------------------------------
     int err;
     {
@@ -23,11 +23,12 @@ int main(int argc, char** argv) {
                 sprintf(argv[ia], "--gtest_output=xml:report_valid_rank%d.xml", rank);
             }
         }
+        m_log("running the tests");
         // init google and remove Google Test arguments
         ::testing::InitGoogleTest(&argc, argv);
         err = RUN_ALL_TESTS();
     }
     //-------------------------------------------------------------------------
-    murphy_finalize();
+    MurphyFinalize(nullptr);
     return err;
 }

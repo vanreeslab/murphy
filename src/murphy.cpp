@@ -36,19 +36,22 @@ TestCase* MurphyInit(int argc, char** argv) {
     TestCase* testcase;
     if (argument.do_navier_stokes) {
         testcase = new NavierStokes();
+        testcase->InitParam(&argument);
+        return testcase;
     } else {
-        m_assert(false, "no testcase has been choosen");
+        // m_assert(false, "no testcase has been choosen");
+        m_log("no test case chosen");
     }
 
-    testcase->InitParam(&argument);
-
-    return testcase;
+    return nullptr;
     //-------------------------------------------------------------------------
 }
 
 void MurphyFinalize(TestCase* testcase) {
     //-------------------------------------------------------------------------
-    delete (testcase);
+    if (testcase != nullptr) {
+        delete (testcase);
+    }
     m_log("bye bye MURPHY");
 
     sc_finalize();

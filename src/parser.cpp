@@ -93,11 +93,17 @@ static struct argp_option options[] = {
 
     /* Navier-Stokes */
     {0, 0, 0, OPTION_DOC, "Navier-Stokes parameters:", 4},
-    {"reynolds", 3001, "NUM", 0, "the Reynolds number"},
+    {"reynolds", 3001, "double", 0, "the Reynolds number"},
     {"vr-normal", 3002, "dir", 0, "vortex ring normal"},
     {"vr-center", 3003, "c_x,c_y,c_z", 0, "vortex ring center"},
     {"vr-radius", 3004, "rad", 0, "vortex ring radius"},
     {"vr-sigma", 3005, "sigma", 0, "vortex ring sigma"},
+    {"compute_error", 3006, "bool", 0, "compute the error when running diagnostics"},
+    {"dump_error", 3007, "bool", 0, "dump the error when running diagnostics and if computer error is true"},
+    {"dump_detail", 3008, "bool", 0, "dump the detail coefficients when running diagnostics"},
+    {"iter-max", 3009, "int", 0, "maximum of RK3 iterations"},
+    {"iter-diag", 3010, "int", 0, "run the diagnostics every x iterations"},
+    {"iter-adapt", 3011, "int", 0, "adapt the grid every x iterations"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -188,6 +194,42 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("vortex-ring sigma: %f", sigma[0]);
             return err;
         }
+        case 3006: { /* compute error*/
+            bool*   mybool = &arguments->compute_error;
+            error_t err    = atob_list(1, arg, mybool);
+            m_log("compute error: %d", mybool[0]);
+            return err;
+        }
+        case 3007: { /* dump error*/
+            bool*   mybool = &arguments->dump_error;
+            error_t err    = atob_list(1, arg, mybool);
+            m_log("dump error: %d", mybool[0]);
+            return err;
+        }
+        case 3008: { /* dump details*/
+            bool*   mybool = &arguments->dump_detail;
+            error_t err    = atob_list(1, arg, mybool);
+            m_log("dump detail: %d", mybool[0]);
+            return err;
+        }
+        case 3009: { /* iter max*/
+            int*    myint = &arguments->iter_max;
+            error_t err   = atoi_list(1, arg, myint);
+            m_log("iter max: %d", myint[0]);
+            return err;
+        }
+        case 3010: { /* iter diag*/
+            int*    myint = &arguments->iter_diag;
+            error_t err   = atoi_list(1, arg, myint);
+            m_log("iter diag: %d", myint[0]);
+            return err;
+        }
+        case 3011: { /* iter adapt*/
+            int*    myint = &arguments->iter_adapt;
+            error_t err   = atoi_list(1, arg, myint);
+            m_log("iter adapt: %d", myint[0]);
+            return err;
+        }
         default:
             return ARGP_ERR_UNKNOWN;
     }
@@ -197,5 +239,5 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, 0, doc};
 
 void ParseArgument(int argc, char** argv, ParserArguments* arguments) {
-    argp_parse(&argp, argc, argv, 0, 0, arguments);
+    argp_parse(&argp, argc, argv, ARGP_NO_EXIT, 0, arguments);
 }

@@ -355,6 +355,7 @@ using iface_t  = int8_t;          //!< face index type (0->26)
 using lda_t    = int8_t;          //!< leading dimension array type
 using level_t  = int8_t;          //!< data type for a level
 using bidx_t   = int;             //!< indexing inside a block
+using iter_t   = int;             //!< indexing iterations
 using rank_t   = int;             //!< rank data type
 using iblock_t = p4est_locidx_t;  //!< datatype to index blocks, ghosts and quadrants
 using qdrt_t   = p8est_quadrant_t;

@@ -102,6 +102,8 @@ To ease the development of the code, we use a few custom types and macros: here 
 `iblock_t` | a local block index
 `iface_t` | a face id (0 to 26)
 `level_t` | a level
+`bidx_t` | an id in a block
+`iter_t` | an iteration id
 `qdrt_t`| a `p8est_quadrant_t` variable
 `real_t` | a floating point number
 `data_ptr` | a memory adress of the element (0,0,0)

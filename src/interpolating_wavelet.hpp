@@ -376,6 +376,7 @@ class InterpolatingWavelet : public Wavelet {
                 }
             }
             target[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] = source[m_sidx(ik0, ik1, ik2, 0, ctx->srcstr)] - interp;
+            m_assert(!(ix==0 && iy==0 && iz==0 && target[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)] != 0.0 ),"the target value should be 0.0 instead of %e",target[m_sidx(ik0, ik1, ik2, 0, ctx->trgstr)]);
         };
 
         // do the loop

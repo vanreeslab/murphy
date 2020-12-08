@@ -26,6 +26,13 @@ class ParserArguments {
     real_t vr_radius    = 0.25;
     real_t vr_sigma     = 0.025;
     real_t vr_center[3] = {0.5, 0.5, 0.5};
+
+    bool   dump_error    = false;
+    bool   dump_detail   = false;
+    bool   compute_error = true;
+    iter_t iter_max      = 100;
+    iter_t iter_diag     = 1;
+    iter_t iter_adapt    = 1;
 };
 
 void ParseArgument(int argc, char** argv, ParserArguments* arguments);

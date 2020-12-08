@@ -309,7 +309,7 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
     m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
     m_assert(field_citerion->ghost_status(),"the ghost of <%s> must be up-to-date",field_citerion->name().c_str());
     //-------------------------------------------------------------------------
-    m_profStart(profiler, "adapt detail");
+    m_profStart(profiler, "criterion detail");
 
     // I need to visit every dimension and determine if we have to refine and/or coarsen.
     // afterthat we choose given the conservative approach
@@ -324,7 +324,7 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
         if (refine) {
             status_lvl_ = +1;
             // finito
-            m_profStop(profiler, "adapt detail");
+            m_profStop(profiler, "criterion detail");
             return;
         }
         // if one dimension is preventing the coarsening, register
@@ -333,7 +333,7 @@ void GridBlock::UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, 
     // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
     status_lvl_ = (coarsen) ? -1 : 0;
 
-    m_profStop(profiler, "adapt detail");
+    m_profStop(profiler, "criterion detail");
     //-------------------------------------------------------------------------
 }
 
@@ -362,7 +362,7 @@ void GridBlock::ComputeDetails(const Wavelet* interp, const Field* criterion, co
  */
 void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end, Prof* profiler) {
     m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
-    m_profStart(profiler, "adapt dependency");
+    m_profStart(profiler, "solve dependency");
     //-------------------------------------------------------------------------
     if (n_dependency_active_ == 1) {
         // if I get only one dependency, I am a child and I need refinement from my parent
@@ -446,7 +446,7 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::unordered_map<std::s
             delete (child_block);
         }
     }
-    m_profStop(profiler, "adapt dependency");
+    m_profStop(profiler, "solve dependency");
     //-------------------------------------------------------------------------
 }
 

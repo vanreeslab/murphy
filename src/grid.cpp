@@ -486,8 +486,8 @@ void Grid::Adapt(const Field* field, cback_coarsen_citerion_t coarsen_crit, cbac
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
-    m_profInitLeave(prof_, "adapt detail");
-    m_profInitLeave(prof_, "adapt dependency");
+    m_profInitLeave(prof_, "criterion detail");
+    m_profInitLeave(prof_, "solve dependency");
     // m_profInitLeave(prof_, "p4est coarsen");
     // m_profInitLeave(prof_, "p4est refine");
     // m_profInitLeave(prof_, "p4est balance");

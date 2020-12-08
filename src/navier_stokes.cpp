@@ -3,8 +3,8 @@
 #include <string>
 
 #include "advection_diffusion.hpp"
-#include "defs.hpp"
 #include "conservative_advection_diffusion.hpp"
+#include "defs.hpp"
 #include "error.hpp"
 #include "ioh5.hpp"
 #include "navier_stokes.hpp"
@@ -38,6 +38,13 @@ void NavierStokes::InitParam(ParserArguments* param) {
     u_stream_[2] = 1.0;
 
     real_t nu_ = (param->reynolds > 0.0) ? (L * m_max(u_stream_[0], m_max(u_stream_[1], u_stream_[2])) / param->reynolds) : 0.0;
+
+    dump_error_    = param->dump_error;
+    dump_details_  = param->dump_detail;
+    compute_error_ = param->compute_error;
+    iter_max_      = param->iter_max;
+    iter_diag_     = param->iter_diag;
+    iter_adapt_    = param->iter_adapt;
 
     // setup the profiler
     if (param->profile) {
@@ -80,9 +87,10 @@ void NavierStokes::Run() {
 
     // AdvectionDiffusion<5, 3> adv_diff(nu_, u_stream_);
     Conservative_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
-    RungeKutta3                  rk3(grid_, vort_, &adv_diff, prof_);
+    RungeKutta3                           rk3(grid_, vort_, &adv_diff, prof_);
 
     // let's gooo
+    m_profStart(prof_, "Navier-Stokes run");
     while (t < t_final && iter < iter_max) {
         //................................................
         // get the time-step given the field
@@ -92,39 +100,35 @@ void NavierStokes::Run() {
         m_log("--------------------");
         m_log("RK3 - time = %f - step %d - dt = %e", t, iter, dt);
 
-         // //................................................
+        // //................................................
         // // diagnostics, dumps, whatever
-        if (iter % 1 == 0) {
+        if (iter % iter_diag_ == 0) {
+            m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             Diagnostics(t, dt, iter);
+            m_profStop(prof_, "diagnostics");
         }
 
         //................................................
         // advance in time
         m_log("---- do time-step");
+        m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
+        m_profStop(prof_, "do dt");
 
         //................................................
         // adapt the mesh
-        if (iter % 1 == 0) {
-            Field details("detail", 3);
-            details.bctype(M_BC_EXTRAP);
-            grid_->AddField(&details);
-            grid_->DumpDetails(vort_, &details);
-
-            grid_->GhostPull(&details);
-            IOH5 dump("data");
-            dump(grid_, &details, iter);
-
-            grid_->DeleteField(&details);
-
+        if (iter % iter_adapt_ == 0) {
             m_log("---- adapt mesh");
+            m_profStart(prof_, "adapt");
             grid_->Adapt(vort_);
+            m_profStop(prof_, "adapt");
         }
     }
+    m_profStop(prof_, "Navier-Stokes run");
     // run the last diag
-    Diagnostics(t,0.0,iter);
+    Diagnostics(t, 0.0, iter);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -145,12 +149,15 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
     FILE* file_error;
     FILE* file_diag;
     if (rank == 0) {
-        file_error  = fopen(string(folder_diag_ + "/0a_ns-error.data").c_str(), "a+");
-        file_diag   = fopen(string(folder_diag_ + "/0a_ns-diag.data").c_str(), "a+");
+        file_diag = fopen(string(folder_diag_ + "/0a_ns-diag.data").c_str(), "a+");
 
         // iter, time, dt, total quad, level min, level max
         fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), grid_->MinLevel(), grid_->MaxLevel());
         fclose(file_diag);
+
+        if (compute_error_) {
+            file_error = fopen(string(folder_diag_ + "/0a_ns-error.data").c_str(), "a+");
+        }
     }
 
     // dump the vorticity field
@@ -158,36 +165,54 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
     grid_->GhostPull(vort_);
     dump(grid_, vort_, iter);
 
+    // dump the details
+    if (dump_details_) {
+        Field details("detail", 3);
+        details.bctype(M_BC_EXTRAP);
+        grid_->AddField(&details);
+        grid_->DumpDetails(vort_, &details);
+
+        grid_->GhostPull(&details);
+        // IOH5 dump("data");
+        dump(grid_, &details, iter);
+
+        grid_->DeleteField(&details);
+    }
+
     // compute the analytical solution
-    Field anal("anal", 3);
-    Field err("error", 3);
-    grid_->AddField(&anal);
-    grid_->AddField(&err);
-    real_t        center[3] = {0.5 + u_stream_[0] * time, 0.5 + u_stream_[1] * time, 0.5 + u_stream_[2] * time};
-    real_t        radius    = 0.25;
-    real_t        sigma     = 0.025 + sqrt(4.0 * nu_ * time);
-    SetVortexRing vr_init(2, center,sigma, radius, grid_->interp());
-    vr_init(grid_, &anal);
+    if (compute_error_) {
+        Field anal("anal", 3);
+        Field err("error", 3);
+        grid_->AddField(&anal);
+        grid_->AddField(&err);
+        real_t        center[3] = {0.5 + u_stream_[0] * time, 0.5 + u_stream_[1] * time, 0.5 + u_stream_[2] * time};
+        real_t        radius    = 0.25;
+        real_t        sigma     = 0.025 + sqrt(4.0 * nu_ * time);
+        SetVortexRing vr_init(2, center, sigma, radius, grid_->interp());
+        vr_init(grid_, &anal);
 
-    // compute the error wrt to the analytical solution
-    real_t          err2 = 0.0;
-    real_t          erri = 0.0;
-    ErrorCalculator error;
-    error.Norms(grid_, vort_, &anal, &err, &err2, &erri);
+        // compute the error wrt to the analytical solution
+        real_t          err2 = 0.0;
+        real_t          erri = 0.0;
+        ErrorCalculator error;
+        error.Norms(grid_, vort_, &anal, &err, &err2, &erri);
 
-    // I/O the error field
-    err.bctype(M_BC_EXTRAP);
-    grid_->GhostPull(&err);
-    dump(grid_, &err, iter);
+        // I/O the error field
+        if (dump_error_) {
+            err.bctype(M_BC_EXTRAP);
+            grid_->GhostPull(&err);
+            dump(grid_, &err, iter);
+        }
 
-    // remove the added fields
-    grid_->DeleteField(&anal);
-    grid_->DeleteField(&err);
+        // remove the added fields
+        grid_->DeleteField(&anal);
+        grid_->DeleteField(&err);
 
-    m_log("error is norm 2: %e - norm inf: %e", err2, erri);
-    if (rank == 0) {
-        fprintf(file_error, "%6.6d %e %e %e\n",iter,time, err2, erri);
-        fclose(file_error);
+        m_log("error is norm 2: %e - norm inf: %e", err2, erri);
+        if (rank == 0) {
+            fprintf(file_error, "%6.6d %e %e %e\n", iter, time, err2, erri);
+            fclose(file_error);
+        }
     }
 
     //-------------------------------------------------------------------------
