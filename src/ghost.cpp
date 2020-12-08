@@ -344,7 +344,9 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
-    MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    }
 
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
@@ -374,7 +376,9 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     //................................................
     // finish the access epochs for the exposure epoch to be over
     m_profStart(prof_, "ghost wait");
-    MPI_Win_complete(mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(mirrors_window_);
+    }
     MPI_Win_wait(mirrors_window_);
     m_profStop(prof_, "ghost wait");
 
@@ -389,7 +393,9 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     //................................................
     // post exposure and access epochs for to put the values to my neighbors
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
-    MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    }
 
     //................................................
     // start what can be done = sibling and parents copy
@@ -402,7 +408,9 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     m_profStart(prof_, "ghost wait");
     // finish the access epochs for the exposure epoch to be over
-    MPI_Win_complete(mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(mirrors_window_);
+    }
     MPI_Win_wait(mirrors_window_);
     m_profStop(prof_, "ghost wait");
 
@@ -423,12 +431,12 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
 // /**
 //  * @brief setup the ghosting lists, for the considered block
-//  * 
+//  *
 //  * @warning this function is called within a omp parellel region.
 //  * The p4est arrays are NOT thread-safe, while the lists have been assumed to be NOT threadsafe as well.
-//  * 
+//  *
 //  * @note the p4est array allocation is thread-safe, while the tracking of the memory allocated is NOT.
-//  * 
+//  *
 //  * @param qid the quadrant ID
 //  * @param block the associated block
 //  */
