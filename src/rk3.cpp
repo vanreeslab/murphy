@@ -40,7 +40,7 @@ RungeKutta3::~RungeKutta3() {
 void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     m_begin;
     m_assert(*time >= 0, "the time cannot be negative");
-    m_assert(dt > 0, "the dt cannot be negative, nor 0");
+    m_assert(dt > 0.0, "the dt = %e cannot be negative, nor 0");
     //-------------------------------------------------------------------------
 
     // create the scale and the daxpy
@@ -128,7 +128,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
  * @return real_t 
  */
 real_t RungeKutta3::ComputeDt() {
-    m_begin;
+    // m_begin;
     //-------------------------------------------------------------------------
     // know the limits
     real_t cfl_limit = sqrt(3) * 0.98;  // CFL = max_vel * dt / h
@@ -136,11 +136,15 @@ real_t RungeKutta3::ComputeDt() {
 
     // get the finest h in the grid
     real_t h_fine = grid_->FinestH();
+    m_assert(h_fine > 0.0, "the finest h = %e must be positive", h_fine);
 
     // get the fastest velocity
     real_t max_vel = 1.0;  //todo change
     real_t cfl_dt  = cfl_limit * h_fine / max_vel;
+    m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
+
+    m_log("dt = %e, using h = %e and CFL limit = %e", cfl_dt, h_fine, cfl_limit);
     //-------------------------------------------------------------------------
-    m_end;
+    // m_end;
     return cfl_dt;
 }
