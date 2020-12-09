@@ -546,10 +546,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             const bool isghost  = (ngh_rank != my_rank);
             m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
 
-            // test the validity of the piggy3
-            m_assert(0 <= nghq->p.piggy3.local_num, "the piggy3.local_num must fall in the quad's limits: %ld < %d", 0, nghq->p.piggy3.local_num);
-            m_assert(nghq->p.piggy3.local_num < (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]), "the piggy3.local_num must fall in the quad's limits: %d < %ld", nghq->p.piggy3.local_num, (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]));
-
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
             real_t sign[3];
             GhostGetSign(ibidule, sign);
@@ -615,11 +611,13 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             //................................................
             else {
                 // get the local number in the remote rank and the remote rank
-                rank_t ngh_local_id = nghq->p.piggy3.local_num;
+                iblock_t ngh_local_id = nghq->p.piggy3.local_num;
                 // rank_t ngh_rank     = p4est_GetOwnerFromGhost(forest, nghq);
                 m_assert(ngh_rank >= 0, "p4est unable to recover the rank... baaaad news: %d", ngh_rank);
                 m_assert(ngh_rank < forest->mpisize, "the rank must be smaller than the comm size: %d vs %d ", ngh_rank, forest->mpisize);
                 m_assert((forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]) > 0, "the neighbor must have quadrants");
+                m_assert(0 <= ngh_local_id, "the piggy3.local_num must fall in the quad's limits: %d < %d", 0, ngh_local_id);
+                m_assert(ngh_local_id < (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]), "the piggy3.local_num must fall in the quad's limits: %d < %ld", ngh_local_id, (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]));
 
                 // register the ghost block in a list
                 //................................................
