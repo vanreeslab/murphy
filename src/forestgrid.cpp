@@ -155,7 +155,7 @@ void ForestGrid::SetupP4estGhostMesh() {
 level_t ForestGrid::MaxLevel() const {
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
     //-------------------------------------------------------------------------
-    level_t il;
+    level_t il = P8EST_QMAXLEVEL;
     for (il = P8EST_QMAXLEVEL; il >= 0; --il) {
         if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
             break;
@@ -175,7 +175,7 @@ level_t ForestGrid::MaxLevel() const {
 level_t ForestGrid::MinLevel() const {
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
     //-------------------------------------------------------------------------
-    level_t il;
+    level_t il = 0;
     for (il = 0; il <= P8EST_QMAXLEVEL; ++il) {
         if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
             break;
@@ -191,7 +191,7 @@ real_t ForestGrid::FinestH() const {
     // m_begin;
     //-------------------------------------------------------------------------
     level_t max_level = MaxLevel();
-    return p4est_QuadLen(max_level)/((real_t)M_N);
+    return p4est_QuadLen(max_level) / ((real_t)M_N);
     //-------------------------------------------------------------------------
     // m_end;
 }
