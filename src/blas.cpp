@@ -9,7 +9,7 @@ void Dcopy::operator()(const ForestGrid* grid, Field* fid_x, Field* fid_y) {
     //-------------------------------------------------------------------------
     DoOpMesh(this, &Dcopy::ComputeDcopyGridBlock, grid, fid_x, fid_y);
     // update the ghost
-    fid_y->ghost_status(false);
+    fid_y->ghost_status(this->do_ghost());
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -47,7 +47,7 @@ void Daxpy::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x,
     DoOpMesh(this, &Daxpy::ComputeDaxpyGridBlock, grid, fid_x, fid_y, fid_z);
 
     // update the ghost
-    fid_z->ghost_status(false);
+    fid_z->ghost_status(this->do_ghost());
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -88,7 +88,7 @@ void Scale::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x)
     alpha_ = alpha;
     DoOpMesh(this, &Scale::ComputeScaleGridBlock, grid, fid_x);
     // update the ghost
-    fid_x->ghost_status(false);
+    fid_x->ghost_status(this->do_ghost());
     //-------------------------------------------------------------------------
     m_end;
 }
