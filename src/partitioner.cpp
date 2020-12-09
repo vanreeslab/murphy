@@ -211,6 +211,7 @@ Partitioner::Partitioner(unordered_map<string, Field *> *fields, Grid *grid, boo
                         // create a new block
                         real_t xyz[3];
                         p8est_qcoord_to_vertex(forest->connectivity, it, quad->x, quad->y, quad->z, xyz);
+                        m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
                         real_t     len   = p4est_QuadLen(quad->level);
                         GridBlock *block = new GridBlock(len, xyz, quad->level);
                         // add the fields to the block

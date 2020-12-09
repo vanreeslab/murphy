@@ -162,7 +162,9 @@ level_t ForestGrid::MaxLevel() const {
         }
     }
     level_t global_level = P8EST_QMAXLEVEL;
-    MPI_Allreduce(&il, &global_level, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    m_assert(sizeof(level_t) == sizeof(char),"the MPI call is done for a char");
+    MPI_Allreduce(&il, &global_level, 1, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);
+    m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
     return global_level;
     //-------------------------------------------------------------------------
 }
@@ -181,8 +183,12 @@ level_t ForestGrid::MinLevel() const {
             break;
         }
     }
+
+    // get the max among the cpus
     level_t global_level = 0;
-    MPI_Allreduce(&il, &global_level, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    m_assert(sizeof(level_t) == sizeof(char),"the MPI call is done for a char");
+    MPI_Allreduce(&il, &global_level, 1, MPI_CHAR, MPI_MIN, MPI_COMM_WORLD);
+    m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
     return global_level;
     //-------------------------------------------------------------------------
 }
@@ -191,6 +197,7 @@ real_t ForestGrid::FinestH() const {
     // m_begin;
     //-------------------------------------------------------------------------
     level_t max_level = MaxLevel();
+    m_assert(max_level >= 0, "the level=%d must be >=0", max_level);
     return p4est_QuadLen(max_level) / ((real_t)M_N);
     //-------------------------------------------------------------------------
     // m_end;
@@ -199,6 +206,7 @@ real_t ForestGrid::CoarsestH() const {
     // m_begin;
     //-------------------------------------------------------------------------
     level_t min_level = MinLevel();
+    m_assert(min_level >= 0, "the level=%d must be >=0", min_level);
     return p4est_QuadLen(min_level)/((real_t)M_N);
     //-------------------------------------------------------------------------
     // m_end;

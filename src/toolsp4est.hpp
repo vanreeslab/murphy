@@ -51,6 +51,7 @@ inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, p
 };
 
 inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const int8_t level) {
+    m_assert(level >= 0, "the level = %d must be >=0", level);
     //---------------------------------------------------------------------
     size_t num = mesh->quad_level[level].elem_count;
     m_assert(num < numeric_limits<p4est_locidx_t>::max(), "the number of element is too big to be local");

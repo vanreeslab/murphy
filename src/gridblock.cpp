@@ -510,6 +510,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
     real_t block_len[3];
     real_t coarse_hgrid[3];
     for (lda_t id = 0; id < 3; id++) {
+        m_assert(level() >= 0, "the level=%d must be >=0", level());
         // set the number of ghost to compute
         block_min[id]    = -interp->nghost_front();
         block_max[id]    = M_N + interp->nghost_back();
@@ -568,11 +569,14 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 // since it is my neighbor in this normal direction, I am 100% sure that it's origin corresponds to the end of my block
                 const real_t to_replace = sign[id] * sign[id] * grid->domain_periodic(id);  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
                 // get the expected position
+                m_assert(level() >= 0, "the level=%d must be >=0", level());
+                m_assert(nghq->level >= 0, "the level=%d must be >=0", nghq->level);
                 const real_t expected_pos = xyz(id) + (sign[id] > 0.5) * p4est_QuadLen(level()) - (sign[id] < -0.5) * p4est_QuadLen(nghq->level);
                 // we override the position if a replacement is needed only
                 ngh_pos[id] = to_replace * expected_pos + (1.0 - to_replace) * ngh_pos[id];
             }
             // get the hgrid
+            m_assert(nghq->level >= 0, "the level=%d must be >=0", nghq->level);
             const real_t ngh_len[3]   = {p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level), p4est_QuadLen(nghq->level)};
             const real_t ngh_hgrid[3] = {p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N, p4est_QuadLen(nghq->level) / M_N};
 

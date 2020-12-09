@@ -33,6 +33,7 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     // create the new block and store it's address
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+    m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
     real_t len = p4est_QuadLen(quad->level);
     p4est_SetGridBlock(quad, new GridBlock(len, xyz, quad->level));
     //-------------------------------------------------------------------------
@@ -94,9 +95,9 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     // retreive the patch list and the current block
     Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
     list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
-    // GridBlock*   block   = *(reinterpret_cast<GridBlock**>(quadrant->p.user_data));
     GridBlock*   block   = p4est_GetGridBlock(quadrant);
     m_assert(block->level() == quadrant->level, "the two levels must match");
+    m_assert(block->level() >= 0, "the level=%d must be >=0", block->level());
 
     // get the origin, the length and check if we are inside the patch
     const real_t* xyz = block->xyz();
@@ -138,9 +139,9 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 
     // check every block, if one child needs to be coarsen, we return true for everybody
     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
-        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quadrant[ib]->p.user_data));
         GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
         m_assert(block->level() == quadrant[ib]->level, "the two levels must match");
+        m_assert(block->level() >= 0, "the level=%d must be >=0", block->level());
 
         // get the origin, the length and check if we are inside the patch
         const real_t* xyz = block->xyz();
@@ -253,6 +254,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         // get block informations and create it
         real_t xyz[3];
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len      = p4est_QuadLen(quad->level);
         GridBlock* block_in = new GridBlock(len, xyz, quad->level);
 
@@ -355,6 +357,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // get block informations and create it
         real_t xyz[3];
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
@@ -404,6 +407,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         // get block informations and create it
         real_t xyz[3];
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
+        m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len   = p4est_QuadLen(quad->level);
         GridBlock* block = new GridBlock(len, xyz, quad->level);
         // store the block
