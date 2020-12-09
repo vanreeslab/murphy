@@ -17,7 +17,7 @@
 void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const{
     m_assert(dlvl == 0 || dlvl == 1, "only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
-    DoMagic_(dlvl, true, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
+    DoMagic_(dlvl, true, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
 }
 
 /**
@@ -35,7 +35,7 @@ void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* bl
  */
 void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const{
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
-    DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
+    DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
 }
 
 /**
@@ -56,7 +56,7 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
  */
 void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const{
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
-    DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, data_trg);
+    DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
 }
 
 /**
@@ -79,6 +79,7 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
 void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
+    m_assert(!(alpha != 0.0 && data_cst == nullptr), "if alpha = %e, the data_cst cannot be nullptr", alpha);
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
@@ -141,15 +142,18 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t* ctx) const {
                 m_assert(((scaling * ik2) >= ctx->srcstart[2]) && ((scaling * ik2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->srcstart[2], ik2, ctx->srcend[2]);
                 // get the current parent's data
                 data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+                m_assert(ctx->cdata == nullptr,"the constant data must be nullptr for the moment");
+                // const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                 const data_ptr lsdata = ctx->sdata + m_sidx(scaling * ik0, scaling * ik1, scaling * ik2, 0, ctx->srcstr);
                 // do the simple copy
                 m_assert(((ik0) >= ctx->trgstart[0]) && ((ik0) < ctx->trgend[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->trgstart[0], ik0, ctx->trgend[0]);
                 m_assert(((ik1) >= ctx->trgstart[1]) && ((ik1) < ctx->trgend[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->trgstart[1], ik1, ctx->trgend[1]);
                 m_assert(((ik2) >= ctx->trgstart[2]) && ((ik2) < ctx->trgend[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->trgstart[2], ik2, ctx->trgend[2]);
-                ltdata[0] = alpha * lcdata[0] + lsdata[0];
+                // ltdata[0] = alpha * lcdata[0] + lsdata[0];
+                m_assert(ctx->cdata == nullptr, "the constant data must be nullptr for the moment");
+                ltdata[0] = lsdata[0];
                 m_assert(lsdata[0] == lsdata[0], "cannot be nan");
-                m_assert(lcdata[0] == lcdata[0], "cannot be nan");
+                // m_assert(lcdata[0] == lcdata[0], "cannot be nan");
                 m_assert(ltdata[0] == ltdata[0], "cannot be nan");
             }
         }

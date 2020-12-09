@@ -139,7 +139,8 @@ class InterpolatingWavelet : public Wavelet {
                 for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ++ik0) {
                     //get the local adress of the source, the target and the constant
                     data_ptr       ltdata = tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                    const data_ptr lcdata = cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+                    m_assert(cdata == nullptr,"the constant data must be nullptr for the moment");
+                    // const data_ptr lcdata = cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
                     const data_ptr lsdata = sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx->srcstr);
 
                     // do some checks
@@ -148,7 +149,9 @@ class InterpolatingWavelet : public Wavelet {
                     m_assert(((2 * ik2 - ha_lim) >= (ctx->srcstart[2])) && ((2 * ik2 + ha_lim) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * ik2 - ha_lim, ctx->srcstart[2], 2 * ik2 + ha_lim, ctx->srcend[2]);
 
                     // add the constant
-                    ltdata[0] = alpha * lcdata[0];
+                    // ltdata[0] = alpha * lcdata[0];
+                    m_assert(cdata == nullptr,"the constant data must be nullptr for the moment");
+                    ltdata[0] = 0.0;
 
                     // apply the filter
                     for (sid_t id2 = -ha_lim; id2 <= ha_lim; ++id2) {
@@ -192,8 +195,8 @@ class InterpolatingWavelet : public Wavelet {
         const_mem_ptr gs = gs_<TN, TNT> + gs_lim;
 
         // restrict the pointers
-        data_ptr       tdata  = ctx->tdata;
-        const data_ptr cdata  = ctx->cdata;
+        data_ptr       tdata = ctx->tdata;
+        const data_ptr cdata = ctx->cdata;
         const data_ptr sdata = ctx->sdata;
 
         // for each of the data for the needed target
@@ -210,7 +213,8 @@ class InterpolatingWavelet : public Wavelet {
 
                     // get the target location
                     data_ptr       ltdata = tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                    const data_ptr lcdata = cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+                    m_assert(cdata == nullptr,"the constant data must be nullptr for the moment");
+                    // const data_ptr lcdata = cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
 
                     //get the local adress of the source, a bit more complicated to handle the negative numbers
                     const lid_t    ik0_s  = (ik0 - ix) / 2;
@@ -233,7 +237,8 @@ class InterpolatingWavelet : public Wavelet {
                     m_assert(((ik2 / 2 - lim_start[2]) >= ctx->srcstart[2]) && ((ik2 / 2 + lim_end[2]) <= ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", ik2 - gs_lim, ctx->srcstart[2], ik2 + gs_lim, ctx->srcend[2]);
 
                     // add the constant array
-                    ltdata[0] = alpha * lcdata[0];
+                    m_assert(cdata == nullptr,"the constant data must be nullptr for the moment");
+                    ltdata[0] = 0.0;  //alpha * lcdata[0];
 
                     // if one dim is even, id = 0, -> gs[0] = 1 and that's it
                     // if one dim is odd, id = 1, -> we loop on gs, business as usual
