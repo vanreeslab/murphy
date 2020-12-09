@@ -130,7 +130,8 @@ void Ghost::InitList_() {
     MPI_Info_free(&info);
     m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, mesh->local_num_quadrants);
     // make sure everything is done
-    MPI_Win_fence(0, local2disp_window_);
+    // MPI_Win_fence(0, local2disp_window_);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
@@ -147,7 +148,8 @@ void Ghost::InitList_() {
         }
     }
     // make sure everybody did it
-    MPI_Win_fence(0, local2disp_window_);
+    // MPI_Win_fence(0, local2disp_window_);
+    MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // post the exposure epoch and start the access one for local2mirrors
@@ -294,7 +296,8 @@ void Ghost::InitComm_() {
     m_free(group_ranks);
 
     // assert that everybody has created the windows correctly
-    MPI_Win_fence(0, mirrors_window_);
+    // MPI_Win_fence(0, mirrors_window_);
+    MPI_Barrier(MPI_COMM_WORLD);
     //-------------------------------------------------------------------------
     m_end;
 }
