@@ -114,21 +114,21 @@ void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, GridBlock* block, Field* fid
 }
 
 //-----------------------------------------------------------------------------
-Scale::Scale() : BlockOperator(nullptr){};
-Scale::Scale(const Wavelet* interp) : BlockOperator(interp){};
+Dscale::Dscale() : BlockOperator(nullptr){};
+Dscale::Dscale(const Wavelet* interp) : BlockOperator(interp){};
 
-void Scale::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x) {
+void Dscale::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
     alpha_ = alpha;
-    DoOpMesh(this, &Scale::ComputeScaleGridBlock, grid, fid_x);
+    DoOpMesh(this, &Dscale::ComputeDscaleGridBlock, grid, fid_x);
     // update the ghost
     fid_x->ghost_status(this->do_ghost());
     //-------------------------------------------------------------------------
     m_end;
 }
 
-void Scale::ComputeScaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x) {
+void Dscale::ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x) {
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
     for (sid_t ida = 0; ida < lda; ida++) {
