@@ -163,7 +163,7 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
 #endif
             // printf in the file
             if (file != nullptr) {
-                fprintf(file, "%s;%.6f;%.6f;%.6f;%.0f\n", name_.c_str(), max_time, glob_percent, mean_time_per_count, max_count);
+                fprintf(file, "%s;%d;%.6f;%.6f;%.6f;%.0f\n", name_.c_str(), level, max_time, glob_percent, mean_time_per_count, max_count);
             }
         }
     } else if (name_ != "root") {
