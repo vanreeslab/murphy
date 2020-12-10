@@ -345,11 +345,13 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
 
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
+    m_profStart(prof_, "ghost post");
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
+    m_profStop(prof_, "ghost post");
 
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
@@ -395,10 +397,12 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     //................................................
     // post exposure and access epochs for to put the values to my neighbors
+    m_profStart(prof_, "ghost post");
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
+    m_profStop(prof_, "ghost post");
 
     //................................................
     // start what can be done = sibling and parents copy

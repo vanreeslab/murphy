@@ -30,8 +30,10 @@ def FoldBlock(file,block,string):
 
 #------------------------------------------------------------------------------
 # read the file
-folder = "./"
-profname = "Navier-Stokes_128ranks"
+# folder = "./"
+# profname = "Navier-Stokes_128ranks"
+folder = "../prof"
+profname = "Navier-Stokes_3ranks"
 profile = ReadProfiler(folder,profname)
 
 # open the file

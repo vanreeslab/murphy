@@ -2,8 +2,56 @@
 
 #include <mpi.h>
 
-using std::string;
 using std::map;
+using std::string;
+
+static constexpr rank_t    upper_rank = 1000; // approximates the infinity of procs
+static map<rank_t, real_t> t_nu       = {{0, 0.0},
+                                   {1, 6.314},
+                                   {2, 2.920},
+                                   {3, 2.353},
+                                   {4, 2.132},
+                                   {5, 2.015},
+                                   {7, 1.895},
+                                   {10, 1.812},
+                                   {15, 1.753},
+                                   {20, 1.725},
+                                   {30, 1.697},
+                                   {50, 1.676},
+                                   {100, 1.660},
+                                   {upper_rank, 1.645}};
+/**
+ * @brief return the t_nu for 90% confidence interval width based on the interpolation of the above table
+ * 
+ * @param nu the number of proc-1
+ * @return real_t the confidence interval param
+ */
+real_t t_nu_interp(const rank_t nu) {
+    m_assert(nu >= 0, "the nu param = %d must be positive", nu);
+    //-------------------------------------------------------------------------
+    if (nu == 0) {
+        // easy, it's 0
+        return 0.0;
+    } else if (nu <= 5) {
+        // we have an exact entry
+        const auto it = t_nu.find(nu);
+        return it->second;
+    } else if (nu >= upper_rank) {
+        // we are too big, it's like a normal distribution
+        return 1.645;
+    } else {
+        // find the right point
+        auto         it_up  = t_nu.lower_bound(nu);  // first element >= nu
+        const rank_t nu_up  = it_up->first;
+        const real_t t_up   = it_up->second;
+        auto         it_low = it_up--;  // it_up is not changed
+        const rank_t nu_low = it_low->first;
+        const real_t t_low  = it_low->second;
+        return (nu_up - nu) / (nu_up - nu_low) * t_low +
+               (nu - nu_low) / (nu_up - nu_low) * t_up;
+    }
+    //-------------------------------------------------------------------------
+}
 
 TimerBlock::TimerBlock(string name) {
     name_  = name;
@@ -23,7 +71,7 @@ TimerBlock::~TimerBlock() {
  * 
  */
 void TimerBlock::Start() {
-    m_assert(t0_ < -0.5, "the block %s has already been started",name_.c_str());
+    m_assert(t0_ < -0.5, "the block %s has already been started", name_.c_str());
     count_ += 1;
     t0_ = MPI_Wtime();
 }
@@ -33,7 +81,7 @@ void TimerBlock::Start() {
  * 
  */
 void TimerBlock::Stop() {
-    m_assert(t0_ > -0.5, "the block %s is stopped without being started",name_.c_str());
+    m_assert(t0_ > -0.5, "the block %s is stopped without being started", name_.c_str());
     // get the time
     t1_ = MPI_Wtime();
     // store it
@@ -49,7 +97,7 @@ TimerBlock* TimerBlock::AddChild(string child_name) {
     auto it = children_.find(child_name);
 
     if (it == children_.end()) {
-        TimerBlock* child = new TimerBlock(child_name);
+        TimerBlock* child     = new TimerBlock(child_name);
         children_[child_name] = child;
         child->SetParent(this);
         return child;
@@ -64,7 +112,7 @@ TimerBlock* TimerBlock::AddChild(string child_name) {
  * @param parent 
  */
 void TimerBlock::SetParent(TimerBlock* parent) {
-    parent_  = parent;
+    parent_ = parent;
     // is_root_ = false;
 }
 
@@ -121,7 +169,7 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
 #ifdef COLOR_PROF
     string myname = shifter + "\033[0m" + name_;
 #else
-    string myname  = shifter + name_;
+    string myname = shifter + name_;
 #endif
 
     //................................................
@@ -136,34 +184,39 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
 
         // compute times passed inside + children
         real_t local_time = time_acc_;
-        real_t max_time, sum_time;
-        MPI_Allreduce(&local_time, &max_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        real_t sum_time;
         MPI_Allreduce(&local_time, &sum_time, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+        real_t mean_time           = sum_time / comm_size;
         real_t mean_time_per_count = sum_time / total_count;
-        real_t glob_percent        = max_time / total_time * 100.0;
+        real_t glob_percent        = mean_time / total_time * 100.0;
 
-        // myname = myname + " (" + std::to_string(max_time) + " [s])";
+        // confidence interval 90% using the t distribution
+        real_t sum_timesq;
+        real_t local_timesq = (local_time - mean_time) * (local_time - mean_time);
+        MPI_Allreduce(&local_timesq, &sum_timesq, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        real_t std_time   = sqrt(sum_timesq / (comm_size - 1));
+        real_t ci_90_time = std_time / sqrt(comm_size) * t_nu_interp(comm_size - 1);
 
         // printf the important information
         if (rank == 0) {
 #ifdef COLOR_PROF
             // printf("%-25.25s|  %9.4f\t%9.4f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%09.1f\t%9.2f\n", myname.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
             if (icol == 0) {  // go red
-                printf("%-45.45s %s\033[0;31m%09.6f\033[0m %% (\033[0;31m%07.4f\033[0m [s]) \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+                printf("%-45.45s %s\033[0;31m%09.6f\033[0m %% -> \033[0;31m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
             }
             if (icol == 1) {  // go orange
-                printf("%-45.45s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+                printf("%-45.45s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
             }
             if (icol == 2) {  // go normal
-                printf("%-45.45s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+                printf("%-45.45s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
             }
 #else
-            printf("%-45.45s %s%09.6f %% -> %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, max_time, mean_time_per_count, max_count);
+            printf("%-45.45s %s%09.6f %% -> %07.4f [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
 #endif
             // printf in the file
             if (file != nullptr) {
-                fprintf(file, "%s;%d;%.6f;%.6f;%.6f;%.0f\n", name_.c_str(), level, max_time, glob_percent, mean_time_per_count, max_count);
+                fprintf(file, "%s;%d;%.6f;%.6f;%.6f;%.0f\n", name_.c_str(), level, mean_time, glob_percent, mean_time_per_count, max_count);
             }
         }
     } else if (name_ != "root") {
@@ -195,12 +248,12 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
     real_t min_time = +1e+15;
     for (auto it = children_.cbegin(); it != children_.cend(); ++it) {
         TimerBlock* child = it->second;
-        real_t ctime = child->time_acc();
-        if(ctime > max_time){
+        real_t      ctime = child->time_acc();
+        if (ctime > max_time) {
             max_time = ctime;
             max_name = child->name();
         }
-        if(ctime < min_time){
+        if (ctime < min_time) {
             min_time = ctime;
             min_name = child->name();
         }
@@ -210,7 +263,7 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
         if (child->name() == max_name && icol == 0) {
             // go red
             child->Disp(file, level + 1, total_time, 0);
-        } else if (child->name() == max_name  && icol > 0) {
+        } else if (child->name() == max_name && icol > 0) {
             // go orange
             child->Disp(file, level + 1, total_time, 1);
         } else {
@@ -263,7 +316,7 @@ void Prof::Start(string name) {
  * @brief stop the timer of the TimerBlock
  */
 void Prof::Stop(string name) {
-    m_assert(name == current_->name(), "we are trying to stop %s which is not the most recent timer started = %s", name.c_str(),current_->name().c_str());
+    m_assert(name == current_->name(), "we are trying to stop %s which is not the most recent timer started = %s", name.c_str(), current_->name().c_str());
     current_->Stop();
 }
 
@@ -279,7 +332,7 @@ void Prof::Leave(string name) {
  * 
  */
 void Prof::Disp() const {
-    m_assert(current_->name() == "root","the current TimerBlock is not the root, please stop any current timer firsts");
+    m_assert(current_->name() == "root", "the current TimerBlock is not the root, please stop any current timer firsts");
     int comm_size, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -292,7 +345,7 @@ void Prof::Disp() const {
     // //-------------------------------------------------------------------------
     // /** - I/O of the parentality */
     // //-------------------------------------------------------------------------
-    
+
     // if (rank == 0) {
     //     struct stat st = {0};
     //     if (stat(folder.c_str(), &st) == -1) {
@@ -318,7 +371,7 @@ void Prof::Disp() const {
         string filename = "./prof/" + name_ + "_time.csv";
         file            = fopen(filename.c_str(), "w+");
     }
-    
+
     // get the global timing
     real_t total_time = current_->time_acc();
 
@@ -339,8 +392,10 @@ void Prof::Disp() const {
     if (rank == 0) {
 #ifdef COLOR_PROF
         printf("===================================================================================================================================================\n");
+        printf("WARNING:\n");
+        printf("  - times are mean-time with their associated 90%% CI\n");
+        printf("  - the percentage might not be consistent are they only reflect rank-0 timing\n");
         printf("legend:\n");
-
         printf("  - \033[0;31mthis indicates the most expensive step of the most expensive operation\033[0m\n");
         printf("  - \033[0;33mthis indicates the most expensive step of the parent operation\033[0m\n");
         printf("===================================================================================================================================================\n");
