@@ -7,6 +7,24 @@
 #include "gridblock.hpp"
 #include "forestgrid.hpp"
 
+
+/**
+ * @brief perform the dcopy operation on a block
+ * 
+ * y = x
+ * 
+ */
+class Dset : public BlockOperator {
+
+    real_t value_ = 0.0;
+   public:
+    explicit Dset();
+    explicit Dset(const Wavelet* interp);
+
+    void operator()(const ForestGrid* grid, const real_t value, Field* fid_x);
+    void ComputeDsetGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x);
+};
+
 /**
  * @brief perform the dcopy operation on a block
  * 

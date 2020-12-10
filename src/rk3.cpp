@@ -40,11 +40,11 @@ RungeKutta3::~RungeKutta3() {
 void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     m_begin;
     m_assert(*time >= 0, "the time cannot be negative");
-    m_assert(dt > 0.0, "the dt = %e cannot be negative, nor 0");
+    m_assert(dt > 0.0, "the dt = %e cannot be negative, nor 0", dt);
     //-------------------------------------------------------------------------
 
     // create the scale and the daxpy
-    Scale scale;
+    Dset  reset;
     Daxpy daxpy;
 
     m_profStart(prof_, "rk3");
@@ -54,7 +54,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     // u = u + 1/3 * dt * y
 
     m_profStart(prof_, "scale");
-    scale(grid_, 0.0, field_y_);
+    reset(grid_, 0.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");
@@ -80,7 +80,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     // u = u + 15/16 * dt * y
 
     m_profStart(prof_, "scale");
-    scale(grid_, -5.0 / 9.0, field_y_);
+    reset(grid_, -5.0 / 9.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");
@@ -102,7 +102,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the y using the stencil operator
     m_profStart(prof_, "scale");
-    scale(grid_, -153.0 / 128.0, field_y_);
+    reset(grid_, -153.0 / 128.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");

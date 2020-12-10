@@ -1,6 +1,41 @@
 #include "blas.hpp"
 
 //-----------------------------------------------------------------------------
+Dset::Dset() : BlockOperator(nullptr){};
+Dset::Dset(const Wavelet* interp) : BlockOperator(interp){};
+
+void Dset::operator()(const ForestGrid* grid, const real_t value, Field* fid_x) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    value_ = value;
+
+    DoOpMesh(this, &Dset::ComputeDsetGridBlock, grid, fid_x);
+    // update the ghost
+    fid_x->ghost_status(this->do_ghost());
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Dset::ComputeDsetGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x) {
+    //-------------------------------------------------------------------------
+    const sid_t lda = fid_x->lda();
+    for (sid_t ida = 0; ida < lda; ida++) {
+        // get the data pointers
+        data_ptr data_x = block->data(fid_x, ida);
+        m_assume_aligned(data_x);
+        // get the correct place given the current thread and the dimension
+        for (lid_t i2 = start_; i2 < end_; i2++) {
+            for (lid_t i1 = start_; i1 < end_; i1++) {
+                for (lid_t i0 = start_; i0 < end_; i0++) {
+                    const size_t idx = m_idx(i0, i1, i2);
+                    data_x[idx]      = value_;
+                }
+            }
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
 Dcopy::Dcopy() : BlockOperator(nullptr){};
 Dcopy::Dcopy(const Wavelet* interp) : BlockOperator(interp){};
 
