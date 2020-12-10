@@ -203,16 +203,16 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
 #ifdef COLOR_PROF
             // printf("%-25.25s|  %9.4f\t%9.4f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%9.6f\t%09.1f\t%9.2f\n", myname.c_str(), glob_percent, loc_percent, mean_time, self_time, mean_time_per_count, min_time_per_count, max_time_per_count, mean_count, mean_bandwidth);
             if (icol == 0) {  // go red
-                printf("%-45.45s %s\033[0;31m%09.6f\033[0m %% -> \033[0;31m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
+                printf("%-60.60s %s\033[0;31m%09.6f\033[0m %% -> \033[0;31m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
             }
             if (icol == 1) {  // go orange
-                printf("%-45.45s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
+                printf("%-60.60s %s\033[0;33m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
             }
             if (icol == 2) {  // go normal
-                printf("%-45.45s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
+                printf("%-60.60s %s\033[0m%09.6f\033[0m %% -> \033[0m%07.4f\033[0m [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
             }
 #else
-            printf("%-45.45s %s%09.6f %% -> %07.4f [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
+            printf("%-60.60s %s%09.6f %% -> %07.4f [s] +- %07.4f [s] \t\t\t(%.4f [s/call], %.0f calls)\n", myname.c_str(), shifter.c_str(), glob_percent, mean_time, ci_90_time, mean_time_per_count, max_count);
 #endif
             // printf in the file
             if (file != nullptr) {
