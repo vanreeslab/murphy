@@ -13,11 +13,12 @@ class TimeBlock:
 
     def AddChild(self,block):
         self.children.append(block)
-        print("chile "+block.name+" added to "+self.name)
 
     def AddParent(self,block):
         self.parent = block
-        print("parent "+block.name+" added to "+self.name)
+
+    def ToMiliSecond(self):
+        return int(self.time*1000)
 
 def ReadProfiler(folder,profName):
     # opent the profiler data
@@ -51,11 +52,7 @@ def ReadProfiler(folder,profName):
                     block.AddParent(current)
                 # in any case, the current block is the new boss
                 current = block
-                print("current is now block "+block.name)
-
         # close the file
         file.close()
     return profile
 
-
-profile = ReadProfiler("/scratch/ucl/tfl/tgillis/murphy_2261/prof","Navier-Stokes_128ranks");
