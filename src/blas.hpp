@@ -64,16 +64,16 @@ class Daxpy : public BlockOperator {
  * x = alpha * x
  * 
  */
-class Scale : public BlockOperator {
+class Dscale : public BlockOperator {
    protected:
     real_t alpha_ = 0.0;
 
    public:
-    explicit Scale();
-    explicit Scale(const Wavelet* interp);
+    explicit Dscale();
+    explicit Dscale(const Wavelet* interp);
 
     void operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x);
-    void ComputeScaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x);
+    void ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x);
 };
 
 #endif  // SRC_BLAS_HPP_

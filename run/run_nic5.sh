@@ -3,9 +3,8 @@
 #SBATCH --job-name=murphy_scalability
 #SBATCH --time=01:00:00
 #
-#SBATCH --ntasks=128
+#SBATCH --ntasks=256
 #SBATCH --ntasks-per-node=64
-#SBATCH --nodes=2
 #SBATCH --mem-per-cpu=2625
 # ##SBATCH --partition=batch,debug 
 #
@@ -28,5 +27,5 @@ cp -r $HOME_MURPHY/murphy $SCRATCH/$RUN_DIR
 cd $SCRATCH/$RUN_DIR 
 
 # run that shit
-mpirun ./murphy --ns --profile --iter-max=10 > $SLURM_JOB_ID.log
-#mpirun valgrind --leak-check=full ./murphy --ns --profile --iter-max=10 > $SLURM_JOB_ID.log
+mpirun ./murphy --ns --profile --iter-max=100 > $SLURM_JOB_ID.log
+#mpirun -d valgrind --error-limit=no --suppressions=${EBROOTOPENMPI}/share/openmpi/openmpi-valgrind.supp ./murphy --ns --profile --iter-max=10 > $SLURM_JOB_ID.log

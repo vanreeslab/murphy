@@ -44,11 +44,11 @@ real_t t_nu_interp(const rank_t nu) {
         auto         it_up  = t_nu.lower_bound(nu);  // first element >= nu
         const rank_t nu_up  = it_up->first;
         const real_t t_up   = it_up->second;
-        auto         it_low = it_up--;  // it_up is not changed
+        auto         it_low = std::prev(it_up,1);  // take the previous one
         const rank_t nu_low = it_low->first;
         const real_t t_low  = it_low->second;
-        return (nu_up - nu) / (nu_up - nu_low) * t_low +
-               (nu - nu_low) / (nu_up - nu_low) * t_up;
+        // m_log("nu_up = %d, nu_low = %d, t_up=%f, t_low=%f",nu_up,nu_low,t_up, t_low);
+        return t_low + (t_up-t_low)/(nu_up-nu_low)*(nu-nu_low);
     }
     //-------------------------------------------------------------------------
 }

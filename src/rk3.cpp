@@ -44,8 +44,9 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     //-------------------------------------------------------------------------
 
     // create the scale and the daxpy
-    Dset  reset;
-    Daxpy daxpy;
+    Dset   reset;
+    Dscale scale;
+    Daxpy  daxpy;
 
     m_profStart(prof_, "rk3");
     //................................................
@@ -80,7 +81,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     // u = u + 15/16 * dt * y
 
     m_profStart(prof_, "scale");
-    reset(grid_, -5.0 / 9.0, field_y_);
+    scale(grid_, -5.0 / 9.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");
@@ -102,7 +103,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the y using the stencil operator
     m_profStart(prof_, "scale");
-    reset(grid_, -153.0 / 128.0, field_y_);
+    scale(grid_, -153.0 / 128.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");
