@@ -59,7 +59,7 @@
     })
 #define m_calloc(size)                                                                                               \
     ({                                                                                                               \
-        size_t m_calloc_size_ = (size_t)(size + (size % M_ALIGNMENT == 0) ? 0 : (M_ALIGNMENT - size % M_ALIGNMENT)); \
+        size_t m_calloc_size_ = (size_t)(size); \
         void*  m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT);                                             \
         memset(m_calloc_data_, 0, m_calloc_size_);                                                                   \
         m_calloc_data_;                                                                                              \
@@ -82,7 +82,7 @@
  */
 #define m_calloc(size)                                                                                               \
     ({                                                                                                               \
-        size_t m_calloc_size_ = (size_t)(size + (size % M_ALIGNMENT == 0) ? 0 : (M_ALIGNMENT - size % M_ALIGNMENT)); \
+        size_t m_calloc_size_ = (size_t)(size); \
         void*  m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_);                                          \
         memset(m_calloc_data_, 0, m_calloc_size_);                                                                   \
         m_calloc_data_;                                                                                              \
