@@ -3,9 +3,13 @@
 
 #include <string>
 
-#include "field.hpp"
-#include "memlayout.hpp"
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/memlayout.hpp"
+#include "core/pointers.hpp"
+#include "core/types.hpp"
+
+#include "subblock.hpp"
+
 #include "p8est.h"
 
 /**
@@ -32,9 +36,9 @@ typedef struct interp_ctx_t {
      * They both refer the position (0,0,0) of the target, hence the ghostsize is assumed to be zero
      * @{
      */
-    data_ptr sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
-    data_ptr cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
-    data_ptr tdata;  //!< refers the (0,0,0) location of the target memory
+    const_data_ptr sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
+    const_data_ptr cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
+    data_ptr       tdata;  //!< refers the (0,0,0) location of the target memory
     /** @} */
 } interp_ctx_t;
 
@@ -75,15 +79,15 @@ class Wavelet {
     * @{
     */
    public:
-    void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, data_ptr data_cst) const;
-    void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
-    void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    void Copy(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
+    void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(MemLayout* block, data_ptr data) const;
-    void   Details(MemLayout* block, data_ptr data_block, real_t* details_max) const;
-    void   WriteDetails(MemLayout* block, data_ptr data_src, data_ptr data_trg) const;
+    real_t Criterion(m_ptr<const MemLayout> block, const_data_ptr data) const;
+    void   Details(m_ptr<MemLayout> block, const_data_ptr data_block, m_ptr<real_t> details_max) const;
+    void   WriteDetails(m_ptr<const MemLayout> block, const_data_ptr data_src, data_ptr data_trg) const;
 
     /** @} */
 
@@ -152,8 +156,8 @@ class Wavelet {
         const lid_t gp_back  = CoarseNGhostBack();
         return gp_front + M_HN + gp_back;
     };
-    inline size_t CoarseMemSize() const {
-        return CoarseStride() * CoarseStride() * CoarseStride() * sizeof(real_t);
+    inline size_t CoarseSize() const {
+        return CoarseStride() * CoarseStride() * CoarseStride();
     };
     /**
     * @brief given a starting a ghost range for a block, transform it into the needed range for its coarse representation
@@ -204,21 +208,22 @@ class Wavelet {
     }
     /** @} */
 
+    //-------------------------------------------------------------------------
    protected:
     /**
      * @name Interpolation functions, to be implemented
      * @{
      */
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const;
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
-    virtual void Coarsen_(const interp_ctx_t* ctx) const                     = 0;
-    virtual void Refine_(const interp_ctx_t* ctx) const                      = 0;
-    virtual void Detail_(const interp_ctx_t* ctx, real_t* details_max) const = 0;
-    virtual void WriteDetail_(const interp_ctx_t* ctx) const                 = 0;
+    virtual void Coarsen_(m_ptr<const interp_ctx_t> ctx) const                           = 0;
+    virtual void Refine_(m_ptr<const interp_ctx_t> ctx) const                            = 0;
+    virtual void Detail_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_max) const = 0;
+    virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                       = 0;
     /** @} */
 
     // defined function -- might be overriden
-    virtual void Copy_(const level_t dlvl, const interp_ctx_t* ctx) const;
+    virtual void Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const;
 };
 
 #endif  // SRC_WAVELET_HPP_

@@ -1,8 +1,9 @@
-#ifndef SRC_MEMLAYOUT_HPP_
-#define SRC_MEMLAYOUT_HPP_
+#ifndef SRC_CORE_MEMLAYOUT_HPP_
+#define SRC_CORE_MEMLAYOUT_HPP_
 
 #include "mpi.h"
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 
 /**
  * @brief descibes the most fundamental 3D memory layout and a region of interest (start-end)

@@ -1,23 +1,27 @@
 #include "wavelet.hpp"
 
-#include "subblock.hpp"
+#include "core/forloop.hpp"
+#include "core/memlayout.hpp"
 
 /**
  * @brief copy the data from data_src to data_trg
  * 
- * @warning we downsample the data if the levels do not match, this is a wrapper to the @ref Wavelet::DoMagic_() function.
+ * @warning we downsample the data if the levels do not match
+ * @warning this is a wrapper to the @ref Wavelet::DoMagic_() function.
  * 
  * @param dlvl the difference of level: level_src - level_trg, only a difference of 0 or 1 is admissible
  * @param shift the position of the trg (0,0,0) in the src framework (and resolution!)
  * @param block_src description of data_src memory layout 
- * @param data_src the 0-position of the src memory, i.e. the memory location of (0,0,0) for the source
- * @param block_trg descripiton of data_trg
- * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
+ * @param data_src the src data_ptr
+ * @param block_trg descripiton of data_trg memory layout
+ * @param data_trg the trg data_ptr
  */
-void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const{
+void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg) const {
+    //-------------------------------------------------------------------------
     m_assert(dlvl == 0 || dlvl == 1, "only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, true, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
+    //-------------------------------------------------------------------------
 }
 
 /**
@@ -33,9 +37,11 @@ void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout* bl
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg) const{
+void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg) const {
+    //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
+    //-------------------------------------------------------------------------
 }
 
 /**
@@ -54,9 +60,11 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const{
+void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const{
+    //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
+    //-------------------------------------------------------------------------
 }
 
 /**
@@ -76,10 +84,10 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const data_ptr data_cst) const {
+void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
-    m_assert(!(alpha != 0.0 && data_cst == nullptr), "if alpha = %e, the data_cst cannot be nullptr", alpha);
+    m_assert(!(alpha != 0.0 && data_cst.IsEmpty()), "if alpha = %e, the data_cst cannot be empty", alpha);
     //-------------------------------------------------------------------------
     // create the interpolation context
     interp_ctx_t ctx;
@@ -89,21 +97,21 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
         // the src starting and ending is place form the target point of view
 #ifndef NDEBUG
         // for the target point of view, the start of the source is is in start - shift, same for the end
-        ctx.srcstart[id] = block_src->start(id) - shift[id];
-        ctx.srcend[id]   = block_src->end(id) - shift[id];
+        ctx.srcstart[id] = block_src()->start(id) - shift[id];
+        ctx.srcend[id]   = block_src()->end(id) - shift[id];
 #endif
-        ctx.trgstart[id] = block_trg->start(id);
-        ctx.trgend[id]   = block_trg->end(id);
+        ctx.trgstart[id] = block_trg()->start(id);
+        ctx.trgend[id]   = block_trg()->end(id);
     }
-    ctx.srcstr = block_src->stride();
-    ctx.trgstr = block_trg->stride();
+    ctx.srcstr = block_src()->stride();
+    ctx.trgstr = block_trg()->stride();
 
     // store the multiplication factor and the normal
     ctx.alpha = alpha;
 
     // get the correct aligned arrays
     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
-    ctx.sdata = data_src + m_midx(shift[0], shift[1], shift[2], 0, block_src);
+    ctx.sdata = data_src.Read(shift[0], shift[1], shift[2], 0, block_src()->stride());
     ctx.cdata = data_cst;
     ctx.tdata = data_trg;
 
@@ -125,39 +133,53 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
  * @param dlvl the difference of level between the source and the target
  * @param ctx the interpolation context
  */
-void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t* ctx) const {
+void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     //-------------------------------------------------------------------------
-
     const lid_t  scaling = pow(2, dlvl);
-    const real_t alpha   = ctx->alpha;
+    // const real_t alpha   = ctx()->alpha;
 
-    // do the copy
-    for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
-        for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
-            for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
-                m_assert(((scaling * ik0) >= ctx->srcstart[0]) && ((scaling * ik0) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->srcstart[0], ik0, ctx->srcend[0]);
-                m_assert(((scaling * ik1) >= ctx->srcstart[1]) && ((scaling * ik1) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->srcstart[1], ik1, ctx->srcend[1]);
-                m_assert(((scaling * ik2) >= ctx->srcstart[2]) && ((scaling * ik2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->srcstart[2], ik2, ctx->srcend[2]);
-                // get the current parent's data
-                data_ptr       ltdata = ctx->tdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                m_assert(ctx->cdata == nullptr,"the constant data must be nullptr for the moment");
-                // const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-                const data_ptr lsdata = ctx->sdata + m_sidx(scaling * ik0, scaling * ik1, scaling * ik2, 0, ctx->srcstr);
-                // do the simple copy
-                m_assert(((ik0) >= ctx->trgstart[0]) && ((ik0) < ctx->trgend[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", ik0, ctx->trgstart[0], ik0, ctx->trgend[0]);
-                m_assert(((ik1) >= ctx->trgstart[1]) && ((ik1) < ctx->trgend[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", ik1, ctx->trgstart[1], ik1, ctx->trgend[1]);
-                m_assert(((ik2) >= ctx->trgstart[2]) && ((ik2) < ctx->trgend[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", ik2, ctx->trgstart[2], ik2, ctx->trgend[2]);
-                // ltdata[0] = alpha * lcdata[0] + lsdata[0];
-                m_assert(ctx->cdata == nullptr, "the constant data must be nullptr for the moment");
-                ltdata[0] = lsdata[0];
-                m_assert(lsdata[0] == lsdata[0], "cannot be nan");
-                // m_assert(lcdata[0] == lcdata[0], "cannot be nan");
-                m_assert(ltdata[0] == ltdata[0], "cannot be nan");
-            }
-        }
-    }
+    const bidx_t start[3] = {ctx()->trgstart[0], ctx()->trgstart[1], ctx()->trgstart[2]};
+    const bidx_t end[3]   = {ctx()->trgend[0], ctx()->trgend[1], ctx()->trgend[2]};
+
+    data_ptr       tdata = ctx()->tdata;
+    const_data_ptr sdata = ctx()->sdata;
+
+    auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        // check we do not have to take the constant into account (not coded yet, weird behavior while saying trg = 0.0 * trg)
+        m_assert(ctx()->cdata.IsEmpty(), "the constant data must be nullptr for the moment");
+        // check the accesses
+        m_assert(((scaling * i0) >= ctx()->srcstart[0]) && ((scaling * i0) < ctx()->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx()->srcstart[0], i0, ctx()->srcend[0]);
+        m_assert(((scaling * i1) >= ctx()->srcstart[1]) && ((scaling * i1) < ctx()->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx()->srcstart[1], i1, ctx()->srcend[1]);
+        m_assert(((scaling * i2) >= ctx()->srcstart[2]) && ((scaling * i2) < ctx()->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx()->srcstart[2], i2, ctx()->srcend[2]);
+        m_assert(((i0) >= ctx()->trgstart[0]) && ((i0) < ctx()->trgend[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx()->trgstart[0], i0, ctx()->trgend[0]);
+        m_assert(((i1) >= ctx()->trgstart[1]) && ((i1) < ctx()->trgend[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx()->trgstart[1], i1, ctx()->trgend[1]);
+        m_assert(((i2) >= ctx()->trgstart[2]) && ((i2) < ctx()->trgend[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx()->trgstart[2], i2, ctx()->trgend[2]);
+
+        // get the current parent's data
+        // const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+        const real_t* lsdata = sdata.Read(scaling * i0, scaling * i1, scaling * i2, 0, ctx()->srcstr);
+        real_t*       ltdata = tdata.Write(i0, i1, i2, 0, ctx()->trgstr);
+
+        // do the simple copy
+        // ltdata[0] = alpha * lcdata[0] + lsdata[0];
+        ltdata[0] = lsdata[0];
+        m_assert(lsdata[0] == lsdata[0], "cannot be nan");
+        // m_assert(lcdata[0] == lcdata[0], "cannot be nan");
+        m_assert(ltdata[0] == ltdata[0], "cannot be nan");
+    };
+
+    for_loop(&op,start,end);
+
+    // // do the copy
+    // for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
+    //     for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
+    //         for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
+                
+    //         }
+    //     }
+    // }
     //-------------------------------------------------------------------------
 }
 
@@ -173,25 +195,25 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t* ctx) const {
  * @param src_rank the rank of the source memory
  * @param win the window to use for the RMA calls
  */
-void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, MPI_Aint disp_src, const MemLayout* block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const {
+void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
     //-------------------------------------------------------------------------
     //................................................
     // get the corresponding MPI_Datatype for the target
-    const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
-    const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
+    const lid_t  trg_start[3] = {block_trg()->start(0), block_trg()->start(1), block_trg()->start(2)};
+    const lid_t  trg_end[3]   = {block_trg()->end(0), block_trg()->end(1), block_trg()->end(2)};
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, block_trg()->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
     const lid_t  scale        = (lid_t)pow(2, dlvl);
-    const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
-    const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
+    const lid_t  src_start[3] = {shift[0] + block_trg()->start(0) * scale, shift[1] + block_trg()->start(1) * scale, shift[2] + block_trg()->start(2) * scale};
+    const lid_t  src_end[3]   = {shift[0] + block_trg()->end(0) * scale, shift[1] + block_trg()->end(1) * scale, shift[2] + block_trg()->end(2) * scale};
     MPI_Datatype dtype_src;
-    ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
+    ToMPIDatatype(src_start, src_end, block_src()->stride(), scale, &dtype_src);
 
     //................................................
 #ifndef NDEBUG
@@ -200,8 +222,8 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     MPI_Type_size(dtype_trg, &size_trg);
     m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
 #endif
-    data_ptr local_trg = data_trg + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg);
-    MPI_Aint disp      = disp_src + m_zeroidx(0, block_src) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src);
+    real_t* local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg()->stride());
+    MPI_Aint disp      = disp_src + m_zeroidx(0, block_src()) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src());
     // //#pragma omp critical
     MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
 
@@ -223,25 +245,25 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
  * @param src_rank the rank of the source memory
  * @param win the window to use for the RMA calls
  */
-void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* block_src, const data_ptr ptr_src, const MemLayout* block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const {
+void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
     //-------------------------------------------------------------------------
     //................................................
     // get the corresponding MPI_Datatype for the target
-    const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
-    const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
+    const lid_t  trg_start[3] = {block_trg()->start(0), block_trg()->start(1), block_trg()->start(2)};
+    const lid_t  trg_end[3]   = {block_trg()->end(0), block_trg()->end(1), block_trg()->end(2)};
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, block_trg()->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
     const lid_t  scale        = (lid_t)pow(2, dlvl);
-    const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
-    const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
+    const lid_t  src_start[3] = {shift[0] + block_trg()->start(0) * scale, shift[1] + block_trg()->start(1) * scale, shift[2] + block_trg()->start(2) * scale};
+    const lid_t  src_end[3]   = {shift[0] + block_trg()->end(0) * scale, shift[1] + block_trg()->end(1) * scale, shift[2] + block_trg()->end(2) * scale};
     MPI_Datatype dtype_src;
-    ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
+    ToMPIDatatype(src_start, src_end, block_src()->stride(), scale, &dtype_src);
 
     //................................................
 #ifndef NDEBUG
@@ -251,8 +273,8 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     // m_verb("src size = %d and the trg size = %d", size_src, size_trg);
     m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
 #endif
-    data_ptr local_src = ptr_src + m_zeroidx(0, block_src) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src);
-    MPI_Aint disp      = disp_trg + m_zeroidx(0, block_trg) + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg);
+    const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src()->stride());
+    MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg()) + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg());
     //#pragma omp critical
     MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
 
@@ -273,16 +295,16 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
  * @param data the data
  * @return real_t the infinite norm of the max detail coefficient in the extended region
  */
-real_t Wavelet::Criterion(MemLayout* block, data_ptr data) const {
+real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data) const {
     //-------------------------------------------------------------------------
     // get the extended memory layout
     lid_t       start[3];
     lid_t       end[3];
     for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - shift_front();
-        end[id]   = block->end(id) + shift_back();
+        start[id] = block()->start(id) - shift_front();
+        end[id]   = block()->end(id) + shift_back();
     }
-    SubBlock extended_block(block->gs(), block->stride(), start, end);
+    SubBlock extended_block(block()->gs(), block()->stride(), start, end);
 
     // get the detail coefficients
     real_t details_max = 0.0;
@@ -293,29 +315,28 @@ real_t Wavelet::Criterion(MemLayout* block, data_ptr data) const {
 }
 
 /**
- * @brief compute the max detail coefficients of a given MemLayout
+ * @brief compute the max detail coefficients on a given MemLayout
  * 
- * @param block the block on which we computed
- * @param data the memory pointer to the point (0,0,0) of that block
- * @param data_tmp the temp memory of size CoarseStride()^3, see the ghosting
- * @param details_max an array of size 8 that will contain the detail coefficients: dx, dy, dz, dxy, dyz, dxz, dxyz, mean
+ * @param block the memory layout on which we compute the max detail
+ * @param data the data_ptr associated to the layout
+ * @param details_max the ptr to a value to put the max detail coefficient
  */
-void Wavelet::Details(MemLayout* block, data_ptr data_block, real_t* details_max) const {
+void Wavelet::Details(m_ptr<MemLayout> block, const_data_ptr data, m_ptr<real_t> details_max) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = -1;
-        ctx.srcend[id]   = -1;
+        ctx.srcstart[id] = block()->start(id);
+        ctx.srcend[id]   = block()->end(id);
 #endif
-        ctx.trgstart[id] = block->start(id);
-        ctx.trgend[id]   = block->end(id);
+        ctx.trgstart[id] = block()->start(id);
+        ctx.trgend[id]   = block()->end(id);
     }
-    ctx.srcstr = -1;//coarse_block->stride();
-    ctx.sdata  = nullptr;
-    ctx.trgstr = block->stride();
-    ctx.tdata  = data_block;
+    ctx.srcstr = block()->stride();
+    ctx.sdata  = data;
+    ctx.trgstr = -1;
+    ctx.tdata  = nullptr;
     Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
@@ -327,21 +348,21 @@ void Wavelet::Details(MemLayout* block, data_ptr data_block, real_t* details_max
  * @param data_trg 
  * @param data_src 
  */
-void Wavelet::WriteDetails(MemLayout* block, data_ptr data_src, data_ptr data_trg) const {
+void Wavelet::WriteDetails(m_ptr<const MemLayout> block, const_data_ptr data_src, data_ptr data_trg) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = block->start(id);
-        ctx.srcend[id]   = block->end(id);
+        ctx.srcstart[id] = block()->start(id);
+        ctx.srcend[id]   = block()->end(id);
 #endif
-        ctx.trgstart[id] = block->start(id);
-        ctx.trgend[id]   = block->end(id);
+        ctx.trgstart[id] = block()->start(id);
+        ctx.trgend[id]   = block()->end(id);
     }
-    ctx.srcstr = block->stride();
+    ctx.srcstr = block()->stride();
 
-    ctx.trgstr = block->stride();
+    ctx.trgstr = block()->stride();
     ctx.sdata  = data_src;
     ctx.tdata  = data_trg;
     WriteDetail_(&ctx);
