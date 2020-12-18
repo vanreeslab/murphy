@@ -33,14 +33,14 @@ inline void for_loop(T* core, const bidx_t s0, const bidx_t e0, const bidx_t s1,
 template <class T>
 inline void for_loop(T* core, const bidx_t start[3], const bidx_t end[3]) {
     //-------------------------------------------------------------------------
-    for_loop(core, start[0], start[1], start[2], end[0], end[1], end[2]);
+    for_loop(core, start[0], end[0], start[1], end[1], start[2], end[2]);
     //-------------------------------------------------------------------------
 };
 
 template <class T>
 inline void for_loop(T* core, const bidx_t start, const bidx_t end) {
     //-------------------------------------------------------------------------
-    for_loop(core, start, start, start, end, end, end);
+    for_loop(core, start, end, start, end, start, end);
     //-------------------------------------------------------------------------
 };
 

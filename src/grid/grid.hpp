@@ -84,11 +84,11 @@ class Grid : public ForestGrid {
      * @{
      */
     inline lid_t NGhostFront() const {
-        m_assert(interp_ == nullptr, "interp cannot be null");
+        m_assert(interp_ != nullptr, "interp cannot be null");
         return interp_->nghost_front();
     }
     inline lid_t NGhostBack() const {
-        m_assert(interp_ == nullptr, "interp cannot be null");
+        m_assert(interp_ != nullptr, "interp cannot be null");
         return interp_->nghost_back();
     }
     void GhostPull(m_ptr<Field> field);

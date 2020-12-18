@@ -324,11 +324,6 @@ void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
     real_t*  wy         = block_data.Write(idy, block());
     real_t*  wz         = block_data.Write(idz, block());
 
-    real_t* test = block()->pointer(fid, 0)();
-    printf("coucou %f",test[0]);
-    printf("coucou %f",wx[-2404]);
-    m_assert(wx - test == 2404, "euuuh");
-
     for (lid_t i2 = start_; i2 < end_; i2++) {
         for (lid_t i1 = start_; i1 < end_; i1++) {
             for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -346,10 +341,6 @@ void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
                 const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center_[idz], 2);
                 const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center_[idz], 2);
                 const real_t vort    = oo_pisigma2 * (exp(-rad1_sq * oo_sigma2) - exp(-rad2_sq * oo_sigma2));
-
-                bidx_t tmp_idx = m_idx(i0, i1, i2);
-                m_assert(tmp_idx >= -1202, "the index %d must be ok", tmp_idx);
-                m_assert(tmp_idx <= 10818, "the index %d must be ok", tmp_idx);
 
                 wx[m_idx(i0, i1, i2)] = -vort * sin(alpha);  //  -vort * cos(alpha);
                 wy[m_idx(i0, i1, i2)] = vort * cos(alpha);   // +vort * sin(alpha);
