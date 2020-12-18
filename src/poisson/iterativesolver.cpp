@@ -81,12 +81,12 @@ void IterativeSolver::operator()(Field* fid_sol, Field* fid_rhs, Field* fid_tmp,
     // // start the inner operation on the first dimension
 
     // if (grid->profiler() != nullptr) {
-    //     grid->profiler()->Start("stencil_outer");
+    //     grid->profiler->Start("stencil_outer");
     // }
     // ida_ = fid_sol->lda() - 1;
     // DoOp_F_<op_t<IterativeSolver*, Field*, Field*, Field*>, IterativeSolver*, Field*, Field*, Field*>(CallIterativeSolverOuter, grid, fid_sol, fid_rhs, fid_tmp, this);
     // if (grid->profiler() != nullptr) {
-    //     grid->profiler()->Stop("stencil_outer");
+    //     grid->profiler->Stop("stencil_outer");
     // }
     // // we changed the solution field
     // fid_sol->ghost_status(false);

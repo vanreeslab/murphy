@@ -68,14 +68,14 @@ class Boundary {
         m_assert((fsign[0] + fsign[1] + fsign[2] == -1) || (fsign[0] + fsign[1] + fsign[2] == +1), "only 1 component of face_sign must be non null: %f %f %f ", fsign[0], fsign[1], fsign[2]);
 
         // shift the data to compute the region on the left or on the right of fstart
-        const bidx_t start[3] = {block()->start(0) - fstart[0], block()->start(1) - fstart[1], block()->start(2) - fstart[2]};
-        const bidx_t end[3]   = {block()->end(0) - fstart[0], block()->end(1) - fstart[1], block()->end(2) - fstart[2]};
+        const bidx_t start[3] = {block->start(0) - fstart[0], block->start(1) - fstart[1], block->start(2) - fstart[2]};
+        const bidx_t end[3]   = {block->end(0) - fstart[0], block->end(1) - fstart[1], block->end(2) - fstart[2]};
 
         // move the data around fstart
         rank_t rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-        const bidx_t b_stride = block()->stride();
+        const bidx_t b_stride = block->stride();
         real_t*      ldata   = data.Write(fstart[0], fstart[1], fstart[2], 0, b_stride);
 
         auto op = [=, &ldata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -91,13 +91,13 @@ class Boundary {
                 const bidx_t idx2 = (!isphys[2]) ? i2 : (-(ip + OverWriteFirst(fsign[2])) * fsign[2]);
 
                 // check that we stay at the correct sport for everybody
-                m_assert((fstart[0] + idx0) >= (-block()->gs()) && (fstart[0] + idx0) < (block()->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block()->gs(), block()->stride());
-                m_assert((fstart[1] + idx1) >= (-block()->gs()) && (fstart[1] + idx1) < (block()->stride()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block()->gs(), block()->stride());
-                m_assert((fstart[2] + idx2) >= (-block()->gs()) && (fstart[2] + idx2) < (block()->stride()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block()->gs(), block()->stride());
+                m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
+                m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
+                m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
                 // check the specific isphys direction
-                m_assert((((fstart[0] + idx0) * isphys[0]) >= 0) && ((fstart[0] + idx0) * isphys[0]) < (block()->stride() - block()->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block()->gs(), block()->stride());
-                m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block()->stride() - block()->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block()->gs(), block()->stride());
-                m_assert((((fstart[2] + idx2) * isphys[2]) >= 0) && ((fstart[2] + idx2) * isphys[2]) < (block()->stride() - block()->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block()->gs(), block()->stride());
+                m_assert((((fstart[0] + idx0) * isphys[0]) >= 0) && ((fstart[0] + idx0) * isphys[0]) < (block->stride() - block->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
+                m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block->stride() - block->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
+                m_assert((((fstart[2] + idx2) * isphys[2]) >= 0) && ((fstart[2] + idx2) * isphys[2]) < (block->stride() - block->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
 
                 // store the result
                 f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];

@@ -25,17 +25,17 @@ void Stencil::operator()(m_ptr<Grid> grid, m_ptr<Field> field_src, m_ptr<Field> 
     m_assert(!grid.IsEmpty() , "the grid cannot be null");
     m_assert(!field_src.IsEmpty(), "the source field cannot be null");
     m_assert(!field_trg.IsEmpty(), "the source field cannot be null");
-    m_assert(grid()->is_mesh_valid(), "we need the mesh and the ghost to do something here");
-    m_assert(grid()->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
-    m_assert(grid()->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
+    m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
+    m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
+    m_assert(grid->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
     //-------------------------------------------------------------------------
-    m_log("ghost check: field <%s> is %s", field_src()->name().c_str(), field_src()->ghost_status() ? "OK" : "to be computed");
+    m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status() ? "OK" : "to be computed");
     m_profStart(prof_(), "stencil");
     // init the prof if not already done
-    for (lda_t ida = 0; ida < field_src()->lda(); ++ida) {
+    for (lda_t ida = 0; ida < field_src->lda(); ++ida) {
         // start the send of the coarse
         m_profStart(prof_(), "ghost");
-        grid()->GhostPull_Post(field_src, ida);
+        grid->GhostPull_Post(field_src, ida);
         m_profStop(prof_(), "ghost");
 
         // compute the stencil on the outer side
@@ -49,7 +49,7 @@ void Stencil::operator()(m_ptr<Grid> grid, m_ptr<Field> field_src, m_ptr<Field> 
 
         // get the coarse representation back
         m_profStart(prof_(), "ghost");
-        grid()->GhostPull_Wait(field_src, ida);
+        grid->GhostPull_Wait(field_src, ida);
         m_profStop(prof_(), "ghost");
 
         // outer operation on the now received dimension
@@ -61,8 +61,8 @@ void Stencil::operator()(m_ptr<Grid> grid, m_ptr<Field> field_src, m_ptr<Field> 
     }
     m_profStop(prof_(), "stencil");
     // update the ghost status
-    field_src()->ghost_status(true);
-    field_trg()->ghost_status(false);
+    field_src->ghost_status(true);
+    field_trg->ghost_status(false);
     //-------------------------------------------------------------------------
     m_end;
 }

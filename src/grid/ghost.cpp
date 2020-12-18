@@ -50,7 +50,7 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, m_ptr<const Wavelet> interp, m_ptr<Prof> pr
  */
 Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_level, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler) : interp_(interp) {
     m_begin;
-    m_assert(grid()->is_mesh_valid(), "the mesh needs to be valid before entering here");
+    m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // get the important pointers
     grid_   = grid;
@@ -69,8 +69,8 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     // m_verb("I will ghost %d local active quads", n_active_quad_);
 
     // store the number of ghosts needed
-    m_assert(interp_()->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_()->nghost_front());
-    m_assert(interp_()->nghost_back() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_()->nghost_back());
+    m_assert(interp_->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_front());
+    m_assert(interp_->nghost_back() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_back());
 
     //................................................
     // initialize the communications and the ghost's lists
@@ -80,10 +80,10 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     m_profStop(prof_(), "ghost_init");
 
     //-------------------------------------------------------------------------
-    m_log("ghost for refinement: %d %d", interp_()->nrefine_front(), interp_()->nrefine_back());
-    m_log("ghost for coarsening: %d %d", interp_()->ncoarsen_front(), interp_()->ncoarsen_back());
-    m_log("ghost for criterion: %d %d + shift: %d %d", interp_()->ncriterion_front(), interp_()->ncriterion_back(), interp_()->shift_front(), interp_()->shift_back());
-    m_log("ghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_()->Identity().c_str(), interp_()->nghost_front(), interp_()->nghost_back(), interp_()->CoarseNGhostFront(), interp_()->CoarseNGhostBack());
+    m_log("ghost for refinement: %d %d", interp_->nrefine_front(), interp_->nrefine_back());
+    m_log("ghost for coarsening: %d %d", interp_->ncoarsen_front(), interp_->ncoarsen_back());
+    m_log("ghost for criterion: %d %d + shift: %d %d", interp_->ncriterion_front(), interp_->ncriterion_back(), interp_->shift_front(), interp_->shift_back());
+    m_log("ghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
     m_end;
 }
 
@@ -93,7 +93,7 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
  */
 Ghost::~Ghost() {
     m_begin;
-    m_assert(grid_()->is_mesh_valid(), "the mesh needs to be valid before entering here");
+    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     FreeList_();
     FreeComm_();
@@ -110,11 +110,11 @@ void Ghost::InitList_() {
     m_verb("Ghost lists initialization started...");
     //-------------------------------------------------------------------------
     // get stupid MPI info
-    rank_t         mpi_size = grid_()->mpisize();
-    MPI_Comm       mpi_comm = grid_()->mpicomm();
-    p8est_t*       forest   = grid_()->p4est_forest();
-    p8est_ghost_t* ghost    = grid_()->p4est_ghost();
-    p8est_mesh_t*  mesh     = grid_()->p4est_mesh();
+    rank_t         mpi_size = grid_->mpisize();
+    MPI_Comm       mpi_comm = grid_->mpicomm();
+    p8est_t*       forest   = grid_->p4est_forest();
+    p8est_ghost_t* ghost    = grid_->p4est_ghost();
+    p8est_mesh_t*  mesh     = grid_->p4est_mesh();
 
     // sanity checks
     m_assert(mpi_comm == MPI_COMM_WORLD, "the comm should be a comm world");
@@ -218,10 +218,10 @@ void Ghost::InitComm_() {
     // m_assert(n_active_quad_ >= 0, "the number of active quads must be computed beforehand");
     //-------------------------------------------------------------------------
     // get stupid information
-    int            mpi_size = grid_()->mpisize();
-    MPI_Comm       mpi_comm = grid_()->mpicomm();
-    p8est_t*       forest   = grid_()->p4est_forest();
-    p8est_ghost_t* ghost    = grid_()->p4est_ghost();
+    int            mpi_size = grid_->mpisize();
+    MPI_Comm       mpi_comm = grid_->mpicomm();
+    p8est_t*       forest   = grid_->p4est_forest();
+    p8est_ghost_t* ghost    = grid_->p4est_ghost();
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
@@ -337,7 +337,7 @@ void Ghost::FreeComm_() {
 void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
-    m_assert(grid_()->is_mesh_valid(), "the mesh needs to be valid before entering here");
+    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current dimension
     ida_ = ida;
@@ -381,7 +381,7 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(ida_ == ida, "the ongoing dimension (%d) must be over first", ida_);
-    m_assert(grid_()->is_mesh_valid(), "the mesh needs to be valid before entering here");
+    m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     m_profStart(prof_(), "pullghost wait");
     //................................................
@@ -706,11 +706,11 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
  */
 void Ghost::PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
-    m_assert(ida_ < fid()->lda(), "the current working dimension has to be correct");
+    m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
     // recover the mirro spot using the mirror id
-    real_p  mirror = mirrors_ + qid()->mid * m_blockmemsize(1);
-    mem_ptr data   = block()->pointer(fid, ida_);
+    real_p  mirror = mirrors_ + qid->mid * m_blockmemsize(1);
+    mem_ptr data   = block->pointer(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
     memcpy(mirror, data(), m_blockmemsize(1) * sizeof(real_t));
@@ -726,24 +726,24 @@ void Ghost::PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
  */
 void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
-    m_assert(ida_ < fid()->lda(), "the current working dimension has to be correct");
+    m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p   mirror = mirrors_ + qid()->mid * m_blockmemsize(1) + m_zeroidx(0, block());
-    data_ptr data   = block()->data(fid, ida_);
+    real_p   mirror = mirrors_ + qid->mid * m_blockmemsize(1) + m_zeroidx(0, block());
+    data_ptr data   = block->data(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
 
-    for (auto gblock : (*block()->ghost_children())) {
+    for (auto gblock : (*block->ghost_children())) {
         const lid_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
         const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
-        real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block()->stride());
+        real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block->stride());
         real_t* data_trg = data.Write(start[0], start[1], start[2], 0, block());
 
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;
         MPI_Datatype dtype;
-        ToMPIDatatype(start, end, block()->stride(), 1, &dtype);
+        ToMPIDatatype(start, end, block->stride(), 1, &dtype);
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
         MPI_Type_free(&dtype);
     }
@@ -763,7 +763,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 //     //-------------------------------------------------------------------------
 //     // get the working array given the thread
 //     real_p     tmp       = block->coarse_ptr();
-//     const bool do_coarse = (block->local_parent()->size() + block->ghost_parent()->size()) > 0;
+//     const bool do_coarse = (block->local_parent->size() + block->ghost_parent->size()) > 0;
 
 //     //................................................
 //     // start to obtain the missing info with my siblings
@@ -799,7 +799,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 // void Ghost::GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field* fid) const {
 //     //-------------------------------------------------------------------------
 //     real_p     tmp       = block->coarse_ptr();
-//     const bool do_coarse = (block->local_parent()->size() + block->ghost_parent()->size()) > 0;
+//     const bool do_coarse = (block->local_parent->size() + block->ghost_parent->size()) > 0;
 //     if (do_coarse) {
 //         // now that everything has arrived, I can compute myself and the phys boundaries
 //         Compute4Block_Myself2Coarse_(qid, block, fid, tmp);
@@ -821,7 +821,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 //  */
 // void Ghost::PutGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field* fid) const {
 //     //-------------------------------------------------------------------------
-//     const bool do_coarse = (block->local_parent()->size() + block->ghost_parent()->size()) > 0;
+//     const bool do_coarse = (block->local_parent->size() + block->ghost_parent->size()) > 0;
 //     if (do_coarse) {
 //         // reset the tmp to use for the put operations
 //         real_p tmp = block->coarse_ptr();
@@ -1136,11 +1136,11 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
  */
 void Ghost::LoopOnMirrorBlock_(const gop_t op, m_ptr<const Field> field) {
     m_begin;
-    m_assert(grid_()->is_mesh_valid(), "mesh is not valid, unable to process");
+    m_assert(grid_->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
     // get the grid info
-    p8est_t*       forest = grid_()->p4est_forest();
-    p8est_ghost_t* ghost  = grid_()->p4est_ghost();
+    p8est_t*       forest = grid_->p4est_forest();
+    p8est_ghost_t* ghost  = grid_->p4est_ghost();
     // const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
 
     //#pragma omp parallel for

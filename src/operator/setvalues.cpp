@@ -15,12 +15,12 @@ void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field) {
     //-------------------------------------------------------------------------
     // get the span of ida
     ida_start_ = 0;
-    ida_end_   = field()->lda();
+    ida_end_   = field->lda();
     // go for it
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
-    field()->ghost_status(do_ghost_);
+    field->ghost_status(do_ghost_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -35,7 +35,7 @@ void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field, cons
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
-    field()->ghost_status(do_ghost_);
+    field->ghost_status(do_ghost_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -56,10 +56,10 @@ SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], m_ptr<const Wavele
 void SetAbs::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz   = block()->xyz();
-    const real_t* hgrid = block()->hgrid();
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
 
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_t* data = block_data.Write(ida, block());
         for (lid_t i2 = start_; i2 < end_; i2++) {
@@ -97,11 +97,11 @@ SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t al
 void SetSinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz     = block()->xyz();
-    const real_t* hgrid   = block()->hgrid();
+    const real_t* xyz     = block->xyz();
+    const real_t* hgrid   = block->hgrid();
     const real_t  fact[3] = {2.0 * M_PI * freq_[0] / length_[0], 2.0 * M_PI * freq_[1] / length_[1], 2.0 * M_PI * freq_[2] / length_[2]};
 
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_t* data = block_data.Write(ida, block());
         for (lid_t i2 = start_; i2 < end_; i2++) {
@@ -136,12 +136,12 @@ SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_
 void SetCosinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz     = block()->xyz();
-    const real_t* hgrid   = block()->hgrid();
+    const real_t* xyz     = block->xyz();
+    const real_t* hgrid   = block->hgrid();
     const real_t  vol     = 1.0 / (hgrid[0] * hgrid[1] * hgrid[2]);
     const real_t  fact[3] = {2.0 * M_PI * freq_[0] / length_[0], 2.0 * M_PI * freq_[1] / length_[1], 2.0 * M_PI * freq_[2] / length_[2]};
 
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_t* data = block_data.Write(ida, block());
         for (lid_t i2 = start_; i2 < end_; i2++) {
@@ -175,10 +175,10 @@ SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const r
 void SetPolynom::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz   = block()->xyz();
-    const real_t* hgrid = block()->hgrid();
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
 
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_t* data = block_data.Write(ida, block());
         for (lid_t i2 = start_; i2 < end_; i2++) {
@@ -214,14 +214,14 @@ SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], co
 void SetExponential::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz   = block()->xyz();
-    const real_t* hgrid = block()->hgrid();
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
 
     real_t sigma     = sqrt(sigma_[0] * sigma_[0] + sigma_[1] * sigma_[1] + sigma_[2] * sigma_[2]);
     real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
     real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2);
 
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_t* data = block_data.Write(ida, block());
         for (lid_t i2 = start_; i2 < end_; i2++) {
@@ -260,15 +260,15 @@ SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha
 void SetErf::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz   = block()->xyz();
-    const real_t* hgrid = block()->hgrid();
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
 
     real_t sigma     = sqrt(sigma_[0] * sigma_[0] + sigma_[1] * sigma_[1] + sigma_[2] * sigma_[2]);
     real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
     real_t oo_sqrt2  = 1.0 / M_SQRT2;
     real_t fact      = alpha_ / (4.0 * M_PI * sigma);  // see Wincky encyclopedia
 
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
         real_t* data = block_data.Write(ida, block());
         for (lid_t i2 = start_; i2 < end_; i2++) {
@@ -308,8 +308,8 @@ SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const r
 void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz   = block()->xyz();
-    const real_t* hgrid = block()->hgrid();
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
 
     const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
     const real_t oo_pisigma2 = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
@@ -319,7 +319,7 @@ void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
     const lda_t idy = (normal_ + 2) % 3;
     const lda_t idz = normal_;
     // get the pointers correct
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     real_t*  wx         = block_data.Write(idx, block());
     real_t*  wy         = block_data.Write(idy, block());
     real_t*  wz         = block_data.Write(idz, block());
@@ -386,8 +386,8 @@ SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t cent
 void SetCompactVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
-    const real_t* xyz   = block()->xyz();
-    const real_t* hgrid = block()->hgrid();
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
 
     const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
     const real_t oo_R2       = 1.0 / (cutoff_ * cutoff_);
@@ -398,7 +398,7 @@ void SetCompactVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock
     const lda_t idy = (normal_ + 2) % 3;
     const lda_t idz = normal_;
     // get the pointers correct
-    data_ptr block_data = block()->data(fid);
+    data_ptr block_data = block->data(fid);
     real_t*  wx         = block_data.Write(idx, block());
     real_t*  wy         = block_data.Write(idy, block());
     real_t*  wz         = block_data.Write(idz, block());

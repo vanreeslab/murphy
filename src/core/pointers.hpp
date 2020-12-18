@@ -60,8 +60,15 @@ class m_ptr {
     /** @brief return true if it owns the data */
     bool IsOwned() const { return is_owned_; };
 
+    //-------------------------------------------------------------------------
     /** @brief return the underlying pointer */
     T* operator()() const { return data_; }
+
+    /** @brief operator *, return the associated object */
+    T& operator*() const { return *data_; }
+
+    /** @brief operator ->, return the contained pointer */
+    T* operator->() const { return data_; }
 
     /** @brief allocate an owned array of size */
     void Calloc(const size_t size) {
@@ -121,12 +128,8 @@ class mem_ptr : public m_ptr<real_t> {
 
     data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
     data_ptr operator()(const lda_t ida, m_ptr<const MemLayout> layout) const;
-
-    mem_ptr shift_dim(const lda_t ida, m_ptr<const MemLayout> layout) const;
+    mem_ptr  shift_dim(const lda_t ida, m_ptr<const MemLayout> layout) const;
 };
-
-// using data_ptr      = m_ptr<real_t>;        //!< data pointer type = root of the data, i.e. the adress of (0,0,0)
-// using mem_ptr       = m_ptr<real_t>;        //!< pointer type = root of the memory allocation
 /**@}*/
 
 constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0, const bidx_t stride = M_STRIDE) {
@@ -135,7 +138,7 @@ constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const 
 }
 
 // constexpr size_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, m_ptr<const MemLayout> layout) {
-//     const size_t stride = layout()->stride();
+//     const size_t stride = layout->stride();
 //     return (size_t)(i0 + stride * (i1 + stride * (i2 + stride * ida)));
 // }
 

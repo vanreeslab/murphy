@@ -37,15 +37,15 @@ class Conservative_AdvectionDiffusion : public Stencil {
 
 template <sid_t length_advection, sid_t length_diffusion>
 void Conservative_AdvectionDiffusion<length_advection, length_diffusion>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) {
-    m_assert((fid_src()->lda() == 3) && (fid_trg()->lda() == 3), "the source must be 3 times smaller than the target ");
+    m_assert((fid_src->lda() == 3) && (fid_trg->lda() == 3), "the source must be 3 times smaller than the target ");
     static_assert(length_advection == 4, "the size of the stencil is not supported");
     static_assert(length_diffusion == 3 || length_diffusion == 5, "the size of the stencil is not supported");
     //-------------------------------------------------------------------------
-    const real_t scale_d[3]  = {1.0 / block()->hgrid(0), 1.0 / block()->hgrid(1), 1.0 / block()->hgrid(2)};
-    const real_t scale_d2[3] = {nu_ / pow(block()->hgrid(0), 2), nu_ / pow(block()->hgrid(1), 2), nu_ / pow(block()->hgrid(2), 2)};
+    const real_t scale_d[3]  = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
+    const real_t scale_d2[3] = {nu_ / pow(block->hgrid(0), 2), nu_ / pow(block->hgrid(1), 2), nu_ / pow(block->hgrid(2), 2)};
 
-    const real_t* data_src = block()->data(fid_src, ida_).Read();
-    real_t*       data_trg = block()->data(fid_trg, ida_).Write();
+    const real_t* data_src = block->data(fid_src, ida_).Read();
+    real_t*       data_trg = block->data(fid_trg, ida_).Write();
 
     constexpr real_t two_third  = 2.0 / 3.0;
     constexpr real_t one_twelve = 1.0 / 12.0;

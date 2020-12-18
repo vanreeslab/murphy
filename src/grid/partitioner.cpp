@@ -64,13 +64,13 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
         m_assert(fields->size() == grid->NField(), "the number of fields must match so we don't loose information during the partitioning");
         for (auto fid = fields->cbegin(); fid != fields->cend(); fid++) {
             // add the total count
-            n_lda_ += fid->second()->lda();
+            n_lda_ += fid->second->lda();
             m_assert(grid->IsAField(fid->second), "the field MUST be present in the grid");
         }
     } else {
         // create the struct to send the max out of the fields
         for (auto fid = fields->cbegin(); fid != fields->cend(); fid++) {
-            n_lda_ = m_max(n_lda_, fid->second()->lda());
+            n_lda_ = m_max(n_lda_, fid->second->lda());
             // m_assert(grid->IsAField(fid->second),"the field MUST be present in the grid");
         }
     }
@@ -79,7 +79,6 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
 
     // store the location of the quads in the old partition
     // note: we have to know the new partition to use it
-    m_log("the commsize is %d",commsize);
     p4est_gloidx_t *oldpart = reinterpret_cast<p4est_gloidx_t *>(m_calloc((commsize + 1) * sizeof(p4est_gloidx_t)));
     memcpy(oldpart, forest->global_first_quadrant, (commsize + 1) * sizeof(p4est_gloidx_t));
 

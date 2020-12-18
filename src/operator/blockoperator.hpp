@@ -32,8 +32,8 @@ class BlockOperator {
         m_begin;
         //-------------------------------------------------------------------------
         do_ghost_ = !(interp.IsEmpty());
-        start_    = (interp.IsEmpty()) ? 0 : (-interp()->nghost_front());
-        end_      = (interp.IsEmpty()) ? M_N : (M_N + interp()->nghost_back());
+        start_    = (interp.IsEmpty()) ? 0 : (-interp->nghost_front());
+        end_      = (interp.IsEmpty()) ? M_N : (M_N + interp->nghost_back());
         //-------------------------------------------------------------------------
         m_end;
     }

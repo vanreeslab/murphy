@@ -67,16 +67,16 @@ void ForestGrid::CopyFrom(m_ptr<const ForestGrid> grid) {
     //-------------------------------------------------------------------------
     // copy the existing forest, including the memory adress to the GridBlock
     is_connect_owned_ = false;
-    p4est_forest_     = p8est_copy(grid()->p4est_forest(), 1);
+    p4est_forest_     = p8est_copy(grid->p4est_forest(), 1);
     // set the pointer to null
     p4est_forest_->user_pointer = nullptr;
     // store the domain periodicity and domain size
-    domain_length_[0]   = grid()->domain_length(0);
-    domain_length_[1]   = grid()->domain_length(1);
-    domain_length_[2]   = grid()->domain_length(2);
-    domain_periodic_[0] = grid()->domain_periodic(0);
-    domain_periodic_[1] = grid()->domain_periodic(1);
-    domain_periodic_[2] = grid()->domain_periodic(2);
+    domain_length_[0]   = grid->domain_length(0);
+    domain_length_[1]   = grid->domain_length(1);
+    domain_length_[2]   = grid->domain_length(2);
+    domain_periodic_[0] = grid->domain_periodic(0);
+    domain_periodic_[1] = grid->domain_periodic(1);
+    domain_periodic_[2] = grid->domain_periodic(2);
     //-------------------------------------------------------------------------
     m_end;
 }

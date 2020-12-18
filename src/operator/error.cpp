@@ -60,13 +60,13 @@ void ErrorCalculator::Norms(m_ptr<const Grid> grid, m_ptr<const Field> field, m_
 
 void ErrorCalculator::Norms(m_ptr<const Grid> grid, m_ptr<const Field> field, m_ptr<const Field> sol, m_ptr<Field> error, m_ptr<real_t> norm_2, m_ptr<real_t> norm_i) {
     m_begin;
-    m_assert(field()->lda() == sol()->lda(), "the two fields must have the same dimension");
+    m_assert(field->lda() == sol->lda(), "the two fields must have the same dimension");
     //-------------------------------------------------------------------------
     error_2_ = 0.0;
     error_i_ = 0.0;
 
     // check that if we do the ghost, the ghost are updated
-    m_assert(!(do_ghost_ && (!field()->ghost_status())), "we cannot compute the ghost");
+    m_assert(!(do_ghost_ && (!field->ghost_status())), "we cannot compute the ghost");
     // call the operator
     if (error.IsEmpty()) {
         DoOpMesh(this, &ErrorCalculator::ErrorOnGridBlock, grid, field, sol);
@@ -75,7 +75,7 @@ void ErrorCalculator::Norms(m_ptr<const Grid> grid, m_ptr<const Field> field, m_
         DoOpMesh(this, &ErrorCalculator::ErrorFieldOnGridBlock, grid, field, sol, error_cst);
     }
 
-    error()->ghost_status(false);
+    error->ghost_status(false);
 
     // do the gathering into
     if (!norm_2.IsEmpty()) {
@@ -101,13 +101,13 @@ void ErrorCalculator::Norms(m_ptr<const Grid> grid, m_ptr<const Field> field, m_
  */
 void ErrorCalculator::Norms(m_ptr<const Grid> grid, const level_t level, m_ptr<const Field> field, m_ptr<const Field> sol, m_ptr<real_t> norm_2, m_ptr<real_t> norm_i) {
     m_begin;
-    m_assert(field()->lda() == sol()->lda(), "the two fields must have the same dimension");
+    m_assert(field->lda() == sol->lda(), "the two fields must have the same dimension");
     //-------------------------------------------------------------------------
     error_2_ = 0.0;
     error_i_ = 0.0;
 
     // check that if we do the ghost, the ghost are updated
-    m_assert(!(do_ghost_ && (!field()->ghost_status())), "we cannot compute the ghost");
+    m_assert(!(do_ghost_ && (!field->ghost_status())), "we cannot compute the ghost");
     // call the operator
     DoOpMeshLevel(this, &ErrorCalculator::ErrorOnGridBlock, grid, level, field, sol);
 
@@ -137,17 +137,17 @@ void ErrorCalculator::Norms(m_ptr<const Grid> grid, const level_t level, m_ptr<c
  */
 void ErrorCalculator::ErrorOnGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, m_ptr<const Field> sol) {
     //-------------------------------------------------------------------------
-    const real_t* hgrid = block()->hgrid();
+    const real_t* hgrid = block->hgrid();
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
 
     // m_log("compute error %d to %d for block @ %f %f %f", start_, end_, block->xyz(0), block->xyz(1), block->xyz(2));
 
-    const_data_ptr block_field = block()->data(fid);
-    const_data_ptr block_sol   = block()->data(sol);
+    const_data_ptr block_field = block->data(fid);
+    const_data_ptr block_sol   = block->data(sol);
 
-    for (sid_t ida = 0; ida < fid()->lda(); ++ida) {
+    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
 
         const real_t* data_field = block_field.Read(ida, block());
@@ -160,12 +160,12 @@ void ErrorCalculator::ErrorOnGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> 
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
                     real_t pos[3];
-                    m_pos(pos, i0, i1, i2, hgrid, block()->xyz());
+                    m_pos(pos, i0, i1, i2, hgrid, block->xyz());
                     // we need to discard the physical BC for the edges
 
                     real_t error = data_field[m_idx(i0, i1, i2)] - data_sol[m_idx(i0, i1, i2)];
 
-                    m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid()->tid, qid()->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
+                    m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
 
@@ -203,16 +203,16 @@ void ErrorCalculator::ErrorOnGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> 
  */
 void ErrorCalculator::ErrorFieldOnGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, m_ptr<const Field> sol, m_ptr<const Field> error) {
     //-------------------------------------------------------------------------
-    const real_t* hgrid = block()->hgrid();
+    const real_t* hgrid = block->hgrid();
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
 
-    const_data_ptr ptr_field = block()->data(fid);
-    const_data_ptr ptr_sol   = block()->data(sol);
-    data_ptr       ptr_error = block()->data(error);
+    const_data_ptr ptr_field = block->data(fid);
+    const_data_ptr ptr_sol   = block->data(sol);
+    data_ptr       ptr_error = block->data(error);
 
-    for (sid_t ida = 0; ida < fid()->lda(); ++ida) {
+    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
 
         const real_t* data_field = ptr_field.Read(ida, block());
@@ -223,14 +223,14 @@ void ErrorCalculator::ErrorFieldOnGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBl
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
                     real_t pos[3];
-                    m_pos(pos, i0, i1, i2, hgrid, block()->xyz());
+                    m_pos(pos, i0, i1, i2, hgrid, block->xyz());
                     // we need to discard the physical BC for the edges
 
                     real_t error = data_field[m_idx(i0, i1, i2)] - data_sol[m_idx(i0, i1, i2)];
 
                     data_error[m_idx(i0, i1, i2)] = error;
 
-                    m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid()->tid, qid()->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
+                    m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
                 }

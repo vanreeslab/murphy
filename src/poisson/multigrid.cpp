@@ -64,7 +64,7 @@
 //         curr_forest->user_pointer = this;
 
 //         // get the number of CHILDREN on the fine level, i.e. the number of children entering the family
-//         sc_array_t quadarray = grids_[il + 1]->p4est_mesh()->quad_level[fft_level + il + 1];
+//         sc_array_t quadarray = grids_[il + 1]->p4est_mesh->quad_level[fft_level + il + 1];
 //         m_assert(quadarray.elem_count < numeric_limits<lid_t>::max(), "the number of quad is too big");
 //         // create the new family
 //         families_[il] = new MGFamily(quadarray.elem_count);
