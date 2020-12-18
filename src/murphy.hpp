@@ -7,7 +7,8 @@
 #include <map>
 #include <string>
 
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 #include "testcase.hpp"
 
 TestCase* MurphyInit(int argc, char* argv[]);

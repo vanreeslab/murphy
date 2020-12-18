@@ -56,12 +56,14 @@
         m_assert(m_isaligned(m_assume_aligned_a_), "data has to be aligned"); \
         __assume_aligned(m_assume_aligned_a_, M_ALIGNMENT);                   \
     })
-#define m_calloc(size)                                                                                               \
-    ({                                                                                                               \
-        size_t m_calloc_size_ = (size_t)(size + (size % M_ALIGNMENT == 0) ? 0 : (M_ALIGNMENT - size % M_ALIGNMENT)); \
-        void*  m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT);                                             \
-        memset(m_calloc_data_, 0, m_calloc_size_);                                                                   \
-        m_calloc_data_;                                                                                              \
+#define m_calloc(size)                                                                    \
+    ({                                                                                    \
+        size_t m_calloc_size_   = (size_t)(size);                                         \
+        size_t m_calloc_modulo_ = (m_calloc_size_ % M_ALIGNMENT);                         \
+        m_calloc_size_ += (m_calloc_modulo_ == 0) ? 0 : (M_ALIGNMENT - m_calloc_modulo_); \
+        void* m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT);                   \
+        memset(m_calloc_data_, 0, m_calloc_size_);                                        \
+        m_calloc_data_;                                                                   \
     })
 #define m_free(data)                        \
     ({                                      \
@@ -79,12 +81,14 @@
  * @brief allocate a given size (in Byte) and set to 0 the array.
  * the return pointer is aligned to M_ALIGMEMENT
  */
-#define m_calloc(size)                                                                                               \
-    ({                                                                                                               \
-        size_t m_calloc_size_ = (size_t)(size + (size % M_ALIGNMENT == 0) ? 0 : (M_ALIGNMENT - size % M_ALIGNMENT)); \
-        void*  m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_);                                          \
-        memset(m_calloc_data_, 0, m_calloc_size_);                                                                   \
-        m_calloc_data_;                                                                                              \
+#define m_calloc(size)                                                                    \
+    ({                                                                                    \
+        size_t m_calloc_size_   = (size_t)(size);                                         \
+        size_t m_calloc_modulo_ = (m_calloc_size_ % M_ALIGNMENT);                         \
+        m_calloc_size_ += (m_calloc_modulo_ == 0) ? 0 : (M_ALIGNMENT - m_calloc_modulo_); \
+        void* m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_);                \
+        memset(m_calloc_data_, 0, m_calloc_size_);                                        \
+        m_calloc_data_;                                                                   \
     })
 /**
  * @brief frees the pointer allocated using @ref m_calloc()
@@ -92,7 +96,7 @@
 #define m_free(data)                        \
     ({                                      \
         void* m_free_data_ = (void*)(data); \
-        std::free(m_free_data_);                 \
+        std::free(m_free_data_);            \
     })
 #endif
 /** @} */
@@ -189,7 +193,7 @@
 #define m_blockmemsize(lda)                                             \
     ({                                                                  \
         __typeof__(lda) m_blockmemsize_lda_ = (lda);                    \
-        (size_t)(m_blockmemsize_lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
+        (bidx_t)(m_blockmemsize_lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
     })
 
 /**
@@ -201,8 +205,8 @@
         __typeof__(mem) m_zeroidx_mem_ = (mem);                                                                                          \
         lda_t  m_zeroidx_ida_          = (lda_t)(ida);                                                                                   \
         lid_t  m_zeroidx_gs_           = (lid_t)(m_zeroidx_mem_->gs());                                                                  \
-        size_t m_zeroidx_str_          = (size_t)(m_zeroidx_mem_->stride());                                                             \
-        (size_t)(m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * m_zeroidx_ida_))); \
+        bidx_t m_zeroidx_str_          = (bidx_t)(m_zeroidx_mem_->stride());                                                             \
+        (bidx_t)(m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * m_zeroidx_ida_))); \
     })
 
 /**
@@ -212,15 +216,15 @@
  * 
  * @note: we cast the stride to size_t to ensure a proper conversion while computing the adress
  */
-#define m_sidx(i0, i1, i2, ida, str)                                                                                \
-    ({                                                                                                              \
-        lid_t  m_sidx_i0_  = (lid_t)(i0);                                                                           \
-        lid_t  m_sidx_i1_  = (lid_t)(i1);                                                                           \
-        lid_t  m_sidx_i2_  = (lid_t)(i2);                                                                           \
-        lda_t  m_sidx_ida_ = (lda_t)(ida);                                                                          \
-        size_t m_sidx_str_ = (size_t)(str);                                                                         \
-        (size_t)(m_sidx_i0_ + m_sidx_str_ * (m_sidx_i1_ + m_sidx_str_ * (m_sidx_i2_ + m_sidx_str_ * m_sidx_ida_))); \
-    })
+// #define m_sidx(i0, i1, i2, ida, str)                                                                                \
+//     ({                                                                                                              \
+//         lid_t  m_sidx_i0_  = (lid_t)(i0);                                                                           \
+//         lid_t  m_sidx_i1_  = (lid_t)(i1);                                                                           \
+//         lid_t  m_sidx_i2_  = (lid_t)(i2);                                                                           \
+//         lda_t  m_sidx_ida_ = (lda_t)(ida);                                                                          \
+//         size_t m_sidx_str_ = (size_t)(str);                                                                         \
+//         (size_t)(m_sidx_i0_ + m_sidx_str_ * (m_sidx_i1_ + m_sidx_str_ * (m_sidx_i2_ + m_sidx_str_ * m_sidx_ida_))); \
+//     })
 
 /**
  * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a @ref MemLayout
@@ -229,11 +233,11 @@
  * The ghost point position is not taken into account here as we already have the (0,0,0) position with GridBlock::data().
  * 
  */
-#define m_midx(i0, i1, i2, ida, mem)                    \
-    ({                                                  \
-        __typeof__(mem) m_midx_mem_ = (mem);            \
-        m_sidx(i0, i1, i2, ida, m_midx_mem_->stride()); \
-    })
+// #define m_midx(i0, i1, i2, ida, mem)                    \
+//     ({                                                  \
+//         __typeof__(mem) m_midx_mem_ = (mem);            \
+//         m_sidx(i0, i1, i2, ida, m_midx_mem_->stride()); \
+//     })
 
 /**
  * @brief returns the memory offset to reach a 3D position (i0,i1,i2) given a @ref MemLayout
@@ -241,10 +245,10 @@
  * The ghost point position is not taken into account here as we already have the (0,0,0) position with GridBlock::data().
  * 
  */
-#define m_idx(i0, i1, i2)                \
-    ({                                   \
-        m_sidx(i0, i1, i2, 0, M_STRIDE); \
-    })
+// #define m_idx(i0, i1, i2)                \
+//     ({                                   \
+//         m_sidx(i0, i1, i2, 0, M_STRIDE); \
+//     })
 
 /** @} */
 

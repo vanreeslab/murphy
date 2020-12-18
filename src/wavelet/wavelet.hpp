@@ -70,7 +70,7 @@ class Wavelet {
    public:
     //................................................
     // need for empty constructor/destructor to call the virtual ones
-    explicit Wavelet(){};
+    // explicit Wavelet(){};
     virtual ~Wavelet(){};
 
     //................................................

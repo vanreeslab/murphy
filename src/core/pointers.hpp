@@ -79,6 +79,7 @@ class m_ptr {
         if (is_owned_) {
             m_free(data_);
             data_ = nullptr;
+            is_owned_ = false;
         }
     }
 };
@@ -91,9 +92,11 @@ class data_ptr : public m_ptr<real_t> {
 
     real_t* Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
     real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout> layout) const;
+    real_t* Write(const lda_t ida, m_ptr<const MemLayout> layout) const;
 
     const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
     const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout> layout) const;
+    const real_t* Read(const lda_t ida, m_ptr<const MemLayout> layout) const;
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0) */
@@ -107,6 +110,7 @@ class const_data_ptr : public m_ptr<const real_t> {
 
     const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
     const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout> layout) const;
+    const real_t* Read(const lda_t ida, m_ptr<const MemLayout> layout) const;
 };
 
 /** @brief memory pointer type = root of the data, i.e. the adress of (0,0,0) */
@@ -117,10 +121,22 @@ class mem_ptr : public m_ptr<real_t> {
 
     data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
     data_ptr operator()(const lda_t ida, m_ptr<const MemLayout> layout) const;
+
+    mem_ptr shift_dim(const lda_t ida, m_ptr<const MemLayout> layout) const;
 };
 
 // using data_ptr      = m_ptr<real_t>;        //!< data pointer type = root of the data, i.e. the adress of (0,0,0)
 // using mem_ptr       = m_ptr<real_t>;        //!< pointer type = root of the memory allocation
 /**@}*/
+
+constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0, const bidx_t stride = M_STRIDE) {
+    bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
+    return offset;
+}
+
+// constexpr size_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, m_ptr<const MemLayout> layout) {
+//     const size_t stride = layout()->stride();
+//     return (size_t)(i0 + stride * (i1 + stride * (i2 + stride * ida)));
+// }
 
 #endif

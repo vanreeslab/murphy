@@ -3,7 +3,8 @@
 
 #include <string>
 
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 #include "grid.hpp"
 #include "parser.hpp"
 #include "prof.hpp"

@@ -4,7 +4,8 @@
 
 #include "advection_diffusion.hpp"
 #include "conservative_advection_diffusion.hpp"
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 #include "error.hpp"
 #include "ioh5.hpp"
 #include "navier_stokes.hpp"

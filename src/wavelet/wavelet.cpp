@@ -143,8 +143,8 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
     const bidx_t start[3] = {ctx()->trgstart[0], ctx()->trgstart[1], ctx()->trgstart[2]};
     const bidx_t end[3]   = {ctx()->trgend[0], ctx()->trgend[1], ctx()->trgend[2]};
 
-    data_ptr       tdata = ctx()->tdata;
-    const_data_ptr sdata = ctx()->sdata;
+    real_t*       tdata = ctx()->tdata.Write();
+    const real_t* sdata = ctx()->sdata.Read();
 
     auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         // check we do not have to take the constant into account (not coded yet, weird behavior while saying trg = 0.0 * trg)
@@ -159,27 +159,19 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
 
         // get the current parent's data
         // const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-        const real_t* lsdata = sdata.Read(scaling * i0, scaling * i1, scaling * i2, 0, ctx()->srcstr);
-        real_t*       ltdata = tdata.Write(i0, i1, i2, 0, ctx()->trgstr);
+        const real_t* lsdata = sdata + m_idx(scaling * i0, scaling * i1, scaling * i2, 0, ctx()->srcstr);
+        real_t*       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx()->trgstr);
 
         // do the simple copy
-        // ltdata[0] = alpha * lcdata[0] + lsdata[0];
         ltdata[0] = lsdata[0];
+        
+        // non-nan checks
         m_assert(lsdata[0] == lsdata[0], "cannot be nan");
         // m_assert(lcdata[0] == lcdata[0], "cannot be nan");
         m_assert(ltdata[0] == ltdata[0], "cannot be nan");
     };
 
     for_loop(&op,start,end);
-
-    // // do the copy
-    // for (lid_t ik2 = ctx->trgstart[2]; ik2 < ctx->trgend[2]; ik2++) {
-    //     for (lid_t ik1 = ctx->trgstart[1]; ik1 < ctx->trgend[1]; ik1++) {
-    //         for (lid_t ik0 = ctx->trgstart[0]; ik0 < ctx->trgend[0]; ik0++) {
-                
-    //         }
-    //     }
-    // }
     //-------------------------------------------------------------------------
 }
 
@@ -223,7 +215,7 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
 #endif
     real_t* local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg()->stride());
-    MPI_Aint disp      = disp_src + m_zeroidx(0, block_src()) + m_midx(src_start[0], src_start[1], src_start[2], 0, block_src());
+    MPI_Aint disp      = disp_src + m_zeroidx(0, block_src()) + m_idx(src_start[0], src_start[1], src_start[2], 0, block_src()->stride());
     // //#pragma omp critical
     MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
 
@@ -274,7 +266,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
 #endif
     const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src()->stride());
-    MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg()) + m_midx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg());
+    MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg()) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg()->stride());
     //#pragma omp critical
     MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
 

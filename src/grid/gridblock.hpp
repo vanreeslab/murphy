@@ -1,5 +1,5 @@
-#ifndef SRC_GRIDBLOCK_HPP_
-#define SRC_GRIDBLOCK_HPP_
+#ifndef SRC_GRID_GRIDBLOCK_HPP_
+#define SRC_GRID_GRIDBLOCK_HPP_
 
 #include <mpi.h>
 
@@ -52,7 +52,7 @@ class GridBlock : public MemLayout {
 
    public:
     GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
-    // ~GridBlock();
+    ~GridBlock();
 
     /**
      * @name Memory Layout Implementation
@@ -76,16 +76,16 @@ class GridBlock : public MemLayout {
      * @{ */
     sid_t status_level() const { return status_lvl_; };
     void  ResetStatus() { status_lvl_ = 0; };
-    void  UpdateStatusCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, Prof* profiler);
-    void  ComputeDetails(const Wavelet* interp, const Field* criterion, const Field* details);
+    void  UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
+    void  ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
     /** @} */
 
     /**
      * @name datamap access
      * @{
      */
-    data_ptr data(const Field* fid, const sid_t ida = 0);
-    mem_ptr  pointer(const Field* fid);
+    data_ptr data(m_ptr<const Field> fid, const lda_t ida = 0) const;
+    mem_ptr  pointer(m_ptr<const Field> fid, const lda_t ida = 0) const;
     /** @} */
 
     /**
@@ -93,9 +93,9 @@ class GridBlock : public MemLayout {
      * 
      * @{
      */
-    void AddField(Field* fid);
-    void DeleteField(Field* fid);
-    void AddFields(const std::unordered_map<std::string, Field*>* fields);
+    void AddField(m_ptr<Field> fid);
+    void DeleteField(m_ptr<const Field> fid);
+    void AddFields(const std::map<std::string, m_ptr<Field> >* fields);
     /** @} */
 
     /**
@@ -106,7 +106,7 @@ class GridBlock : public MemLayout {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(const Wavelet* interp, std::unordered_map<std::string, Field*>::const_iterator field_start, std::unordered_map<std::string, Field*>::const_iterator field_end, Prof* profiler);
+    void       SolveDependency(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
     /** @} */
 
     /**
@@ -132,12 +132,12 @@ class GridBlock : public MemLayout {
     std::list<PhysBlock*>*              phys() { return &phys_; };
     /**@} */
 
-    void GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window);
+    void GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> grid, m_ptr<const Wavelet> interp, MPI_Win local2disp_window);
+    void GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window);
+    void GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
+    void GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window);
+    void GhostPut_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
     void GhostFreeLists();
-    void GhostGet_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
-    void GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
-    void GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
-    void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
 
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };

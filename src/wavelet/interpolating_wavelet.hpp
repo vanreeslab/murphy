@@ -123,33 +123,31 @@ class InterpolatingWavelet : public Wavelet {
         constexpr sid_t ha_lim = len_ha_<TN, TNT> / 2;
 
         // assure alignment for the target, the source, the constant and the temp data
-        const real_t  alpha = ctx->alpha;
-        const real_t* ha    = ha_<TN, TNT> + ha_lim;
+        const real_t        alpha = ctx()->alpha;
+        const real_t* const ha    = ha_<TN, TNT> + ha_lim;
 
         // restrict the pointers
-        data_ptr       tdata = ctx()->tdata;
-        const data_ptr cdata = ctx()->cdata;
-        const data_ptr sdata = ctx()->sdata;
+        real_t*       tdata = ctx()->tdata.Write();
+        const real_t* cdata = ctx()->cdata.Read();
+        const real_t* sdata = ctx()->sdata.Read();
 
         // assume alignment on the source
         // // m_assume_aligned(ctx->sdata);
-        const bidx_t start[3] = {ctx()->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx()->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const bidx_t start[3] = {ctx()->trgstart[0], ctx()->trgstart[1], ctx()->trgstart[2]};
+        const bidx_t end[3]   = {ctx()->trgend[0], ctx()->trgend[1], ctx()->trgend[2]};
 
         auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            m_assert(cdata.IsEmpty(), "the constant data must be nullptr for the moment");
+            m_assert(cdata == nullptr, "the constant data must be nullptr for the moment");
             // do some checks
             m_assert(((2 * i0 - ha_lim) >= (ctx()->srcstart[0])) && ((2 * i0 + ha_lim) <= ctx()->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", 2 * i0 - ha_lim, ctx()->srcstart[0], 2 * i0 + ha_lim, ctx()->srcend[0]);
             m_assert(((2 * i1 - ha_lim) >= (ctx()->srcstart[1])) && ((2 * i1 + ha_lim) <= ctx()->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", 2 * i1 - ha_lim, ctx()->srcstart[1], 2 * i1 + ha_lim, ctx()->srcend[1]);
             m_assert(((2 * i2 - ha_lim) >= (ctx()->srcstart[2])) && ((2 * i2 + ha_lim) <= ctx()->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx()->srcstart[2], 2 * i2 + ha_lim, ctx()->srcend[2]);
 
             //get the local adress of the source, the target and the constant
-            real_t*       ltdata = tdata + m_sidx(ik0, ik1, ik2, 0, ctx()->trgstr);
-            const real_t* lsdata = sdata + m_sidx(2 * ik0, 2 * ik1, 2 * ik2, 0, ctx()->srcstr);
-            // const data_ptr lcdata = cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
+            real_t*       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx()->trgstr);
+            const real_t* lsdata = sdata + m_idx(2 * i0, 2 * i1, 2 * i2, 0, ctx()->srcstr);
 
             // add the constant
-            // ltdata[0] = alpha * lcdata[0];
             ltdata[0] = 0.0;
 
             // apply the filter
@@ -158,16 +156,17 @@ class InterpolatingWavelet : public Wavelet {
                     for (sid_t id0 = -ha_lim; id0 <= ha_lim; ++id0) {
                         // add the info
                         const real_t fact = ha[id0] * ha[id1] * ha[id2];
-                        ltdata[0] += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        ltdata[0] += fact * lsdata[m_idx(id0, id1, id2, 0, ctx()->srcstr)];
 
                         // check for nan's
-                        m_assert(lsdata[0] == lsdata[0], "nan detected");
+                        m_assert(lsdata[m_idx(id0, id1, id2, 0, ctx()->srcstr)] == lsdata[m_idx(id0, id1, id2, 0, ctx()->srcstr)], "nan detected");
                         m_assert(fact == fact, "nan detected");
                     }
                 }
             }
+            // check for nan's
             m_assert(ltdata[0] == ltdata[0], "nan detected");
-        }
+        };
 
         for_loop(&op, start, end);
 
@@ -219,22 +218,22 @@ class InterpolatingWavelet : public Wavelet {
      *
      * @param ctx the interpolation context
      */
-    void Refine_(m_ptr<const interp_ctx_t> ctx)) const override {
+    void Refine_(m_ptr<const interp_ctx_t> ctx) const override {
         //-------------------------------------------------------------------------
         // the gs_lim is know @ compile time
         constexpr sid_t gs_lim = len_gs_<TN, TNT> / 2 - 1;
 
         const real_t one      = 1.0;
-        const real_t alpha    = ctx->alpha;
+        const real_t alpha    = ctx()->alpha;
         const lid_t  start[3] = {ctx()->trgstart[0], ctx()->trgstart[1], ctx()->trgstart[2]};
         const lid_t  end[3]   = {ctx()->trgend[0], ctx()->trgend[1], ctx()->trgend[2]};
 
         const real_t* gs = gs_<TN, TNT> + gs_lim;
 
         // restrict the pointers
-        data_ptr       tdata = ctx()->tdata;
-        const_data_ptr cdata = ctx()->cdata;
-        const_data_ptr sdata = ctx()->sdata;
+        real_t*       tdata = ctx()->tdata.Write();
+        const real_t* cdata = ctx()->cdata.Read();
+        const real_t* sdata = ctx()->sdata.Read();
 
         auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get 0 if odd, 1 if even (even if negative!!)
@@ -246,15 +245,15 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
             // get the target location
-            real_t* ltdata = tdata.Write(i0, i1, i2, 0, ctx->trgstr);
+            real_t* ltdata = tdata + m_idx(i0, i1, i2, 0, ctx()->trgstr);
             // const data_ptr lcdata = cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-            m_assert(cdata.IsEmpty(), "the constant data must be nullptr for the moment");
+            m_assert(cdata == nullptr, "the constant data must be nullptr for the moment");
 
             //get the local adress of the source, a bit more complicated to handle the negative numbers
             const lid_t    i0_s  = (i0 - ix) / 2;
             const lid_t    i1_s  = (i1 - iy) / 2;
             const lid_t    i2_s  = (i2 - iz) / 2;
-            const real_t* lsdata = sdata.Read(ik0_s, ik1_s, ik2_s, 0, ctx->srcstr);
+            const real_t* lsdata = sdata+m_idx(i0_s, i1_s, i2_s, 0, ctx()->srcstr);
             m_assert((i0_s * 2) <= i0, "if not, we made something wrong...: source = %d, target = %d", i0_s, i0);
             m_assert((i1_s * 2) <= i1, "if not, we made something wrong...: source = %d, target = %d", i1_s, i1);
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
@@ -280,11 +279,11 @@ class InterpolatingWavelet : public Wavelet {
                 for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
                     for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-                        ltdata[0] += fact * lsdata[m_sidx(id0, id1, id2, 0, ctx->srcstr)];
+                        ltdata[0] += fact * lsdata[m_idx(id0, id1, id2, 0, ctx()->srcstr)];
                     }
                 }
             }
-            m_assert(ltdata[0] == ltdata[0], "the value cannot be nan: block @ %d %d %d: %f", ik0, ik1, ik2, ltdata[0]);
+            m_assert(ltdata[0] == ltdata[0], "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, ltdata[0]);
         };
 
         for_loop(&op, start, end);
@@ -362,10 +361,10 @@ class InterpolatingWavelet : public Wavelet {
         constexpr sid_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
 
         const real_t one      = 1.0;
-        const lid_t  start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t  end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const lid_t  start[3] = {ctx()->trgstart[0], ctx()->trgstart[1], ctx()->trgstart[2]};
+        const lid_t  end[3]   = {ctx()->trgend[0], ctx()->trgend[1], ctx()->trgend[2]};
 
-        const_data_ptr      sdata = ctx()->sdata;
+        const real_t*      sdata = ctx()->sdata.Read();
         const real_t* const gs    = gs_<TN, TNT> + gs_lim;
 
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -380,7 +379,7 @@ class InterpolatingWavelet : public Wavelet {
             const lid_t   i0_s   = (i0 - ix);
             const lid_t   i1_s   = (i1 - iy);
             const lid_t   i2_s   = (i2 - iz);
-            const real_t* ltdata = sdata.Read(i0_s, i1_s, i2_s, 0, ctx->srcstr);
+            const real_t* ltdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx()->srcstr);
 
             // get the filter, depending on if I am odd or even
             const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
@@ -396,14 +395,14 @@ class InterpolatingWavelet : public Wavelet {
                 for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
                     for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-                        interp += fact * ltdata[m_sidx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->trgstr)];
+                        interp += fact * ltdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx()->trgstr)];
                     }
                 }
             }
-            real_t detail = sdata.Read(ik0, ik1, ik2, 0, ctx->srcstr) - interp;
+            real_t detail = sdata[m_idx(i0, i1, i2, 0, ctx()->srcstr)] - interp;
 
             // check the maximum
-            (*details_max) = m_max(fabs(detail), (*details_max));
+            details_max()[0] = m_max(fabs(detail), details_max()[0]);
         };
 
         for_loop(&op, start, end);
@@ -425,13 +424,13 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void WriteDetail_(const interp_ctx_t* ctx) const override {
-        m_assert(ctx->srcstart[0] == 0 && ctx->srcend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[0], ctx->srcend[0]);
-        m_assert(ctx->srcstart[1] == 0 && ctx->srcend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[1], ctx->srcend[1]);
-        m_assert(ctx->srcstart[2] == 0 && ctx->srcend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[2], ctx->srcend[2]);
-        m_assert(ctx->trgstart[0] == 0 && ctx->trgend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[0], ctx->trgend[0]);
-        m_assert(ctx->trgstart[1] == 0 && ctx->trgend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[1], ctx->trgend[1]);
-        m_assert(ctx->trgstart[2] == 0 && ctx->trgend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[2], ctx->trgend[2]);
+    void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const override {
+        m_assert(ctx()->srcstart[0] == 0 && ctx()->srcend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx()->srcstart[0], ctx()->srcend[0]);
+        m_assert(ctx()->srcstart[1] == 0 && ctx()->srcend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx()->srcstart[1], ctx()->srcend[1]);
+        m_assert(ctx()->srcstart[2] == 0 && ctx()->srcend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx()->srcstart[2], ctx()->srcend[2]);
+        m_assert(ctx()->trgstart[0] == 0 && ctx()->trgend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx()->trgstart[0], ctx()->trgend[0]);
+        m_assert(ctx()->trgstart[1] == 0 && ctx()->trgend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx()->trgstart[1], ctx()->trgend[1]);
+        m_assert(ctx()->trgstart[2] == 0 && ctx()->trgend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx()->trgstart[2], ctx()->trgend[2]);
         //-------------------------------------------------------------------------
         // the size is know @ compiler time
         constexpr sid_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
@@ -440,8 +439,8 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const gs  = gs_<TN, TNT> + gs_lim;
 
         // get the target + criterion field
-        const_data_ptr sdata = ctx->sdata;
-        data_ptr       tdata = ctx->tdata;
+        const real_t* sdata = ctx()->sdata.Read();
+        real_t*       tdata = ctx()->tdata.Write();
 
         // declare the lambda to run
         auto lambda = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -456,7 +455,7 @@ class InterpolatingWavelet : public Wavelet {
             const lid_t   i0_s  = (i0 - ix);
             const lid_t   i1_s  = (i1 - iy);
             const lid_t   i2_s  = (i2 - iz);
-            const real_t* lsdata = sdata.Read(i0_s, i1_s, i2_s, 0, ctx->srcstr);
+            const real_t* lsdata = sdata+ m_idx(i0_s, i1_s, i2_s, 0, ctx()->srcstr);
 
             // get the filter, depending on if I am odd or even
             const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
@@ -472,13 +471,15 @@ class InterpolatingWavelet : public Wavelet {
                 for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
                     for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-                        interp += fact * lsdata[m_sidx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
+                        interp += fact * lsdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx()->srcstr)];
                     }
                 }
             }
-            real_t* ltdata = tdata.Write(i0, i1, ik2, 0, ctx->trgstr);
-            ltdata[0] = sdata.Read(i0, i1, i2, 0, ctx->srcstr) - interp;
-            m_assert(!(ix == 0 && iy == 0 && iz == 0 && target[m_sidx(i0, i1, i2, 0, ctx->trgstr)] != 0.0), "the target value should be 0.0 instead of %e", target[m_sidx(i0, i1, i2, 0, ctx->trgstr)]);
+            real_t* ltdata = tdata + m_idx(i0, i1, i2, 0, ctx()->trgstr);
+            ltdata[0]      = sdata[m_idx(i0, i1, i2, 0, ctx()->srcstr)] - interp;
+            
+            // check that we retrieve the original value if we are a scaling coef
+            m_assert(!(ix == 0 && iy == 0 && iz == 0 && tdata[m_idx(i0, i1, i2, 0, ctx()->trgstr)] != 0.0), "the target value should be 0.0 instead of %e", tdata[m_idx(i0, i1, i2, 0, ctx()->trgstr)]);
         };
 
         // do the loop
