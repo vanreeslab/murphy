@@ -74,8 +74,9 @@ void ErrorCalculator::Norms(m_ptr<const Grid> grid, m_ptr<const Field> field, m_
         m_ptr<const Field> error_cst = error;
         DoOpMesh(this, &ErrorCalculator::ErrorFieldOnGridBlock, grid, field, sol, error_cst);
     }
-
-    error->ghost_status(false);
+    if (!error.IsEmpty()) {
+        error->ghost_status(do_ghost());
+    }
 
     // do the gathering into
     if (!norm_2.IsEmpty()) {

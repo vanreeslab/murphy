@@ -121,7 +121,7 @@ const real_t* data_ptr::Read(const lda_t ida, m_ptr<const MemLayout> layout) con
  * @return real_t* 
  */
 const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const {
-    m_assert(0 <= stride && stride <= M_STRIDE, "the stride = %d is wrong", stride);
+    m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     const size_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
     return (*this)() + offset;
@@ -139,7 +139,7 @@ const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_
  * @return const real_t* 
  */
 const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout> layout) const {
-    m_assert(0 <= layout->stride() && layout->stride() <= M_STRIDE, "the stride = %d is wrong", layout->stride());
+    m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     const size_t stride = layout->stride();
     const size_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
@@ -155,7 +155,7 @@ const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_
  * @return const real_t* 
  */
 const real_t* const_data_ptr::Read(const lda_t ida, m_ptr<const MemLayout> layout) const {
-    m_assert(0 <= layout->stride() && layout->stride() <= M_STRIDE, "the stride = %d is wrong", layout->stride());
+    m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     const size_t stride = layout->stride();
     const size_t offset = stride * stride * stride * ida;
@@ -173,8 +173,8 @@ const real_t* const_data_ptr::Read(const lda_t ida, m_ptr<const MemLayout> layou
  * @return data_ptr 
  */
 data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stride) const {
-    m_assert(0 <= gs && gs <= M_GS, "the gs = %d is wrong", gs);
-    m_assert(0 <= stride && stride <= M_STRIDE, "the stride = %d is wrong", stride);
+    m_assert(0 <= gs, "the gs = %d is wrong", gs);
+    m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     // get the offset and return a data_ptr to it
     const size_t offset = gs + stride * (gs + stride * (gs + stride * ida));
@@ -190,8 +190,8 @@ data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stri
  * @return data_ptr 
  */
 data_ptr mem_ptr::operator()(const lda_t ida, m_ptr<const MemLayout> layout) const {
-    m_assert(0 <= layout->gs() && layout->gs() <= M_GS, "the gs = %d is wrong", layout->gs());
-    m_assert(0 <= layout->stride() && layout->stride() <= M_STRIDE, "the stride = %d is wrong", layout->stride());
+    m_assert(0 <= layout->gs(), "the gs = %d is wrong", layout->gs());
+    m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     // get the offset and return a data_ptr to it
     const size_t gs     = layout->gs();
@@ -211,7 +211,7 @@ data_ptr mem_ptr::operator()(const lda_t ida, m_ptr<const MemLayout> layout) con
  * @return mem_ptr 
  */
 mem_ptr mem_ptr::shift_dim(const lda_t ida, m_ptr<const MemLayout> layout) const {
-    m_assert(0 <= layout->stride() && layout->stride() <= M_STRIDE, "the stride = %d is wrong", layout->stride());
+    m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     // get the offset and return a data_ptr to it
     const size_t stride = layout->stride();
