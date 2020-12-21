@@ -250,10 +250,10 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(cdata == nullptr, "the constant data must be nullptr for the moment");
 
             //get the local adress of the source, a bit more complicated to handle the negative numbers
-            const lid_t    i0_s  = (i0 - ix) / 2;
-            const lid_t    i1_s  = (i1 - iy) / 2;
-            const lid_t    i2_s  = (i2 - iz) / 2;
-            const real_t* lsdata = sdata+m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
+            const lid_t   i0_s   = (i0 - ix) / 2;
+            const lid_t   i1_s   = (i1 - iy) / 2;
+            const lid_t   i2_s   = (i2 - iz) / 2;
+            const real_t* lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
             m_assert((i0_s * 2) <= i0, "if not, we made something wrong...: source = %d, target = %d", i0_s, i0);
             m_assert((i1_s * 2) <= i1, "if not, we made something wrong...: source = %d, target = %d", i1_s, i1);
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
@@ -262,8 +262,8 @@ class InterpolatingWavelet : public Wavelet {
             const real_t* gs_x         = (ix == 1) ? (gs) : (&one);
             const real_t* gs_y         = (iy == 1) ? (gs) : (&one);
             const real_t* gs_z         = (iz == 1) ? (gs) : (&one);
-            const sid_t   lim_start[3] = {gs_lim * ix, gs_lim * iy, gs_lim * iz};
-            const sid_t   lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+            const bidx_t  lim_start[3] = {gs_lim * ix, gs_lim * iy, gs_lim * iz};
+            const bidx_t  lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
 
             m_assert(((i0 / 2 - lim_start[0]) >= ctx->srcstart[0]) && ((i0 / 2 + lim_end[0]) <= ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - gs_lim, ctx->srcstart[0], i0 + gs_lim, ctx->srcend[0]);
             m_assert(((i1 / 2 - lim_start[1]) >= ctx->srcstart[1]) && ((i1 / 2 + lim_end[1]) <= ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - gs_lim, ctx->srcstart[1], i1 + gs_lim, ctx->srcend[1]);
@@ -275,9 +275,9 @@ class InterpolatingWavelet : public Wavelet {
 
             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
             // if one dim is odd, id = 1, -> we loop on gs, business as usual
-            for (sid_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
-                for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
-                    for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
+            for (bidx_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+                for (bidx_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+                    for (bidx_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
                         ltdata[0] += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)];
                     }
@@ -356,6 +356,7 @@ class InterpolatingWavelet : public Wavelet {
      * @param details_max the maximum of the local detail coefficients
      */
     void Detail_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_max) const override {
+        m_assert(*details_max == 0.0, "the value must be 0.0");
         //-------------------------------------------------------------------------
         // the size is know @ compiler time
         constexpr sid_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
@@ -364,7 +365,7 @@ class InterpolatingWavelet : public Wavelet {
         const lid_t  start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         const lid_t  end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
-        const real_t*      sdata = ctx->sdata.Read();
+        const real_t*       sdata = ctx->sdata.Read();
         const real_t* const gs    = gs_<TN, TNT> + gs_lim;
 
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -379,23 +380,23 @@ class InterpolatingWavelet : public Wavelet {
             const lid_t   i0_s   = (i0 - ix);
             const lid_t   i1_s   = (i1 - iy);
             const lid_t   i2_s   = (i2 - iz);
-            const real_t* ltdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
+            const real_t* lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
 
             // get the filter, depending on if I am odd or even
             const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
             const real_t* const gs_y         = (iy == 1) ? (gs) : (&one);
             const real_t* const gs_z         = (iz == 1) ? (gs) : (&one);
-            const sid_t         lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
-            const sid_t         lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+            const bidx_t        lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+            const bidx_t        lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
 
             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
             // if one dim is odd, id = 1, -> we loop on gs, business as usual
             real_t interp = 0.0;
-            for (sid_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
-                for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
-                    for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
+            for (bidx_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+                for (bidx_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+                    for (bidx_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-                        interp += fact * ltdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->trgstr)];
+                        interp += fact * lsdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
                     }
                 }
             }
@@ -407,12 +408,14 @@ class InterpolatingWavelet : public Wavelet {
 
         for_loop(&op, start, end);
 
+        m_log("the max detail is %e", *details_max);
+
         // // for each of the data for the considered children
         // (*details_max) = 0.0;
         // for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
         //     for (lid_t ik1 = start[1]; ik1 < end[1]; ++ik1) {
         //         for (lid_t ik0 = start[0]; ik0 < end[0]; ++ik0) {
-                    
+
         //         }
         //     }
         // }
@@ -452,24 +455,24 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(iy == 0 || iy == 1, "this are the two possible values");
             m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
-            const lid_t   i0_s  = (i0 - ix);
-            const lid_t   i1_s  = (i1 - iy);
-            const lid_t   i2_s  = (i2 - iz);
-            const real_t* lsdata = sdata+ m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
+            const lid_t   i0_s   = (i0 - ix);
+            const lid_t   i1_s   = (i1 - iy);
+            const lid_t   i2_s   = (i2 - iz);
+            const real_t* lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
 
             // get the filter, depending on if I am odd or even
             const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
             const real_t* const gs_y         = (iy == 1) ? (gs) : (&one);
             const real_t* const gs_z         = (iz == 1) ? (gs) : (&one);
-            const sid_t         lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
-            const sid_t         lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+            const bidx_t        lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+            const bidx_t        lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
 
             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
             // if one dim is odd, id = 1, -> we loop on gs, business as usual
             real_t interp = 0.0;
-            for (sid_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
-                for (sid_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
-                    for (sid_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
+            for (bidx_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+                for (bidx_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+                    for (bidx_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
                         interp += fact * lsdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
                     }
@@ -477,7 +480,7 @@ class InterpolatingWavelet : public Wavelet {
             }
             real_t* ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
             ltdata[0]      = sdata[m_idx(i0, i1, i2, 0, ctx->srcstr)] - interp;
-            
+
             // check that we retrieve the original value if we are a scaling coef
             m_assert(!(ix == 0 && iy == 0 && iz == 0 && tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] != 0.0), "the target value should be 0.0 instead of %e", tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)]);
         };

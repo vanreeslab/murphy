@@ -917,7 +917,7 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
                 rank_t   trg_rank = gblock->rank();
                 // interpolate, the parent's mirror have been created to act on the tmp
                 m_assert(gblock->dlvl() == 0, "we must have a level 0, here %d", gblock->dlvl());
-                interp->PutRma(gblock->dlvl(), gblock->shift(), &coarse_block, coarse_ptr_, gblock, disp_trg, trg_rank, mirrors_window);
+                interp->PutRma(gblock->dlvl(), gblock->shift(), &coarse_block, data_coarse, gblock, disp_trg, trg_rank, mirrors_window);
             }
             for (const auto gblock : local_parent_reverse_) {
                 GridBlock* ngh_block = gblock->data_src();
