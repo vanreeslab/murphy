@@ -408,8 +408,6 @@ class InterpolatingWavelet : public Wavelet {
 
         for_loop(&op, start, end);
 
-        m_log("the max detail is %e", *details_max);
-
         // // for each of the data for the considered children
         // (*details_max) = 0.0;
         // for (lid_t ik2 = start[2]; ik2 < end[2]; ++ik2) {
