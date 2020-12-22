@@ -1,9 +1,9 @@
 #ifndef SRC_SUBBLOCK_HPP_
 #define SRC_SUBBLOCK_HPP_
 
-#include "memlayout.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
+#include "memlayout.hpp"
 
 /**
  * @brief Implementation of a @ref MemLayout as any part of a memory block
@@ -11,13 +11,13 @@
  */
 class SubBlock : public MemLayout {
    protected:
-    lid_t gs_;
-    lid_t stride_;
-    lid_t start_[3];
-    lid_t end_[3];
+    lid_t gs_       = 0;
+    lid_t stride_   = 0;
+    lid_t start_[3] = {0, 0, 0};
+    lid_t end_[3]   = {0, 0, 0};
 
    public:
-    explicit SubBlock() {}
+    explicit SubBlock(){};
     explicit SubBlock(const lid_t gs, const lid_t stride, const lid_t start[3], const lid_t end[3]);
     explicit SubBlock(const lid_t gs, const lid_t stride, const lid_t start, const lid_t end);
 

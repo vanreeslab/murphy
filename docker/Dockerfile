@@ -21,6 +21,9 @@ RUN apt-get -y update && apt-get install -y \
     libhdf5-mpi-dev libfftw3-dev \
     python3 python3-pip
 
+# clang-tidy
+RUN apt-get -y update && apt-get -y install clang-tidy
+
 #p4est
 RUN git clone --recursive https://github.com/cburstedde/p4est
 RUN cd /p4est &&\

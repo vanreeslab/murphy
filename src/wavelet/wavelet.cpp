@@ -265,7 +265,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     // m_verb("src size = %d and the trg size = %d", size_src, size_trg);
     m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
 #endif
-    const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src->stride());
+    const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src);
     MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg()) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
     //#pragma omp critical
     MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);

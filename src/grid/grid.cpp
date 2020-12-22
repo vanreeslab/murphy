@@ -425,7 +425,9 @@ void Grid::Adapt(m_ptr<Field> field, m_ptr<SetValue> expression) {
     m_assert(field->ghost_status(), "the ghost status should be valid here...");
 
     // refine given the value
-    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field()), &cback_ValueFill, reinterpret_cast<void*>(expression()));
+    Field*    myfield = field();
+    SetValue* my_expr = expression();
+    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(myfield), &cback_ValueFill, reinterpret_cast<void*>(my_expr));
 
     // we modified one block after another, so we set the ghost value from the SetValue
     field->ghost_status(expression->do_ghost());

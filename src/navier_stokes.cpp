@@ -101,8 +101,8 @@ void NavierStokes::Run() {
         m_log("--------------------");
         m_log("RK3 - time = %f - step %d - dt = %e", t, iter, dt);
 
-        // //................................................
-        // // diagnostics, dumps, whatever
+        //................................................
+        // diagnostics, dumps, whatever
         if (iter % iter_diag_ == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
@@ -194,10 +194,11 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
         SetVortexRing vr_init(2, center, sigma, radius, grid_->interp());
         vr_init(grid_, &anal);
 
+        grid_->GhostPull(vort_);
         // compute the error wrt to the analytical solution
         real_t          err2 = 0.0;
         real_t          erri = 0.0;
-        ErrorCalculator error;
+        ErrorCalculator error(grid_->interp());
         error.Norms(grid_, vort_, &anal, &err, &err2, &erri);
 
         // I/O the error field

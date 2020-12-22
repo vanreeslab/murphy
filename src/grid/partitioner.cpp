@@ -52,7 +52,7 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
     const rank_t commsize = grid->mpisize();
     p8est_t *    forest   = grid->p4est_forest();
     const rank_t rank     = forest->mpirank;
-    m_assert(commsize >= 0 , "the commsize = %d must be positive");
+    m_assert(commsize >= 0 , "the commsize = %d must be positive",commsize);
     
 
     // store the destructive state
@@ -352,21 +352,22 @@ Partitioner::~Partitioner() {
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
  */
-void Partitioner::Start(map<string, m_ptr<Field> > *fields, const m_direction_t dir) {
+void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t dir) {
     m_begin;
-    m_assert(!(dir==M_BACKWARD && destructive_),"unable to perform backward on destructive partitioner");
+    m_assert(dir == M_FORWARD || dir == M_BACKWARD, "the dir can be forward or backward");
+    m_assert(!(dir == M_BACKWARD && destructive_), "unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
     //-------------------------------------------------------------------------
-    lid_t  n_recv_request;
-    lid_t  n_send_request;
-    lid_t *q_send_cum_request;
-    lid_t *q_send_cum_block;
-    real_t* send_buf;
+    lid_t   n_recv_request;
+    lid_t   n_send_request;
+    lid_t * q_send_cum_request;
+    lid_t * q_send_cum_block;
+    real_t *send_buf;
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
     GridBlock ** old_blocks;
-    
+
     if (dir == M_FORWARD) {
         n_recv_request     = n_recv_request_;
         n_send_request     = n_send_request_;
@@ -376,7 +377,7 @@ void Partitioner::Start(map<string, m_ptr<Field> > *fields, const m_direction_t 
         old_blocks         = old_blocks_;
         q_send_cum_block   = q_send_cum_block_;
         q_send_cum_request = q_send_cum_request_;
-    } else if (dir == M_BACKWARD) {
+    } else {
         n_recv_request     = n_send_request_;
         n_send_request     = n_recv_request_;
         recv_request       = back_recv_request_;
@@ -427,8 +428,9 @@ void Partitioner::Start(map<string, m_ptr<Field> > *fields, const m_direction_t 
  * @param dir the direction, forward or backward
  * @param do_copy do we need to copy the non-traveling blocks or not
  */
-void Partitioner::End(map<string, m_ptr<Field> > *fields, const m_direction_t dir) {
+void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir) {
     m_begin;
+    m_assert(dir == M_FORWARD || dir == M_BACKWARD, "the dir can be forward or backward");
     m_assert(!(dir == M_BACKWARD && destructive_), "unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
     //-------------------------------------------------------------------------
@@ -451,7 +453,7 @@ void Partitioner::End(map<string, m_ptr<Field> > *fields, const m_direction_t di
         recv_request       = for_recv_request_;
         send_request       = for_send_request_;
         new_blocks         = new_blocks_;
-    } else if (dir == M_BACKWARD) {
+    } else {
         n_recv_request     = n_send_request_;
         n_send_request     = n_recv_request_;
         q_recv_cum_request = q_send_cum_request_;
