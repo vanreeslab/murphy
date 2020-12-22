@@ -4,6 +4,7 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "core/pointers.hpp"
+#include "core/forloop.hpp"
 #include "grid/subblock.hpp"
 
 /**
@@ -113,6 +114,8 @@ class Boundary {
             // get the ghost value
             ldata[m_idx(i0, i1, i2, 0, b_stride)] = Stencil_(f, xf, pos[dir], boundary_condition);
         };
+
+        for_loop(&op,start,end);
 
         // // let's goooo
         // for (lid_t i2 = start[2]; i2 < end[2]; i2++) {
