@@ -1,7 +1,8 @@
 #ifndef SRC_RK3_HPP_
 #define SRC_RK3_HPP_
 
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 #include "field.hpp"
 #include "grid.hpp"
 #include "prof.hpp"

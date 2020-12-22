@@ -1,7 +1,8 @@
 
 #include "error.hpp"
 #include "gtest/gtest.h"
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 #include "subblock.hpp"
 #include "interpolating_wavelet.hpp"
 
@@ -207,7 +208,7 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
                     real_t z      = i2 * hfine_;
                     real_t pos[3] = {x, y, z};
 
-                    data_fine[m_midx(i0, i1, i2, 0, block_fine_)] = poly(pos[id]);
+                    data_fine[m_idx(i0, i1, i2, 0, block_fine_->stride())] = poly(pos[id]);
                 }
             }
         }
@@ -217,15 +218,15 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
         // get the coarse version of life
         const lid_t m_hgs = m_gs / 2;
         SubBlock    tmp_block(m_hgs, m_hn + 2 * m_hgs, -m_hgs, m_hn + m_hgs);
-        data_ptr    data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
+        real_t*    data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
         for (lid_t i2 = tmp_block.start(2); i2 < tmp_block.end(2); i2++) {
             for (lid_t i1 = tmp_block.start(1); i1 < tmp_block.end(1); i1++) {
                 for (lid_t i0 = tmp_block.start(0); i0 < tmp_block.end(0); i0++) {
-                    data_tmp[m_midx(i0, i1, i2, 0, &tmp_block)] = data_fine[m_midx(i0 * 2, i1 * 2, i2 * 2, 0, block_fine_)];
+                    data_tmp[m_idx(i0, i1, i2, 0, tmp_block.stride())] = data_fine[m_idx(i0 * 2, i1 * 2, i2 * 2, 0, block_fine_->stride())];
                 }
             }
         }
-        real_t detail_max;
+        real_t detail_max = 0.0;
         interp.Details(block_fine_, data_fine, &detail_max);
         ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL) << "during test: dir = " << id << " detail max = " << detail_max;
 
@@ -261,15 +262,15 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
                 real_t* datastick_coarse;
                 //------------------------
                 if (dir0 == 0) {
-                    datastick_fine   = data_fine + m_midx(0, 2 * i1, 2 * i2, 0, block_fine_);
-                    datastick_coarse = data_coarse + m_midx(0, i1, i2, 0, block_fine_);
+                    datastick_fine   = data_fine + m_idx(0, 2 * i1, 2 * i2, 0, block_fine_->stride());
+                    datastick_coarse = data_coarse + m_idx(0, i1, i2, 0, block_fine_->stride());
                     for (lid_t i0 = 0; i0 < 21; ++i0) {
                         const real_t x0 = (2 * i0) * hfine_;
                         const real_t x1 = (2 * i0 + 1) * hfine_;
                         //check the results
-                        real_t val_coarse = datastick_coarse[m_midx(i0, 0, 0, 0, block_coarse_)];
-                        real_t val_fine0  = datastick_fine[m_midx(2 * i0, 0, 0, 0, block_fine_)];
-                        real_t val_fine1  = datastick_fine[m_midx(2 * i0 + 1, 0, 0, 0, block_fine_)];
+                        real_t val_coarse = datastick_coarse[m_idx(i0, 0, 0, 0, block_coarse_->stride())];
+                        real_t val_fine0  = datastick_fine[m_idx(2 * i0, 0, 0, 0, block_fine_->stride())];
+                        real_t val_fine1  = datastick_fine[m_idx(2 * i0 + 1, 0, 0, 0, block_fine_->stride())];
                         // m_log("checking value: %f vs %f", val_fine0, val_coarse);
                         ASSERT_NEAR(poly(x0), val_coarse, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
 
@@ -283,15 +284,15 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
                 }
                 //------------------------
                 else if (dir0 == 1) {
-                    datastick_fine   = data_fine + m_midx(2 * i1, 0, 2 * i2, 0, block_fine_);
-                    datastick_coarse = data_coarse + m_midx(i1, 0, i2, 0, block_fine_);
+                    datastick_fine   = data_fine + m_idx(2 * i1, 0, 2 * i2, 0, block_fine_->stride());
+                    datastick_coarse = data_coarse + m_idx(i1, 0, i2, 0, block_fine_->stride());
                     for (lid_t i0 = 0; i0 < 21; ++i0) {
                         const real_t x0 = (2 * i0) * hfine_;
                         const real_t x1 = (2 * i0 + 1) * hfine_;
                         //check the results
-                        real_t val_coarse = datastick_coarse[m_midx(0, i0, 0, 0, block_coarse_)];
-                        real_t val_fine0  = datastick_fine[m_midx(0, 2 * i0, 0, 0, block_fine_)];
-                        real_t val_fine1  = datastick_fine[m_midx(0, 2 * i0 + 1, 0, 0, block_fine_)];
+                        real_t val_coarse = datastick_coarse[m_idx(0, i0, 0, 0, block_coarse_->stride())];
+                        real_t val_fine0  = datastick_fine[m_idx(0, 2 * i0, 0, 0, block_fine_->stride())];
+                        real_t val_fine1  = datastick_fine[m_idx(0, 2 * i0 + 1, 0, 0, block_fine_->stride())];
                         // m_log("checking value: %f vs %f", val_fine0, val_coarse);
                         ASSERT_NEAR(poly(x0), val_coarse, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
 
@@ -305,15 +306,15 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
                 }
                 //------------------------
                 else if (dir0 == 2) {
-                    datastick_fine   = data_fine + m_midx(2 * i1, 2 * i2, 0, 0, block_fine_);
-                    datastick_coarse = data_coarse + m_midx(i1, i2, 0, 0, block_fine_);
+                    datastick_fine   = data_fine + m_idx(2 * i1, 2 * i2, 0, 0, block_fine_->stride());
+                    datastick_coarse = data_coarse + m_idx(i1, i2, 0, 0, block_fine_->stride());
                     for (lid_t i0 = 0; i0 < 21; ++i0) {
                         const real_t x0 = (2 * i0) * hfine_;
                         const real_t x1 = (2 * i0 + 1) * hfine_;
                         //check the results
-                        real_t val_coarse = datastick_coarse[m_midx(0, 0, i0, 0, block_coarse_)];
-                        real_t val_fine0  = datastick_fine[m_midx(0, 0, 2 * i0, 0, block_fine_)];
-                        real_t val_fine1  = datastick_fine[m_midx(0, 0, 2 * i0 + 1, 0, block_fine_)];
+                        real_t val_coarse = datastick_coarse[m_idx(0, 0, i0, 0, block_coarse_->stride())];
+                        real_t val_fine0  = datastick_fine[m_idx(0, 0, 2 * i0, 0, block_fine_->stride())];
+                        real_t val_fine1  = datastick_fine[m_idx(0, 0, 2 * i0 + 1, 0, block_fine_->stride())];
                         // m_log("checking value: %f vs %f", val_fine0, val_coarse);
                         ASSERT_NEAR(poly(x0), val_coarse, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
 
@@ -362,7 +363,7 @@ TEST_F(valid_Wavelet_Kernel, refine) {
                     real_t z      = i2 * hcoarse_;
                     real_t pos[3] = {x, y, z};
 
-                    data_coarse[m_midx(i0, i1, i2, 0, block_fine_)] = poly(pos[id]);
+                    data_coarse[m_idx(i0, i1, i2, 0, block_fine_->stride())] = poly(pos[id]);
                 }
             }
         }
@@ -391,15 +392,15 @@ TEST_F(valid_Wavelet_Kernel, refine) {
                 real_t* datastick_coarse;
                 //------------------------
                 if (dir0 == 0) {
-                    datastick_fine   = data_fine + m_midx(0, 2 * i1, 2 * i2, 0, block_fine_);
-                    datastick_coarse = data_coarse + m_midx(0, i1, i2, 0, block_fine_);
+                    datastick_fine   = data_fine + m_idx(0, 2 * i1, 2 * i2, 0, block_fine_->stride());
+                    datastick_coarse = data_coarse + m_idx(0, i1, i2, 0, block_fine_->stride());
                     for (lid_t i0 = 0; i0 < 21; ++i0) {
                         const real_t x0 = (2 * i0) * hfine_;
                         const real_t x1 = (2 * i0 + 1) * hfine_;
                         //check the results
-                        real_t val_coarse = datastick_coarse[m_midx(i0, 0, 0, 0, block_coarse_)];
-                        real_t val_fine0  = datastick_fine[m_midx(2 * i0, 0, 0, 0, block_fine_)];
-                        real_t val_fine1  = datastick_fine[m_midx(2 * i0 + 1, 0, 0, 0, block_fine_)];
+                        real_t val_coarse = datastick_coarse[m_idx(i0, 0, 0, 0, block_coarse_->stride())];
+                        real_t val_fine0  = datastick_fine[m_idx(2 * i0, 0, 0, 0, block_fine_->stride())];
+                        real_t val_fine1  = datastick_fine[m_idx(2 * i0 + 1, 0, 0, 0, block_fine_->stride())];
                         // m_log("checking value: %f vs %f", val_fine0, val_coarse);
                         ASSERT_NEAR(poly(x0), val_fine0, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
                         ASSERT_NEAR(poly(x1), val_fine1, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
@@ -414,15 +415,15 @@ TEST_F(valid_Wavelet_Kernel, refine) {
                 }
                 //------------------------
                 else if (dir0 == 1) {
-                    datastick_fine   = data_fine + m_midx(2 * i1, 0, 2 * i2, 0, block_fine_);
-                    datastick_coarse = data_coarse + m_midx(i1, 0, i2, 0, block_fine_);
+                    datastick_fine   = data_fine + m_idx(2 * i1, 0, 2 * i2, 0, block_fine_->stride());
+                    datastick_coarse = data_coarse + m_idx(i1, 0, i2, 0, block_fine_->stride());
                     for (lid_t i0 = 0; i0 < 21; ++i0) {
                         const real_t x0 = (2 * i0) * hfine_;
                         const real_t x1 = (2 * i0 + 1) * hfine_;
                         //check the results
-                        real_t val_coarse = datastick_coarse[m_midx(0, i0, 0, 0, block_coarse_)];
-                        real_t val_fine0  = datastick_fine[m_midx(0, 2 * i0, 0, 0, block_fine_)];
-                        real_t val_fine1  = datastick_fine[m_midx(0, 2 * i0 + 1, 0, 0, block_fine_)];
+                        real_t val_coarse = datastick_coarse[m_idx(0, i0, 0, 0, block_coarse_->stride())];
+                        real_t val_fine0  = datastick_fine[m_idx(0, 2 * i0, 0, 0, block_fine_->stride())];
+                        real_t val_fine1  = datastick_fine[m_idx(0, 2 * i0 + 1, 0, 0, block_fine_->stride())];
                         // m_log("checking value: %f vs %f", val_fine0, val_coarse);
                         ASSERT_NEAR(poly(x0), val_fine0, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
                         ASSERT_NEAR(poly(x1), val_fine1, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
@@ -437,15 +438,15 @@ TEST_F(valid_Wavelet_Kernel, refine) {
                 }
                 //------------------------
                 else if (dir0 == 2) {
-                    datastick_fine   = data_fine + m_midx(2 * i1, 2 * i2, 0, 0, block_fine_);
-                    datastick_coarse = data_coarse + m_midx(i1, i2, 0, 0, block_fine_);
+                    datastick_fine   = data_fine + m_idx(2 * i1, 2 * i2, 0, 0, block_fine_->stride());
+                    datastick_coarse = data_coarse + m_idx(i1, i2, 0, 0, block_fine_->stride());
                     for (lid_t i0 = 0; i0 < 21; ++i0) {
                         const real_t x0 = (2 * i0) * hfine_;
                         const real_t x1 = (2 * i0 + 1) * hfine_;
                         //check the results
-                        real_t val_coarse = datastick_coarse[m_midx(0, 0, i0, 0, block_coarse_)];
-                        real_t val_fine0  = datastick_fine[m_midx(0, 0, 2 * i0, 0, block_fine_)];
-                        real_t val_fine1  = datastick_fine[m_midx(0, 0, 2 * i0 + 1, 0, block_fine_)];
+                        real_t val_coarse = datastick_coarse[m_idx(0, 0, i0, 0, block_coarse_->stride())];
+                        real_t val_fine0  = datastick_fine[m_idx(0, 0, 2 * i0, 0, block_fine_->stride())];
+                        real_t val_fine1  = datastick_fine[m_idx(0, 0, 2 * i0 + 1, 0, block_fine_->stride())];
                         // m_log("checking value: %f vs %f", val_fine0, val_coarse);
                         ASSERT_NEAR(poly(x0), val_fine0, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;
                         ASSERT_NEAR(poly(x1), val_fine1, DOUBLE_TOL) << "during test: dir = " << id << " @ " << i0 << " " << i1 << " " << i2;

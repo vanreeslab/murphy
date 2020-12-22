@@ -3,16 +3,8 @@
 #include <iostream>
 #include <string>
 
-#include "advection_diffusion.hpp"
-#include "field.hpp"
-#include "grid.hpp"
-#include "ioh5.hpp"
-#include "laplacian.hpp"
-#include "multigrid.hpp"
 #include "murphy.hpp"
-#include "parser.hpp"
-#include "prof.hpp"
-#include "setvalues.hpp"
+#include "testcase.hpp"
 
 using std::string;
 using std::to_string;

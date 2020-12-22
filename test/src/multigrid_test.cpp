@@ -10,7 +10,8 @@
 // #include "gtest/gtest.h"
 // #include "ioh5.hpp"
 // #include "laplacian.hpp"
-// #include "defs.hpp"
+// #include "core/macros.hpp"
+#include "core/types.hpp"
 // #include "setvalues.hpp"
 
 // #define DOUBLE_TOL 1e-9

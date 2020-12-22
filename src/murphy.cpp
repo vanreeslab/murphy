@@ -3,7 +3,8 @@
 
 #include <string>
 
-#include "defs.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
 #include "navier_stokes.hpp"
 #include "p8est.h"
 #include "parser.hpp"
@@ -27,6 +28,7 @@ TestCase* MurphyInit(int argc, char** argv) {
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
     m_assert(M_N >= M_GS, "we cannot have ghost points that span more than 1 block");
     m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
+    m_assert((M_STRIDE*M_STRIDE*M_STRIDE) < std::numeric_limits<bidx_t>::max(),"The whole block indexing must be contained in bidx_t");
 
     // parse arguments, just simply display the help, nothing more at that stage
     ParserArguments argument;
