@@ -99,7 +99,7 @@ TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
     }
 
     // Wavelet* interp = GetWavelet(n[id][0], n[id][1]);
-    real_t detail_max;
+    real_t detail_max = 0.0;
     interp->Details(&block_fine, data_fine, &detail_max);
 
     //................................................
