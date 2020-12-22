@@ -663,6 +663,9 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
  */
 void GridBlock::GhostFreeLists() {
     //-------------------------------------------------------------------------
+    // need to free the memory as well, otherwise I cannot reallocate it later on
+    coarse_ptr_.Free();
+
     // clear the ghost lists
     auto remove_block = [](auto block) { delete (block); };
     std::for_each(local_sibling_.begin(), local_sibling_.end(), remove_block);
