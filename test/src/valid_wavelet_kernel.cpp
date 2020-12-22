@@ -226,7 +226,7 @@ TEST_F(valid_Wavelet_Kernel, coarsen_detail) {
                 }
             }
         }
-        real_t detail_max;
+        real_t detail_max = 0.0;
         interp.Details(block_fine_, data_fine, &detail_max);
         ASSERT_NEAR(detail_max, 0.0, DOUBLE_TOL) << "during test: dir = " << id << " detail max = " << detail_max;
 
