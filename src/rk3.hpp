@@ -45,7 +45,7 @@ class RungeKutta3 {
 
     void DoDt(const real_t dt, real_t* time);
 
-    real_t ComputeDt();
+    real_t ComputeDt(const real_t max_vel = 1.0);
 };
 
 #endif  // SRC_RK3_HPP_

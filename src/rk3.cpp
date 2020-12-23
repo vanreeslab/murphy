@@ -128,7 +128,7 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
  * 
  * @return real_t 
  */
-real_t RungeKutta3::ComputeDt() {
+real_t RungeKutta3::ComputeDt(const real_t max_vel) {
     // m_begin;
     //-------------------------------------------------------------------------
     // know the limits
@@ -140,8 +140,7 @@ real_t RungeKutta3::ComputeDt() {
     m_assert(h_fine > 0.0, "the finest h = %e must be positive", h_fine);
 
     // get the fastest velocity
-    real_t max_vel = 1.0;  //todo change
-    real_t cfl_dt  = cfl_limit * h_fine / max_vel;
+    real_t cfl_dt = cfl_limit * h_fine / max_vel;
     m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
 
     m_log("dt = %e, using h = %e and CFL limit = %e", cfl_dt, h_fine, cfl_limit);

@@ -170,4 +170,33 @@ class SetCompactVortexRing : public SetValue {
     SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, m_ptr<const Wavelet> interp);
 };
 
+//=====================================================================================================
+class SetABSVelocity : public SetValue {
+   protected:
+    real_t a_ = 0;    //!< the direction normal to the ring, i.e. the z direction
+    real_t b_ = 0.0;  //!< the direction normal to the ring, i.e. the z direction
+    real_t c_ = 0.0;  //!< the direction normal to the ring, i.e. the z direction
+
+    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+
+   public:
+    SetABSVelocity(const real_t a, const real_t b, const real_t c);
+    SetABSVelocity(const real_t a, const real_t b, const real_t c, m_ptr<const Wavelet> interp);
+};
+
+//=====================================================================================================
+class SetScalarRing : public SetValue {
+   protected:
+    lda_t  normal_    = 0;                //!< the direction normal to the ring, i.e. the z direction
+    real_t sigma_     = 0.0;              //!< the direction normal to the ring, i.e. the z direction
+    real_t radius_    = 0.0;              //!< the direction normal to the ring, i.e. the z direction
+    real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
+
+    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,m_ptr<Field> fid) override;
+
+   public:
+    SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
+    SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, m_ptr<const Wavelet> interp);
+};
+
 #endif  // SRC_SETVALUES_HPP_

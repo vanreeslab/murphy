@@ -28,11 +28,12 @@ class NavierStokes : public TestCase {
     std::string folder_diag_ = "data";
 
    public:
-    explicit NavierStokes(){};
     ~NavierStokes();
 
-    void InitParam(ParserArguments* param);
-    void Run();
+    void InitParam(ParserArguments* param) override;
+    void Run() override;
+
+   protected:
     void Diagnostics(const real_t time, const real_t dt, const lid_t iter);
 };
 

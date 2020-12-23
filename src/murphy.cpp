@@ -3,9 +3,10 @@
 
 #include <string>
 
+#include "clients/flow_abc.hpp"
+#include "clients/navier_stokes.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "navier_stokes.hpp"
 #include "p8est.h"
 #include "parser.hpp"
 
@@ -40,11 +41,16 @@ TestCase* MurphyInit(int argc, char** argv) {
         testcase = new NavierStokes();
         testcase->InitParam(&argument);
         return testcase;
-    } else {
+    } 
+    else if (argument.do_abc_flow){
+        testcase = new FlowABC();
+        testcase->InitParam(&argument);
+        return testcase;
+    }
+    else {
         // m_assert(false, "no testcase has been choosen");
         m_log("no test case chosen");
     }
-
     return nullptr;
     //-------------------------------------------------------------------------
 }

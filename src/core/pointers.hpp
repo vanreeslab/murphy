@@ -34,7 +34,10 @@ class m_ptr {
 
     /** @brief move constructor: deleted */
     template <typename T2>
-    m_ptr(m_ptr<T2>&& ptr)  = delete ;//: data_(ptr()), is_owned_(false){};
+    m_ptr(m_ptr<T2>&& ptr) = delete;  //: data_(ptr()), is_owned_(false){};
+
+    /** allow perfect forwarding on the constructor of T
+    m_ptr(T&& ptr) : data(std::forward(ptr)), is_owned_(true){};
 
     //-------------------------------------------------------------------------
     /** @brief nullptr constructor */

@@ -89,8 +89,11 @@ static struct argp_option options[] = {
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients:", 3},
+    // navier-stokes
     {"navier-stokes", 3000, 0, OPTION_ARG_OPTIONAL, "Navier-Stokes testcase"},
     {"ns", 0, 0, OPTION_ALIAS, 0},
+    // abc flow
+    {"abc", 4000, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
 
     /* Navier-Stokes */
     {0, 0, 0, OPTION_DOC, "Navier-Stokes parameters:", 4},
@@ -230,6 +233,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err   = atoi_list(1, arg, myint);
             m_log("iter adapt: %d", myint[0]);
             return err;
+        }
+        //................................................
+        case 4000: { /* Navier-Stockes */
+            m_log("ABC-flow testcase selected");
+            arguments->do_abc_flow = true;
+            return 0;
         }
         default:
             return ARGP_ERR_UNKNOWN;

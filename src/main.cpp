@@ -13,7 +13,9 @@ int main(int argc, char** argv) {
     //-------------------------------------------------------------------------
     TestCase* testcase = MurphyInit(argc, argv);
 
-    testcase->Run();
+    if (testcase != nullptr) {
+        testcase->Run();
+    }
 
     MurphyFinalize(testcase);
     //-------------------------------------------------------------------------
