@@ -4,7 +4,7 @@ CC = mpicc
 # override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
 
 #CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
-CXXFLAGS := -g -O3 -march=native -fopenmp -DLOG_ALLRANKS\
+CXXFLAGS := -g -O3 -march=native -fopenmp\
                      -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
 # -DNDEBUG
 # -DLOG_ALLRANKS
