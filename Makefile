@@ -103,7 +103,7 @@ $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -E $< -o $@
 
 $(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
-	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) -std=c++17 -fPIC -MMD
+	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) -std=c++17 -fPIC -MMD
 
 ################################################################################
 default: $(TARGET)
