@@ -35,6 +35,7 @@ class ParserArguments {
     iter_t iter_max      = 100;
     iter_t iter_diag     = 1;
     iter_t iter_adapt    = 1;
+    iter_t iter_dump     = 1;
 };
 
 void ParseArgument(int argc, char** argv, ParserArguments* arguments);

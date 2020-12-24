@@ -12,6 +12,7 @@ class FlowABC : public TestCase {
     iter_t iter_max_   = 0;
     iter_t iter_adapt_ = 0;
     iter_t iter_diag_  = 0;
+    iter_t iter_dump_  = 0;
 
     Field* vel_  = nullptr;
     Field* scal_ = nullptr;
@@ -27,8 +28,6 @@ class FlowABC : public TestCase {
 
    protected:
     void Diagnostics(const real_t time, const real_t dt, const lid_t iter);
-
-
 };
 
 #endif  // SRC_CLIENTS_FLOW_ABC_HPP

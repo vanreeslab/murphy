@@ -35,6 +35,7 @@ void FlowABC::InitParam(ParserArguments* param) {
     iter_max_   = param->iter_max;
     iter_diag_  = param->iter_diag;
     iter_adapt_ = param->iter_adapt;
+    iter_dump_  = param->iter_dump;
 
     // setup the grid
     bool period[3]    = {true, true, true};
@@ -98,6 +99,14 @@ void FlowABC::Run() {
         m_log("RK3 - time = %f - step %d - dt = %e", t, iter, dt);
 
         //................................................
+        // advance in time
+        m_log("---- do time-step");
+        m_profStart(prof_, "do dt");
+        rk3.DoDt(dt, &t);
+        iter++;
+        m_profStop(prof_, "do dt");
+
+        //................................................
         // diagnostics, dumps, whatever
         if (iter % iter_diag_ == 0) {
             m_profStart(prof_, "diagnostics");
@@ -105,18 +114,10 @@ void FlowABC::Run() {
             Diagnostics(t, dt, iter);
             m_profStop(prof_, "diagnostics");
         }
-
-        //................................................
-        // advance in time
-        m_log("---- do time-step");
-        m_profStart(prof_, "do dt");
-        rk3.DoDt(dt, &t);
-        iter++;
-        m_profStop(prof_, "do dt");
     }
     m_profStop(prof_, "ABS Flow run");
     // run the last diag
-    // Diagnostics(t, 0.0, iter);
+    Diagnostics(t, 0.0, iter);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -146,12 +147,14 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         fclose(file_diag);
     }
 
-    // dump the vorticity field
-    IOH5 dump(folder_diag_);
-    grid_->GhostPull(scal_);
-    grid_->GhostPull(vel_);
-    dump(grid_, scal_, iter);
-    dump(grid_, vel_, iter);
+    if (iter % iter_dump_ == 0) {
+        // dump the vorticity field
+        IOH5 dump(folder_diag_);
+        grid_->GhostPull(scal_);
+        grid_->GhostPull(vel_);
+        dump(grid_, scal_, iter);
+        dump(grid_, vel_, iter);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }

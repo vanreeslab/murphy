@@ -94,6 +94,7 @@ static struct argp_option options[] = {
     {"ns", 0, 0, OPTION_ALIAS, 0},
     // abc flow
     {"abc", 4000, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
+    {"iter-dump", 4001, "int", 0, "dump the field every x iterations"},
 
     /* Navier-Stokes */
     {0, 0, 0, OPTION_DOC, "Navier-Stokes parameters:", 4},
@@ -239,6 +240,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("ABC-flow testcase selected");
             arguments->do_abc_flow = true;
             return 0;
+        }
+        case 4001: { /* iter dump*/
+            int*    myint = &arguments->iter_dump;
+            error_t err   = atoi_list(1, arg, myint);
+            m_log("iter dump: %d", myint[0]);
+            return err;
         }
         default:
             return ARGP_ERR_UNKNOWN;
