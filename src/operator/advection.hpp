@@ -141,20 +141,25 @@ void ConsAdvection<length>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> blo
         if constexpr (length == 4) {
             // compute the 6 fluxes
 
-            flux[0] = m_max((u[m_idx(0, 0, 0)] + u[m_idx(-1, 0, 0)]) * one_half, 0.0) * (-one_sixth * src[m_idx(-2, 0, 0)] + five_sixth * src[m_idx(-1, 0, 0)] + one_third * src[m_idx(+0, 0, 0)]) +
-                      m_min((u[m_idx(0, 0, 0)] + u[m_idx(-1, 0, 0)]) * one_half, 0.0) * (+one_third * src[m_idx(-1, 0, 0)] + five_sixth * src[m_idx(+0, 0, 0)] - one_sixth * src[m_idx(+1, 0, 0)]);
-            flux[1] = m_max((u[m_idx(0, 0, 0)] + u[m_idx(+1, 0, 0)]) * one_half, 0.0) * (-one_sixth * src[m_idx(-1, 0, 0)] + five_sixth * src[m_idx(+0, 0, 0)] + one_third * src[m_idx(+1, 0, 0)]) +
-                      m_min((u[m_idx(0, 0, 0)] + u[m_idx(+1, 0, 0)]) * one_half, 0.0) * (+one_third * src[m_idx(+0, 0, 0)] + five_sixth * src[m_idx(+1, 0, 0)] - one_sixth * src[m_idx(+2, 0, 0)]);
+            const real_t u_x_m = 0.5 * (u[m_idx(0, 0, 0)] + u[m_idx(-1, 0, 0)]);
+            const real_t u_x_p = 0.5 * (u[m_idx(0, 0, 0)] + u[m_idx(+1, 0, 0)]);
+            const real_t v_y_m = 0.5 * (v[m_idx(0, 0, 0)] + v[m_idx(0, -1, 0)]);
+            const real_t v_y_p = 0.5 * (v[m_idx(0, 0, 0)] + v[m_idx(0, +1, 0)]);
+            const real_t w_z_m = 0.5 * (w[m_idx(0, 0, 0)] + w[m_idx(0, 0, -1)]);
+            const real_t w_z_p = 0.5 * (w[m_idx(0, 0, 0)] + w[m_idx(0, 0, +1)]);
 
-            flux[2] = m_max((v[m_idx(0, 0, 0)] + v[m_idx(0, -1, 0)]) * one_half, 0.0) * (-one_sixth * src[m_idx(0, -2, 0)] + five_sixth * src[m_idx(0, -1, 0)] + one_third * src[m_idx(0, +0, 0)]) +
-                      m_min((v[m_idx(0, 0, 0)] + v[m_idx(0, -1, 0)]) * one_half, 0.0) * (+one_third * src[m_idx(0, -1, 0)] + five_sixth * src[m_idx(0, +0, 0)] - one_sixth * src[m_idx(0, +1, 0)]);
-            flux[3] = m_max((v[m_idx(0, 0, 0)] + v[m_idx(0, +1, 0)]) * one_half, 0.0) * (-one_sixth * src[m_idx(0, -1, 0)] + five_sixth * src[m_idx(0, +0, 0)] + one_third * src[m_idx(0, +1, 0)]) +
-                      m_min((v[m_idx(0, 0, 0)] + v[m_idx(0, +1, 0)]) * one_half, 0.0) * (+one_third * src[m_idx(0, +0, 0)] + five_sixth * src[m_idx(0, +1, 0)] - one_sixth * src[m_idx(0, +2, 0)]);
-
-            flux[4] = m_max((w[m_idx(0, 0, 0)] + w[m_idx(0, 0, -1)]) * one_half, 0.0) * (-one_sixth * src[m_idx(0, 0, -2)] + five_sixth * src[m_idx(0, 0, -1)] + one_third * src[m_idx(0, 0, +0)]) +
-                      m_min((w[m_idx(0, 0, 0)] + w[m_idx(0, 0, -1)]) * one_half, 0.0) * (+one_third * src[m_idx(0, 0, -1)] + five_sixth * src[m_idx(0, 0, +0)] - one_sixth * src[m_idx(0, 0, +1)]);
-            flux[5] = m_max((w[m_idx(0, 0, 0)] + w[m_idx(0, 0, +1)]) * one_half, 0.0) * (-one_sixth * src[m_idx(0, 0, -1)] + five_sixth * src[m_idx(0, 0, +0)] + one_third * src[m_idx(0, 0, +1)]) +
-                      m_min((w[m_idx(0, 0, 0)] + w[m_idx(0, 0, +1)]) * one_half, 0.0) * (+one_third * src[m_idx(0, 0, +0)] + five_sixth * src[m_idx(0, 0, +1)] - one_sixth * src[m_idx(0, 0, +2)]);
+            flux[0] = (u_x_m > 0.0) * (-one_sixth * (src[m_idx(-2, 0, 0)] * u[m_idx(-2, 0, 0)]) + five_sixth * (src[m_idx(-1, 0, 0)] * u[m_idx(-1, 0, 0)]) + one_third * (src[m_idx(+0, 0, 0)] * u[m_idx(+0, 0, 0)])) +
+                      (u_x_m < 0.0) * (+one_third * (src[m_idx(-1, 0, 0)] * u[m_idx(-1, 0, 0)]) + five_sixth * (src[m_idx(+0, 0, 0)] * u[m_idx(+0, 0, 0)]) - one_sixth * (src[m_idx(+1, 0, 0)] * u[m_idx(+1, 0, 0)]));
+            flux[1] = (u_x_p > 0.0) * (-one_sixth * (src[m_idx(-1, 0, 0)] * u[m_idx(-1, 0, 0)]) + five_sixth * (src[m_idx(+0, 0, 0)] * u[m_idx(+0, 0, 0)]) + one_third * (src[m_idx(+1, 0, 0)] * u[m_idx(+1, 0, 0)])) +
+                      (u_x_p < 0.0) * (+one_third * (src[m_idx(+0, 0, 0)] * u[m_idx(+0, 0, 0)]) + five_sixth * (src[m_idx(+1, 0, 0)] * u[m_idx(+1, 0, 0)]) - one_sixth * (src[m_idx(+2, 0, 0)] * u[m_idx(+2, 0, 0)]));
+            flux[2] = (v_y_m > 0.0) * (-one_sixth * (src[m_idx(0, -2, 0)] * v[m_idx(0, -2, 0)]) + five_sixth * (src[m_idx(0, -1, 0)] * v[m_idx(0, -1, 0)]) + one_third * (src[m_idx(0, +0, 0)] * v[m_idx(0, +0, 0)])) +
+                      (v_y_m < 0.0) * (+one_third * (src[m_idx(0, -1, 0)] * v[m_idx(0, -1, 0)]) + five_sixth * (src[m_idx(0, +0, 0)] * v[m_idx(0, +0, 0)]) - one_sixth * (src[m_idx(0, +1, 0)] * v[m_idx(0, +1, 0)]));
+            flux[3] = (v_y_p > 0.0) * (-one_sixth * (src[m_idx(0, -1, 0)] * v[m_idx(0, -1, 0)]) + five_sixth * (src[m_idx(0, +0, 0)] * v[m_idx(0, +0, 0)]) + one_third * (src[m_idx(0, +1, 0)] * v[m_idx(0, +1, 0)])) +
+                      (v_y_p < 0.0) * (+one_third * (src[m_idx(0, +0, 0)] * v[m_idx(0, +0, 0)]) + five_sixth * (src[m_idx(0, +1, 0)] * v[m_idx(0, +1, 0)]) - one_sixth * (src[m_idx(0, +2, 0)] * v[m_idx(0, +2, 0)]));
+            flux[4] = (w_z_m > 0.0) * (-one_sixth * (src[m_idx(0, 0, -2)] * w[m_idx(0, 0, -2)]) + five_sixth * (src[m_idx(0, 0, -1)] * w[m_idx(0, 0, -1)]) + one_third * (src[m_idx(0, 0, +0)] * w[m_idx(0, 0, +0)])) +
+                      (w_z_m < 0.0) * (+one_third * (src[m_idx(0, 0, -1)] * w[m_idx(0, 0, -1)]) + five_sixth * (src[m_idx(0, 0, +0)] * w[m_idx(0, 0, +0)]) - one_sixth * (src[m_idx(0, 0, +1)] * w[m_idx(0, 0, +1)]));
+            flux[5] = (w_z_p > 0.0) * (-one_sixth * (src[m_idx(0, 0, -1)] * w[m_idx(0, 0, -1)]) + five_sixth * (src[m_idx(0, 0, +0)] * w[m_idx(0, 0, +0)]) + one_third * (src[m_idx(0, 0, +1)] * w[m_idx(0, 0, +1)])) +
+                      (w_z_p < 0.0) * (+one_third * (src[m_idx(0, 0, +0)] * w[m_idx(0, 0, +0)]) + five_sixth * (src[m_idx(0, 0, +1)] * w[m_idx(0, 0, +1)]) - one_sixth * (src[m_idx(0, 0, +2)] * w[m_idx(0, 0, +2)]));
 
             // // this is the main contribution
             // trg[0] -= scale_d[0] * 0.5 * m_max(u[0] + u[m_idx(+1, 0, 0)],0.0) * (-one_twelve * (src[m_idx(+2, 0, 0)] + src[m_idx(-1, 0, 0)]) + seven_twelve * (src[m_idx(+1, 0, 0)] - src[m_idx(0, 0, 0)]));
