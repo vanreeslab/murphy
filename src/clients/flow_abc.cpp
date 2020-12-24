@@ -48,7 +48,7 @@ void FlowABC::InitParam(ParserArguments* param) {
     grid_->AddField(scal_);
 
     // setup the flow ring
-    SetScalarRing flow_ring(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
+    SetScalarTube flow_ring(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
     flow_ring.Profile(prof_);
     flow_ring(grid_, scal_);
 

@@ -199,4 +199,19 @@ class SetScalarRing : public SetValue {
     SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, m_ptr<const Wavelet> interp);
 };
 
+//=====================================================================================================
+class SetScalarTube : public SetValue {
+   protected:
+    lda_t  dir_       = 0;                //!< the direction normal of the tube
+    real_t sigma_     = 0.0;              //!< the sigma of one tube
+    real_t b_         = 0.0;              //!< the distance between two tubes
+    real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the tube system
+
+    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+
+   public:
+    SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b);
+    SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b, m_ptr<const Wavelet> interp);
+};
+
 #endif  // SRC_SETVALUES_HPP_

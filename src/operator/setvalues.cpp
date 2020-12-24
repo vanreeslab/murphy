@@ -530,3 +530,57 @@ void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
     for_loop(&op, start_, end_);
     //-------------------------------------------------------------------------
 }
+
+//=====================================================================================================
+SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b) : SetScalarTube(dir, center, sigma, b, nullptr) {}
+SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b, m_ptr<const Wavelet> interp) : SetValue(interp) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    dir_   = dir;
+    sigma_ = sigma;
+    b_     = b;
+    for (lda_t id = 0; id < 3; ++id) {
+        center_[id] = center[id];
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void SetScalarTube::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+    m_assert(fid->lda() == 1, "this function is for scalar fields only");
+    //-------------------------------------------------------------------------
+    real_t        pos[3];
+    const real_t* xyz   = block->xyz();
+    const real_t* hgrid = block->hgrid();
+
+    const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
+    const real_t oo_pisigma2 = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
+
+    // compute the normal direction as being the z one and the two other as x and y
+    const lda_t idx = (dir_ + 1) % 3;
+    const lda_t idy = (dir_ + 2) % 3;
+    const lda_t idz = dir_;
+
+    // get the pointers correct
+    real_t* w = block->data(fid).Write();
+
+    auto op = [=, &w](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        // get the position
+        real_t pos[3];
+        m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+
+        // wrt to the center
+        // const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
+        // const real_t radr    = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2));
+        const real_t rad1   = pow(pos[idx] - (center_[idx] + b_), 2) + pow(pos[idy] - center_[idy], 2);
+        const real_t rad2   = pow(pos[idx] - (center_[idx] - b_), 2) + pow(pos[idy] - center_[idy], 2);
+        // const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center_[idz], 2);
+        // const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center_[idz], 2);
+        const real_t vort    = oo_pisigma2 * (exp(-rad1 * oo_sigma2) + exp(-rad2 * oo_sigma2));
+
+        w[m_idx(i0, i1, i2)] = vort;
+    };
+
+    for_loop(&op, start_, end_);
+    //-------------------------------------------------------------------------
+}

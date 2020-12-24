@@ -78,7 +78,7 @@ inline static real_t p4est_QuadLen(const level_t level) {
 }
 
 inline static int p4est_GetChildID(const real_t xyz[3], const level_t level) {
-    m_assert(level > 0, "the level = %d must be >0", level);
+    m_assert(level > 0, "the level = %d must be > 0", level);
     //---------------------------------------------------------------------
     // mimic the behavior of p8est_quadrant_child_id (p4est_bits.c)
     const real_t len_coarse = p4est_QuadLen(level - 1);
