@@ -547,7 +547,7 @@ SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real
 }
 
 void SetScalarTube::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
-    m_assert(fid->lda() == 1, "this function is for scalar fields only");
+    m_assert(fid->lda() == 2, "this function is for scalar fields only");
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -562,9 +562,10 @@ void SetScalarTube::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
     const lda_t idz = dir_;
 
     // get the pointers correct
-    real_t* w = block->data(fid).Write();
+    real_t* w0 = block->data(fid, 0).Write();
+    real_t* w1 = block->data(fid, 1).Write();
 
-    auto op = [=, &w](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    auto op = [=, &w0, &w1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         // get the position
         real_t pos[3];
         m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
@@ -572,13 +573,14 @@ void SetScalarTube::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
         // wrt to the center
         // const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
         // const real_t radr    = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2));
-        const real_t rad1   = pow(pos[idx] - (center_[idx] + b_), 2) + pow(pos[idy] - center_[idy], 2);
-        const real_t rad2   = pow(pos[idx] - (center_[idx] - b_), 2) + pow(pos[idy] - center_[idy], 2);
+        const real_t rad1 = pow(pos[idx] - (center_[idx] + b_), 2) + pow(pos[idy] - center_[idy], 2);
+        const real_t rad2 = pow(pos[idx] - (center_[idx] - b_), 2) + pow(pos[idy] - center_[idy], 2);
+
         // const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center_[idz], 2);
         // const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center_[idz], 2);
-        const real_t vort    = oo_pisigma2 * (exp(-rad1 * oo_sigma2) + exp(-rad2 * oo_sigma2));
-
-        w[m_idx(i0, i1, i2)] = vort;
+        // const real_t vort     = oo_pisigma2 * (exp(-rad1 * oo_sigma2) - exp(-rad2 * oo_sigma2));
+        w0[m_idx(i0, i1, i2)] = oo_pisigma2 * exp(-rad1 * oo_sigma2);
+        w1[m_idx(i0, i1, i2)] = oo_pisigma2 * exp(-rad2 * oo_sigma2);
     };
 
     for_loop(&op, start_, end_);

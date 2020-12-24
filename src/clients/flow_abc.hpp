@@ -14,6 +14,8 @@ class FlowABC : public TestCase {
     iter_t iter_diag_  = 0;
     iter_t iter_dump_  = 0;
 
+    bool dump_detail_ = false;
+
     Field* vel_  = nullptr;
     Field* scal_ = nullptr;
     Grid*  grid_ = nullptr;

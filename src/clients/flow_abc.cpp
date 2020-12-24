@@ -32,10 +32,11 @@ void FlowABC::InitParam(ParserArguments* param) {
         string name = string("Navier-Stokes_") + to_string(comm_size) + string("ranks");
         prof_       = new Prof(name);
     }
-    iter_max_   = param->iter_max;
-    iter_diag_  = param->iter_diag;
-    iter_adapt_ = param->iter_adapt;
-    iter_dump_  = param->iter_dump;
+    dump_detail_ = param->dump_detail;
+    iter_max_    = param->iter_max;
+    iter_diag_   = param->iter_diag;
+    iter_adapt_  = param->iter_adapt;
+    iter_dump_   = param->iter_dump;
 
     // setup the grid
     bool period[3]    = {true, true, true};
@@ -44,7 +45,7 @@ void FlowABC::InitParam(ParserArguments* param) {
 
     // get the fields
     vel_  = new Field("velocity", 3);
-    scal_ = new Field("scalar", 1);
+    scal_ = new Field("scalar", 2);
     grid_->AddField(vel_);
     grid_->AddField(scal_);
 
@@ -141,7 +142,6 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
     level_t max_level = grid_->MaxLevel();
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/ns-diag.data").c_str(), "a+");
-
         // iter, time, dt, total quad, level min, level max
         fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
         fclose(file_diag);
@@ -154,6 +154,20 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         grid_->GhostPull(vel_);
         dump(grid_, scal_, iter);
         dump(grid_, vel_, iter);
+
+        // dump the details
+        if (dump_detail_) {
+            Field details("detail", 2);
+            details.bctype(M_BC_EXTRAP);
+            grid_->AddField(&details);
+            grid_->DumpDetails(scal_, &details);
+
+            grid_->GhostPull(&details);
+            // IOH5 dump("data");
+            dump(grid_, &details, iter);
+
+            grid_->DeleteField(&details);
+        }
     }
     //-------------------------------------------------------------------------
     m_end;
