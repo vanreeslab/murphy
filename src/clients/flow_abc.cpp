@@ -29,7 +29,7 @@ void FlowABC::InitParam(ParserArguments* param) {
     if (param->profile) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        string name = string("Navier-Stokes_") + to_string(comm_size) + string("ranks");
+        string name = string("ABC_Flow_") + to_string(comm_size) + string("ranks");
         prof_       = new Prof(name);
     }
     dump_detail_ = param->dump_detail;
@@ -76,7 +76,7 @@ void FlowABC::Run() {
     adv.Profile(prof_);
 
     // let's gooo
-    m_profStart(prof_, "ABS Flow run");
+    m_profStart(prof_, "run");
     while (t < t_final && iter < iter_max_) {
         m_log("--------------------");
         //................................................
@@ -116,7 +116,7 @@ void FlowABC::Run() {
             m_profStop(prof_, "diagnostics");
         }
     }
-    m_profStop(prof_, "ABS Flow run");
+    m_profStop(prof_, "run");
     // run the last diag
     Diagnostics(t, 0.0, iter);
     //-------------------------------------------------------------------------
@@ -141,7 +141,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
     level_t min_level = grid_->MinLevel();
     level_t max_level = grid_->MaxLevel();
     if (rank == 0) {
-        file_diag = fopen(string(folder_diag_ + "/ns-diag.data").c_str(), "a+");
+        file_diag = fopen(string(folder_diag_ + "/diag.data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max
         fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
         fclose(file_diag);

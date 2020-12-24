@@ -13,7 +13,7 @@
 
 HOME_MURPHY=/home/ucl/tfl/tgillis/murphy
 SCRATCH=$GLOBALSCRATCH
-RUN_DIR=murphy_weak_${SLURM_JOB_NUM_NODES}_${SLURM_JOB_ID}
+RUN_DIR=murphy_weak/murphy_weak_${SLURM_JOB_NUM_NODES}_${SLURM_JOB_ID}
 
 # create the tmp directory
 mkdir -p $SCRATCH/$RUN_DIR
