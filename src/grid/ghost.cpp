@@ -357,6 +357,10 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Post, grid_, il, field);
+        DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
+    }
     m_profStop(prof_(), "RMA post");
 
     //................................................
@@ -364,7 +368,7 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     m_profStart(prof_(), "computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Post, grid_, il, field);
-        DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
+        DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Cmpt, grid_, il, field, ida, interp_);
     }
     m_profStop(prof_(), "computation");
     m_profStop(prof_(), "pullghost post");

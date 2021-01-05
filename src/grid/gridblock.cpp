@@ -700,6 +700,92 @@ void GridBlock::GhostFreeLists() {
  * @param interp the wavelet
  * @param mirrors_window the window where to find the mirrors
  */
+void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
+    //-------------------------------------------------------------------------
+    // get the sibligngs
+    {
+        const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
+        const data_ptr data_trg = data(field, ida);
+
+        // // start the RMA for the sibling neighbors
+        // for (const auto gblock : ghost_sibling_) {
+        //     const MPI_Aint   disp_src  = gblock->data_src();
+        //     const rank_t     disp_rank = gblock->rank();
+        //     const MemLayout* block_trg = gblock;
+        //     // copy the information
+        //     interp->GetRma(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, disp_src, block_trg, data_trg, disp_rank, mirrors_window);
+        // }
+
+        // get the copy of local siblings
+        for (const auto gblock : (local_sibling_)) {
+            GridBlock*       ngh_block = gblock->data_src();
+            const data_ptr   data_src  = ngh_block->data(field, ida);
+            const MemLayout* block_trg = gblock;
+            // copy the information
+            interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
+        }
+    }
+
+    //................................................
+    const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
+    if (do_coarse) {
+        // reset the coarse memory
+        memset(coarse_ptr_(), 0, interp->CoarseSize() * sizeof(real_t));
+        // we use the full neighbor span
+        const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
+        //................................................
+        // // RMA the sibligns ghosts to the tmp
+        // for (const auto gblock : ghost_sibling_) {
+        //     MPI_Aint disp_src  = gblock->data_src();
+        //     rank_t   disp_rank = gblock->rank();
+        //     // get the associated coarse block
+        //     SubBlock block_trg;
+        //     interp->CoarseFromFine(gblock, &block_trg);
+        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);  // + m_zeroidx(0, &block_trg);
+        //     // interpolate, the level is 1 coarser and the shift is unchanged
+        //     m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1 or 0");
+        //     interp->GetRma((gblock->dlvl() + 1), gblock->shift(), &bsrc_neighbor, disp_src, &block_trg, data_trg, disp_rank, mirrors_window);
+        // }
+        // // RMA the parent ghosts to the tmp
+        // for (const auto gblock : ghost_parent_) {
+        //     MPI_Aint disp_src  = gblock->data_src();
+        //     rank_t   disp_rank = gblock->rank();
+        //     // get the associated coarse block
+        //     SubBlock block_trg;
+        //     interp->CoarseFromFine(gblock, &block_trg);
+        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);
+        //     // interpolate, the level is 1 coarser and the shift is unchanged
+        //     m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 or 0");
+        //     interp->GetRma((gblock->dlvl() + 1), gblock->shift(), &bsrc_neighbor, disp_src, &block_trg, data_trg, disp_rank, mirrors_window);
+        // }
+        //................................................
+        // copy the siblings to coarse
+        for (const auto gblock : local_sibling_) {
+            GridBlock* ngh_block = gblock->data_src();
+            SubBlock   block_trg;
+            interp->CoarseFromFine(gblock, &block_trg);
+            data_ptr data_src = ngh_block->data(field, ida);
+            data_ptr data_trg = coarse_ptr_(0, &block_trg);
+            // interpolate, the level is 1 coarser and the shift is unchanged
+            m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
+            interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
+        }
+        // copy the parents to coarse
+        for (const auto gblock : local_parent_) {
+            GridBlock* ngh_block = gblock->data_src();
+            SubBlock   block_trg;
+            interp->CoarseFromFine(gblock, &block_trg);
+            data_ptr data_src = ngh_block->data(field, ida);
+            data_ptr data_trg = coarse_ptr_(0, &block_trg);
+            // interpolate, the level is 1 coarser and the shift is unchanged
+            m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
+            interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+
 void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     // get the sibligngs
@@ -716,14 +802,14 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             interp->GetRma(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, disp_src, block_trg, data_trg, disp_rank, mirrors_window);
         }
 
-        // get the copy of local siblings
-        for (const auto gblock : (local_sibling_)) {
-            GridBlock*       ngh_block = gblock->data_src();
-            const data_ptr   data_src  = ngh_block->data(field, ida);
-            const MemLayout* block_trg = gblock;
-            // copy the information
-            interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
-        }
+        // // get the copy of local siblings
+        // for (const auto gblock : (local_sibling_)) {
+        //     GridBlock*       ngh_block = gblock->data_src();
+        //     const data_ptr   data_src  = ngh_block->data(field, ida);
+        //     const MemLayout* block_trg = gblock;
+        //     // copy the information
+        //     interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
+        // }
     }
 
     //................................................
@@ -758,29 +844,29 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 or 0");
             interp->GetRma((gblock->dlvl() + 1), gblock->shift(), &bsrc_neighbor, disp_src, &block_trg, data_trg, disp_rank, mirrors_window);
         }
-        //................................................
-        // copy the siblings to coarse
-        for (const auto gblock : local_sibling_) {
-            GridBlock* ngh_block = gblock->data_src();
-            SubBlock   block_trg;
-            interp->CoarseFromFine(gblock, &block_trg);
-            data_ptr data_src = ngh_block->data(field, ida);
-            data_ptr data_trg = coarse_ptr_(0, &block_trg);
-            // interpolate, the level is 1 coarser and the shift is unchanged
-            m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
-            interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
-        }
-        // copy the parents to coarse
-        for (const auto gblock : local_parent_) {
-            GridBlock* ngh_block = gblock->data_src();
-            SubBlock   block_trg;
-            interp->CoarseFromFine(gblock, &block_trg);
-            data_ptr data_src = ngh_block->data(field, ida);
-            data_ptr data_trg = coarse_ptr_(0, &block_trg);
-            // interpolate, the level is 1 coarser and the shift is unchanged
-            m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
-            interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
-        }
+        // //................................................
+        // // copy the siblings to coarse
+        // for (const auto gblock : local_sibling_) {
+        //     GridBlock* ngh_block = gblock->data_src();
+        //     SubBlock   block_trg;
+        //     interp->CoarseFromFine(gblock, &block_trg);
+        //     data_ptr data_src = ngh_block->data(field, ida);
+        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);
+        //     // interpolate, the level is 1 coarser and the shift is unchanged
+        //     m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
+        //     interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
+        // }
+        // // copy the parents to coarse
+        // for (const auto gblock : local_parent_) {
+        //     GridBlock* ngh_block = gblock->data_src();
+        //     SubBlock   block_trg;
+        //     interp->CoarseFromFine(gblock, &block_trg);
+        //     data_ptr data_src = ngh_block->data(field, ida);
+        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);
+        //     // interpolate, the level is 1 coarser and the shift is unchanged
+        //     m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
+        //     interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
+        // }
     }
     //-------------------------------------------------------------------------
 }
