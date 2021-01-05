@@ -730,7 +730,7 @@ void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<c
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
         // reset the coarse memory
-        memset(coarse_ptr_(), 0, interp->CoarseSize() * sizeof(real_t));
+        // memset(coarse_ptr_(), 0, interp->CoarseSize() * sizeof(real_t));
         // we use the full neighbor span
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
         //................................................
