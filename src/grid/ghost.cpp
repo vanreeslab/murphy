@@ -135,7 +135,7 @@ void Ghost::InitList_() {
     m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, mesh->local_num_quadrants);
     // make sure everything is done
     // MPI_Win_fence(0, local2disp_window_);
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
@@ -153,7 +153,8 @@ void Ghost::InitList_() {
     }
     // make sure everybody did it
     // MPI_Win_fence(0, local2disp_window_);
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Win_fence(0, local2disp_window_);
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // post the exposure epoch and start the access one for local2mirrors
@@ -161,7 +162,7 @@ void Ghost::InitList_() {
     m_assert(mirror_target_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
 
     // start the exposure epochs if any
-    MPI_Win_post(mirror_origin_group_, 0, local2disp_window_);
+    MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, local2disp_window_);
     // we need to not start the access epochs if we are empty (it fails on the beast otherwise)
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
@@ -302,7 +303,7 @@ void Ghost::InitComm_() {
 
     // assert that everybody has created the windows correctly
     // MPI_Win_fence(0, mirrors_window_);
-    MPI_Barrier(MPI_COMM_WORLD);
+    // MPI_Barrier(MPI_COMM_WORLD);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -351,7 +352,7 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
     m_profStart(prof_(), "RMA post");
-    MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
+    MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
@@ -386,12 +387,15 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     m_profStart(prof_(), "pullghost wait");
     //................................................
     // finish the access epochs for the exposure epoch to be over
-    m_profStart(prof_(), "RMA wait");
+    m_profStart(prof_(), "RMA complete get");
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_complete(mirrors_window_);
     }
+    m_profStop(prof_(), "RMA complete get");
+
+    m_profStart(prof_(), "RMA wait get");
     MPI_Win_wait(mirrors_window_);
-    m_profStop(prof_(), "RMA wait");
+    m_profStop(prof_(), "RMA wait get");
 
     // we now have all the information needed to compute the ghost points in coarser blocks
     m_profStart(prof_(), "computation");
@@ -419,13 +423,13 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     }
     m_profStop(prof_(), "computation");
 
-    m_profStart(prof_(), "RMA wait");
+    m_profStart(prof_(), "RMA wait put");
     // finish the access epochs for the exposure epoch to be over
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_complete(mirrors_window_);
     }
     MPI_Win_wait(mirrors_window_);
-    m_profStop(prof_(), "RMA wait");
+    m_profStop(prof_(), "RMA wait put");
 
     m_profStart(prof_(), "computation");
     // we copy back the missing info
