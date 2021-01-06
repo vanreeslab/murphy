@@ -3,15 +3,14 @@
 #include <algorithm>
 #include <limits>
 
-#include "grid/boundary.hpp"
-#include "core/macros.hpp"
-#include "core/types.hpp"
-#include "core/pointers.hpp"
-#include "wavelet/wavelet.hpp"
 #include "core/doop.hpp"
-
+#include "core/macros.hpp"
+#include "core/pointers.hpp"
+#include "core/types.hpp"
+#include "grid/boundary.hpp"
 #include "omp.h"
 #include "toolsp4est.hpp"
+#include "wavelet/wavelet.hpp"
 
 #define M_NNEIGHBOR 26
 
@@ -351,23 +350,21 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
 
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
-    m_profStart(prof_(), "RMA post");
+    m_profStart(prof_(), "RMA post get");
     MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Post, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
-    m_profStop(prof_(), "RMA post");
+    m_profStop(prof_(), "RMA post get");
 
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
     m_profStart(prof_(), "computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Post, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Cmpt, grid_, il, field, ida, interp_);
     }
     m_profStop(prof_(), "computation");
@@ -410,38 +407,34 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     m_profStop(prof_(), "computation");
 
     //................................................
+    m_profStart(prof_(), "RMA post put");
     // post exposure and access epochs for to put the values to my neighbors
-    m_profStart(prof_(), "RMA post");
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
-    m_profStop(prof_(), "RMA post");
-
-    //................................................
     // start what can be done = sibling and parents copy
-    m_profStart(prof_(), "computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::PutGhost4Block_Post, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
-    m_profStop(prof_(), "computation");
+    m_profStop(prof_(), "RMA post put");
 
-    m_profStart(prof_(), "RMA wait put");
+    m_profStart(prof_(), "RMA complete put");
     // finish the access epochs for the exposure epoch to be over
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_complete(mirrors_window_);
     }
+    m_profStop(prof_(), "RMA complete put");
+
+    m_profStart(prof_(), "RMA wait put");
     MPI_Win_wait(mirrors_window_);
     m_profStop(prof_(), "RMA wait put");
 
     m_profStart(prof_(), "computation");
     // we copy back the missing info
     LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
-
     // we now have all the information needed, we finish with a physbc
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::PutGhost4Block_Wait, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Wait, grid_, il, field, ida, interp_);
     }
     m_profStop(prof_(), "computation");
@@ -760,9 +753,9 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 
 // /**
 //  * @brief get the memory from the mirrors and myself (+bc!) to my ghost points and to the coarse myself
-//  * 
+//  *
 //  * This is the step number 1/4 of ghost computation
-//  * 
+//  *
 //  * @param qid the quarant ID considered
 //  * @param block the gridblock considered
 //  * @param fid the field id
@@ -797,9 +790,9 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 
 // /**
 //  * @brief once the communication is over, compute the refined ghost points for the missing areas
-//  * 
+//  *
 //  * This is the step number 2/4 of ghost computation
-//  * 
+//  *
 //  * @param qid the quarant ID considered
 //  * @param block the gridblock considered
 //  * @param fid the field id
@@ -820,9 +813,9 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 
 // /**
 //  * @brief locally compute the ghost points of my coarser neighbors and post the copy/put calls
-//  * 
+//  *
 //  * This is the step number 3/4 of ghost computation
-//  * 
+//  *
 //  * @param qid the quarant ID considered
 //  * @param block the gridblock considered
 //  * @param fid the field id
@@ -847,12 +840,12 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
 
 // /**
 //  * @brief Finally apply the physical BC once everything is done
-//  * 
+//  *
 //  * This is the step number 4/4 of ghost computation
-//  * 
-//  * @param qid 
-//  * @param block 
-//  * @param fid 
+//  *
+//  * @param qid
+//  * @param block
+//  * @param fid
 //  */
 // void Ghost::PutGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field* fid) const {
 //     //-------------------------------------------------------------------------
