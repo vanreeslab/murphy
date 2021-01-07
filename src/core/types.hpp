@@ -1,5 +1,5 @@
-#ifndef SRC_CORE_TYPE_HPP_
-#define SRC_CORE_TYPE_HPP_
+#ifndef SRC_CORE_TYPES_HPP_
+#define SRC_CORE_TYPES_HPP_
 
 #include "core/macros.hpp"
 
@@ -58,4 +58,4 @@ typedef int32_t lid_t;
 typedef int8_t  sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
 
-#endif  // SRC_TYPE_HPP_
+#endif  // SRC_CORE_TYPES_HPP_

@@ -118,7 +118,9 @@ void FlowABC::Run() {
     }
     m_profStop(prof_, "run");
     // run the last diag
-    Diagnostics(t, 0.0, iter);
+    if (iter % iter_diag_ != 0) {
+        Diagnostics(t, 0.0, iter);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }

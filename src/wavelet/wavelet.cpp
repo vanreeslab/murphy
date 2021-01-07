@@ -1,7 +1,6 @@
 #include "wavelet.hpp"
 
 #include "core/forloop.hpp"
-#include "core/memlayout.hpp"
 
 /**
  * @brief copy the data from data_src to data_trg
@@ -287,11 +286,11 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
  * @param data the data
  * @return real_t the infinite norm of the max detail coefficient in the extended region
  */
-real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data) const {
+real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data, const real_t vol) const {
     //-------------------------------------------------------------------------
     // get the extended memory layout
-    lid_t       start[3];
-    lid_t       end[3];
+    lid_t start[3];
+    lid_t end[3];
     for (lda_t id = 0; id < 3; id++) {
         start[id] = block->start(id) - shift_front();
         end[id]   = block->end(id) + shift_back();
@@ -300,7 +299,7 @@ real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data) con
 
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(&extended_block, data, &details_max);
+    Details(&extended_block, data, &details_max, vol);
 
     return details_max;
     //-------------------------------------------------------------------------
@@ -313,7 +312,7 @@ real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data) con
  * @param data the data_ptr associated to the layout
  * @param details_max the ptr to a value to put the max detail coefficient
  */
-void Wavelet::Details(m_ptr<MemLayout> block, const_data_ptr data, m_ptr<real_t> details_max) const {
+void Wavelet::Details(m_ptr<MemLayout> block, const_data_ptr data, m_ptr<real_t> details_max, const real_t vol) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
@@ -329,7 +328,11 @@ void Wavelet::Details(m_ptr<MemLayout> block, const_data_ptr data, m_ptr<real_t>
     ctx.sdata  = data;
     ctx.trgstr = -1;
     ctx.tdata  = nullptr;
-    Detail_(&ctx, details_max);
+    
+    ctx.alpha = vol;
+
+    // we go for the two norm over the block
+    Detail_2_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
 

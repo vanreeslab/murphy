@@ -1,5 +1,5 @@
-#ifndef SRC_MACRO_HPP_
-#define SRC_MACRO_HPP_
+#ifndef SRC_CORE_MACRO_HPP_
+#define SRC_CORE_MACRO_HPP_
 
 #include <execinfo.h>
 #include <mpi.h>
@@ -349,4 +349,4 @@
 #endif
 /** @} */
 
-#endif  // SRC_MACRO_HPP_
+#endif  // SRC_CORE_MACRO_HPP_

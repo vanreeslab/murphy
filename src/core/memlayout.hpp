@@ -85,6 +85,7 @@ inline void ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t 
     m_assert(count_y > 0, "we at least need to take 1 element");
     m_assert(count_y <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_y / scale, 1, stride_y * scale, x_type, &xy_type);
+    MPI_Type_free(&x_type);
     //................................................
     // do z type
     lid_t    count_z  = (end[2] - start[2]);
@@ -92,11 +93,10 @@ inline void ToMPIDatatype(const lid_t start[3], const lid_t end[3], const lid_t 
     m_assert(count_z > 0, "we at least need to take 1 element");
     m_assert(count_z <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_z / scale, 1, stride_z * scale, xy_type, xyz_type);
-    MPI_Type_commit(xyz_type);
-    //................................................
-    // free the useless types and return
-    MPI_Type_free(&x_type);
     MPI_Type_free(&xy_type);
+    //................................................
+    // finally commit the type so it's ready to use
+    MPI_Type_commit(xyz_type);
     //-------------------------------------------------------------------------
     m_end;
 };

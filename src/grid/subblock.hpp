@@ -3,7 +3,7 @@
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "memlayout.hpp"
+#include "core/memlayout.hpp"
 
 /**
  * @brief Implementation of a @ref MemLayout as any part of a memory block
