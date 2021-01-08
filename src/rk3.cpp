@@ -37,6 +37,15 @@ RungeKutta3::~RungeKutta3() {
     m_end;
 }
 
+/**
+ * @brief process one time step of the rk3 method.
+ * 
+ * The coeficients are obtained in the litterature.
+ * The time steps are obtained by integrating du/dt = 1 using the chosen scheme.
+ * 
+ * @param dt 
+ * @param time 
+ */
 void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     m_begin;
     m_assert(*time >= 0, "the time cannot be negative");
@@ -53,10 +62,9 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     // step 1
     // y = 0.0 * y + F(t,u)
     // u = u + 1/3 * dt * y
-
-    m_profStart(prof_, "scale");
+    m_profStart(prof_, "reset");
     reset(grid_, 0.0, field_y_);
-    m_profStop(prof_, "scale");
+    m_profStop(prof_, "reset");
 
     m_profStart(prof_, "rhs");
     (*f_)(grid_, field_u_, field_y_);
@@ -69,11 +77,13 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the u
     m_profStart(prof_, "update");
-    daxpy(grid_, 1.0 / 3.0 * dt, field_y_, field_u_, field_u_);
+    // daxpy(grid_, 1.0 / 3.0 * dt, field_y_, field_u_, field_u_);
+    daxpy(grid_, 1.0 / 4.0 * dt, field_y_, field_u_, field_u_);
     m_profStop(prof_, "update");
 
     // udpate time
-    (*time) += 1.0 / 3.0 * dt;
+    // (*time) += 1.0 / 3.0 * dt;
+    (*time) += 1.0 / 4.0 * dt;
 
     //................................................
     // step 2
@@ -81,7 +91,8 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     // u = u + 15/16 * dt * y
 
     m_profStart(prof_, "scale");
-    scale(grid_, -5.0 / 9.0, field_y_);
+    // scale(grid_, -5.0 / 9.0, field_y_);
+    scale(grid_, -17.0 / 32.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");
@@ -90,7 +101,8 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the u
     m_profStart(prof_, "update");
-    daxpy(grid_, 15.0 / 16.0 * dt, field_y_, field_u_, field_u_);
+    // daxpy(grid_, 15.0 / 16.0 * dt, field_y_, field_u_, field_u_);
+    daxpy(grid_, 8.0 / 9.0 * dt, field_y_, field_u_, field_u_);
     m_profStop(prof_, "update");
 
     // udpate time: 3/4 - 1/3 = 5/12
@@ -103,7 +115,8 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the y using the stencil operator
     m_profStart(prof_, "scale");
-    scale(grid_, -153.0 / 128.0, field_y_);
+    // scale(grid_, -153.0 / 128.0, field_y_);
+    scale(grid_, -32.0 / 27.0, field_y_);
     m_profStop(prof_, "scale");
 
     m_profStart(prof_, "rhs");
@@ -112,11 +125,13 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the u
     m_profStart(prof_, "update");
-    daxpy(grid_, 8.0 / 15.0 * dt, field_y_, field_u_, field_u_);
+    // daxpy(grid_, 8.0 / 15.0 * dt, field_y_, field_u_, field_u_);
+    daxpy(grid_, 3.0 / 4.0 * dt, field_y_, field_u_, field_u_);
     m_profStop(prof_, "update");
 
     // udpate time: 1 - 3/4 = 1/4
-    (*time) += 1.0 / 4.0 * dt;
+    // (*time) += 1.0 / 4.0 * dt;
+    (*time) += 1.0 / 3.0 * dt;
 
     m_profStop(prof_, "rk3");
     //-------------------------------------------------------------------------
