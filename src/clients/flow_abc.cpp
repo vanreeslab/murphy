@@ -72,7 +72,8 @@ void FlowABC::Run() {
     SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
 
     ConsAdvection<4> adv(vel_);
-    RungeKutta3      rk3(grid_, scal_, &adv, prof_);
+    RungeKutta3      rk3(0.924574,grid_, scal_, &adv, prof_);
+    // RungeKutta3      rk3(1.0/4.0,grid_, scal_, &adv, prof_);
     adv.Profile(prof_);
 
     // let's gooo
