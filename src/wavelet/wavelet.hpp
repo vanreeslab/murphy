@@ -85,8 +85,8 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(m_ptr<const MemLayout> block, const_data_ptr data, const real_t vol) const;
-    void   Details(m_ptr<MemLayout> block, const_data_ptr data_block, m_ptr<real_t> details_max, const real_t vol) const;
+    real_t Criterion(m_ptr<const MemLayout> block, const_data_ptr data) const;
+    void   Details(m_ptr<MemLayout> block, const_data_ptr data_block, m_ptr<real_t> details_max) const;
     void   WriteDetails(m_ptr<const MemLayout> block, const_data_ptr data_src, data_ptr data_trg) const;
 
     /** @} */
@@ -218,8 +218,8 @@ class Wavelet {
 
     virtual void Coarsen_(m_ptr<const interp_ctx_t> ctx) const                                = 0;
     virtual void Refine_(m_ptr<const interp_ctx_t> ctx) const                                 = 0;
-    virtual void Detail_inf_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_norm) const = 0;
-    virtual void Detail_2_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_norm) const   = 0;
+    virtual void Detail_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_norm) const = 0;
+    // virtual void Detail_2_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_norm) const   = 0;
     virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                            = 0;
     /** @} */
 

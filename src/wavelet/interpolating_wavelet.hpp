@@ -355,7 +355,7 @@ class InterpolatingWavelet : public Wavelet {
      * @param ctx only the trgdata information are used, the source is considered empty
      * @param details_max the maximum of the local detail coefficients
      */
-    void Detail_inf_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_max) const override {
+    void Detail_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_max) const override {
         m_assert(*details_max == 0.0, "the value must be 0.0");
         //-------------------------------------------------------------------------
         // the size is know @ compiler time
@@ -410,75 +410,75 @@ class InterpolatingWavelet : public Wavelet {
         *details_max = 0.0;
         for_loop(&op, start, end);
     };
-    /**
-     * @brief gets the norm-2 of the detail coefficients over the block
-     * 
-     * we use the gs filter, which is nothing but the dual lifting step. We reconstruct the value that we would be able to get
-     * and compute the difference with the actual value.
-     * 
-     * @param ctx only the trgdata information are used, the source is considered empty
-     * @param details_max the maximum of the local detail coefficients
-     */
-    void Detail_2_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_max) const override {
-        m_assert(*details_max == 0.0, "the value must be 0.0");
-        //-------------------------------------------------------------------------
-        // the size is know @ compiler time
-        constexpr sid_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
+    // /**
+    //  * @brief gets the norm-2 of the detail coefficients over the block
+    //  * 
+    //  * we use the gs filter, which is nothing but the dual lifting step. We reconstruct the value that we would be able to get
+    //  * and compute the difference with the actual value.
+    //  * 
+    //  * @param ctx only the trgdata information are used, the source is considered empty
+    //  * @param details_max the maximum of the local detail coefficients
+    //  */
+    // void Detail_2_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_max) const override {
+    //     m_assert(*details_max == 0.0, "the value must be 0.0");
+    //     //-------------------------------------------------------------------------
+    //     // the size is know @ compiler time
+    //     constexpr sid_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
 
-        const real_t one      = 1.0;
-        const real_t vol      = ctx->alpha;
-        const lid_t  start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t  end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+    //     const real_t one      = 1.0;
+    //     const real_t vol      = ctx->alpha;
+    //     const lid_t  start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    //     const lid_t  end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
-        const real_t*       sdata = ctx->sdata.Read();
-        const real_t* const gs    = gs_<TN, TNT> + gs_lim;
+    //     const real_t*       sdata = ctx->sdata.Read();
+    //     const real_t* const gs    = gs_<TN, TNT> + gs_lim;
 
-        auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            // get 0 if odd, 1 if even (even if negative!!)
-            const lda_t iy = m_sign(i1) * (i1 % 2);
-            const lda_t ix = m_sign(i0) * (i0 % 2);
-            const lda_t iz = m_sign(i2) * (i2 % 2);
-            m_assert(ix == 0 || ix == 1, "this are the two possible values");
-            m_assert(iy == 0 || iy == 1, "this are the two possible values");
-            m_assert(iz == 0 || iz == 1, "this are the two possible values");
+    //     auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //         // get 0 if odd, 1 if even (even if negative!!)
+    //         const lda_t iy = m_sign(i1) * (i1 % 2);
+    //         const lda_t ix = m_sign(i0) * (i0 % 2);
+    //         const lda_t iz = m_sign(i2) * (i2 % 2);
+    //         m_assert(ix == 0 || ix == 1, "this are the two possible values");
+    //         m_assert(iy == 0 || iy == 1, "this are the two possible values");
+    //         m_assert(iz == 0 || iz == 1, "this are the two possible values");
 
-            const lid_t   i0_s   = (i0 - ix);
-            const lid_t   i1_s   = (i1 - iy);
-            const lid_t   i2_s   = (i2 - iz);
-            const real_t* lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
+    //         const lid_t   i0_s   = (i0 - ix);
+    //         const lid_t   i1_s   = (i1 - iy);
+    //         const lid_t   i2_s   = (i2 - iz);
+    //         const real_t* lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
 
-            // get the filter, depending on if I am odd or even
-            const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
-            const real_t* const gs_y         = (iy == 1) ? (gs) : (&one);
-            const real_t* const gs_z         = (iz == 1) ? (gs) : (&one);
-            const bidx_t        lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
-            const bidx_t        lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
+    //         // get the filter, depending on if I am odd or even
+    //         const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
+    //         const real_t* const gs_y         = (iy == 1) ? (gs) : (&one);
+    //         const real_t* const gs_z         = (iz == 1) ? (gs) : (&one);
+    //         const bidx_t        lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
+    //         const bidx_t        lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
 
-            // if one dim is even, id = 0, -> gs[0] = 1 and that's it
-            // if one dim is odd, id = 1, -> we loop on gs, business as usual
-            real_t interp = 0.0;
-            for (bidx_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
-                for (bidx_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
-                    for (bidx_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
-                        const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-                        interp += fact * lsdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
-                    }
-                }
-            }
-            real_t detail = sdata[m_idx(i0, i1, i2, 0, ctx->srcstr)] - interp;
+    //         // if one dim is even, id = 0, -> gs[0] = 1 and that's it
+    //         // if one dim is odd, id = 1, -> we loop on gs, business as usual
+    //         real_t interp = 0.0;
+    //         for (bidx_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
+    //             for (bidx_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
+    //                 for (bidx_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
+    //                     const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
+    //                     interp += fact * lsdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
+    //                 }
+    //             }
+    //         }
+    //         real_t detail = sdata[m_idx(i0, i1, i2, 0, ctx->srcstr)] - interp;
 
-            // check the maximum
-            *details_max += detail * detail * vol;
-        };
+    //         // check the maximum
+    //         *details_max += detail * detail * vol;
+    //     };
 
-        // run that
-        *details_max = 0.0;
-        for_loop(&op, start, end);
+    //     // run that
+    //     *details_max = 0.0;
+    //     for_loop(&op, start, end);
 
-        // take the sqrt of the result
-        *details_max = sqrt(*details_max);
-        //-------------------------------------------------------------------------
-    };
+    //     // take the sqrt of the result
+    //     *details_max = sqrt(*details_max);
+    //     //-------------------------------------------------------------------------
+    // };
 
     /**
      * @brief Compute the details using the source field and write them in the target field

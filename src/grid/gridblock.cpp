@@ -296,7 +296,7 @@ void GridBlock::UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t 
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
         data_ptr data = this->data(field_citerion, ida);
-        real_t   norm = interp->Criterion(this, data, hgrid_[0] * hgrid_[1] * hgrid_[2]);
+        real_t   norm = interp->Criterion(this, data);//, hgrid_[0] * hgrid_[1] * hgrid_[2]);
 
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
