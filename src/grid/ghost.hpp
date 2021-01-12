@@ -43,8 +43,8 @@ class Ghost {
     level_t max_level_ = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
     // iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
 
-    MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors
-    MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be targeted by my RMA calls to access mirrors
+    // MPI_Group mirror_origin_group_ = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors
+    // MPI_Group mirror_target_group_ = MPI_GROUP_NULL;  //!< group of ranks that will be targeted by my RMA calls to access mirrors
     iblock_t  n_mirror_to_send_    = 0;               //!< get how many mirrors to send
     MPI_Win   mirrors_window_      = MPI_WIN_NULL;    //!< MPI Window for the RMA communication
     real_t *  mirrors_             = nullptr;         //!< memory space for the mirror blocks, computed using n_mirror_to_send_
