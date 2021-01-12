@@ -20,14 +20,6 @@
 static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
 /**
- * @brief return if the level is quad has a valid level, i.e. is between min_level and max_level, included.
- */
-static bool is_level_valid(const level_t min_level, const level_t max_level, qdrt_t* quad) {
-    level_t level = quad->level;
-    return min_level <= level && level <= max_level;
-}
-
-/**
  * @brief Construct a new Ghost object 
  * 
  * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp) for details
@@ -130,7 +122,7 @@ void Ghost::InitList_() {
     // allocate the array to link the local_id to the mirror displacement and init it
     MPI_Info info;
     MPI_Info_create(&info);
-    // MPI_Info_set(info, "no_locks", "true");
+    MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
     // check the size
     m_assert(win_mem_size >= 0, "the memory size should be >=0");
@@ -148,8 +140,12 @@ void Ghost::InitList_() {
     // compute the number of admissible local mirrors and store their reference in the array
     iblock_t active_mirror_count = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
-        qdrt_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, im);
-        if (is_level_valid(min_level_ - 1, max_level_ + 1, p4est_GetQuadFromMirror(forest, mirror))) {
+        qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
+        level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
+        // update the counters if the mirror is admissible
+        // we need to have called the function p4est_balance()!!
+        if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
+            // store the displacement in the local2disp_ array
             iblock_t local_id     = mirror->p.piggy3.local_num;
             local2disp_[local_id] = (active_mirror_count++) * m_blockmemsize(1);
         }
@@ -161,18 +157,17 @@ void Ghost::InitList_() {
 
     //................................................
     // post the exposure epoch and start the access one for local2mirrors
-    // m_assert(mirror_origin_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
-    // m_assert(mirror_target_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
+    m_assert(mirror_origin_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
+    m_assert(mirror_target_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
 
-    // // start the exposure epochs if any
-    // MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, local2disp_window_);
-    // // we need to not start the access epochs if we are empty (it fails on the beast otherwise)
-    // if (mirror_target_group_ != MPI_GROUP_EMPTY) {
-    //     MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
-    // }
-    MPI_Win_lock_all(0, local2disp_window_);
+    // start the exposure epochs if any
+    MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, local2disp_window_);
+    // we need to not start the access epochs if we are empty (it fails on the beast otherwise)
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
+    }
     // check that we will NOT go for GhostInitLists
-    // m_assert(!(active_mirror_count != 0 && mirror_target_group_ == MPI_GROUP_EMPTY && mpi_size > 1), "if we have some active quadrant, we need to start the get epochs: active_mirror_count = %d", active_mirror_count);
+    m_assert(!(active_mirror_count != 0 && mirror_target_group_ == MPI_GROUP_EMPTY && mpi_size > 1), "if we have some active quadrant, we need to start the get epochs: active_mirror_count = %d", active_mirror_count);
 
     // init the list on every active block that matches the level requirements
     // const Wavelet*
@@ -183,13 +178,12 @@ void Ghost::InitList_() {
         DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, mygrid, interp_, local2disp_window_);
     }
 
-    // // complete the epoch and wait for the exposure one
-    // if (mirror_target_group_ != MPI_GROUP_EMPTY) {
-    //     MPI_Win_complete(local2disp_window_);
-    // }
-    // // stop the exposure epochs if any
-    // MPI_Win_wait(local2disp_window_);
-    MPI_Win_unlock_all(local2disp_window_);
+    // complete the epoch and wait for the exposure one
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(local2disp_window_);
+    }
+    // stop the exposure epochs if any
+    MPI_Win_wait(local2disp_window_);
 
     //................................................
     MPI_Win_free(&local2disp_window_);
@@ -230,24 +224,22 @@ void Ghost::InitComm_() {
     p8est_ghost_t* ghost    = grid_->p4est_ghost();
 
     //................................................
-    // compute the number of admissible local mirrors and allocate the window accordingly
-    // a 
+    // compute the number of admissible local mirrors and store their reference in the array
     n_mirror_to_send_ = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
+        qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
+        level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
         // update the counters if the mirror is admissible (i.e. it satisfies the requirements)
         // we need to have called the function p4est_balance()!!
-        qdrt_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, im);
-        if (is_level_valid(min_level_ - 1, max_level_ + 1, p4est_GetQuadFromMirror(forest, mirror))) {
+        if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             n_mirror_to_send_++;
         }
     }
     m_verb("I have %d mirrors to send", n_mirror_to_send_);
-
     // initialize the Window by allocating the memory space needed for the exchange
     MPI_Info info;
     MPI_Info_create(&info);
-    // following https://www.open-mpi.org/doc/v4.0/man3/MPI_Win_create.3.php
-    // MPI_Info_set(info, "same_disp_unit", "true");
+    MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_mirror_to_send_ * m_blockmemsize(1) * sizeof(real_t);
     mirrors_              = reinterpret_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_window_);
@@ -258,55 +250,55 @@ void Ghost::InitComm_() {
     m_assert(mirrors_window_ != MPI_WIN_NULL, "the MPI window created is null, which is not a good news");
 
     //................................................
-    // // get the list of ranks that will generate a call to access my mirrors
-    // rank_t n_in_group = 0;
-    // // over allocate the array to its max size and fill it only partially... not great
-    // rank_t* group_ranks = reinterpret_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
-    // for (rank_t ir = 0; ir < mpi_size; ir++) {
-    //     // for every mirror send to the current
-    //     iblock_t send_first = ghost->mirror_proc_offsets[ir];
-    //     iblock_t send_last  = ghost->mirror_proc_offsets[ir + 1];
-    //     for (iblock_t bid = send_first; bid < send_last; bid++) {
-    //         // access the element and ask for its level
-    //         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, ghost->mirror_proc_mirrors[bid]);
-    //         level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
-    //         // if the mirror is admissible, register the rank and break
-    //         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
-    //             group_ranks[n_in_group++] = ir;
-    //             break;
-    //         }
-    //     }
-    // }
-    // // get the RMA mirror group ready - the group that will need my info
-    // MPI_Group win_group;
-    // MPI_Win_get_group(mirrors_window_, &win_group);
-    // MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_origin_group_);
+    // get the list of ranks that will generate a call to access my mirrors
+    rank_t n_in_group = 0;
+    // over allocate the array to its max size and fill it only partially... not great
+    rank_t* group_ranks = reinterpret_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
+    for (rank_t ir = 0; ir < mpi_size; ir++) {
+        // for every mirror send to the current
+        iblock_t send_first = ghost->mirror_proc_offsets[ir];
+        iblock_t send_last  = ghost->mirror_proc_offsets[ir + 1];
+        for (iblock_t bid = send_first; bid < send_last; bid++) {
+            // access the element and ask for its level
+            qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, ghost->mirror_proc_mirrors[bid]);
+            level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
+            // if the mirror is admissible, register the rank and break
+            if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
+                group_ranks[n_in_group++] = ir;
+                break;
+            }
+        }
+    }
+    // get the RMA mirror group ready - the group that will need my info
+    MPI_Group win_group;
+    MPI_Win_get_group(mirrors_window_, &win_group);
+    MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_origin_group_);
 
     //................................................
     // get the list of ranks that will received a call from me to access their mirrors
-    // n_in_group = 0;
-    // for (rank_t ir = 0; ir < mpi_size; ir++) {
-    //     // for the current rank, determine if I have ghosts to him
-    //     iblock_t recv_first = ghost->proc_offsets[ir];
-    //     iblock_t recv_last  = ghost->proc_offsets[ir + 1];
-    //     for (iblock_t bid = recv_first; bid < recv_last; bid++) {
-    //         // access the element and ask for its level
-    //         p8est_quadrant_t* ghostquad   = p8est_quadrant_array_index(&ghost->ghosts, bid);
-    //         level_t           ghost_level = ghostquad->level;
-    //         // if the ghost block is admissible, register the rank and break
-    //         if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
-    //             group_ranks[n_in_group++] = ir;
-    //             break;
-    //         }
-    //     }
-    // }
+    n_in_group = 0;
+    for (rank_t ir = 0; ir < mpi_size; ir++) {
+        // for the current rank, determine if I have ghosts to him
+        iblock_t recv_first = ghost->proc_offsets[ir];
+        iblock_t recv_last  = ghost->proc_offsets[ir + 1];
+        for (iblock_t bid = recv_first; bid < recv_last; bid++) {
+            // access the element and ask for its level
+            p8est_quadrant_t* ghostquad   = p8est_quadrant_array_index(&ghost->ghosts, bid);
+            level_t           ghost_level = ghostquad->level;
+            // if the ghost block is admissible, register the rank and break
+            if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
+                group_ranks[n_in_group++] = ir;
+                break;
+            }
+        }
+    }
     // add the cpus that will get a call from me
-    // MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_target_group_);
-    // MPI_Group_free(&win_group);
+    MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_target_group_);
+    MPI_Group_free(&win_group);
 
     //................................................
     // free the allocated memory
-    // m_free(group_ranks);
+    m_free(group_ranks);
 
     // assert that everybody has created the windows correctly
     // MPI_Win_fence(0, mirrors_window_);
@@ -323,12 +315,11 @@ void Ghost::FreeComm_() {
     m_begin;
     //-------------------------------------------------------------------------
     // free the group
-    // MPI_Group_free(&mirror_origin_group_);
-    // MPI_Group_free(&mirror_target_group_);
+    MPI_Group_free(&mirror_origin_group_);
+    MPI_Group_free(&mirror_target_group_);
     // free the window
-    MPI_Win_free(&mirrors_window_);
     m_free(mirrors_);
-    
+    MPI_Win_free(&mirrors_window_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -359,32 +350,12 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
 
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
-    // m_profStart(prof_(), "RMA post get");
-    // MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, mirrors_window_);
-    // // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
-    // if (mirror_target_group_ != MPI_GROUP_EMPTY) {
-    //     MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
-    // }
-
-    // loop over the ghosts and start the lock on the owning processor
-    m_profStart(prof_(), "RMA lock");
-    p8est_ghost_t* ghost = grid_->p4est_ghost();
-    for (rank_t ir = 0; ir < grid_->mpisize(); ir++) {
-        // for the current rank, determine if I have ghosts to him
-        iblock_t recv_first = ghost->proc_offsets[ir];
-        iblock_t recv_last  = ghost->proc_offsets[ir + 1];
-        for (iblock_t bid = recv_first; bid < recv_last; bid++) {
-            // access the element and ask for its level
-            p8est_quadrant_t* ghostquad = p8est_quadrant_array_index(&ghost->ghosts, bid);
-            if (is_level_valid(min_level_ - 1, max_level_ - 1, ghostquad)) {
-                MPI_Win_lock(MPI_LOCK_SHARED, ir, 0, mirrors_window_);
-                break;
-            }
-        }
-    }
-    m_profStop(prof_(), "RMA lock");
-
     m_profStart(prof_(), "RMA post get");
+    MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, mirrors_window_);
+    // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    }
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
@@ -414,39 +385,23 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     m_assert(ida_ == ida, "the ongoing dimension (%d) must be over first", ida_);
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-    p8est_ghost_t* ghost = grid_->p4est_ghost();
-
     m_profStart(prof_(), "pullghost wait");
     //................................................
     // finish the access epochs for the exposure epoch to be over
-    // m_profStart(prof_(), "RMA complete get");
-    // if (mirror_target_group_ != MPI_GROUP_EMPTY) {
-    //     MPI_Win_complete(mirrors_window_);
-    // }
-    // m_profStop(prof_(), "RMA complete get");
-
-    // m_profStart(prof_(), "RMA wait get");
-    // MPI_Win_wait(mirrors_window_);
-    // m_profStop(prof_(), "RMA wait get");
-    m_profStart(prof_(), "RMA flush");
-    for (rank_t ir = 0; ir < grid_->mpisize(); ir++) {
-        // for the current rank, determine if I have ghosts to him
-        iblock_t recv_first = ghost->proc_offsets[ir];
-        iblock_t recv_last  = ghost->proc_offsets[ir + 1];
-        for (iblock_t bid = recv_first; bid < recv_last; bid++) {
-            // access the element and ask for its level
-            p8est_quadrant_t* ghostquad = p8est_quadrant_array_index(&ghost->ghosts, bid);
-            if (is_level_valid(min_level_ - 1, max_level_ - 1, ghostquad)) {
-                MPI_Win_flush(ir, mirrors_window_);
-                break;
-            }
-        }
+    m_profStart(prof_(), "RMA complete get");
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(mirrors_window_);
     }
-    m_profStop(prof_(), "RMA flush");
+    m_profStop(prof_(), "RMA complete get");
+
+    m_profStart(prof_(), "RMA wait get");
+    MPI_Win_wait(mirrors_window_);
+    m_profStop(prof_(), "RMA wait get");
 
     // we now have all the information needed to compute the ghost points in coarser blocks
     m_profStart(prof_(), "computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
+        // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Wait, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Wait, grid_, il, field, ida, interp_);
     }
     m_profStop(prof_(), "computation");
@@ -454,45 +409,26 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     //................................................
     m_profStart(prof_(), "RMA post put");
     // post exposure and access epochs for to put the values to my neighbors
-    // MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
-    // if (mirror_target_group_ != MPI_GROUP_EMPTY) {
-    //     MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
-    // }
+    MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    }
     // start what can be done = sibling and parents copy
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
     m_profStop(prof_(), "RMA post put");
 
-    //................................................
-    //unlock the processes, we are done with that
-    m_profStart(prof_(), "RMA unlock");
-    // p8est_ghost_t* ghost = grid_->p4est_ghost();
-    for (rank_t ir = 0; ir < grid_->mpisize(); ir++) {
-        // for the current rank, determine if I have ghosts to him
-        iblock_t recv_first = ghost->proc_offsets[ir];
-        iblock_t recv_last  = ghost->proc_offsets[ir + 1];
-        for (iblock_t bid = recv_first; bid < recv_last; bid++) {
-            // access the element and ask for its level
-            p8est_quadrant_t* ghostquad   = p8est_quadrant_array_index(&ghost->ghosts, bid);
-            if(is_level_valid(min_level_-1,max_level_-1,ghostquad)){
-                MPI_Win_unlock(ir,mirrors_window_);
-                break;
-            }
-        }
+    m_profStart(prof_(), "RMA complete put");
+    // finish the access epochs for the exposure epoch to be over
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(mirrors_window_);
     }
-    m_profStop(prof_(), "RMA unlock");
+    m_profStop(prof_(), "RMA complete put");
 
-    // m_profStart(prof_(), "RMA complete put");
-    // // finish the access epochs for the exposure epoch to be over
-    // if (mirror_target_group_ != MPI_GROUP_EMPTY) {
-    //     MPI_Win_complete(mirrors_window_);
-    // }
-    // m_profStop(prof_(), "RMA complete put");
-
-    // m_profStart(prof_(), "RMA wait put");
-    // MPI_Win_wait(mirrors_window_);
-    // m_profStop(prof_(), "RMA wait put");
+    m_profStart(prof_(), "RMA wait put");
+    MPI_Win_wait(mirrors_window_);
+    m_profStop(prof_(), "RMA wait put");
 
     m_profStart(prof_(), "computation");
     // we copy back the missing info
