@@ -22,12 +22,12 @@ Stencil::Stencil() : BlockOperator(nullptr){};
  */
 void Stencil::operator()(m_ptr<Grid> grid, m_ptr<Field> field_src, m_ptr<Field> field_trg) {
     m_begin;
-    m_assert(!grid.IsEmpty() , "the grid cannot be null");
+    m_assert(!grid.IsEmpty(), "the grid cannot be null");
     m_assert(!field_src.IsEmpty(), "the source field cannot be null");
     m_assert(!field_trg.IsEmpty(), "the source field cannot be null");
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
-    m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
-    m_assert(grid->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil");
+    m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostFront(), this->NGhost());
+    m_assert(grid->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostBack(), this->NGhost());
     //-------------------------------------------------------------------------
     m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status() ? "OK" : "to be computed");
     m_profStart(prof_(), "stencil");
