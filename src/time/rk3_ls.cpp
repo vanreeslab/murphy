@@ -1,4 +1,4 @@
-#include "rk3.hpp"
+#include "rk3_ls.hpp"
 
 #include "blas.hpp"
 #include "ioh5.hpp"
@@ -10,7 +10,7 @@
  * 
  * @param grid 
  */
-RungeKutta3::RungeKutta3(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<Stencil> f, m_ptr<Prof> prof) {
+RK3_LS::RK3_LS(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<Stencil> f, m_ptr<Prof> prof) {
     m_begin;
     m_assert(!grid.IsEmpty(), "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
@@ -47,11 +47,11 @@ RungeKutta3::RungeKutta3(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, 
     t2_ = b2_ * (1.0 + a2_);
     t3_ = b3_ * (1.0 + a3_ * (1.0 + a2_));
     //-------------------------------------------------------------------------
-    m_log("RK3 low storage scheme with b1 = %e, b2 = %e, b3 = %e -- a2 = %e, a3 = %e -- t1 = %f, t2 = %f, t3 = %f", b1_, b2_, b3_, a2_, a3_,t1_,t2_,t3_);
+    m_log("RK3 LS with b1 = %e, b2 = %e, b3 = %e -- a2 = %e, a3 = %e -- t1 = %f, t2 = %f, t3 = %f", b1_, b2_, b3_, a2_, a3_,t1_,t2_,t3_);
     m_end;
 }
 
-RungeKutta3::~RungeKutta3() {
+RK3_LS::~RK3_LS() {
     m_begin;
     //-------------------------------------------------------------------------
     grid_->DeleteField(field_y_);
@@ -69,7 +69,7 @@ RungeKutta3::~RungeKutta3() {
  * @param dt 
  * @param time 
  */
-void RungeKutta3::DoDt(const real_t dt, real_t* time) {
+void RK3_LS::DoDt(const real_t dt, real_t* time) {
     m_begin;
     m_assert(*time >= 0, "the time cannot be negative");
     m_assert(dt > 0.0, "the dt = %e cannot be negative, nor 0", dt);
@@ -83,8 +83,6 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     m_profStart(prof_(), "rk3");
     //................................................
     // step 1
-    // y = 0.0 * y + F(t,u)
-    // u = u + 1/3 * dt * y
     m_profStart(prof_(), "reset");
     reset(grid_(), 0.0, field_y_);
     m_profStop(prof_(), "reset");
@@ -93,28 +91,17 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
     (*f_)(grid_, field_u_, field_y_);
     m_profStop(prof_(), "rhs");
 
-    // IOH5 dump("data");
-    // field_y_->bctype(M_BC_EXTRAP);
-    // grid_->GhostPull(field_y_);
-    // dump(grid_,field_y_);
-
     // update the u
     m_profStart(prof_(), "update");
-    // daxpy(grid_, 1.0 / 3.0 * dt, field_y_, field_u_, field_u_);
     daxpy(grid_, b1_ * dt, field_y_, field_u_, field_u_);
     m_profStop(prof_(), "update");
 
     // udpate time
-    // (*time) += 1.0 / 3.0 * dt;
     (*time) += t1_ * dt;
 
     //................................................
     // step 2
-    // y = -5/9 * y + F(t,u)
-    // u = u + 15/16 * dt * y
-
     m_profStart(prof_(), "scale");
-    // scale(grid_, -5.0 / 9.0, field_y_);
     scale(grid_(), a2_, field_y_);
     m_profStop(prof_(), "scale");
 
@@ -124,21 +111,16 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the u
     m_profStart(prof_(), "update");
-    // daxpy(grid_, 15.0 / 16.0 * dt, field_y_, field_u_, field_u_);
     daxpy(grid_, b2_ * dt, field_y_, field_u_, field_u_);
     m_profStop(prof_(), "update");
 
-    // udpate time: 3/4 - 1/3 = 5/12
+    // time update
     (*time) += t2_ * dt;
 
     //................................................
     // step 3
-    // y = -153/128 * y + F(t,u)
-    // u = u + 8/15 * dt * y
-
     // update the y using the stencil operator
     m_profStart(prof_(), "scale");
-    // scale(grid_, -153.0 / 128.0, field_y_);
     scale(grid_(), a3_, field_y_);
     m_profStop(prof_(), "scale");
 
@@ -148,12 +130,10 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
 
     // update the u
     m_profStart(prof_(), "update");
-    // daxpy(grid_, 8.0 / 15.0 * dt, field_y_, field_u_, field_u_);
     daxpy(grid_, b3_ * dt, field_y_, field_u_, field_u_);
     m_profStop(prof_(), "update");
 
-    // udpate time: 1 - 3/4 = 1/4
-    // (*time) += 1.0 / 4.0 * dt;
+    // udpate time
     (*time) += t3_ * dt;
 
     m_profStop(prof_(), "rk3");
@@ -166,11 +146,11 @@ void RungeKutta3::DoDt(const real_t dt, real_t* time) {
  * 
  * @return real_t 
  */
-real_t RungeKutta3::ComputeDt(const real_t max_vel) {
+real_t RK3_LS::ComputeDt(const real_t max_vel) {
     // m_begin;
     //-------------------------------------------------------------------------
     // know the limits
-    real_t cfl_limit = 0.1;  // CFL = max_vel * dt / h
+    real_t cfl_limit = 1;  // CFL = max_vel * dt / h
     // real_t r_limit = 2.5; // r = nu * dt / h^2
 
     // get the finest h in the grid

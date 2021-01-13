@@ -9,7 +9,7 @@
 #include "error.hpp"
 #include "ioh5.hpp"
 #include "navier_stokes.hpp"
-#include "rk3.hpp"
+#include "rk3_ls.hpp"
 
 using std::string;
 using std::to_string;
@@ -83,11 +83,11 @@ void NavierStokes::Run() {
     real_t t_final = 1.0;
     real_t t       = 0.0;
     // iterations
-    lid_t iter     = 0;
+    lid_t iter = 0;
 
     // AdvectionDiffusion<5, 3> adv_diff(nu_, u_stream_);
     Conservative_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
-    RungeKutta3                           rk3(0.25,grid_, vort_, &adv_diff, prof_);
+    RungeKutta3LowStorage                 rk3(1.0 / 3.0, grid_, vort_, &adv_diff, prof_);
     adv_diff.Profile(prof_);
 
     // let's gooo
