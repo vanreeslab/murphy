@@ -91,6 +91,13 @@ void FlowABC::Run() {
             flow_vel(grid_, vel_);
             m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
         }
+        // we run the first diagnostic
+        if (iter == 0) {
+            m_profStart(prof_, "diagnostics");
+            m_log("---- run diag");
+            Diagnostics(t, 0, iter);
+            m_profStop(prof_, "diagnostics");
+        }
 
         //................................................
         // get the time-step given the field
