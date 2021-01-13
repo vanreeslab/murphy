@@ -2,7 +2,7 @@
 
 #include "core/forloop.hpp"
 #include "operator/advection.hpp"
-#include "rk3.hpp"
+#include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
 
 using std::string;
@@ -71,10 +71,8 @@ void FlowABC::Run() {
 
     SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
 
-    // ConsAdvection<4> adv(vel_);
     WenoAdvection<3> adv(vel_);
-    RungeKutta3      rk3(grid_, scal_, &adv, prof_);
-    // RungeKutta3      rk3(1.0/4.0,grid_, scal_, &adv, prof_);
+    RK3_TVD          rk3(grid_, scal_, &adv, prof_);
     adv.Profile(prof_);
 
     // let's gooo
