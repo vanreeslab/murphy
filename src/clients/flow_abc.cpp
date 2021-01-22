@@ -4,6 +4,7 @@
 #include "operator/advection.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
+#include "operator/blas.hpp"
 
 using std::string;
 using std::to_string;
@@ -27,7 +28,7 @@ void FlowABC::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
     // call the general testcase parameters
     this->TestCase::InitParam(param);
-    
+
     // the the standard stuffs
     if (param->profile) {
         int comm_size;
@@ -142,6 +143,11 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         mkdir(folder_diag_.c_str(), 0770);
     }
 
+    // get fields diags
+    real_t  scal_min[2], scal_max[2];
+    Dminmax minmax;
+    minmax(grid_, scal_, scal_min, scal_max);
+
     // open the file
     FILE*   file_error;
     FILE*   file_diag;
@@ -150,7 +156,11 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/diag.data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max
-        fprintf(file_diag, "%6.6d %e %e %ld %d %d\n", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
+        fprintf(file_diag, "%6.6d %e %e %ld %d %d", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
+        for (lda_t ida = 0; ida < scal_->lda(); ida++) {
+            fprintf(file_diag, " %e %e", scal_min[ida], scal_max[ida]);
+        }
+        fprintf(file_diag, "\n");
         fclose(file_diag);
     }
 

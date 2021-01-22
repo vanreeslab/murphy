@@ -156,15 +156,16 @@ Dmax::Dmax(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
 real_t Dmax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
-    real_t max_global = 0.0;
+    max_ = std::numeric_limits<real_t>::min();
     // go on the blocks
     DoOpMesh(this, &Dmax::ComputeDmaxGridBlock, grid, fid_x);
     // update the ghost - not needed
     // allreduce sync:
+    real_t max_global = 0.0;
     MPI_Allreduce(&max_, &max_global, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
     //-------------------------------------------------------------------------
     m_end;
-    return max_;
+    return max_global;
 }
 
 void Dmax::ComputeDmaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
@@ -181,6 +182,53 @@ void Dmax::ComputeDmaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, 
                     const size_t idx = m_idx(i0, i1, i2);
                     max_             = m_max(fabs(data_x[idx]), max_);
                 }
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+//-----------------------------------------------------------------------------
+Dminmax::Dminmax() : BlockOperator(nullptr){};
+Dminmax::Dminmax(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
+
+/**
+ * @brief compute the min and the max of fid_x dimension per dimension and store them in min and max (must have the dimension size)
+ */
+void Dminmax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, real_t* min, real_t* max) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // go on the blocks, for each dim separately
+    for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
+        max_ = std::numeric_limits<real_t>::min();
+        min_ = std::numeric_limits<real_t>::max();
+
+        // store the dimension and go!
+        ida_ = ida;
+        DoOpMesh(this, &Dminmax::ComputeDminmaxGridBlock, grid, fid_x);
+
+        m_log("my min = %e, max = %e",min_,max_);
+
+        // update the ghost - not needed
+        // allreduce sync:
+        MPI_Allreduce(&min_, min + ida, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
+        MPI_Allreduce(&max_, max + ida, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Dminmax::ComputeDminmaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+    //-------------------------------------------------------------------------
+    real_t* data_x = block->data(fid_x, ida_).Write();
+    m_assume_aligned(data_x);
+
+    for (lid_t i2 = start_; i2 < end_; i2++) {
+        for (lid_t i1 = start_; i1 < end_; i1++) {
+            for (lid_t i0 = start_; i0 < end_; i0++) {
+                const size_t idx = m_idx(i0, i1, i2);
+                min_             = m_min(data_x[idx], min_);
+                max_             = m_max(data_x[idx], max_);
             }
         }
     }

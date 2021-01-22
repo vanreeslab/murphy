@@ -63,8 +63,6 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
     Dscale scale;
     Daxpy  daxpy;
 
-    m_log("let's go!!");
-
     m_profStart(prof_(), "rk3");
     //................................................
     // step 1
@@ -150,7 +148,6 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
     // know the limits from the rhs directly
-    m_log("my cfl limit is %e",rhs->cfl());
     real_t cfl_limit = 0.95 * rhs->cfl();  // CFL = max_vel * dt / h
     // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
     // get the finest h in the grid
@@ -159,7 +156,7 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     real_t cfl_dt = cfl_limit * h_fine / max_vel;
     m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
 
-    m_log("dt = %e, using h = %e and CFL limit = %e", cfl_dt, h_fine, cfl_limit);
+    m_log("dt = %e, using h = %e and CFL limit = %e and max_vel = %e", cfl_dt, h_fine, cfl_limit,max_vel);
     //-------------------------------------------------------------------------
     m_end;
     return cfl_dt;
