@@ -102,9 +102,9 @@ void Daxpy::ComputeDaxpyGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock>
         // m_assume_aligned(data_y);
         // m_assume_aligned(data_z);
         // get the correct place given the current thread and the dimension
-        for (lid_t i2 = 0; i2 < M_N; i2++) {
-            for (lid_t i1 = 0; i1 < M_N; i1++) {
-                for (lid_t i0 = 0; i0 < M_N; i0++) {
+        for (lid_t i2 = start_; i2 < end_; i2++) {
+            for (lid_t i1 = start_; i1 < end_; i1++) {
+                for (lid_t i0 = start_; i0 < end_; i0++) {
                     const size_t idx = m_idx(i0, i1, i2);
                     data_z[idx]      = alpha_ * data_x[idx] + data_y[idx];
                 }
@@ -118,7 +118,7 @@ void Daxpy::ComputeDaxpyGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock>
 Dscale::Dscale() : BlockOperator(nullptr){};
 Dscale::Dscale(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
 
-void Dscale::operator()(const ForestGrid* grid, const real_t alpha, m_ptr<Field> fid_x) {
+void Dscale::operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<Field> fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
     alpha_ = alpha;
@@ -137,11 +137,49 @@ void Dscale::ComputeDscaleGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> blo
         real_t* data_x = block->data(fid_x, ida).Write();
         m_assume_aligned(data_x);
         // get the correct place given the current thread and the dimension
-        for (lid_t i2 = 0; i2 < M_N; i2++) {
-            for (lid_t i1 = 0; i1 < M_N; i1++) {
-                for (lid_t i0 = 0; i0 < M_N; i0++) {
+        for (lid_t i2 = start_; i2 < end_; i2++) {
+            for (lid_t i1 = start_; i1 < end_; i1++) {
+                for (lid_t i0 = start_; i0 < end_; i0++) {
                     const size_t idx = m_idx(i0, i1, i2);
                     data_x[idx] *= alpha_;
+                }
+            }
+        }
+    }
+    //-------------------------------------------------------------------------
+}
+
+//-----------------------------------------------------------------------------
+Dmax::Dmax() : BlockOperator(nullptr){};
+Dmax::Dmax(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
+
+real_t Dmax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    real_t max_global = 0.0;
+    // go on the blocks
+    DoOpMesh(this, &Dmax::ComputeDmaxGridBlock, grid, fid_x);
+    // update the ghost - not needed
+    // allreduce sync:
+    MPI_Allreduce(&max_, &max_global, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+    //-------------------------------------------------------------------------
+    m_end;
+    return max_;
+}
+
+void Dmax::ComputeDmaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+    //-------------------------------------------------------------------------
+    const sid_t lda = fid_x->lda();
+    for (sid_t ida = 0; ida < lda; ida++) {
+        // get the data pointers
+        real_t* data_x = block->data(fid_x, ida).Write();
+        m_assume_aligned(data_x);
+        // get the correct place given the current thread and the dimension
+        for (lid_t i2 = start_; i2 < end_; i2++) {
+            for (lid_t i1 = start_; i1 < end_; i1++) {
+                for (lid_t i0 = start_; i0 < end_; i0++) {
+                    const size_t idx = m_idx(i0, i1, i2);
+                    max_             = m_max(fabs(data_x[idx]), max_);
                 }
             }
         }

@@ -9,9 +9,9 @@
 #include "forestgrid.hpp"
 
 /**
- * @brief perform the dcopy operation on a block
+ * @brief perform the dset operation on a block
  * 
- * y = x
+ * x = value
  * 
  */
 class Dset : public BlockOperator {
@@ -72,8 +72,26 @@ class Dscale : public BlockOperator {
     explicit Dscale();
     explicit Dscale(m_ptr<const Wavelet> interp);
 
-    void operator()(const ForestGrid* grid, const real_t alpha, m_ptr<Field> fid_x);
+    void operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<Field> fid_x);
     void ComputeDscaleGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid_x);
+};
+
+/**
+ * @brief perform the max(fabs()) operation on a block, i.e. return the infinite norm of a field
+ * 
+ * when the values are asked back, do a AllReduce MPI call
+ * 
+ */
+class Dmax : public BlockOperator {
+   protected:
+    real_t max_;
+
+   public:
+    explicit Dmax();
+    explicit Dmax(m_ptr<const Wavelet> interp);
+
+    real_t operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x);
+    void ComputeDmaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x);
 };
 
 #endif  // SRC_BLAS_HPP_

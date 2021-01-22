@@ -1,5 +1,5 @@
-#ifndef SRC_CLIENTS_FLOW_ABC_HPP
-#define SRC_CLIENTS_FLOW_ABC_HPP
+#ifndef SRC_CLIENTS_GRAYSCOTT_HPP
+#define SRC_CLIENTS_GRAYSCOTT_HPP
 
 #include "clients/testcase.hpp"
 #include "core/pointers.hpp"
@@ -8,9 +8,13 @@
 #include "tools/parser.hpp"
 #include "tools/prof.hpp"
 
-class FlowABC : public TestCase {
-    Field* vel_  = nullptr;
-    Field* scal_ = nullptr;
+class GrayScott : public TestCase {
+    
+
+    Field* lvlset_  = nullptr;
+    Field* vel_ = nullptr;
+    Field* u_ = nullptr;
+    Field* v_ = nullptr;
     Grid*  grid_ = nullptr;
     Prof*  prof_ = nullptr;
 

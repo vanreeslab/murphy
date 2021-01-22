@@ -193,8 +193,6 @@ void Grid::AddField(m_ptr<Field> field) {
         // add the field
         fields_[field->name()] = field;
         // allocate the field on every block
-        // LoopOnGridBlock_(&GridBlock::AddField, field);
-        // DoOpTree(&CallGridBlockMemFuncField, this, field, &GridBlock::AddField);
         DoOpTree(nullptr, &GridBlock::AddField, this, field);
         m_log("field %s has been added to the grid", field->name().c_str());
     } else {
@@ -253,7 +251,7 @@ void Grid::ResetFields(m_ptr<const std::map<string, m_ptr<Field> > > fields){
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPull_Post(m_ptr<const Field> field, const sid_t ida) {
+void Grid::GhostPull_Post(m_ptr<const Field> field, const sid_t ida) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(!field.IsEmpty(), "the source field cannot be empty");
@@ -273,7 +271,7 @@ void Grid::GhostPull_Post(m_ptr<const Field> field, const sid_t ida) {
  * @param field the considered field
  * @param ida the received dimension
  */
-void Grid::GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) {
+void Grid::GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(!field.IsEmpty(), "the source field cannot be empty");
@@ -292,7 +290,7 @@ void Grid::GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) {
  * 
  * @param field the field which requires the ghost
  */
-void Grid::GhostPull(m_ptr<Field> field) {
+void Grid::GhostPull(m_ptr<Field> field) const {
     m_begin;
     m_assert(!field.IsEmpty(), "the source field cannot be empty");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
@@ -310,7 +308,6 @@ void Grid::GhostPull(m_ptr<Field> field) {
     //-------------------------------------------------------------------------
     m_end;
 }
-
 
 /**
  * @brief sets the refinement tolerance for grid adaptation (see @ref Adapt)

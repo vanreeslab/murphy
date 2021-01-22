@@ -4,13 +4,11 @@
 #include "ioh5.hpp"
 
 /**
- * @brief Construct a new Runge Kutta 3 object
- * 
- * add a field to the grid: rk3
+ * @brief Construct a Runge Kutta 3 Low Storage Functor
  * 
  * @param grid 
  */
-RK3_LS::RK3_LS(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<Stencil> f, m_ptr<Prof> prof) {
+RK3_LS::RK3_LS(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof) {
     m_begin;
     m_assert(!grid.IsEmpty(), "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
@@ -88,7 +86,7 @@ void RK3_LS::DoDt(const real_t dt, real_t* time) {
     m_profStop(prof_(), "reset");
 
     m_profStart(prof_(), "rhs");
-    (*f_)(grid_, field_u_, field_y_);
+    f_->RhsAcc(grid_, *time, field_u_, field_y_);
     m_profStop(prof_(), "rhs");
 
     // update the u
@@ -106,7 +104,7 @@ void RK3_LS::DoDt(const real_t dt, real_t* time) {
     m_profStop(prof_(), "scale");
 
     m_profStart(prof_(), "rhs");
-    (*f_)(grid_, field_u_, field_y_);
+    f_->RhsAcc(grid_, *time, field_u_, field_y_);
     m_profStop(prof_(), "rhs");
 
     // update the u
@@ -125,7 +123,7 @@ void RK3_LS::DoDt(const real_t dt, real_t* time) {
     m_profStop(prof_(), "scale");
 
     m_profStart(prof_(), "rhs");
-    (*f_)(grid_, field_u_, field_y_);
+    f_->RhsAcc(grid_, *time, field_u_, field_y_);
     m_profStop(prof_(), "rhs");
 
     // update the u

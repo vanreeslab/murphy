@@ -34,7 +34,7 @@ class Stencil : public BlockOperator {
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
      * between the ghost exchange and the stencil computation.
      */
-    void operator()(m_ptr<Grid> grid, m_ptr<Field> field_src, m_ptr<Field> field_trg);
+    void operator()(m_ptr<const Grid> grid, m_ptr<Field> field_src, m_ptr<Field> field_trg);
 
     /**
      * @brief applies the magic of the stencil on the field_src, in the dimension ida_ only! (inner computation or outer computation depending on is_outer)
@@ -48,27 +48,7 @@ class Stencil : public BlockOperator {
      * @param fid_src the source field, only its dimension ida_ should be used
      * @param fid_trg the target field where all dimensions can be filled
      */
-    virtual void DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) = 0;
-
-    // /**
-    // * @brief applies the inner part of the stencil on the field_src, in the dimension ida_ only, i.e. the part that doesn't require ghost values
-    // *
-    // * @param qid the id of the block
-    // * @param block the GridBlock on which we execute
-    // * @param fid_src the source field, only its dimension ida_ should be used
-    // * @param fid_trg the target field where all dimensions can be filled
-    // */
-    // virtual void ApplyStencilInner(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
-
-    // /**
-    //  * @brief applies the outer part of the stencil on the field_src, in the dimension ida_ only, i.e. the part that does require ghost values
-    //  *
-    //  * @param qid the ID of the block to fill
-    //  * @param block the considered block
-    //  * @param fid_src the source field, only its dimension ida_ MUST BE used (the others don't have valid ghost point values!!)
-    //  * @param fid_trg the target field, every dimension can be filled
-    //  */
-    // virtual void ApplyStencilOuter(const qid_t* qid, GridBlock* block, Field* fid_src, Field* fid_trg) = 0;
+    virtual void DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const = 0;
 };
 
 #endif  // SRC_OPERATOR_STENCIL_HPP_

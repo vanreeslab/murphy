@@ -4,13 +4,13 @@
 #include "ioh5.hpp"
 
 /**
- * @brief Construct a new Runge Kutta 3 object
+ * @brief Construct a new Runge Kutta 3 - Total Variation Diminushing
  * 
- * add a field to the grid: rk3
+ * define the state field and the rhs evaluation
  * 
  * @param grid 
  */
-RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<Stencil> f, m_ptr<Prof> prof) {
+RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof) {
     m_begin;
     m_assert(!grid.IsEmpty(), "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
@@ -63,18 +63,20 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
     Dscale scale;
     Daxpy  daxpy;
 
+    m_log("let's go!!");
+
     m_profStart(prof_(), "rk3");
     //................................................
     // step 1
 
     // y1 = 0.0
-    m_profStart(prof_(), "reset");
-    reset(grid_(), 0.0, field_y1_);
-    m_profStop(prof_(), "reset");
+    // m_profStart(prof_(), "reset");
+    // reset(grid_(), 0.0, field_y1_);
+    // m_profStop(prof_(), "reset");
 
-    // y1 = 0.0 + f(u)
+    // y1 = f(u)
     m_profStart(prof_(), "rhs");
-    (*f_)(grid_, field_u_, field_y1_);
+    f_->RhsSet(grid_, *time, field_u_, field_y1_);
     m_profStop(prof_(), "rhs");
 
     // y1 = dt*y1 + u -> y1 = u + dt * f(u)
@@ -86,13 +88,13 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
     // step 2
 
     // y2 = 0.0
-    m_profStart(prof_(), "reset");
-    reset(grid_(), 0.0, field_y2_);
-    m_profStop(prof_(), "reset");
+    // m_profStart(prof_(), "reset");
+    // reset(grid_(), 0.0, field_y2_);
+    // m_profStop(prof_(), "reset");
 
     // y2 = y2 + f(y1)
     m_profStart(prof_(), "rhs");
-    (*f_)(grid_, field_y1_, field_y2_);
+    f_->RhsSet(grid_, *time + dt, field_y1_, field_y2_);
     m_profStop(prof_(), "rhs");
 
     // y2 = y2 * 1/4 * dt
@@ -108,14 +110,9 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
 
     //................................................
     // step 3
-    // y1 = 0.0
-    m_profStart(prof_(), "reset");
-    reset(grid_(), 0.0, field_y1_);
-    m_profStop(prof_(), "reset");
-
     // y1 = y1 + f(y2) = f(y2)
     m_profStart(prof_(), "rhs");
-    (*f_)(grid_, field_y2_, field_y1_);
+    f_->RhsSet(grid_, *time + 0.5 * dt, field_y2_, field_y1_);
     m_profStop(prof_(), "rhs");
 
     // u = u * 1/3
@@ -142,16 +139,21 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
  * 
  * @return real_t 
  */
-real_t RK3_TVD::ComputeDt(const real_t max_vel) {
-    // m_begin;
+real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocity) const {
+    m_begin;
     //-------------------------------------------------------------------------
-    // know the limits
-    real_t cfl_limit = 0.8;  // CFL = max_vel * dt / h
-    // real_t r_limit = 2.5; // r = nu * dt / h^2
-
-    // get the finest h in the grid
-    real_t h_fine = grid_->FinestH();
+    // get the max velocity and the finest h
+    Dmax   getmax;
+    real_t max_vel = getmax(grid_, velocity);
+    real_t h_fine  = grid_->FinestH();
     m_assert(h_fine > 0.0, "the finest h = %e must be positive", h_fine);
+    m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
+
+    // know the limits from the rhs directly
+    m_log("my cfl limit is %e",rhs->cfl());
+    real_t cfl_limit = 0.95 * rhs->cfl();  // CFL = max_vel * dt / h
+    // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
+    // get the finest h in the grid
 
     // get the fastest velocity
     real_t cfl_dt = cfl_limit * h_fine / max_vel;
@@ -159,6 +161,6 @@ real_t RK3_TVD::ComputeDt(const real_t max_vel) {
 
     m_log("dt = %e, using h = %e and CFL limit = %e", cfl_dt, h_fine, cfl_limit);
     //-------------------------------------------------------------------------
-    // m_end;
+    m_end;
     return cfl_dt;
 }

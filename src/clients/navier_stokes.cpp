@@ -32,6 +32,9 @@ NavierStokes::~NavierStokes() {
 void NavierStokes::InitParam(ParserArguments* param) {
     m_begin;
     //-------------------------------------------------------------------------
+    // call the general testcase parameters
+    this->TestCase::InitParam(param);
+
     //store nu and ustream
     real_t L = 1.0;
     for (lda_t id = 0; id < 3; ++id) {
@@ -42,11 +45,7 @@ void NavierStokes::InitParam(ParserArguments* param) {
     real_t nu_ = (param->reynolds > 0.0) ? (L * m_max(u_stream_[0], m_max(u_stream_[1], u_stream_[2])) / param->reynolds) : 0.0;
 
     dump_error_    = param->dump_error;
-    dump_details_  = param->dump_detail;
     compute_error_ = param->compute_error;
-    iter_max_      = param->iter_max;
-    iter_diag_     = param->iter_diag;
-    iter_adapt_    = param->iter_adapt;
 
     // setup the profiler
     if (param->profile) {
@@ -87,18 +86,19 @@ void NavierStokes::Run() {
     lid_t iter = 0;
 
     // AdvectionDiffusion<5, 3> adv_diff(nu_, u_stream_);
-    Conservative_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
-    adv_diff.Profile(prof_);
+    // Conservative_AdvectionDiffusion<4, 3> adv_diff(nu_, u_stream_);
+    // adv_diff.Profile(prof_);
 
-    RK3_LS rk3(1.0 / 3.0, grid_, vort_, &adv_diff, prof_);
+    // RK3_LS rk3(1.0 / 3.0, grid_, vort_, &adv_diff, prof_);
     
 
     // let's gooo
     m_profStart(prof_, "Navier-Stokes run");
-    while (t < t_final && iter < iter_max_) {
+    while (t < t_final && iter < iter_max()) {
         //................................................
         // get the time-step given the field
-        real_t dt = rk3.ComputeDt();
+        // real_t dt = rk3.ComputeDt();
+        real_t dt = 1e-4;
 
         // dump some info
         m_log("--------------------");
@@ -106,7 +106,7 @@ void NavierStokes::Run() {
 
         //................................................
         // diagnostics, dumps, whatever
-        if (iter % iter_diag_ == 0) {
+        if (iter % iter_diag() == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             Diagnostics(t, dt, iter);
@@ -117,13 +117,13 @@ void NavierStokes::Run() {
         // advance in time
         m_log("---- do time-step");
         m_profStart(prof_, "do dt");
-        rk3.DoDt(dt, &t);
+        // rk3.DoDt(dt, &t);
         iter++;
         m_profStop(prof_, "do dt");
 
         //................................................
         // adapt the mesh
-        if (iter % iter_adapt_ == 0) {
+        if (iter % iter_adapt() == 0) {
             m_log("---- adapt mesh");
             m_profStart(prof_, "adapt");
             grid_->Adapt(vort_);
@@ -172,7 +172,7 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
     dump(grid_, vort_, iter);
 
     // dump the details
-    if (dump_details_) {
+    if (dump_detail()) {
         Field details("detail", 3);
         details.bctype(M_BC_EXTRAP);
         grid_->AddField(&details);

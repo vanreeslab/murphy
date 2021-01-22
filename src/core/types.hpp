@@ -17,6 +17,7 @@ using rank_t   = int;               //!< rank data type
 using real_t   = double;            //!< floating point data
 using iblock_t = p4est_locidx_t;    //!< datatype to index blocks, ghosts and quadrants
 using qdrt_t   = p8est_quadrant_t;  //!< p4est_quadrant, the default type is too long
+using short_t  = short;             //!< short integer, only used when nothing else fits: order of a method, etc...
 /**@}*/
 
 //-------------------------------------------------------------------------

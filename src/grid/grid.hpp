@@ -91,9 +91,9 @@ class Grid : public ForestGrid {
         m_assert(interp_ != nullptr, "interp cannot be null");
         return interp_->nghost_back();
     }
-    void GhostPull(m_ptr<Field> field);
-    void GhostPull_Post(m_ptr<const Field> field, const sid_t ida);
-    void GhostPull_Wait(m_ptr<const Field> field, const sid_t ida);
+    void GhostPull(m_ptr<Field> field) const;
+    void GhostPull_Post(m_ptr<const Field> field, const sid_t ida) const;
+    void GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) const;
     /**@}*/
 
     /**

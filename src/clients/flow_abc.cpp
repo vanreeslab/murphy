@@ -25,6 +25,9 @@ FlowABC::~FlowABC() {
 
 void FlowABC::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
+    // call the general testcase parameters
+    this->TestCase::InitParam(param);
+    
     // the the standard stuffs
     if (param->profile) {
         int comm_size;
@@ -32,11 +35,6 @@ void FlowABC::InitParam(ParserArguments* param) {
         string name = string("ABC_Flow_") + to_string(comm_size) + string("ranks");
         prof_       = new Prof(name);
     }
-    dump_detail_ = param->dump_detail;
-    iter_max_    = param->iter_max;
-    iter_diag_   = param->iter_diag;
-    iter_adapt_  = param->iter_adapt;
-    iter_dump_   = param->iter_dump;
 
     // setup the grid
     bool period[3]    = {true, true, true};
@@ -71,17 +69,17 @@ void FlowABC::Run() {
 
     SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
 
-    WenoAdvection<3> adv(vel_);
+    Advection<M_ADV_WENO_VEL,3> adv(vel_);
     RK3_TVD          rk3(grid_, scal_, &adv, prof_);
     adv.Profile(prof_);
 
     // let's gooo
     m_profStart(prof_, "run");
-    while (t < t_final && iter < iter_max_) {
+    while (t < t_final && iter < iter_max()) {
         m_log("--------------------");
         //................................................
         // adapt the mesh
-        if (iter % iter_adapt_ == 0) {
+        if (iter % iter_adapt() == 0) {
             m_log("---- adapt mesh");
             m_profStart(prof_, "adapt");
             grid_->Adapt(scal_);
@@ -101,10 +99,10 @@ void FlowABC::Run() {
 
         //................................................
         // get the time-step given the field
-        real_t dt = rk3.ComputeDt(2.0);
+        real_t dt = rk3.ComputeDt(&adv,vel_);
 
         // dump some info
-        m_log("RK3 - time = %f - step %d/%d - dt = %e", t, iter, iter_max_, dt);
+        m_log("RK3 - time = %f - step %d/%d - dt = %e", t, iter, iter_max(), dt);
 
         //................................................
         // advance in time
@@ -116,7 +114,7 @@ void FlowABC::Run() {
 
         //................................................
         // diagnostics, dumps, whatever
-        if (iter % iter_diag_ == 0) {
+        if (iter % iter_diag() == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             Diagnostics(t, dt, iter);
@@ -125,7 +123,7 @@ void FlowABC::Run() {
     }
     m_profStop(prof_, "run");
     // run the last diag
-    if (iter % iter_diag_ != 0) {
+    if (iter % iter_diag() != 0) {
         Diagnostics(t, 0.0, iter);
     }
     //-------------------------------------------------------------------------
@@ -156,7 +154,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         fclose(file_diag);
     }
 
-    if (iter % iter_dump_ == 0) {
+    if (iter % iter_dump() == 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_);
@@ -165,7 +163,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         dump(grid_, vel_, iter);
 
         // dump the details
-        if (dump_detail_) {
+        if (dump_detail()) {
             Field details("detail", 2);
             details.bctype(M_BC_EXTRAP);
             grid_->AddField(&details);
