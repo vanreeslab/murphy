@@ -36,12 +36,18 @@ class Advection : public Stencil, public RKFunctor {
     lid_t NGhost() const override { return 0; };
 
     void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
+        // -------------------------------------------------------------------------
         accumulate_ = false;
         Stencil::operator()(grid, field_u, field_y);
+        accumulate_ = false;  // reset the value to false for other calls
+        // -------------------------------------------------------------------------
     };
     void RhsAcc(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
+        // -------------------------------------------------------------------------
         accumulate_ = true;
         Stencil::operator()(grid, field_u, field_y);
+        accumulate_ = false;  // reset the value to false for other calls
+        // -------------------------------------------------------------------------
     };
 
    protected:
@@ -209,6 +215,7 @@ template <>
 lid_t Advection<M_ADV_WENO_VEL, 3>::NGhost() const { return 2; }
 template <>
 void Advection<M_ADV_WENO_VEL, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+    m_assert(u_->ghost_status(),"the ghost values of the velocity must be known!");
     // -------------------------------------------------------------------------
     const real_t* data_u   = block->data(u_, 0).Read();
     const real_t* data_v   = block->data(u_, 1).Read();
@@ -340,6 +347,7 @@ lid_t Advection<M_ADV_WENO_VEL, 5>::NGhost() const { return 3; }
  */
 template <>
 void Advection<M_ADV_WENO_VEL, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+    m_assert(u_->ghost_status(),"the ghost values of the velocity must be known!");
     // -------------------------------------------------------------------------
     const real_t* data_u   = block->data(u_, 0).Read();
     const real_t* data_v   = block->data(u_, 1).Read();
