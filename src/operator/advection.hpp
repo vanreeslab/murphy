@@ -181,7 +181,7 @@ void Advection<M_ADV_CENTER, 6>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock
         const real_t* v   = data_v + m_idx(i0, i1, i2);
         const real_t* w   = data_w + m_idx(i0, i1, i2);
 
-        constexpr real_t one_sixtieth    = 1.0 / 16.0;
+        constexpr real_t one_sixtieth    = 1.0 / 60.0;
         constexpr real_t three_twentieth = 3.0 / 20.0;
         constexpr real_t three_forth     = 3.0 / 4.0;
 
