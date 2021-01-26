@@ -66,12 +66,6 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
     m_profStart(prof_(), "rk3");
     //................................................
     // step 1
-
-    // y1 = 0.0
-    // m_profStart(prof_(), "reset");
-    // reset(grid_(), 0.0, field_y1_);
-    // m_profStop(prof_(), "reset");
-
     // y1 = f(u)
     m_profStart(prof_(), "rhs");
     f_->RhsSet(grid_, *time, field_u_, field_y1_);
@@ -84,12 +78,6 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
 
     //................................................
     // step 2
-
-    // y2 = 0.0
-    // m_profStart(prof_(), "reset");
-    // reset(grid_(), 0.0, field_y2_);
-    // m_profStop(prof_(), "reset");
-
     // y2 = y2 + f(y1)
     m_profStart(prof_(), "rhs");
     f_->RhsSet(grid_, *time + dt, field_y1_, field_y2_);
