@@ -10,6 +10,7 @@
 #include "time/rk3_tvd.hpp"
 #include "time/rkfunctor.hpp"
 #include "tools/ioh5.hpp"
+#include "blas.hpp"
 
 #define DOUBLE_TOL 1e-13
 
@@ -75,8 +76,6 @@ class RKRhs : public RKFunctor, public SetValue {
         real_t center[3] = {center_[0] + time_ * (0 == ida_),
                             center_[1] + time_ * (1 == ida_),
                             center_[2] + time_ * (2 == ida_)};
-
-        // m_log("center = %f %f %f, fact = %f", center[0], center[1], center[2], fact);
 
         data_ptr block_data = block->data(fid);
         for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
@@ -161,14 +160,16 @@ TEST_F(valid_RK, rk3_tvd) {
         SetExponential phi_init(center, sigma, alpha, grid.interp());
         phi_init(&grid, &phi);
 
+        // check the min and max
+        real_t  min_init, max_init;
+        Dminmax minmax;
+        minmax(&grid, &phi, &min_init, &max_init);
+
         // set the rhs
         RKRhs rhs(center, sigma, alpha, 2, grid.interp());
 
         // set the RK
         RK3_TVD rk3(&grid, &phi, &rhs, nullptr);
-
-        IOH5 dump("data");
-        dump(&grid, &phi, 0);
 
         // integrate in time
         real_t time = 0.0;
@@ -181,10 +182,6 @@ TEST_F(valid_RK, rk3_tvd) {
             m_assert(time == (iter + 1) * dt, "the time must be now the current time-step");
         }
 
-        grid.GhostPull(&phi);
-
-        dump(&grid, &phi, iter_max);
-
         m_log("solution is taken at time %e", time);
         // set the solution, assume velocity in Z: u = (0,0,1)
         const real_t center_sol[3] = {1.5, 1.5, 1.5 + 1 * time};
@@ -192,12 +189,19 @@ TEST_F(valid_RK, rk3_tvd) {
         SetExponential sol_init(center_sol, sigma, alpha, grid.interp());
         sol_init(&grid, &sol);
 
-        dump(&grid, &sol);
-
         // compute the error
         ErrorCalculator error;
         error.Normi(&grid, &phi, &sol, erri_tvd + id);
         m_log("RK3 - TVD: checking iter_max = %d, ei = %e", iter_max, erri_tvd[id]);
+
+        // check the min and max
+        real_t  min_final, max_final;
+        minmax(&grid, &phi, &min_final, &max_final);
+
+        // test the TVD
+        m_log("init: %e to %e -> final %e to %e", min_init, max_init, min_final, max_final);
+        // ASSERT_LE(min_init,min_final);
+        // ASSERT_GE(max_init,max_final);
 
         // destroy the world
         grid.DeleteField(&phi);

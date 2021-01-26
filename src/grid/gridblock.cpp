@@ -93,17 +93,23 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
     m_end;
 }
 
-// /**
-//  * @brief Destroy the Grid Block
-//  *
-//  * delete the ghost ptr if present and delete the associated fields
-//  *
-//  */
-// GridBlock::~GridBlock() {
-//     //-------------------------------------------------------------------------
-//     m_verb("destruct gridBlock");
-//     //-------------------------------------------------------------------------
-// }
+/**
+ * @brief Destroy the Grid Block
+ *
+ * delete the ghost ptr if present and delete the associated fields
+ *
+ */
+GridBlock::~GridBlock() {
+    //-------------------------------------------------------------------------
+    if (coarse_ptr_.IsOwned()) {
+        coarse_ptr_.Free();
+    }
+    // Free the blocks in the mapping
+    for (auto it = mem_map_.begin(); it != mem_map_.end(); ++it) {
+        it->second.Free();
+    }
+    //-------------------------------------------------------------------------
+}
 
 /**
  * @brief allocate the ptr for the ghost if not already exiting
@@ -254,10 +260,10 @@ void GridBlock::DeleteField(m_ptr<const Field> fid) {
     string name = fid->name();
     // try to find the field
     auto it = mem_map_.find(name);
-    // if not found, create it
     if (it != mem_map_.end()) {
         m_verb("deleting field %s to the block", name.c_str());
-        // mem_map_[name]);
+        // free the memory and erase the entry
+        it->second.Free();
         mem_map_.erase(name);
     } else {
         m_verb("no field %s in the block", name.c_str());

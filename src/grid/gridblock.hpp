@@ -52,7 +52,7 @@ class GridBlock : public MemLayout {
 
    public:
     GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
-    // ~GridBlock();
+    ~GridBlock();
 
     /**
      * @name Memory Layout Implementation

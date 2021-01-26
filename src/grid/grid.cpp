@@ -28,12 +28,12 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* prof)
+Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, const m_ptr<Prof>& prof)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
     //-------------------------------------------------------------------------
     // profiler
-    prof_ = prof;
+    prof_ = prof();
     // create a default Wavelet -> default is M_WAVELET_N and M_WAVELET_NT
     interp_ = new InterpolatingWavelet();
 
@@ -159,7 +159,7 @@ size_t Grid::LocalMemSize() const {
  * @brief returns the number of local number of degree of freedom for one field containing one dimension
  * 
  * @return size_t 
- */
+*/
 size_t Grid::LocalNumDof() const {
     return p4est_forest_->local_num_quadrants * (M_N * M_N * M_N);
 }
@@ -173,10 +173,9 @@ size_t Grid::GlobalNumDof() const {
     return p4est_forest_->global_num_quadrants * (M_N * M_N * M_N);
 }
 
-bool Grid::IsAField(m_ptr<const Field> field) const {
+bool Grid::IsAField(const m_ptr<const Field> field) const {
     std::string key = field->name();
     return (fields_.find(key) != fields_.end());
-    // return (std::find(fields_.begin(),fields_.end(),field) != fields_.end());
 }
 
 /**
@@ -188,15 +187,16 @@ bool Grid::IsAField(m_ptr<const Field> field) const {
  */
 void Grid::AddField(m_ptr<Field> field) {
     m_begin;
+    m_assert(!field.IsOwned(), "The field cannot be owned as it has not been created here");
     //-------------------------------------------------------------------------
     if (!IsAField(field)) {
         // add the field
         fields_[field->name()] = field;
         // allocate the field on every block
         DoOpTree(nullptr, &GridBlock::AddField, this, field);
-        m_log("field %s has been added to the grid", field->name().c_str());
+        m_verb("field %s has been added to the grid", field->name().c_str());
     } else {
-        m_log("field %s is already in the grid", field->name().c_str());
+        m_verb("field %s is already in the grid", field->name().c_str());
     }
     //-------------------------------------------------------------------------
     m_end;

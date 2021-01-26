@@ -206,9 +206,7 @@ void Dminmax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x,
         // store the dimension and go!
         ida_ = ida;
         DoOpMesh(this, &Dminmax::ComputeDminmaxGridBlock, grid, fid_x);
-
-        m_log("my min = %e, max = %e",min_,max_);
-
+        
         // update the ghost - not needed
         // allreduce sync:
         MPI_Allreduce(&min_, min + ida, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
