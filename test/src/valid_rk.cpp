@@ -7,10 +7,10 @@
 #include "grid/grid.hpp"
 #include "gtest/gtest.h"
 #include "operator/error.hpp"
+#include "operator/xblas.hpp"
 #include "time/rk3_tvd.hpp"
 #include "time/rkfunctor.hpp"
 #include "tools/ioh5.hpp"
-#include "blas.hpp"
 
 #define DOUBLE_TOL 1e-13
 
@@ -69,7 +69,7 @@ class RKRhs : public RKFunctor, public SetValue {
 
         real_t sigma     = sqrt(sigma_[0] * sigma_[0] + sigma_[1] * sigma_[1] + sigma_[2] * sigma_[2]);
         real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
-        real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2) * (-2.0/ pow(sigma_[ida_], 2));  // * alpha_ * sqrt(1.0 / M_PI) * (1.0 / (sigma * sigma * sigma));
+        real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2) * (-2.0 / pow(sigma_[ida_], 2));  // * alpha_ * sqrt(1.0 / M_PI) * (1.0 / (sigma * sigma * sigma));
 
         real_t reset = (accumulate_) ? 1.0 : 0.0;
 
@@ -162,7 +162,7 @@ TEST_F(valid_RK, rk3_tvd) {
 
         // check the min and max
         real_t  min_init, max_init;
-        Dminmax minmax;
+        BMinMax minmax;
         minmax(&grid, &phi, &min_init, &max_init);
 
         // set the rhs
@@ -195,7 +195,7 @@ TEST_F(valid_RK, rk3_tvd) {
         m_log("RK3 - TVD: checking iter_max = %d, ei = %e", iter_max, erri_tvd[id]);
 
         // check the min and max
-        real_t  min_final, max_final;
+        real_t min_final, max_final;
         minmax(&grid, &phi, &min_final, &max_final);
 
         // test the TVD

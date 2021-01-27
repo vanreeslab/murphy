@@ -23,7 +23,7 @@ using std::list;
 using std::string;
 
 TEST_F(valid_Stencil, advection_periodic_cosinus) {
-    // for (lda_t id = 0; id < 3; ++id) {
+    for (lda_t id = 0; id < 3; ++id) {
     // init the errors
     real_t erri_adv_center_2[3] = {0.0, 0.0, 0.0};
     real_t erri_adv_center_4[3] = {0.0, 0.0, 0.0};
@@ -75,26 +75,26 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
         grid.AddField(&vel);
         grid.AddField(&dtest);
 
-        // set a constant velocity: 1,1,1
+        // set a constant velocity
         const lid_t  deg[3]   = {0, 0, 0};
         const real_t dir[3]   = {1.0, 0.0, 0.0};
         const real_t shift[3] = {0.0, 0.0, 0.0};
-        SetPolynom   vel_init(deg, dir, shift,grid.interp());
-        vel_init(&grid, &vel);  // put 1.0 on everybody
+        SetPolynom   vel_init(deg, dir, shift, grid.interp());
+        vel_init(&grid, &vel, id);  // put 1.0 in the indicated direction only
 
         // put a cos -> the field: cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
         const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-        const real_t freq[3]    = {3.0, 2.0, 2.0};
+        const real_t freq[3]    = {3.0, 2.0, 5.0};
         const real_t alpha[3]   = {1.0, 1.0, 1.0};
         SetCosinus   field_init(sin_len, freq, alpha);
         field_init(&grid, &test);
 
         // -> the solution: u* df/dx + v * df/dy + w*df/dz
-        const real_t alpha_sol_0[3] = {2.0 * M_PI * freq[0] / L[0],
-                                       2.0 * M_PI * freq[1] / L[1],
-                                       2.0 * M_PI * freq[2] / L[2]};
+        const real_t alpha_sol_0[3] = {2.0 * M_PI * freq[0] / L[0] * (id == 0),
+                                       2.0 * M_PI * freq[1] / L[1] * (id == 1),
+                                       2.0 * M_PI * freq[2] / L[2] * (id == 2)};
         SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
-        sol_init(&grid, &sol, 0);
+        sol_init(&grid, &sol);
 
         // test advection centered order 2
         if (do_center_2) {
@@ -158,12 +158,13 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
     if (do_weno_3) {
         real_t convi = -log(erri_adv_weno_3[2] / erri_adv_weno_3[1]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.3);
     }
     if (do_weno_5) {
         real_t convi = -log(erri_adv_weno_5[2] / erri_adv_weno_5[1]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.3);
+    }
     }
 }
 
