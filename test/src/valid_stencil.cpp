@@ -84,7 +84,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 
         // put a cos -> the field: cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
         const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-        const real_t freq[3]    = {3.0, 2.0, 5.0};
+        const real_t freq[3]    = {2.0, 2.0, 2.0};
         const real_t alpha[3]   = {1.0, 1.0, 1.0};
         SetCosinus   field_init(sin_len, freq, alpha);
         field_init(&grid, &test);
@@ -138,7 +138,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
             m_log("M_ADV_WENO_VEL - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
     }
-    m_log("did tests %d %d %d %d %d", do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);
+    m_log("in dir = %d did tests %d %d %d %d %d", do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);
     // real_t conv2 = -log(err2[2] / err2[1]) / log(2);
     if (do_center_2) {
         real_t convi = -log(erri_adv_center_2[2] / erri_adv_center_2[1]) / log(2);
@@ -158,12 +158,12 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
     if (do_weno_3) {
         real_t convi = -log(erri_adv_weno_3[2] / erri_adv_weno_3[1]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.3);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
     }
     if (do_weno_5) {
         real_t convi = -log(erri_adv_weno_5[2] / erri_adv_weno_5[1]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.3);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
     }
     }
 }
