@@ -4,7 +4,7 @@
 #include "operator/advection.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
-#include "operator/blas.hpp"
+#include "operator/xblas.hpp"
 
 using std::string;
 using std::to_string;
@@ -146,7 +146,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
 
     // get fields diags
     real_t  scal_min[2], scal_max[2];
-    Dminmax minmax;
+    BMinMax minmax;
     minmax(grid_, scal_, scal_min, scal_max);
 
     // open the file

@@ -19,6 +19,7 @@ class ParserArguments {
     bool   profile          = false;
     bool   do_navier_stokes = false;
     bool   do_abc_flow      = false;
+    bool   do_simple_adv    = false;
     real_t reynolds         = 0.0;
 
     real_t refine_tol  = 1e-2;

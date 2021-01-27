@@ -15,6 +15,9 @@ class SimpleAdvection : public TestCase {
     m_ptr<Grid>  grid_;
     m_ptr<Prof>  prof_;
 
+    m_ptr<SetScalarRing> ring_;
+    m_ptr<SetPolynom>    vel_field_;
+
     std::string folder_diag_ = "data";
 
    public:

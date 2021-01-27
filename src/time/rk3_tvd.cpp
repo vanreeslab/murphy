@@ -1,7 +1,8 @@
 #include "rk3_tvd.hpp"
 
-#include "blas.hpp"
-#include "ioh5.hpp"
+#include "operator/blas.hpp"
+#include "operator/xblas.hpp"
+#include "tools/ioh5.hpp"
 
 /**
  * @brief Construct a new Runge Kutta 3 - Total Variation Diminushing
@@ -129,14 +130,14 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     m_begin;
     //-------------------------------------------------------------------------
     // get the max velocity and the finest h
-    Dmax   getmax;
+    BMax   getmax;
     real_t max_vel = getmax(grid_, velocity);
     real_t h_fine  = grid_->FinestH();
     m_assert(h_fine > 0.0, "the finest h = %e must be positive", h_fine);
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
     // know the limits from the rhs directly
-    real_t cfl_limit = 0.95 * rhs->cfl();  // CFL = max_vel * dt / h
+    real_t cfl_limit = 0.5 * rhs->cfl();  // CFL = max_vel * dt / h
     // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
     // get the finest h in the grid
 
@@ -144,7 +145,7 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     real_t cfl_dt = cfl_limit * h_fine / max_vel;
     m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
 
-    m_log("dt = %e, using h = %e and CFL limit = %e and max_vel = %e", cfl_dt, h_fine, cfl_limit,max_vel);
+    m_log("dt = %e, using h = %e and CFL limit = %e and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
     //-------------------------------------------------------------------------
     m_end;
     return cfl_dt;

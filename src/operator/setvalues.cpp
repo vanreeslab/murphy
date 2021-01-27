@@ -478,8 +478,8 @@ void SetABSVelocity::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> bloc
 }
 
 //=====================================================================================================
-SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetScalarRing(normal, center, sigma, radius, nullptr) {}
-SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3]) : SetScalarRing(normal, center, sigma, radius, vel, nullptr) {}
+SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3], m_ptr<const Wavelet> interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;
@@ -487,6 +487,7 @@ SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const r
     radius_ = radius;
     for (lda_t id = 0; id < 3; ++id) {
         center_[id] = center[id];
+        vel_[id] = vel[id];
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -507,6 +508,10 @@ void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
     const lda_t idy = (normal_ + 2) % 3;
     const lda_t idz = normal_;
 
+    const real_t center[3] = {center_[0] + time_ * vel_[0],
+                              center_[1] + time_ * vel_[1],
+                              center_[2] + time_ * vel_[2]};
+
     // get the pointers correct
     real_t* w = block->data(fid).Write();
 
@@ -516,12 +521,12 @@ void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
         m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
 
         // wrt to the center
-        const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center_[idy], pos[idx] - center_[idx]);
-        const real_t radr    = sqrt(pow(pos[idx] - center_[idx], 2) + pow(pos[idy] - center_[idy], 2));
+        const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center[idy], pos[idx] - center[idx]);
+        const real_t radr    = sqrt(pow(pos[idx] - center[idx], 2) + pow(pos[idy] - center[idy], 2));
         const real_t rad1r   = radr - radius_;
         const real_t rad2r   = radr + radius_;
-        const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center_[idz], 2);
-        const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center_[idz], 2);
+        const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center[idz], 2);
+        const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center[idz], 2);
         const real_t vort    = oo_pisigma2 * (exp(-rad1_sq * oo_sigma2) - exp(-rad2_sq * oo_sigma2));
 
         w[m_idx(i0, i1, i2)] = vort;

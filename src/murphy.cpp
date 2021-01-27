@@ -5,6 +5,7 @@
 
 #include "clients/flow_abc.hpp"
 #include "clients/navier_stokes.hpp"
+#include "clients/simple_advection.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -44,6 +45,11 @@ TestCase* MurphyInit(int argc, char** argv) {
     } 
     else if (argument.do_abc_flow){
         testcase = new FlowABC();
+        testcase->InitParam(&argument);
+        return testcase;
+    }
+    else if (argument.do_simple_adv){
+        testcase = new SimpleAdvection();
         testcase->InitParam(&argument);
         return testcase;
     }

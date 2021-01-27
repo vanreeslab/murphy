@@ -79,7 +79,7 @@ static struct argp_option options[] = {
     {"profile", 'p', 0, OPTION_ARG_OPTIONAL, "enables the program profiling", 1},
 
     /* general param */
-    {0, 0, 0, OPTION_DOC, "General parameters:", 2},
+    {0, 0, 0, OPTION_DOC, "Grid-related parameters:", 2},
     {"dom", 2001, "d_x,d_y,d_z", 0, "gives the dimension of the domain (integers: d_x,d_y,d_z)"},
     {"ilevel", 2002, "level", 0, "the initialization level (integer: num)"},
     {"periodic", 2003, "p_x,p_y,p_z", 0, "periodicity of the domain"},
@@ -87,17 +87,8 @@ static struct argp_option options[] = {
     {"rtol", 2005, "tol", 0, "refinement tolerance"},
     {"ctol", 2006, "tol", 0, "coarsening tolerance"},
 
-    /* client choice parameters */
-    {0, 0, 0, OPTION_DOC, "Available clients:", 3},
-    // navier-stokes
-    {"navier-stokes", 3000, 0, OPTION_ARG_OPTIONAL, "Navier-Stokes testcase"},
-    {"ns", 0, 0, OPTION_ALIAS, 0},
-    // abc flow
-    {"abc", 4000, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
-    {"iter-dump", 4001, "int", 0, "dump the field every x iterations"},
-
-    /* Navier-Stokes */
-    {0, 0, 0, OPTION_DOC, "Navier-Stokes parameters:", 4},
+    /* general parameters */
+    {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
     {"reynolds", 3001, "double", 0, "the Reynolds number"},
     {"vr-normal", 3002, "dir", 0, "vortex ring normal"},
     {"vr-center", 3003, "c_x,c_y,c_z", 0, "vortex ring center"},
@@ -109,6 +100,18 @@ static struct argp_option options[] = {
     {"iter-max", 3009, "int", 0, "maximum of RK3 iterations"},
     {"iter-diag", 3010, "int", 0, "run the diagnostics every x iterations"},
     {"iter-adapt", 3011, "int", 0, "adapt the grid every x iterations"},
+    {"iter-dump", 3012, "int", 0, "dump the field every x iterations"},
+
+    /* client choice parameters */
+    {0, 0, 0, OPTION_DOC, "Available clients:", 4},
+    // navier-stokes
+    {"navier-stokes", 4000, 0, OPTION_ARG_OPTIONAL, "Navier-Stokes testcase"},
+    {"ns", 0, 0, OPTION_ALIAS, 0},
+    // abc flow
+    {"abc", 4001, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
+    // simple advection
+    {"simple-advection", 4002, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
+    {"sadv", 0, 0, OPTION_ALIAS, 0},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -164,11 +167,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             return err;
         }
         //................................................
-        case 3000: { /* Navier-Stockes */
-            m_log("Navier-Stokes testcase selected");
-            arguments->do_navier_stokes = true;
-            return 0;
-        }
         case 3001: { /* Reynolds */
             double* reynolds = &arguments->reynolds;
             error_t err      = atof_list(1, arg, reynolds);
@@ -235,18 +233,29 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("iter adapt: %d", myint[0]);
             return err;
         }
-        //................................................
-        case 4000: { /* Navier-Stockes */
-            m_log("ABC-flow testcase selected");
-            arguments->do_abc_flow = true;
-            return 0;
-        }
-        case 4001: { /* iter dump*/
+        case 3012: { /* iter dump*/
             int*    myint = &arguments->iter_dump;
             error_t err   = atoi_list(1, arg, myint);
             m_log("iter dump: %d", myint[0]);
             return err;
         }
+        //................................................
+        case 4000: { /* Navier-Stockes */
+            m_log("Navier-Stokes testcase selected");
+            arguments->do_navier_stokes = true;
+            return 0;
+        }
+        case 4001: { /* ABC flow */
+            m_log("ABC-flow testcase selected");
+            arguments->do_abc_flow = true;
+            return 0;
+        }
+        case 4002: { /* simple advection */
+            m_log("Simple-advection testcase selected");
+            arguments->do_simple_adv = true;
+            return 0;
+        }
+        
         default:
             return ARGP_ERR_UNKNOWN;
     }
