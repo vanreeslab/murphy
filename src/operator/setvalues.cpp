@@ -19,7 +19,7 @@ void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field) {
     // go for it
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
-    m_verb("setting the ghosts of %s to false", field->name().c_str());
+    m_verb("setting the ghosts of %s to %d", field->name().c_str(), do_ghost_);
     field->ghost_status(do_ghost_);
     //-------------------------------------------------------------------------
     m_end;
@@ -35,7 +35,8 @@ void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field, cons
     DoOpTree(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
-    field->ghost_status(do_ghost_);
+    // we cannot set the ghost status as only one direction has been done...
+    field->ghost_status(false);
     //-------------------------------------------------------------------------
     m_end;
 }

@@ -60,16 +60,6 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     sol_->is_temp(true);
     grid_->AddField(sol_);
 
-    // setup the velocity, 1.0 in every direction
-    const lid_t  deg[3]   = {0, 0, 0};
-    const real_t dir[3]   = {1.0, 0.0, 0.0};
-    const real_t shift[3] = {0.0, 0.0, 0.0};
-    vel_field_.Alloc(deg, dir, shift, grid_->interp());
-    (*vel_field_)(grid_, vel_, 2);
-
-    IOH5 dump(folder_diag_);
-    dump(grid_(), vel_());
-
     // setup the scalar ring
     real_t velocity[3] = {0.0, 0.0, 1.0};
     ring_.Alloc(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
@@ -81,6 +71,18 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->SetTol(param->refine_tol, param->coarsen_tol);
     grid_->SetRecursiveAdapt(true);
     grid_->Adapt(scal_, ring_);
+
+    // setup the velocity, 1.0 in every direction
+    const lid_t  deg[3]   = {0, 0, 0};
+    const real_t dir[3]   = {1.0, 0.0, 0.0};
+    const real_t shift[3] = {0.0, 0.0, 0.0};
+    vel_field_.Alloc(deg, dir, shift);
+    (*vel_field_)(grid_, vel_, 2);
+    // take the ghosts
+    grid_->GhostPull(vel_);
+
+    IOH5 dump(folder_diag_);
+    dump(grid_(), vel_());
     //-------------------------------------------------------------------------
 }
 
@@ -92,6 +94,17 @@ void SimpleAdvection::Run() {
     real_t t_start = 0.0;
     real_t t_final = 1.0;
     real_t t       = 0.0;
+
+    // test the moments with 1.0 in the z direction
+    (*vel_field_)(grid_, vel_, 2);
+    grid_->GhostPull(vel_);
+    real_t  moment0[3];
+    real_t  moment1[9];
+    BMoment moments;
+    moments(grid_, vel_, moment0, moment1);
+    m_log("moments u = %e %e %e %e", moment0[0], moment1[0], moment1[1], moment1[2]);
+    m_log("moments u = %e %e %e %e", moment0[1], moment1[3], moment1[4], moment1[5]);
+    m_log("moments u = %e %e %e %e", moment0[2], moment1[6], moment1[7], moment1[8]);
 
     Advection<M_ADV_WENO_VEL, 3> adv(vel_);
     RK3_TVD                      rk3(grid_, scal_, &adv, prof_);
@@ -111,6 +124,7 @@ void SimpleAdvection::Run() {
 
             // reset the velocity
             (*vel_field_)(grid_, vel_, 2);
+            grid_->GhostPull(vel_);
             m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
         }
         // we run the first diagnostic
