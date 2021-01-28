@@ -81,6 +81,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
         const real_t shift[3] = {0.0, 0.0, 0.0};
         SetPolynom   vel_init(deg, dir, shift, grid.interp());
         vel_init(&grid, &vel, id);  // put 1.0 in the indicated direction only
+        grid.GhostPull(&vel);
 
         // put a cos -> the field: cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
         const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};

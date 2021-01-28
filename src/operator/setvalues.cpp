@@ -497,9 +497,7 @@ SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const r
 void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
     m_assert(fid->lda() == 1, "this function is for scalar fields only");
     //-------------------------------------------------------------------------
-    real_t        pos[3];
-    const real_t* xyz   = block->xyz();
-    const real_t* hgrid = block->hgrid();
+    real_t pos[3];
 
     const real_t oo_sigma2   = 1.0 / (sigma_ * sigma_);
     const real_t oo_pisigma2 = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
