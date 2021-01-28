@@ -139,7 +139,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
             m_log("M_ADV_WENO_VEL - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
     }
-    m_log("in dir = %d did tests %d %d %d %d %d", do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);
+    m_log("in dir = %d did tests %d %d %d %d %d", id, do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);
     // real_t conv2 = -log(err2[2] / err2[1]) / log(2);
     if (do_center_2) {
         real_t convi = -log(erri_adv_center_2[2] / erri_adv_center_2[1]) / log(2);

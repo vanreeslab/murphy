@@ -928,7 +928,7 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
                 ZeroBoundary bc;
                 bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
             } else {
-                m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
+                m_assert(false, "this type of BC is not implemented yet or not valid %d for field <%s>", bctype, field->name().c_str());
             }
         }
         //................................................

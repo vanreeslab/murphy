@@ -29,6 +29,14 @@ RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr
     field_y1_->is_temp(true);
     field_y2_->is_temp(true);
 
+    // y1 and y2 are like u, so they need the same BC
+    for (lda_t ida = 0; ida < field_u_->lda(); ++ida) {
+        for (iface_t iface = 0; iface < 6; ++iface) {
+            field_y1_->bctype(state->bctype(ida, iface), ida, iface);
+            field_y2_->bctype(state->bctype(ida, iface), ida, iface);
+        }
+    }
+
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -137,7 +145,7 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
     // know the limits from the rhs directly
-    real_t cfl_limit = 0.5 * rhs->cfl();  // CFL = max_vel * dt / h
+    real_t cfl_limit = 0.8 * rhs->cfl();  // CFL = max_vel * dt / h
     // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
     // get the finest h in the grid
 

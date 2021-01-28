@@ -43,15 +43,17 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the grid
-    bool period[3] = {true, true, true};
+    bool period[3] = {false, false, false};
     grid_.Alloc(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
     const real_t L[3] = {1.0, 1.0, 1.0};
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
     // get the fields
     vel_.Alloc("velocity", 3);
+    vel_->bctype(M_BC_EXTRAP);
     vel_->is_temp(true);
     scal_.Alloc("scalar", 1);
+    scal_->bctype(M_BC_EXTRAP);
     grid_->AddField(vel_);
     grid_->AddField(scal_);
 
@@ -62,7 +64,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // setup the scalar ring
     real_t velocity[3] = {0.0, 0.0, 1.0};
-    ring_.Alloc(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
+    real_t center[3] = {L[0]/2.0, L[0]/2.0, L[0]/4.0};
+    ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
     ring_->Profile(prof_);
     ring_->SetTime(0.0);
     (*ring_)(grid_, scal_);
@@ -81,8 +84,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     // take the ghosts
     grid_->GhostPull(vel_);
 
-    IOH5 dump(folder_diag_);
-    dump(grid_(), vel_());
+    // IOH5 dump(folder_diag_);
+    // dump(grid_(), vel_());
     //-------------------------------------------------------------------------
 }
 
@@ -92,7 +95,7 @@ void SimpleAdvection::Run() {
     // time
     lid_t  iter    = 0;
     real_t t_start = 0.0;
-    real_t t_final = 1.0;
+    real_t t_final = 0.5;
     real_t t       = 0.0;
 
     // test the moments with 1.0 in the z direction
@@ -140,7 +143,7 @@ void SimpleAdvection::Run() {
         real_t dt = rk3.ComputeDt(&adv, vel_);
 
         // dump some info
-        m_log("RK3 - time = %f - step %d/%d - dt = %e", t, iter, iter_max(), dt);
+        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, t_final, iter, iter_max(), dt);
 
         //................................................
         // advance in time
