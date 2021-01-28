@@ -98,16 +98,16 @@ void SimpleAdvection::Run() {
     real_t t_final = 0.5;
     real_t t       = 0.0;
 
-    // test the moments with 1.0 in the z direction
-    (*vel_field_)(grid_, vel_, 2);
-    grid_->GhostPull(vel_);
-    real_t  moment0[3];
-    real_t  moment1[9];
-    BMoment moments;
-    moments(grid_, vel_, moment0, moment1);
-    m_log("moments u = %e %e %e %e", moment0[0], moment1[0], moment1[1], moment1[2]);
-    m_log("moments u = %e %e %e %e", moment0[1], moment1[3], moment1[4], moment1[5]);
-    m_log("moments u = %e %e %e %e", moment0[2], moment1[6], moment1[7], moment1[8]);
+    // // test the moments with 1.0 in the z direction
+    // (*vel_field_)(grid_, vel_, 2);
+    // grid_->GhostPull(vel_);
+    // real_t  moment0[3];
+    // real_t  moment1[9];
+    // BMoment moments;
+    // moments(grid_, vel_, moment0, moment1);
+    // m_log("moments u = %e %e %e %e", moment0[0], moment1[0], moment1[1], moment1[2]);
+    // m_log("moments u = %e %e %e %e", moment0[1], moment1[3], moment1[4], moment1[5]);
+    // m_log("moments u = %e %e %e %e", moment0[2], moment1[6], moment1[7], moment1[8]);
 
     Advection<M_ADV_WENO_VEL, 3> adv(vel_);
     RK3_TVD                      rk3(grid_, scal_, &adv, prof_);
@@ -213,7 +213,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         fclose(file_diag);
     }
 
-    if (iter % iter_dump() == 0) {
+    if (iter % iter_dump() == 0 && iter != 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_);
