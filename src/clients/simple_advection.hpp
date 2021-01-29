@@ -9,6 +9,8 @@
 #include "tools/prof.hpp"
 
 class SimpleAdvection : public TestCase {
+    bool no_adapt_ = false;
+    
     m_ptr<Field> vel_;
     m_ptr<Field> scal_;
     m_ptr<Field> sol_;
@@ -19,6 +21,8 @@ class SimpleAdvection : public TestCase {
     m_ptr<SetPolynom>    vel_field_;
 
     std::string folder_diag_ = "data";
+
+    
 
    public:
     ~SimpleAdvection();

@@ -34,6 +34,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     // call the general testcase parameters
     this->TestCase::InitParam(param);
 
+    // take the no adaptation
+    this->no_adapt_ = param->no_adapt;
+
     // the the standard stuffs
     if (param->profile) {
         int comm_size;
@@ -71,9 +74,11 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     (*ring_)(grid_, scal_);
 
     // finish the grid
-    grid_->SetTol(param->refine_tol, param->coarsen_tol);
-    grid_->SetRecursiveAdapt(true);
-    grid_->Adapt(scal_, ring_);
+    if (!no_adapt_) {
+        grid_->SetTol(param->refine_tol, param->coarsen_tol);
+        grid_->SetRecursiveAdapt(true);
+        grid_->Adapt(scal_, ring_);
+    }
 
     // setup the velocity, 1.0 in every direction
     const lid_t  deg[3]   = {0, 0, 0};
@@ -120,15 +125,17 @@ void SimpleAdvection::Run() {
         //................................................
         // adapt the mesh
         if (iter % iter_adapt() == 0) {
-            m_log("---- adapt mesh");
-            m_profStart(prof_(), "adapt");
-            grid_->Adapt(scal_);
-            m_profStop(prof_(), "adapt");
+            if (!no_adapt_) {
+                m_log("---- adapt mesh");
+                m_profStart(prof_(), "adapt");
+                grid_->Adapt(scal_);
+                m_profStop(prof_(), "adapt");
 
-            // reset the velocity
-            (*vel_field_)(grid_, vel_, 2);
-            grid_->GhostPull(vel_);
-            m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
+                // reset the velocity
+                (*vel_field_)(grid_, vel_, 2);
+                grid_->GhostPull(vel_);
+                m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
+            }
         }
         // we run the first diagnostic
         if (iter == 0) {

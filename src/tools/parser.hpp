@@ -25,6 +25,8 @@ class ParserArguments {
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
+    bool   no_adapt          = false;
+
     int    vr_normal    = 2;
     real_t vr_radius    = 0.25;
     real_t vr_sigma     = 0.025;

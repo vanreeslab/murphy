@@ -86,6 +86,7 @@ static struct argp_option options[] = {
     {"patch", 2004, "o_x,o_y,o_z,l_x,l_y,l_z,lvl", 0, "patch from (o_x,o_y,o_z) and of length (l_x,l_y,l_z) at level (lvl)"},
     {"rtol", 2005, "tol", 0, "refinement tolerance"},
     {"ctol", 2006, "tol", 0, "coarsening tolerance"},
+    {"no-adapt", 2007, 0, OPTION_ARG_OPTIONAL, "disable the mesh adaptation", 1},
 
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
@@ -165,6 +166,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err = atof_list(1, arg, tol);
             m_log("coarsening tolerance: %f", tol[0]);
             return err;
+        }
+        case 2007: { /* no adapt */
+            arguments->no_adapt = true;
+            m_log("no_adaptation");
+            return 0;
         }
         //................................................
         case 3001: { /* Reynolds */
