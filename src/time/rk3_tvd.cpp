@@ -144,7 +144,7 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
     // know the limits from the rhs directly
-    real_t cfl_limit = 1.0 * rhs->cfl();  // CFL = max_vel * dt / h
+    real_t cfl_limit = 1.0 * rhs->cfl_rk3();  // CFL = max_vel * dt / h
     // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
     // get the finest h in the grid
 

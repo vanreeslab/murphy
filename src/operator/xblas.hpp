@@ -14,7 +14,7 @@
 class BMax : public BlockOperator {
    protected:
     real_t max_;
-
+    
    public:
     explicit BMax() noexcept;
     explicit BMax(m_ptr<const Wavelet> interp) noexcept;

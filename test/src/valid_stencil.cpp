@@ -1,22 +1,20 @@
 #include <cmath>
 #include <list>
 
-#include "gtest/gtest.h"
 #include "core/macros.hpp"
-
-#include "grid/grid.hpp"
-#include "grid/field.hpp"
 #include "core/types.hpp"
+#include "grid/field.hpp"
+#include "grid/grid.hpp"
+#include "gtest/gtest.h"
 #include "operator/advection.hpp"
 #include "operator/error.hpp"
-
 #include "tools/ioh5.hpp"
 
 #define DOUBLE_TOL 1e-13
 
 class valid_Stencil : public ::testing::Test {
-    void SetUp() override {};
-    void TearDown() override {};
+    void SetUp() override{};
+    void TearDown() override{};
 };
 
 using std::list;
@@ -24,148 +22,164 @@ using std::string;
 
 TEST_F(valid_Stencil, advection_periodic_cosinus) {
     for (lda_t id = 0; id < 3; ++id) {
-    // init the errors
-    real_t erri_adv_center_2[3] = {0.0, 0.0, 0.0};
-    real_t erri_adv_center_4[3] = {0.0, 0.0, 0.0};
-    real_t erri_adv_center_6[3] = {0.0, 0.0, 0.0};
+        // init the errors
+        real_t erri_adv_center_2[3] = {0.0, 0.0, 0.0};
+        real_t erri_adv_center_4[3] = {0.0, 0.0, 0.0};
+        real_t erri_adv_center_6[3] = {0.0, 0.0, 0.0};
 
-    real_t erri_adv_weno_3[3] = {0.0, 0.0, 0.0};
-    real_t erri_adv_weno_5[3] = {0.0, 0.0, 0.0};
+        real_t erri_adv_cons_3[3] = {0.0, 0.0, 0.0};
+        real_t erri_adv_weno_3[3] = {0.0, 0.0, 0.0};
+        real_t erri_adv_weno_5[3] = {0.0, 0.0, 0.0};
 
-    // setup the mesh
-    bool  period[3] = {true, true, true};
-    lid_t L[3]      = {3, 3, 3};
+        // setup the mesh
+        bool  period[3] = {true, true, true};
+        lid_t L[3]      = {3, 3, 3};
 
-    // see if we run the tests
-    bool do_center_2 = false;  // = grid.NGhostFront() >= 1 && grid.NGhostBack() >= 1;
-    bool do_center_4 = false;  // = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-    bool do_center_6 = false;  // = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
-    bool do_weno_3   = false;
-    bool do_weno_5   = false;
+        // see if we run the tests
+        bool do_center_2 = false;  // = grid.NGhostFront() >= 1 && grid.NGhostBack() >= 1;
+        bool do_center_4 = false;  // = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        bool do_center_6 = false;  // = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+        bool do_cons_3   = false;
+        bool do_weno_3   = false;
+        bool do_weno_5   = false;
 
-    for (level_t il = 1; il < 3; ++il) {
-        Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
-        // create the patch refinement to refine the middle tree
-        real_t      origin1[3] = {1.0, 1.0, 1.0};
-        real_t      length1[3] = {1.0, 1.0, 1.0};
-        Patch       p1(origin1, length1, il + 1);
-        real_t      origin2[3] = {0.0, 0.0, 0.0};
-        real_t      length2[3] = {L[0], L[1], L[2]};
-        Patch       p2(origin2, length2, il);
-        list<Patch> patch{p1, p2};
-        grid.Adapt(&patch);
+        for (level_t il = 1; il < 3; ++il) {
+            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+            // create the patch refinement to refine the middle tree
+            real_t      origin1[3] = {1.0, 1.0, 1.0};
+            real_t      length1[3] = {1.0, 1.0, 1.0};
+            Patch       p1(origin1, length1, il + 1);
+            real_t      origin2[3] = {0.0, 0.0, 0.0};
+            real_t      length2[3] = {L[0], L[1], L[2]};
+            Patch       p2(origin2, length2, il);
+            list<Patch> patch{p1, p2};
+            grid.Adapt(&patch);
 
-        do_center_2 = grid.NGhostFront() >= 1 && grid.NGhostBack() >= 1;
-        do_center_4 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        do_center_6 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
-        do_weno_3   = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        do_weno_5   = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+            // do_center_2 = grid.NGhostFront() >= 1 && grid.NGhostBack() >= 1;
+            // do_center_4 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+            // do_center_6 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+            do_cons_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+            do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+            do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
-        // create the test file
-        string fieldName = "field" + std::to_string(il);
-        string solName   = "sol" + std::to_string(il);
-        string velName   = "vel" + std::to_string(il);
-        string diffName  = "deriv" + std::to_string(il);
-        Field  test(fieldName, 1);
-        Field  sol(solName, 1);
-        Field  vel(velName, 3);
-        Field  dtest(diffName, 1);
-        grid.AddField(&test);
-        grid.AddField(&sol);
-        grid.AddField(&vel);
-        grid.AddField(&dtest);
+            // create the test file
+            string fieldName = "field" + std::to_string(il);
+            string solName   = "sol" + std::to_string(il);
+            string velName   = "vel" + std::to_string(il);
+            string diffName  = "deriv" + std::to_string(il);
+            Field  test(fieldName, 1);
+            Field  sol(solName, 1);
+            Field  vel(velName, 3);
+            Field  dtest(diffName, 1);
+            grid.AddField(&test);
+            grid.AddField(&sol);
+            grid.AddField(&vel);
+            grid.AddField(&dtest);
 
-        // set a constant velocity
-        const lid_t  deg[3]   = {0, 0, 0};
-        const real_t dir[3]   = {1.0, 0.0, 0.0};
-        const real_t shift[3] = {0.0, 0.0, 0.0};
-        SetPolynom   vel_init(deg, dir, shift, grid.interp());
-        vel_init(&grid, &vel, id);  // put 1.0 in the indicated direction only
-        grid.GhostPull(&vel);
+            // set a constant velocity
+            const lid_t  deg[3]   = {0, 0, 0};
+            const real_t dir[3]   = {1.0, 0.0, 0.0};
+            const real_t shift[3] = {0.0, 0.0, 0.0};
+            SetPolynom   vel_init(deg, dir, shift, grid.interp());
+            vel_init(&grid, &vel, id);  // put 1.0 in the indicated direction only
+            grid.GhostPull(&vel);
 
-        // put a cos -> the field: cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
-        const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-        const real_t freq[3]    = {2.0, 2.0, 2.0};
-        const real_t alpha[3]   = {1.0, 1.0, 1.0};
-        SetCosinus   field_init(sin_len, freq, alpha);
-        field_init(&grid, &test);
+            // put a cos -> the field: cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
+            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t freq[3]    = {2.0, 2.0, 2.0};
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetCosinus   field_init(sin_len, freq, alpha);
+            field_init(&grid, &test);
 
-        // -> the solution: u* df/dx + v * df/dy + w*df/dz
-        const real_t alpha_sol_0[3] = {2.0 * M_PI * freq[0] / L[0] * (id == 0),
-                                       2.0 * M_PI * freq[1] / L[1] * (id == 1),
-                                       2.0 * M_PI * freq[2] / L[2] * (id == 2)};
-        SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
-        sol_init(&grid, &sol);
+            // -> the solution: u* df/dx + v * df/dy + w*df/dz
+            const real_t alpha_sol_0[3] = {2.0 * M_PI * freq[0] / L[0] * (id == 0),
+                                           2.0 * M_PI * freq[1] / L[1] * (id == 1),
+                                           2.0 * M_PI * freq[2] / L[2] * (id == 2)};
+            SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
+            sol_init(&grid, &sol);
 
-        // test advection centered order 2
-        if (do_center_2) {
-            Advection<M_ADV_CENTER, 2> adv(&vel);
-            adv(&grid, &test, &dtest);
-            // now, we need to check
-            ErrorCalculator error;
-            error.Normi(&grid, &dtest, &sol, erri_adv_center_2 + il);
-            m_log("M_ADV_CENTER - 2: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_2[il]);
+            // test advection centered order 2
+            // if (do_center_2) {
+            //     Advection<M_ADV_CENTER, 2> adv(&vel);
+            //     adv(&grid, &test, &dtest);
+            //     // now, we need to check
+            //     ErrorCalculator error;
+            //     error.Normi(&grid, &dtest, &sol, erri_adv_center_2 + il);
+            //     m_log("M_ADV_CENTER - 2: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_2[il]);
+            // }
+            // if (do_center_4) {
+            //     Advection<M_ADV_CENTER, 4> adv(&vel);
+            //     adv(&grid, &test, &dtest);
+            //     // now, we need to check
+            //     ErrorCalculator error;
+            //     error.Normi(&grid, &dtest, &sol, erri_adv_center_4 + il);
+            //     m_log("M_ADV_CENTER - 4: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_4[il]);
+            // }
+            // if (do_center_6) {
+            //     Advection<M_ADV_CENTER, 6> adv(&vel);
+            //     adv(&grid, &test, &dtest);
+            //     // now, we need to check
+            //     ErrorCalculator error;
+            //     error.Normi(&grid, &dtest, &sol, erri_adv_center_6 + il);
+            //     m_log("M_ADV_CENTER - 6: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_6[il]);
+            // }
+            if (do_cons_3) {
+                Advection<M_ADV_CONS_VEL, 3> adv(&vel);
+                adv(&grid, &test, &dtest);
+                // now, we need to check
+                ErrorCalculator error;
+                error.Normi(&grid, &dtest, &sol, erri_adv_cons_3 + il);
+                m_log("M_ADV_CONS_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
+            }
+            if (do_weno_3) {
+                Advection<M_ADV_WENO_VEL, 3> adv(&vel);
+                adv(&grid, &test, &dtest);
+                // now, we need to check
+                ErrorCalculator error;
+                error.Normi(&grid, &dtest, &sol, erri_adv_weno_3 + il);
+                m_log("M_ADV_WENO_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
+            }
+            if (do_weno_5) {
+                Advection<M_ADV_WENO_VEL, 5> adv(&vel);
+                adv(&grid, &test, &dtest);
+                // now, we need to check
+                ErrorCalculator error;
+                error.Normi(&grid, &dtest, &sol, erri_adv_weno_5 + il);
+                m_log("M_ADV_WENO_VEL - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
+            }
         }
-        if (do_center_4) {
-            Advection<M_ADV_CENTER, 4> adv(&vel);
-            adv(&grid, &test, &dtest);
-            // now, we need to check
-            ErrorCalculator error;
-            error.Normi(&grid, &dtest, &sol, erri_adv_center_4 + il);
-            m_log("M_ADV_CENTER - 4: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_4[il]);
-        }
-        if (do_center_6) {
-            Advection<M_ADV_CENTER, 6> adv(&vel);
-            adv(&grid, &test, &dtest);
-            // now, we need to check
-            ErrorCalculator error;
-            error.Normi(&grid, &dtest, &sol, erri_adv_center_6 + il);
-            m_log("M_ADV_CENTER - 6: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_6[il]);
+        m_log("in dir = %d did tests %d %d %d %d %d", id, do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);
+        // real_t conv2 = -log(err2[2] / err2[1]) / log(2);
+        // if (do_center_2) {
+        //     real_t convi = -log(erri_adv_center_2[2] / erri_adv_center_2[1]) / log(2);
+        //     m_log("M_ADV_CENTER - 2: the convergence orders are: norm_i:%e", convi);
+        //     ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 2) - 0.1);
+        // }
+        // if (do_center_4) {
+        //     real_t convi = -log(erri_adv_center_4[2] / erri_adv_center_4[1]) / log(2);
+        //     m_log("M_ADV_CENTER - 4: the convergence orders are: norm_i:%e", convi);
+        //     ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 4) - 0.1);
+        // }
+        // if (do_center_6) {
+        //     real_t convi = -log(erri_adv_center_6[2] / erri_adv_center_6[1]) / log(2);
+        //     m_log("M_ADV_CENTER - 6: the convergence orders are: norm_i:%e", convi);
+        //     ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 6) - 0.1);
+        // }
+        if (do_cons_3) {
+            real_t convi = -log(erri_adv_cons_3[2] / erri_adv_cons_3[1]) / log(2);
+            m_log("M_ADV_CONS - 3: the convergence orders are: norm_i:%e", convi);
+            ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
         }
         if (do_weno_3) {
-            Advection<M_ADV_WENO_VEL, 3> adv(&vel);
-            adv(&grid, &test, &dtest);
-            // now, we need to check
-            ErrorCalculator error;
-            error.Normi(&grid, &dtest, &sol, erri_adv_weno_3 + il);
-            m_log("M_ADV_WENO_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
+            real_t convi = -log(erri_adv_weno_3[2] / erri_adv_weno_3[1]) / log(2);
+            m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e", convi);
+            ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
         }
         if (do_weno_5) {
-            Advection<M_ADV_WENO_VEL, 5> adv(&vel);
-            adv(&grid, &test, &dtest);
-            // now, we need to check
-            ErrorCalculator error;
-            error.Normi(&grid, &dtest, &sol, erri_adv_weno_5 + il);
-            m_log("M_ADV_WENO_VEL - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
+            real_t convi = -log(erri_adv_weno_5[2] / erri_adv_weno_5[1]) / log(2);
+            m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
+            ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
         }
-    }
-    m_log("in dir = %d did tests %d %d %d %d %d", id, do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);
-    // real_t conv2 = -log(err2[2] / err2[1]) / log(2);
-    if (do_center_2) {
-        real_t convi = -log(erri_adv_center_2[2] / erri_adv_center_2[1]) / log(2);
-        m_log("M_ADV_CENTER - 2: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 2) - 0.1);
-    }
-    if (do_center_4) {
-        real_t convi = -log(erri_adv_center_4[2] / erri_adv_center_4[1]) / log(2);
-        m_log("M_ADV_CENTER - 4: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 4) - 0.1);
-    }
-    if (do_center_6) {
-        real_t convi = -log(erri_adv_center_6[2] / erri_adv_center_6[1]) / log(2);
-        m_log("M_ADV_CENTER - 6: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 6) - 0.1);
-    }
-    if (do_weno_3) {
-        real_t convi = -log(erri_adv_weno_3[2] / erri_adv_weno_3[1]) / log(2);
-        m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
-    }
-    if (do_weno_5) {
-        real_t convi = -log(erri_adv_weno_5[2] / erri_adv_weno_5[1]) / log(2);
-        m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
-    }
     }
 }
 

@@ -9,7 +9,7 @@
 #include "time/rkfunctor.hpp"
 
 using AdvectionType = enum {
-    M_ADV_CENTER,
+    M_ADV_CONS_VEL,
     M_ADV_WENO_VEL
 };
 
@@ -29,7 +29,7 @@ class Advection : public Stencil, public RKFunctor {
     explicit Advection(m_ptr<const Field> u) : u_(u), Stencil(), RKFunctor(){};
 
     // return the stability conditions
-    real_t cfl() const override { return 1.0; };
+    real_t cfl_rk3() const override { return 1.0; };
     real_t rdiff() const override { return 100.0; };  // std::numeric_limits<real_t>::max(); };  // no limit, return +inf
 
     // return the number of ghost points, needed, depend on the stencil etc
@@ -58,9 +58,11 @@ class Advection : public Stencil, public RKFunctor {
 
 //==============================================================================
 template <>
-inline lid_t Advection<M_ADV_CENTER, 2>::NGhost() const { return 1; };
+inline real_t Advection<M_ADV_CONS_VEL, 3>::cfl_rk3() const { return 1.5; };
 template <>
-inline void Advection<M_ADV_CENTER, 2>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+inline lid_t Advection<M_ADV_CONS_VEL, 3>::NGhost() const { return 2; };
+template <>
+inline void Advection<M_ADV_CONS_VEL, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
     // -------------------------------------------------------------------------
     const real_t* data_u   = block->data(u_, 0).Read();
     const real_t* data_v   = block->data(u_, 1).Read();
@@ -83,10 +85,49 @@ inline void Advection<M_ADV_CENTER, 2>::DoMagic(m_ptr<const qid_t> qid, m_ptr<Gr
         // reset the value if needed
         trg[0] *= alpha;
 
-        //advection
-        trg[0] -= oneoh[0] * u[0] * 0.5 * (src[m_idx(+1, 0, 0)] - src[m_idx(-1, 0, 0)]);
-        trg[0] -= oneoh[1] * v[0] * 0.5 * (src[m_idx(0, +1, 0)] - src[m_idx(0, -1, 0)]);
-        trg[0] -= oneoh[2] * w[0] * 0.5 * (src[m_idx(0, 0, +1)] - src[m_idx(0, 0, -1)]);
+        constexpr real_t one_third = 1.0 / 3.0;
+        constexpr real_t one_half  = 1.0 / 2.0;
+        constexpr real_t one_sixth = 1.0 / 6.0;
+
+        real_t flux[6];
+        {  // X
+            const real_t* vel   = u;
+            const real_t  phip2 = src[m_idx(+2, 0, 0)] * vel[m_idx(+2, 0, 0)];
+            const real_t  phip1 = src[m_idx(+1, 0, 0)] * vel[m_idx(+1, 0, 0)];
+            const real_t  phip0 = src[m_idx(+0, 0, 0)] * vel[m_idx(+0, 0, 0)];
+            const real_t  phim1 = src[m_idx(-1, 0, 0)] * vel[m_idx(-1, 0, 0)];
+            const real_t  phim2 = src[m_idx(-2, 0, 0)] * vel[m_idx(-2, 0, 0)];
+
+            flux[0] = oneoh[0] * (+one_third * phip1 + one_half * phip0 - phim1 + one_sixth * phim2);
+            flux[1] = oneoh[0] * (-one_third * phim1 - one_half * phip0 + phip1 - one_sixth * phip2);
+        }
+        {  // Y
+            const real_t* vel   = v;
+            const real_t  phip2 = src[m_idx(0, +2, 0)] * vel[m_idx(0, +2, 0)];
+            const real_t  phip1 = src[m_idx(0, +1, 0)] * vel[m_idx(0, +1, 0)];
+            const real_t  phip0 = src[m_idx(0, +0, 0)] * vel[m_idx(0, +0, 0)];
+            const real_t  phim1 = src[m_idx(0, -1, 0)] * vel[m_idx(0, -1, 0)];
+            const real_t  phim2 = src[m_idx(0, -2, 0)] * vel[m_idx(0, -2, 0)];
+
+            flux[2] = oneoh[1] * (+one_third * phip1 + one_half * phip0 - phim1 + one_sixth * phim2);
+            flux[3] = oneoh[1] * (-one_third * phim1 - one_half * phip0 + phip1 - one_sixth * phip2);
+        }
+        {  // Z
+            const real_t* vel   = w;
+            const real_t  phip2 = src[m_idx(0, 0, +2)] * vel[m_idx(0, 0, +2)];
+            const real_t  phip1 = src[m_idx(0, 0, +1)] * vel[m_idx(0, 0, +1)];
+            const real_t  phip0 = src[m_idx(0, 0, +0)] * vel[m_idx(0, 0, +0)];
+            const real_t  phim1 = src[m_idx(0, 0, -1)] * vel[m_idx(0, 0, -1)];
+            const real_t  phim2 = src[m_idx(0, 0, -2)] * vel[m_idx(0, 0, -2)];
+
+            flux[4] = oneoh[2] * (+one_third * phip1 + one_half * phip0 - phim1 + one_sixth * phim2);
+            flux[5] = oneoh[2] * (-one_third * phim1 - one_half * phip0 + phip1 - one_sixth * phip2);
+        }
+
+        // we use a simple upwind/downwind approach, also mentionned in Johnsen2006 as we have no pressure
+        trg[0] -= 0.5 * (1.0 + m_sign(u[0])) * flux[0] + 0.5 * (1.0 - m_sign(u[0])) * flux[1];
+        trg[0] -= 0.5 * (1.0 + m_sign(v[0])) * flux[2] + 0.5 * (1.0 - m_sign(v[0])) * flux[3];
+        trg[0] -= 0.5 * (1.0 + m_sign(w[0])) * flux[4] + 0.5 * (1.0 - m_sign(w[0])) * flux[5];
     };
 
     if (!is_outer) {
@@ -105,114 +146,93 @@ inline void Advection<M_ADV_CENTER, 2>::DoMagic(m_ptr<const qid_t> qid, m_ptr<Gr
     // -------------------------------------------------------------------------
 };
 
-//==============================================================================
-template <>
-inline lid_t Advection<M_ADV_CENTER, 4>::NGhost() const { return 2; };
-template <>
-inline void Advection<M_ADV_CENTER, 4>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
-    // -------------------------------------------------------------------------
-    const real_t* data_u   = block->data(u_, 0).Read();
-    const real_t* data_v   = block->data(u_, 1).Read();
-    const real_t* data_w   = block->data(u_, 2).Read();
-    const real_t* data_src = block->data(fid_src, ida_).Read();
-    real_t*       data_trg = block->data(fid_trg, ida_).Write();
-    const real_t  oneoh[3] = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
+// //==============================================================================
+// template <>
+// inline lid_t Advection<M_ADV_CONS_VEL, 5>::NGhost() const { return 2; };
+// template <>
+// inline void Advection<M_ADV_CONS_VEL, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+//     // -------------------------------------------------------------------------
+//     const real_t* data_u   = block->data(u_, 0).Read();
+//     const real_t* data_v   = block->data(u_, 1).Read();
+//     const real_t* data_w   = block->data(u_, 2).Read();
+//     const real_t* data_src = block->data(fid_src, ida_).Read();
+//     real_t*       data_trg = block->data(fid_trg, ida_).Write();
+//     const real_t  oneoh[3] = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
 
-    // get the alpha factor
-    const real_t alpha = (accumulate_) ? 1.0 : 0.0;
+//     // get the alpha factor
+//     const real_t alpha = (accumulate_) ? 1.0 : 0.0;
 
-    auto op = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        // get the data pointer in front of the row for every cache line
-        real_t*       trg = data_trg + m_idx(i0, i1, i2);
-        const real_t* src = data_src + m_idx(i0, i1, i2);
-        const real_t* u   = data_u + m_idx(i0, i1, i2);
-        const real_t* v   = data_v + m_idx(i0, i1, i2);
-        const real_t* w   = data_w + m_idx(i0, i1, i2);
+//     auto op = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//         // get the data pointer in front of the row for every cache line
+//         real_t*       trg = data_trg + m_idx(i0, i1, i2);
+//         const real_t* src = data_src + m_idx(i0, i1, i2);
+//         const real_t* u   = data_u + m_idx(i0, i1, i2);
+//         const real_t* v   = data_v + m_idx(i0, i1, i2);
+//         const real_t* w   = data_w + m_idx(i0, i1, i2);
 
-        constexpr real_t one_twelve = 1.0 / 12.0;
-        constexpr real_t two_third  = 2.0 / 3.0;
+//         // reset the value if needed
+//         trg[0] *= alpha;
 
-        // reset the value if needed
-        trg[0] *= alpha;
+//         real_t flux[6];
+//         {  // X
+//             const real_t* vel   = u;
+//             const real_t  phip2 = src[m_idx(+2, 0, 0)] * vel[m_idx(+2, 0, 0)];
+//             const real_t  phip1 = src[m_idx(+1, 0, 0)] * vel[m_idx(+1, 0, 0)];
+//             const real_t  phip0 = src[m_idx(+0, 0, 0)] * vel[m_idx(+0, 0, 0)];
+//             const real_t  phim1 = src[m_idx(-1, 0, 0)] * vel[m_idx(-1, 0, 0)];
+//             const real_t  phim2 = src[m_idx(-2, 0, 0)] * vel[m_idx(-2, 0, 0)];
 
-        //advection
-        trg[0] -= oneoh[0] * u[0] * (-one_twelve * (src[m_idx(+2, 0, 0)] - src[m_idx(-2, 0, 0)]) + two_third * (src[m_idx(+1, 0, 0)] - src[m_idx(-1, 0, 0)]));
-        trg[0] -= oneoh[1] * v[0] * (-one_twelve * (src[m_idx(0, +2, 0)] - src[m_idx(0, -2, 0)]) + two_third * (src[m_idx(0, +1, 0)] - src[m_idx(0, -1, 0)]));
-        trg[0] -= oneoh[2] * w[0] * (-one_twelve * (src[m_idx(0, 0, +2)] - src[m_idx(0, 0, -2)]) + two_third * (src[m_idx(0, 0, +1)] - src[m_idx(0, 0, -1)]));
-    };
+//             flux[0] = oneoh[0] * (+one_third * phip1 + one_half * phip0 - phim1 - one_sixth * phim2);
+//             flux[1] = oneoh[0] * (-one_third * phim1 - one_half * phip0 + phip1 - one_sixth * phip2);
+//         }
+//         {  // Y
+//             const real_t* vel   = v;
+//             const real_t  phip2 = src[m_idx(0, +2, 0)] * vel[m_idx(0, +2, 0)];
+//             const real_t  phip1 = src[m_idx(0, +1, 0)] * vel[m_idx(0, +1, 0)];
+//             const real_t  phip0 = src[m_idx(0, +0, 0)] * vel[m_idx(0, +0, 0)];
+//             const real_t  phim1 = src[m_idx(0, -1, 0)] * vel[m_idx(0, -1, 0)];
+//             const real_t  phim2 = src[m_idx(0, -2, 0)] * vel[m_idx(0, -2, 0)];
 
-    if (!is_outer) {
-        for_loop<M_GS, M_N - M_GS>(&op);
-    } else {
-        // do the most on the X side to use vectorization
-        for_loop<0, M_N, 0, M_N, 0, M_GS>(&op);          // Z-
-        for_loop<0, M_N, 0, M_N, M_N - M_GS, M_N>(&op);  // Z+
+//             flux[2] = oneoh[1] * (+one_third * phip1 + one_half * phip0 - phim1 - one_sixth * phim2);
+//             flux[3] = oneoh[1] * (-one_third * phim1 - one_half * phip0 + phip1 - one_sixth * phip2);
+//         }
+//         {  // Z
+//             const real_t* vel   = w;
+//             const real_t  phip2 = src[m_idx(0, +2, 0)] * vel[m_idx(0, +2, 0)];
+//             const real_t  phip1 = src[m_idx(0, +1, 0)] * vel[m_idx(0, +1, 0)];
+//             const real_t  phip0 = src[m_idx(0, +0, 0)] * vel[m_idx(0, +0, 0)];
+//             const real_t  phim1 = src[m_idx(0, -1, 0)] * vel[m_idx(0, -1, 0)];
+//             const real_t  phim2 = src[m_idx(0, -2, 0)] * vel[m_idx(0, -2, 0)];
 
-        for_loop<0, M_N, 0, M_GS, M_GS, M_N - M_GS>(&op);          // Y-
-        for_loop<0, M_N, M_N - M_GS, M_N, M_GS, M_N - M_GS>(&op);  // Y+
+//             flux[4] = oneoh[2] * (+one_third * phip1 + one_half * phip0 - phim1 - one_sixth * phim2);
+//             flux[5] = oneoh[2] * (-one_third * phim1 - one_half * phip0 + phip1 - one_sixth * phip2);
+//         }
 
-        for_loop<0, M_GS, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);          // X-
-        for_loop<M_N - M_GS, M_N, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);  // X+
-    }
-    // -------------------------------------------------------------------------
-};
+//         // we use a simple upwind/downwind approach, also mentionned in Johnsen2006 as we have no pressure
+//         trg[0] -= 0.5 * (1.0 + m_sign(u[0])) * flux[0] + 0.5 * (1.0 - m_sign(u[0])) * flux[1];
+//         trg[0] -= 0.5 * (1.0 + m_sign(v[0])) * flux[2] + 0.5 * (1.0 - m_sign(v[0])) * flux[3];
+//         trg[0] -= 0.5 * (1.0 + m_sign(w[0])) * flux[4] + 0.5 * (1.0 - m_sign(w[0])) * flux[5];
+//     };
 
-//==============================================================================
-template <>
-inline lid_t Advection<M_ADV_CENTER, 6>::NGhost() const { return 3; };
-template <>
-inline void Advection<M_ADV_CENTER, 6>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
-    // -------------------------------------------------------------------------
-    const real_t* data_u   = block->data(u_, 0).Read();
-    const real_t* data_v   = block->data(u_, 1).Read();
-    const real_t* data_w   = block->data(u_, 2).Read();
-    const real_t* data_src = block->data(fid_src, ida_).Read();
-    real_t*       data_trg = block->data(fid_trg, ida_).Write();
-    const real_t  oneoh[3] = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
+//     if (!is_outer) {
+//         for_loop<M_GS, M_N - M_GS>(&op);
+//     } else {
+//         // do the most on the X side to use vectorization
+//         for_loop<0, M_N, 0, M_N, 0, M_GS>(&op);          // Z-
+//         for_loop<0, M_N, 0, M_N, M_N - M_GS, M_N>(&op);  // Z+
 
-    // get the alpha factor
-    const real_t alpha = (accumulate_) ? 1.0 : 0.0;
+//         for_loop<0, M_N, 0, M_GS, M_GS, M_N - M_GS>(&op);          // Y-
+//         for_loop<0, M_N, M_N - M_GS, M_N, M_GS, M_N - M_GS>(&op);  // Y+
 
-    auto op = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        // get the data pointer in front of the row for every cache line
-        real_t*       trg = data_trg + m_idx(i0, i1, i2);
-        const real_t* src = data_src + m_idx(i0, i1, i2);
-        const real_t* u   = data_u + m_idx(i0, i1, i2);
-        const real_t* v   = data_v + m_idx(i0, i1, i2);
-        const real_t* w   = data_w + m_idx(i0, i1, i2);
-
-        constexpr real_t one_sixtieth    = 1.0 / 60.0;
-        constexpr real_t three_twentieth = 3.0 / 20.0;
-        constexpr real_t three_forth     = 3.0 / 4.0;
-
-        // reset the value if needed
-        trg[0] *= alpha;
-
-        //advection
-        trg[0] -= oneoh[0] * u[0] * (+one_sixtieth * (src[m_idx(+3, 0, 0)] - src[m_idx(-3, 0, 0)]) - three_twentieth * (src[m_idx(+2, 0, 0)] - src[m_idx(-2, 0, 0)]) + three_forth * (src[m_idx(+1, 0, 0)] - src[m_idx(-1, 0, 0)]));
-        trg[0] -= oneoh[1] * v[0] * (+one_sixtieth * (src[m_idx(0, +3, 0)] - src[m_idx(0, -3, 0)]) - three_twentieth * (src[m_idx(0, +2, 0)] - src[m_idx(0, -2, 0)]) + three_forth * (src[m_idx(0, +1, 0)] - src[m_idx(0, -1, 0)]));
-        trg[0] -= oneoh[2] * w[0] * (+one_sixtieth * (src[m_idx(0, 0, +3)] - src[m_idx(0, 0, -3)]) - three_twentieth * (src[m_idx(0, 0, +2)] - src[m_idx(0, 0, -2)]) + three_forth * (src[m_idx(0, 0, +1)] - src[m_idx(0, 0, -1)]));
-    };
-
-    if (!is_outer) {
-        for_loop<M_GS, M_N - M_GS>(&op);
-    } else {
-        // do the most on the X side to use vectorization
-        for_loop<0, M_N, 0, M_N, 0, M_GS>(&op);          // Z-
-        for_loop<0, M_N, 0, M_N, M_N - M_GS, M_N>(&op);  // Z+
-
-        for_loop<0, M_N, 0, M_GS, M_GS, M_N - M_GS>(&op);          // Y-
-        for_loop<0, M_N, M_N - M_GS, M_N, M_GS, M_N - M_GS>(&op);  // Y+
-
-        for_loop<0, M_GS, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);          // X-
-        for_loop<M_N - M_GS, M_N, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);  // X+
-    }
-    // -------------------------------------------------------------------------
-};
+//         for_loop<0, M_GS, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);          // X-
+//         for_loop<M_N - M_GS, M_N, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);  // X+
+//     }
+//     // -------------------------------------------------------------------------
+// };
 
 //==============================================================================
 template <>
-inline real_t Advection<M_ADV_WENO_VEL, 3>::cfl() const { return 0.6; };
+inline real_t Advection<M_ADV_WENO_VEL, 3>::cfl_rk3() const { return 0.6; };
 template <>
 inline lid_t Advection<M_ADV_WENO_VEL, 3>::NGhost() const { return 2; };
 template <>
@@ -295,6 +315,7 @@ inline void Advection<M_ADV_WENO_VEL, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<
             const real_t wp = 1.0 / (1 + 2.0 * pow(rp, 2));
             flux[5]         = 0.5 * h_inv * ((d0m1 + d1m0) - wp * (d2m1 - 2.0 * d1m0 + d0m1));
         }
+
         // we use a simple upwind/downwind approach, also mentionned in Johnsen2006 as we have no pressure
         trg[0] -= 0.5 * (1.0 + m_sign(u[0])) * flux[0] + 0.5 * (1.0 - m_sign(u[0])) * flux[1];
         trg[0] -= 0.5 * (1.0 + m_sign(v[0])) * flux[2] + 0.5 * (1.0 - m_sign(v[0])) * flux[3];

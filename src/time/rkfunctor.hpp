@@ -12,7 +12,7 @@
 class RKFunctor {
    public:
     // return stability info
-    virtual real_t cfl() const   = 0;  //!< the CFL constrain
+    virtual real_t cfl_rk3() const   = 0;  //!< the CFL constrain
     virtual real_t rdiff() const = 0;  //!< the diffusion constrain
 
     // do the rhs

@@ -42,7 +42,7 @@ class RKRhs : public RKFunctor, public SetValue {
     }
 
     // rk functor
-    real_t cfl() const override { return 1.0; }
+    real_t cfl_rk3() const override { return 1.0; }
     real_t rdiff() const override { return 1.0; }
 
     void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {

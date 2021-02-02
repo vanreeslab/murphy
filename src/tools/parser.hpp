@@ -25,7 +25,7 @@ class ParserArguments {
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
-    bool   no_adapt          = false;
+    bool no_adapt = false;
 
     int    vr_normal    = 2;
     real_t vr_radius    = 0.25;
@@ -39,6 +39,8 @@ class ParserArguments {
     iter_t iter_diag     = 1;
     iter_t iter_adapt    = 1;
     iter_t iter_dump     = 1;
+    bool   no_weno       = false;
+    bool   grid_on_sol   = false;
 };
 
 void ParseArgument(int argc, char** argv, ParserArguments* arguments);

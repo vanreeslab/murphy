@@ -21,25 +21,33 @@ real_t BMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) 
 }
 
 void BMax::ComputeBMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+    m_assert(fid_x->lda() <= 3, "the array for the address has a size of 3, increase the size if %d dims are needed", fid_x->lda());
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
+
+    const real_t* data[3];
+
     for (sid_t ida = 0; ida < lda; ida++) {
-        // get the data pointers
-        const real_t* data_x = block->data(fid_x, ida).Read();
-        m_assume_aligned(data_x);
-        // get the correct place given the current thread and the dimension
-        for (bidx_t i2 = start_; i2 < end_; i2++) {
-            for (bidx_t i1 = start_; i1 < end_; i1++) {
-                for (bidx_t i0 = start_; i0 < end_; i0++) {
-                    const size_t idx = m_idx(i0, i1, i2);
-                    max_             = m_max(fabs(data_x[idx]), max_);
+        data[ida] = block->data(fid_x, ida).Read();
+    }
+
+    // get the correct place given the current thread and the dimension
+    for (bidx_t i2 = start_; i2 < end_; i2++) {
+        for (bidx_t i1 = start_; i1 < end_; i1++) {
+            for (bidx_t i0 = start_; i0 < end_; i0++) {
+                const size_t idx = m_idx(i0, i1, i2);
+
+                real_t value = 0.0;
+                for (sid_t ida = 0; ida < lda; ida++) {
+                    value += fabs(data[ida][idx]);
                 }
+
+                max_ = m_max(fabs(value), max_);
             }
         }
     }
     //-------------------------------------------------------------------------
 }
-
 
 //-----------------------------------------------------------------------------
 BMinMax::BMinMax()noexcept : BlockOperator(nullptr){};

@@ -102,6 +102,8 @@ static struct argp_option options[] = {
     {"iter-diag", 3010, "int", 0, "run the diagnostics every x iterations"},
     {"iter-adapt", 3011, "int", 0, "adapt the grid every x iterations"},
     {"iter-dump", 3012, "int", 0, "dump the field every x iterations"},
+    {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil", 1},
+    {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution", 1},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients:", 4},
@@ -244,6 +246,16 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err   = atoi_list(1, arg, myint);
             m_log("iter dump: %d", myint[0]);
             return err;
+        }
+        case 3013: { /* no-weno */
+            arguments->no_weno = true;
+            m_log("no-weno");
+            return 0;
+        }
+        case 3014: { /* grid-on-sol */
+            arguments->grid_on_sol = true;
+            m_log("grid based on the solution");
+            return 0;
         }
         //................................................
         case 4000: { /* Navier-Stockes */

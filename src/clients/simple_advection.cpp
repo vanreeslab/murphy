@@ -35,7 +35,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     this->TestCase::InitParam(param);
 
     // take the no adaptation
-    this->no_adapt_ = param->no_adapt;
+    no_adapt_    = param->no_adapt;
+    no_weno_     = param->no_weno;
+    grid_on_sol_ = param->grid_on_sol;
 
     // the the standard stuffs
     if (param->profile) {
@@ -66,8 +68,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->AddField(sol_);
 
     // setup the scalar ring
-    real_t velocity[3] = {0.0, 0.0, 1.0};
-    real_t center[3] = {L[0]/2.0, L[0]/2.0, L[0]/4.0};
+    real_t velocity[3] = {1.0, 1.0, 1.0};
+    real_t center[3] = {L[0]/4.0, L[0]/4.0, L[0]/4.0};
     ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
     ring_->Profile(prof_);
     ring_->SetTime(0.0);
@@ -85,7 +87,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     const real_t dir[3]   = {1.0, 0.0, 0.0};
     const real_t shift[3] = {0.0, 0.0, 0.0};
     vel_field_.Alloc(deg, dir, shift);
-    (*vel_field_)(grid_, vel_, 2);
+    (*vel_field_)(grid_, vel_);
     // take the ghosts
     grid_->GhostPull(vel_);
 
@@ -103,20 +105,17 @@ void SimpleAdvection::Run() {
     real_t t_final = 0.5;
     real_t t       = 0.0;
 
-    // // test the moments with 1.0 in the z direction
-    // (*vel_field_)(grid_, vel_, 2);
-    // grid_->GhostPull(vel_);
-    // real_t  moment0[3];
-    // real_t  moment1[9];
-    // BMoment moments;
-    // moments(grid_, vel_, moment0, moment1);
-    // m_log("moments u = %e %e %e %e", moment0[0], moment1[0], moment1[1], moment1[2]);
-    // m_log("moments u = %e %e %e %e", moment0[1], moment1[3], moment1[4], moment1[5]);
-    // m_log("moments u = %e %e %e %e", moment0[2], moment1[6], moment1[7], moment1[8]);
+    RKFunctor* advection;
+    if (no_weno_) {
+        advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
+        m_log("conservative advection chosen, cfl = %f",advection->cfl_rk3());
+    } else {
+        advection = new Advection<M_ADV_WENO_VEL, 3>(vel_);
+        m_log("WENO advection chosen, cfl = %f",advection->cfl_rk3());
+    }
+    RK3_TVD rk3(grid_, scal_, advection, prof_);
 
-    Advection<M_ADV_WENO_VEL, 3> adv(vel_);
-    RK3_TVD                      rk3(grid_, scal_, &adv, prof_);
-    adv.Profile(prof_);
+    m_log("advection cfl is %e",advection->cfl_rk3());
 
     // let's gooo
     m_profStart(prof_(), "run");
@@ -128,11 +127,19 @@ void SimpleAdvection::Run() {
             if (!no_adapt_) {
                 m_log("---- adapt mesh");
                 m_profStart(prof_(), "adapt");
-                grid_->Adapt(scal_);
+                if (!grid_on_sol_) {
+                    grid_->Adapt(scal_);
+                } else {
+                    // update the solution and refine
+                    ring_->SetTime(t);
+                    (*ring_)(grid_, sol_);
+
+                    grid_->Adapt(sol_);
+                }
                 m_profStop(prof_(), "adapt");
 
                 // reset the velocity
-                (*vel_field_)(grid_, vel_, 2);
+                (*vel_field_)(grid_, vel_);
                 grid_->GhostPull(vel_);
                 m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
             }
@@ -147,7 +154,7 @@ void SimpleAdvection::Run() {
 
         //................................................
         // get the time-step given the field
-        real_t dt = rk3.ComputeDt(&adv, vel_);
+        real_t dt = rk3.ComputeDt(advection, vel_);
 
         // dump some info
         m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, t_final, iter, iter_max(), dt);
