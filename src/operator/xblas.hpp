@@ -54,4 +54,18 @@ class BMoment : public BlockOperator {
     void ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x);
 };
 
+class BDiscreteMoment : public BlockOperator {
+   protected:
+    lda_t  ida_;
+    real_t moment0_;
+    real_t moment1_[3];
+
+   public:
+    explicit BDiscreteMoment() noexcept;
+    explicit BDiscreteMoment(m_ptr<const Wavelet> interp) noexcept;
+
+    void operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, real_t* moment0, real_t* moment1);
+    void ComputeBDiscreteMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x);
+};
+
 #endif

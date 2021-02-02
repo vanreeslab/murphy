@@ -68,7 +68,6 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
     //-------------------------------------------------------------------------
 
     // create the scale and the daxpy
-    Dset   reset;
     Dscale scale;
     Daxpy  daxpy;
 

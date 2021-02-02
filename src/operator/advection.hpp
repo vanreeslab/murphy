@@ -212,6 +212,8 @@ inline void Advection<M_ADV_CENTER, 6>::DoMagic(m_ptr<const qid_t> qid, m_ptr<Gr
 
 //==============================================================================
 template <>
+inline real_t Advection<M_ADV_WENO_VEL, 3>::cfl() const { return 0.6; };
+template <>
 inline lid_t Advection<M_ADV_WENO_VEL, 3>::NGhost() const { return 2; };
 template <>
 inline void Advection<M_ADV_WENO_VEL, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {

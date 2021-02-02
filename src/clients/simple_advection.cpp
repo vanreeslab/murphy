@@ -46,7 +46,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the grid
-    bool period[3] = {false, false, false};
+    bool period[3] = {true, true, true};
     grid_.Alloc(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
     const real_t L[3] = {1.0, 1.0, 1.0};
     m_assert(grid_.IsOwned(), "the grid must be owned");
@@ -197,6 +197,10 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     BMoment moments;
     grid_->GhostPull(scal_);
     moments(grid_, scal_, &moment0, moment1);
+    real_t          dmoment0;
+    real_t          dmoment1[3];
+    BDiscreteMoment dmoments;
+    dmoments(grid_, scal_, &dmoment0, dmoment1);
 
     // compute the error
     real_t          err2, erri;
@@ -216,6 +220,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
         fprintf(file_diag, ";%e;%e", err2, erri);
         fprintf(file_diag, ";%e;%e;%e;%e", moment0, moment1[0], moment1[1], moment1[2]);
+        fprintf(file_diag, ";%e;%e;%e;%e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
         fprintf(file_diag, "\n");
         fclose(file_diag);
     }
