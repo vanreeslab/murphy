@@ -148,19 +148,66 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
     real_t lmoment0    = 0.0;
     real_t lmoment1[3] = {0.0, 0.0, 0.0};
 
+    // // let's go!
+    // for (bidx_t i2 = start_; i2 < end_; i2 += 4) {
+    //     for (bidx_t i1 = start_; i1 < end_; i1 += 4) {
+    //         for (bidx_t i0 = start_; i0 < end_; i0 += 4) {
+    //             const real_t* f = data + m_idx(i0, i1, i2);
+
+    //             // define the simpson coefficients - cfr Abramowitz p887, formula 25.4.13
+    //             constexpr real_t c[5] = {7.0, 32.0, 12.0, 32.0, 7.0};
+
+    //             // integrate simpson in 3D
+    //             for (bidx_t s2 = 0; s2 <= 4; ++s2) {
+    //                 for (bidx_t s1 = 0; s1 <= 4; ++s1) {
+    //                     for (bidx_t s0 = 0; s0 <= 4; ++s0) {
+    //                         // get the local value
+    //                         const real_t value = f[m_idx(s0, s1, s2)];
+
+    //                         // get the position
+    //                         real_t pos[3];
+    //                         m_pos(pos, i0 + s0, i1 + s1, i2 + s2, block->hgrid(), block->xyz());
+
+    //                         // get the coefficient
+    //                         const real_t coef = (c[s0] * c[s1] * c[s2]);
+
+    //                         lmoment0 += coef * value;
+    //                         lmoment1[0] += coef * value * pos[0];
+    //                         lmoment1[1] += coef * value * pos[1];
+    //                         lmoment1[2] += coef * value * pos[2];
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    // const real_t fact = 8.0/91125.0;
+    // const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
+    // moment0_    += fact * vol * lmoment0;
+    // moment1_[0] += fact * vol * lmoment1[0];
+    // moment1_[1] += fact * vol * lmoment1[1];
+    // moment1_[2] += fact * vol * lmoment1[2];
     // let's go!
-    for (bidx_t i2 = start_; i2 < end_; i2 += 4) {
-        for (bidx_t i1 = start_; i1 < end_; i1 += 4) {
-            for (bidx_t i0 = start_; i0 < end_; i0 += 4) {
+    for (bidx_t i2 = start_; i2 < end_; i2 += 8) {
+        for (bidx_t i1 = start_; i1 < end_; i1 += 8) {
+            for (bidx_t i0 = start_; i0 < end_; i0 += 8) {
                 const real_t* f = data + m_idx(i0, i1, i2);
 
                 // define the simpson coefficients - cfr Abramowitz p887, formula 25.4.13
-                constexpr real_t c[5] = {7.0, 32.0, 12.0, 32.0, 7.0};
+                constexpr real_t denom = 4.0 / 14175.0;
+                constexpr real_t c[9]  = {989.0 * denom,
+                                         5888.0 * denom,
+                                         -928.0 * denom,
+                                         +10496.0 * denom,
+                                         -4540.0 * denom,
+                                         +10496.0 * denom,
+                                         -928.0 * denom,
+                                         5888.0 * denom,
+                                         989.0 * denom};
 
-                // integrate simpson in 3D
-                for (bidx_t s2 = 0; s2 <= 4; ++s2) {
-                    for (bidx_t s1 = 0; s1 <= 4; ++s1) {
-                        for (bidx_t s0 = 0; s0 <= 4; ++s0) {
+                for (bidx_t s2 = 0; s2 <= 8; ++s2) {
+                    for (bidx_t s1 = 0; s1 <= 8; ++s1) {
+                        for (bidx_t s0 = 0; s0 <= 8; ++s0) {
                             // get the local value
                             const real_t value = f[m_idx(s0, s1, s2)];
 
@@ -181,11 +228,11 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
             }
         }
     }
-    const real_t vol = block->hgrid(0) * block->hgrid(2) * block->hgrid(2);
-    moment0_ += pow(2.0 / 45.0, 3) * vol * lmoment0;
-    moment1_[0] += pow(2.0 / 45.0, 3) * vol * lmoment1[0];
-    moment1_[1] += pow(2.0 / 45.0, 3) * vol * lmoment1[1];
-    moment1_[2] += pow(2.0 / 45.0, 3) * vol * lmoment1[2];
+    const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
+    moment0_    += vol * lmoment0;
+    moment1_[0] += vol * lmoment1[0];
+    moment1_[1] += vol * lmoment1[1];
+    moment1_[2] += vol * lmoment1[2];
     //-------------------------------------------------------------------------
 }
 
@@ -224,10 +271,7 @@ void BDiscreteMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field
 }
 
 /**
- * @brief Integrate the different moments on the block, using Simpson 3/8 in 3D
- * 
- * cfr. Abramowitz p886, formula 25.4.14:
- *      int_x0^x4 f(x) dx = 2/45 * h * (7 f0 + 32 f1 + 12 f2 + 32 f3 + 7 f4)
+ * @brief Integrate the discrete moments on the block
  * 
  * @param qid 
  * @param block 
@@ -262,7 +306,7 @@ void BDiscreteMoment::ComputeBDiscreteMomentGridBlock(m_ptr<const qid_t> qid, m_
         }
     }
 
-    const real_t vol = block->hgrid(0) * block->hgrid(2) * block->hgrid(2);
+    const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
     moment0_ += vol * lmoment0;
     moment1_[0] += vol * lmoment1[0];
     moment1_[1] += vol * lmoment1[1];

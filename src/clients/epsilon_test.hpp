@@ -6,7 +6,7 @@
 #include "core/types.hpp"
 
 class EpsilonTest : public TestCase {
-    real_t  epsilon_start_ = 1.0;
+    real_t  epsilon_start_ = 0.1;
     level_t level_start_   = 4;
 
    public:

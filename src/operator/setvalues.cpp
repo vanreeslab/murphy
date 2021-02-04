@@ -12,7 +12,7 @@ SetValue::SetValue(m_ptr<const Wavelet> interp) : BlockOperator(interp) {}
 
 void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field) {
     m_begin;
-    m_assert(!((grid->domain_periodic(0) || grid->domain_periodic(1) || grid->domain_periodic(2)) && do_ghost_),"if one of the direction is periodic, we shouldn't do the ghosting as it is not taken into accound in the position yet!");
+    // m_assert(!((grid->domain_periodic(0) || grid->domain_periodic(1) || grid->domain_periodic(2)) && do_ghost_),"if one of the direction is periodic, we shouldn't do the ghosting as it is not taken into accound in the position yet!");
     //-------------------------------------------------------------------------
     // get the span of ida
     ida_start_ = 0;
