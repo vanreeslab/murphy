@@ -16,12 +16,13 @@ class ParserArguments {
     lid_t            length[3] = {1, 1, 1};              //!< the aspect ratio of the domain
     std::list<Patch> patch;                              //!< list of imposed level regions for the initialization
 
-    bool   profile          = false;
-    bool   do_navier_stokes = false;
-    bool   do_abc_flow      = false;
-    bool   do_simple_adv    = false;
-    real_t reynolds         = 0.0;
+    bool profile          = false;
+    bool do_navier_stokes = false;
+    bool do_abc_flow      = false;
+    bool do_simple_adv    = false;
+    bool do_epsilon_test  = false;
 
+    real_t reynolds    = 0.0;
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 

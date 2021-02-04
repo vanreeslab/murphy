@@ -30,7 +30,7 @@ ForestGrid::ForestGrid() {
  * @param datasize the datasize to give to p4est
  * @param comm the communicator to build the forest
  */
-ForestGrid::ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm) {
+ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm) {
     m_begin;
     m_assert(ilvl >= 0, "the init level has to be >= 0");
     m_assert(ilvl <= P8EST_MAXLEVEL, "the init level has to be <= P8EST_MAXLEVEL");

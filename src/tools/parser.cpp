@@ -113,8 +113,11 @@ static struct argp_option options[] = {
     // abc flow
     {"abc", 4001, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
     // simple advection
-    {"simple-advection", 4002, 0, OPTION_ARG_OPTIONAL, "ABC-flow testcase"},
+    {"simple-advection", 4002, 0, OPTION_ARG_OPTIONAL, "simple advection testcase"},
     {"sadv", 0, 0, OPTION_ALIAS, 0},
+    // simple advection
+    {"epsilon-test", 4003, 0, OPTION_ARG_OPTIONAL, "Epsilon test"},
+    {"eps", 0, 0, OPTION_ALIAS, 0},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -271,6 +274,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4002: { /* simple advection */
             m_log("Simple-advection testcase selected");
             arguments->do_simple_adv = true;
+            return 0;
+        }
+        case 4003: { /* simple advection */
+            m_log("Epsilon testcase selected");
+            arguments->do_epsilon_test = true;
             return 0;
         }
         

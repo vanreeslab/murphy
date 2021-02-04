@@ -32,7 +32,7 @@ class ForestGrid {
      * @{
      */
     explicit ForestGrid();
-    ForestGrid(const lid_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm);
+    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm);
     ~ForestGrid();
     /** @} */
 

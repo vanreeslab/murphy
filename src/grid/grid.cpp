@@ -28,7 +28,7 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const lid_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, const m_ptr<Prof>& prof)
+Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, const m_ptr<Prof>& prof)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
     //-------------------------------------------------------------------------
@@ -342,7 +342,10 @@ void Grid::Refine(m_ptr<Field> field) {
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        GhostPull(fid->second);
+        m_ptr<Field> cur_field = fid->second;
+        if (!cur_field->is_temp()) {
+            GhostPull(cur_field);
+        }
     }
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_Interpolate);
@@ -365,7 +368,10 @@ void Grid::Coarsen(m_ptr<Field> field) {
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        GhostPull(fid->second);
+        m_ptr<Field> cur_field = fid->second;
+        if (!cur_field->is_temp()) {
+            GhostPull(cur_field);
+        }
     }
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_Interpolate);
