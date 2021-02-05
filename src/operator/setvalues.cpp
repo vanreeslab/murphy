@@ -221,7 +221,7 @@ void SetExponential::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> bloc
 
     real_t sigma     = sqrt(sigma_[0] * sigma_[0] + sigma_[1] * sigma_[1] + sigma_[2] * sigma_[2]);
     real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
-    real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2);
+    real_t fact      = alpha_ ;//* sqrt(1.0 / M_PI * oo_sigma2);
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
