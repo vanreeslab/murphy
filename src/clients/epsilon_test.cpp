@@ -4,7 +4,7 @@
 #include "grid/gridcallback.hpp"
 #include "operator/error.hpp"
 #include "operator/setvalues.hpp"
-#include "xblas.hpp"
+#include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
 
 using std::string;
@@ -147,7 +147,7 @@ void EpsilonTest::Run() {
         // and go back up
         std::list<Patch> patch;
         real_t           origin[3] = {0.0, 0.0, 0.0};
-        real_t           length[3] = {grid_len[0], grid_len[1], grid_len[2]};
+        real_t           length[3] = {(real_t)grid_len[0], (real_t)grid_len[1], (real_t)grid_len[2]};
         patch.push_back(Patch(origin, length, level_start_));
         do {
             min_level = grid.MinLevel();
