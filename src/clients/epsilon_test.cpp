@@ -39,7 +39,7 @@ class InitialCondition : public SetValue {
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
             // data[m_idx(i0, i1, i2)] =  fact * std::exp(-rho);
-            data[m_idx(i0, i1, i2)] = sin(192.0 * pos[0] * M_PI) + sin(1.0 * pos[0] * M_PI);
+            data[m_idx(i0, i1, i2)] = cos(128.0 * pos[0] * M_PI) + 1.0;
         };
 
         for_loop(&op, start_, end_);
@@ -63,12 +63,12 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = 0.5;
-    real_t epsilon  = 1.0;  //epsilon_start_;
+    real_t depsilon = 0.5e-20;
+    real_t epsilon  = 100.0;  //epsilon_start_;
     while (epsilon >= 1e-10) {
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {false, false, false};
-        // bool  period[3]   = {true, true, true};
+        // bool  period[3]   = {false, false, false};
+        bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
 
@@ -79,11 +79,11 @@ void EpsilonTest::Run() {
         real_t center[3]   = {0.5, 0.5, 0.5};
         
         // ring
-        lda_t  normal      = 2;
-        real_t sigma       = 0.05;
-        real_t radius      = 0.25;
-        real_t velocity[3] = {0.0, 0.0, 0.0};
-        SetScalarRing ring(normal, center, sigma, radius, velocity);
+        // lda_t  normal      = 2;
+        // real_t sigma       = 0.05;
+        // real_t radius      = 0.25;
+        // real_t velocity[3] = {0.0, 0.0, 0.0};
+        // SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
         // real_t sigma     = 0.1;
@@ -98,15 +98,15 @@ void EpsilonTest::Run() {
         // SetPolynom   ring(deg, dir, shift);
 
         // custon stuffs
-        // InitialCondition ring;
+        InitialCondition ring;
 
         // apply it
         ring(&grid, &scal);
         grid.SetTol(epsilon * 1e+20, epsilon);
 
-        // grid.GhostPull(&scal);
-        // IOH5 dump("data");
-        // dump(&grid,&scal,0);
+        grid.GhostPull(&scal);
+        IOH5 dump("data");
+        dump(&grid,&scal,0);
 
         // compute the moment at the start
         grid.GhostPull(&scal);
@@ -136,7 +136,7 @@ void EpsilonTest::Run() {
         // real_t coarse_dmoment0, coarse_dmoment1[3];
         // dmoment(&grid, &scal, &coarse_dmoment0, coarse_dmoment1);
 
-        // dump(&grid,&scal,1);
+        dump(&grid,&scal,1);
 
 
         // track the number of block, levels
@@ -173,8 +173,18 @@ void EpsilonTest::Run() {
         ErrorCalculator error;
         error.Normi(&grid, &scal, &sol, &normi);
 
+        real_t norm2;
+        Field err("error",1);
+        grid.AddField(&err);
+        err.bctype(M_BC_EXTRAP);
+        error.Norms(&grid,&scal,&sol,&err,&norm2,&normi);
+
+        grid.GhostPull(&err);
+
         // measure the moments
         real_t moment0, moment1[3];
+        moment(&grid, &err, &moment0, moment1);
+        m_log("error moment: %e",moment0);
         moment(&grid, &scal, &moment0, moment1);
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));

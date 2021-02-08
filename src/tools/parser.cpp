@@ -25,6 +25,22 @@ static int count_list(const char* arg) {
     return count + 1;
 }
 
+static error_t atoi8_list(const int length, char* arg, int8_t* list) {
+    const int count = count_list(arg);
+    if (count != length) {
+        return ARGP_ERR_UNKNOWN;
+    } else {
+        char* num = strtok(arg, ",");
+        for (int id = 0; id < length; id++) {
+            int8_t temp = atoi(num);
+            m_assert(std::numeric_limits<int8_t>::max() > temp, "the number read is too big to be cast in a int8_t");
+            list[id] = (int8_t)(temp);
+            num      = strtok(NULL, ",");
+        }
+    }
+    return 0;
+} 
+
 static error_t atoi_list(const int length, char* arg, int* list) {
     const int count = count_list(arg);
     if (count != length) {
@@ -87,6 +103,8 @@ static struct argp_option options[] = {
     {"rtol", 2005, "tol", 0, "refinement tolerance"},
     {"ctol", 2006, "tol", 0, "coarsening tolerance"},
     {"no-adapt", 2007, 0, OPTION_ARG_OPTIONAL, "disable the mesh adaptation", 1},
+    {"level-min", 2008, "level", 0, "the minimum level on the grid (integer: num)"},
+    {"level-max", 2009, "level", 0, "the maximum level on the grid (integer: num)"},
 
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
@@ -121,7 +139,8 @@ static struct argp_option options[] = {
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
-    {0}};
+    {0}
+    };
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     ParserArguments* arguments = reinterpret_cast<ParserArguments*>(state->input);
@@ -176,6 +195,18 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             arguments->no_adapt = true;
             m_log("no_adaptation");
             return 0;
+        }
+        case 2008: { /* level_min */
+            level_t*    lvl = &arguments->level_min;
+            error_t err = atoi8_list(1, arg, lvl);
+            m_log("level min: %d", lvl[0]);
+            return err;
+        }
+        case 2009: { /* level_max */
+            level_t*    lvl = &arguments->level_max;
+            error_t err = atoi8_list(1, arg, lvl);
+            m_log("level max: %d", lvl[0]);
+            return err;
         }
         //................................................
         case 3001: { /* Reynolds */

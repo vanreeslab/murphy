@@ -26,6 +26,9 @@ class ParserArguments {
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
+    level_t level_min = 0;
+    level_t level_max = P8EST_QMAXLEVEL;
+
     bool no_adapt = false;
 
     int    vr_normal    = 2;

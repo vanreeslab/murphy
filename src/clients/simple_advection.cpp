@@ -53,6 +53,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     const real_t L[3] = {1.0, 1.0, 1.0};
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
+    // set the min/max level
+    grid_->level_limit(param->level_min,param->level_max);
+
     // get the fields
     vel_.Alloc("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);

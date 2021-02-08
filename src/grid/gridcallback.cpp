@@ -54,33 +54,48 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
 }
 
 /**
- * @brief always reply yes if p4est ask if we should refine the block
+ * @brief if within the level limits, always reply yes if p4est ask if we should refine the block
  */
 int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
     m_begin;
     //-------------------------------------------------------------------------
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
 
-    // add one block to the count, this drives the recursive adaptation
-    grid->AddOneQuadToAdapt();
+    // check the level limits
+    bool is_refinable = grid->level_limit_min() <= quadrant->level && quadrant->level < grid->level_limit_max();
 
-    return (true);
+    if (is_refinable) {
+        // add one block to the count, this drives the recursive adaptation
+        grid->AddOneQuadToAdapt();
+        return (true);
+    } else {
+        return (false);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief always reply yes if p4est ask if we should coarsen the block
+ * @brief if within the level bounds, always reply yes if p4est ask if we should coarsen the block,
  */
 int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     m_begin;
     //-------------------------------------------------------------------------
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
 
-    // add one block to the count, this drives the recursive adaptation
-    grid->AddOneQuadToAdapt();
+    
+    bool is_coarsenable = true;
+    for (iblock_t ib=0; ib< P8EST_CHILDREN; ++ib){
+        is_coarsenable = is_coarsenable && (grid->level_limit_min() < quadrant[ib]->level) && (quadrant[ib]->level <= grid->level_limit_max());
+    }
 
-    return (true);
+    if (is_coarsenable) {
+        // add one block to the count, this drives the recursive adaptation
+        grid->AddOneQuadToAdapt();
+        return (true);
+    } else {
+        return (false);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -99,13 +114,17 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
 
     // get the origin, the length and check if we are inside the patch
     const real_t* xyz = block->xyz();
-    real_t len = p4est_QuadLen(block->level());
+    real_t        len = p4est_QuadLen(block->level());
 
-    for(auto iter=patches->begin(); iter!= patches->end(); iter++){
+    for (auto iter = patches->begin(); iter != patches->end(); iter++) {
         Patch* patch = &(*iter);
-        
+
+        // check that the patch's level is within the possible bounds
+        m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
+        m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
+
         // if we already have the correct level or a higher one, we skip the patch
-        if(block->level() >= patch->level()){
+        if (block->level() >= patch->level()) {
             continue;
         }
         // if not, we have a coarser block and we might want to refine if the location matches
@@ -117,7 +136,7 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
                      (patch->origin(id) < (block->xyz(id) + len));
         }
         // m_log("should be refined? %d: levels %d vs %d",refine,block->level(),patch->level());
-        if(refine){
+        if (refine) {
             grid->AddOneQuadToAdapt();
             return true;
         }
@@ -147,6 +166,11 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
 
         for (auto iter = patches->begin(); iter != patches->end(); iter++) {
             Patch* patch = &(*iter);
+
+            // check that the patch's level is within the possible bounds
+            m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
+            m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
+
             // if we already have the correct level or a lower one, we skip the patch
             if (block->level() <= patch->level()) {
                 continue;
@@ -156,8 +180,8 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
             for (lda_t id = 0; id < 3; id++) {
                 // we have to satisfy both the our max > min and the min < our max
                 coarsen = coarsen &&
-                         (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
-                         (patch->origin(id) < (block->xyz(id) + len));
+                          (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+                          (patch->origin(id) < (block->xyz(id) + len));
             }
             if (coarsen) {
                 grid->AddOneQuadToAdapt();
@@ -178,7 +202,9 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     Grid*      grid  = reinterpret_cast<Grid*>(forest->user_pointer);
     GridBlock* block = p4est_GetGridBlock(quadrant);
 
-    if (block->status_level() == +1) {
+    if (block->status_level() == +1 &&
+        grid->level_limit_min() <= block->level() &&
+        block->level() < grid->level_limit_max()) {
         grid->AddOneQuadToAdapt();
         return true;
     }
@@ -188,12 +214,9 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
 }
 
 /**
- * @brief coarsen if the GridBlock::status_lvl_ of every block is -1
+ * @brief coarsen if the GridBlock::status_lvl_ of every block is -1 and the level of each block is > level_limit_min
  * 
- * @param forest 
- * @param which_tree 
- * @param quadrant 
- * @return int 
+ * If one of the block needs to be refined or does not need to be coarsened, we cannot coarsen (safety first)
  */
 int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     //-------------------------------------------------------------------------
@@ -201,7 +224,10 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     // for each of the children, check if any of them prevent the coarsening
     for (sid_t id = 0; id < P8EST_CHILDREN; id++) {
         GridBlock* block = p4est_GetGridBlock(quadrant[id]);
-        if (block->status_level() == 0) {
+        // if we cannot coarsen for one of the block, return false
+        if (block->status_level() == 0 ||
+            block->status_level() == +1 ||
+            block->level() <= grid->level_limit_min()) {
             return false;
         }
     }

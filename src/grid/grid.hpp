@@ -40,6 +40,9 @@ class Grid : public ForestGrid {
     real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
     lid_t  n_quad_to_adapt_ = 0;
 
+    level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the mesh
+    level_t level_limit_min_ = 0;                //!< min level of a quadrant
+
     void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
@@ -51,6 +54,10 @@ class Grid : public ForestGrid {
     size_t LocalMemSize() const;
     size_t LocalNumDof() const;
     size_t GlobalNumDof() const;
+
+    level_t level_limit_max() const { return level_limit_max_; }
+    level_t level_limit_min() const { return level_limit_min_; }
+    void    level_limit(const level_t min, const level_t max);
 
     Wavelet* interp() const { return interp_; }
     Prof*    profiler() const { return prof_; }

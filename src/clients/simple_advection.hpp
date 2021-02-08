@@ -1,5 +1,5 @@
-#ifndef SRC_CLIENTS_SIMPLEADVECTION_HPP
-#define SRC_CLIENTS_SIMPLEADVECTION_HPP
+#ifndef SRC_CLIENTS_SIMPLEADVECTION_HPP_
+#define SRC_CLIENTS_SIMPLEADVECTION_HPP_
 
 #include "clients/testcase.hpp"
 #include "core/pointers.hpp"
@@ -12,6 +12,9 @@ class SimpleAdvection : public TestCase {
     bool no_adapt_    = false;
     bool no_weno_     = false;
     bool grid_on_sol_ = false;
+
+    level_t level_min_ = 0;
+    level_t level_max_ = P8EST_QMAXLEVEL;
 
     m_ptr<Field> vel_;
     m_ptr<Field> scal_;
@@ -33,4 +36,4 @@ class SimpleAdvection : public TestCase {
     void Diagnostics(const real_t time, const real_t dt, const lid_t iter);
 };
 
-#endif  // SRC_CLIENTS_SIMPLEADVECTION_HPP
+#endif  // SRC_CLIENTS_SIMPLEADVECTION_HPP_

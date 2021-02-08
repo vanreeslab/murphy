@@ -98,6 +98,23 @@ Grid::~Grid() {
 }
 
 /**
+ * @brief update the min and max level taken into account for the next refinement (does not change the current state of the grid to match the new requirements!)
+ * 
+ * the function fails if the existing levels on the grid do not fit into the new bounds (it avoid blocks blocked at a given level).
+ * 
+ */
+void Grid::level_limit(const level_t min, const level_t max) {
+    m_assert(min <= max, "the levels must be %d <= %d", min, max);
+    m_assert(this->MinLevel() >= min, "trying to impose a min level = %d while blocks exist on a lower one = %d",min,this->MinLevel());
+    m_assert(this->MaxLevel() <= max, "trying to impose a max level = %d while blocks exist on a higher one = %d",max,this->MaxLevel());
+    //-------------------------------------------------------------------------
+    level_limit_min_ = min;
+    level_limit_max_ = max;
+    m_log("limit leves are now %d to %d ", min, max);
+    //-------------------------------------------------------------------------
+};
+
+/**
  * @brief setup the Ghost structure when the mesh is not going to change anymore
  * 
  * @warning this function cannot be called on on existing structure
