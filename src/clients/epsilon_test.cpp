@@ -126,7 +126,7 @@ void EpsilonTest::Run() {
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();
-            m_log("Coarsening: level is now %d to %d", tmp_min_lvl,tmp_max_level);
+            m_log("Coarsening: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
 
         } while (grid.MinLevel() < min_level && grid.MinLevel() > 2);
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
