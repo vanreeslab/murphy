@@ -106,7 +106,7 @@ void EpsilonTest::Run() {
 
         grid.GhostPull(&scal);
         IOH5 dump("data");
-        dump(&grid,&scal,0);
+        //dump(&grid,&scal,0);
 
         // compute the moment at the start
         grid.GhostPull(&scal);
@@ -138,7 +138,7 @@ void EpsilonTest::Run() {
         // real_t coarse_dmoment0, coarse_dmoment1[3];
         // dmoment(&grid, &scal, &coarse_dmoment0, coarse_dmoment1);
 
-        dump(&grid,&scal,1);
+        //dump(&grid,&scal,1);
 
 
         // track the number of block, levels
@@ -157,7 +157,9 @@ void EpsilonTest::Run() {
             grid.GhostPull(&scal);
             grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), cback_UpdateDependency, nullptr);
 
-            m_log("Refinement: level is now %d to %d", grid.MinLevel(), grid.MaxLevel());
+            level_t tmp_min_lvl = grid.MinLevel();
+            level_t tmp_max_lvl = grid.MaxLevel();
+            m_log("Refinement: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
 
         } while (grid.MinLevel() < level_start_);
 
