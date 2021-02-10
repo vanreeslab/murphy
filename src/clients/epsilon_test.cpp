@@ -80,7 +80,7 @@ void EpsilonTest::Run() {
         
         // ring
         lda_t  normal      = 2;
-        real_t sigma       = 0.05;
+        real_t sigma       = 0.025;
         real_t radius      = 0.25;
         real_t velocity[3] = {0.0, 0.0, 0.0};
         SetScalarRing ring(normal, center, sigma, radius, velocity);
