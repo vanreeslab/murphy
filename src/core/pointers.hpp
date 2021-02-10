@@ -1,9 +1,9 @@
 #ifndef SRC_CORE_POINTERS_HPP_
 #define SRC_CORE_POINTERS_HPP_
 
-#include "core/types.hpp"
 #include "core/macros.hpp"
 #include "core/memlayout.hpp"
+#include "core/types.hpp"
 
 /**
  * @brief A class of pointers, might be owned or not
@@ -106,12 +106,12 @@ class data_ptr : public m_ptr<real_t> {
     using m_ptr<real_t>::operator();  // inheritates the operator()
 
     real_t* Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
-    real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout>& layout) const;
-    real_t* Write(const lda_t ida, m_ptr<const MemLayout> layout) const;
+    real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    real_t* Write(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
 
     const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
-    const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout>& layout) const;
-    const real_t* Read(const lda_t ida, m_ptr<const MemLayout>& layout) const;
+    const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    const real_t* Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
@@ -127,8 +127,8 @@ class const_data_ptr : public m_ptr<const real_t> {
     const_data_ptr(const data_ptr& ptr) : m_ptr<const real_t>(ptr){};
 
     const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
-    const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, m_ptr<const MemLayout>& layout) const;
-    const real_t* Read(const lda_t ida, m_ptr<const MemLayout>& layout) const;
+    const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    const real_t* Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
 };
 
 /** @brief memory pointer type = root of the data, i.e. the adress of (0,0,0) */
@@ -163,8 +163,8 @@ class mem_ptr : public m_ptr<real_t> {
     }
 
     data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
-    data_ptr operator()(const lda_t ida, m_ptr<const MemLayout> layout) const;
-    mem_ptr  shift_dim(const lda_t ida, m_ptr<const MemLayout> layout) const;
+    data_ptr operator()(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    mem_ptr  shift_dim(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
 };
 /**@}*/
 
