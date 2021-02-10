@@ -48,7 +48,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the grid
-    bool period[3] = {true, true, true};
+    bool period[3] = {false, false, false};
     grid_.Alloc(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
     const real_t L[3] = {1.0, 1.0, 1.0};
     m_assert(grid_.IsOwned(), "the grid must be owned");
