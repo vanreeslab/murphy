@@ -228,6 +228,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
+        fprintf(file_diag, ";%e;%e",grid_->rtol(),grid_->ctol());
         fprintf(file_diag, ";%e;%e", err2, erri);
         fprintf(file_diag, ";%e;%e;%e;%e", moment0, moment1[0], moment1[1], moment1[2]);
         fprintf(file_diag, ";%e;%e;%e;%e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
