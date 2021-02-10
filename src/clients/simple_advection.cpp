@@ -72,7 +72,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // setup the scalar ring
     real_t velocity[3] = {1.0, 1.0, 1.0};
-    real_t center[3] = {L[0]/4.0, L[0]/4.0, L[0]/4.0};
+    real_t center[3] = {L[0]*3.0/8.0, L[1]*3.0/8.0, L[2]*3.0/8.0};
     ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
     ring_->Profile(prof_);
     ring_->SetTime(0.0);
@@ -105,7 +105,7 @@ void SimpleAdvection::Run() {
     // time
     lid_t  iter    = 0;
     real_t t_start = 0.0;
-    real_t t_final = 0.5;
+    real_t t_final = 2.0/8.0;
     real_t t       = 0.0;
 
     RKFunctor* advection;
