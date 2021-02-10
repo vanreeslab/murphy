@@ -67,8 +67,8 @@ void EpsilonTest::Run() {
     real_t epsilon  = 1.0;  //epsilon_start_;
     while (epsilon >= 1e-10) {
         // create a grid, put a ring on it on the fixel level
-        // bool  period[3]   = {false, false, false};
-        bool  period[3]   = {true, true, true};
+        bool  period[3]   = {false, false, false};
+        // bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
 
