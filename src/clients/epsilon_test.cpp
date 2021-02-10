@@ -63,8 +63,8 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = 0.5e-20;
-    real_t epsilon  = 100.0;  //epsilon_start_;
+    real_t depsilon = 0.5;
+    real_t epsilon  = 1.0;  //epsilon_start_;
     while (epsilon >= 1e-10) {
         // create a grid, put a ring on it on the fixel level
         // bool  period[3]   = {false, false, false};
@@ -79,11 +79,11 @@ void EpsilonTest::Run() {
         real_t center[3]   = {0.5, 0.5, 0.5};
         
         // ring
-        // lda_t  normal      = 2;
-        // real_t sigma       = 0.05;
-        // real_t radius      = 0.25;
-        // real_t velocity[3] = {0.0, 0.0, 0.0};
-        // SetScalarRing ring(normal, center, sigma, radius, velocity);
+        lda_t  normal      = 2;
+        real_t sigma       = 0.05;
+        real_t radius      = 0.25;
+        real_t velocity[3] = {0.0, 0.0, 0.0};
+        SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
         // real_t sigma     = 0.1;
@@ -98,7 +98,7 @@ void EpsilonTest::Run() {
         // SetPolynom   ring(deg, dir, shift);
 
         // custon stuffs
-        InitialCondition ring;
+        // InitialCondition ring;
 
         // apply it
         ring(&grid, &scal);
