@@ -50,6 +50,55 @@ class InitialCondition : public SetValue {
     InitialCondition() : SetValue(nullptr){};
 };
 
+class CompactInitialCondition : public SetValue {
+   protected:
+    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+        //-------------------------------------------------------------------------
+        real_t        pos[3];
+        const real_t* xyz   = block->xyz();
+        const real_t* hgrid = block->hgrid();
+
+        real_t R         = 0.4;
+        real_t sigma     = 0.3;
+        real_t center[3] = {0.5, 0.5, 0.5};
+
+        const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+        const real_t oo_R2     = 1.0 / (R * R);
+        const real_t fact      = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
+
+        // get the pointers correct
+        real_t* data = block->data(fid, 0).Write();
+
+        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            // get the position
+            real_t pos[3];
+            m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+
+            // compute the gaussian
+            const real_t rx   = (pos[0] - center[0]);
+            const real_t ry   = (pos[1] - center[1]);
+            const real_t rz   = (pos[2] - center[2]);
+            const real_t r2   = (rx * rx + ry * ry + rz * rz);
+            const real_t rho2 = r2 * oo_sigma2;
+            const real_t Rho2 = r2 * oo_R2;
+
+            if (Rho2 < 1.0) {
+                data[m_idx(i0, i1, i2)] = fact * exp(-rho2 / (1.0 - Rho2));
+            } else {
+                data[m_idx(i0, i1, i2)] = 0.0;
+            }
+        };
+
+        for_loop(&op, start_, end_);
+        //-------------------------------------------------------------------------
+    };
+
+   public:
+    CompactInitialCondition() : SetValue(nullptr){};
+};
+
+
+
 void EpsilonTest::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
     // call the general testcase parameters
@@ -65,7 +114,7 @@ void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
     real_t depsilon = 0.5;
     real_t epsilon  = 1.0;  //epsilon_start_;
-    while (epsilon >= 1e-10) {
+    while (epsilon >= std::pow(2.0,-26)) {
         // create a grid, put a ring on it on the fixel level
         bool  period[3]   = {false, false, false};
         // bool  period[3]   = {true, true, true};
@@ -79,11 +128,11 @@ void EpsilonTest::Run() {
         real_t center[3]   = {0.5, 0.5, 0.5};
         
         // ring
-        lda_t  normal      = 2;
-        real_t sigma       = 0.025;
-        real_t radius      = 0.25;
-        real_t velocity[3] = {0.0, 0.0, 0.0};
-        SetScalarRing ring(normal, center, sigma, radius, velocity);
+        // lda_t  normal      = 2;
+        // real_t sigma       = 0.025;
+        // real_t radius      = 0.25;
+        // real_t velocity[3] = {0.0, 0.0, 0.0};
+        // SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
         // real_t sigma     = 0.1;
@@ -99,6 +148,7 @@ void EpsilonTest::Run() {
 
         // custon stuffs
         // InitialCondition ring;
+        CompactInitialCondition ring;
 
         // apply it
         ring(&grid, &scal);
