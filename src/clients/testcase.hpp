@@ -1,7 +1,8 @@
 #ifndef SRC_TESTCASE_HPP_
 #define SRC_TESTCASE_HPP_
 
-#include "parser.hpp"
+#include "core/types.hpp"
+#include "tools/parser.hpp"
 
 class TestCase {
     // general testcase parameters
