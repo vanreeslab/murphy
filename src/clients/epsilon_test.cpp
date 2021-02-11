@@ -135,10 +135,10 @@ void EpsilonTest::Run() {
         // SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
-        // real_t sigma     = 0.1;
-        // real_t sigmav[3] = {sigma,sigma,sigma};
-        // SetExponential ring(center, sigmav, 1.0);
-        // ring.SetTime(0.0);
+        real_t sigma     = 0.1;
+        real_t sigmav[3] = {sigma,sigma,sigma};
+        SetExponential ring(center, sigmav, 1.0);
+        ring.SetTime(0.0);
 
         // // testing polynomial
         // const lid_t  deg[3]   = {5, 2, 3};
@@ -148,7 +148,7 @@ void EpsilonTest::Run() {
 
         // custon stuffs
         // InitialCondition ring;
-        CompactInitialCondition ring;
+        // CompactInitialCondition ring;
 
         // apply it
         ring(&grid, &scal);
