@@ -227,18 +227,17 @@ void EpsilonTest::Run() {
         ErrorCalculator error;
         error.Normi(&grid, &scal, &sol, &normi);
 
-        real_t norm2;
-        Field err("error",1);
-        grid.AddField(&err);
-        err.bctype(M_BC_EXTRAP);
-        error.Norms(&grid,&scal,&sol,&err,&norm2,&normi);
-
-        grid.GhostPull(&err);
+        // real_t norm2;
+        // Field err("error",1);
+        // grid.AddField(&err);
+        // err.bctype(M_BC_EXTRAP);
+        // error.Norms(&grid,&scal,&sol,&err,&norm2,&normi);
+        // grid.GhostPull(&err);
 
         // measure the moments
         real_t moment0, moment1[3];
-        moment(&grid, &err, &moment0, moment1);
-        m_log("error moment: %e",moment0);
+        // moment(&grid, &err, &moment0, moment1);
+        // m_log("error moment: %e",moment0);
         moment(&grid, &scal, &moment0, moment1);
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));
