@@ -35,6 +35,15 @@ cp -r $HOME_MURPHY/make_arch/make.nic5 $SCRATCH/$RUN_DIR/make_arch
 cd $SCRATCH/$RUN_DIR 
 
 #==============================================================================
+## wavelet 4.0
+ARCH_FILE=make_arch/make.nic5 make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
+mv murphy murphy40
+#mpirun ./murphy40 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol > log_40_$SLURM_JOB_ID.log
+#mpirun ./murphy40 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol --no-weno > log_40_$SLURM_JOB_ID.log
+mpirun ./murphy40 --eps --ilevel=7 > log_40_$SLURM_JOB_ID.log
+ARCH_FILE=make_arch/make.nic5 make destroy
+
+#==============================================================================
 ## wavelet 4.2
 ARCH_FILE=make_arch/make.nic5 make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4"
 mv murphy murphy42
@@ -52,15 +61,22 @@ mv murphy murphy44
 mpirun ./murphy44 --eps --ilevel=7 > log_44_$SLURM_JOB_ID.log
 ARCH_FILE=make_arch/make.nic5 make destroy
 
+
 #==============================================================================
-## wavelet 4.0
-ARCH_FILE=make_arch/make.nic5 make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
-mv murphy murphy40
-#mpirun ./murphy40 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol > log_40_$SLURM_JOB_ID.log
-#mpirun ./murphy40 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol --no-weno > log_40_$SLURM_JOB_ID.log
-mpirun ./murphy40 --eps --ilevel=7 > log_40_$SLURM_JOB_ID.log
+## wavelet 6.0
+ARCH_FILE=make_arch/make.nic5 make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=6"
+mv murphy murphy60
+#mpirun ./murphy60 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol > log_40_$SLURM_JOB_ID.log
+#mpirun ./murphy60 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol --no-weno > log_40_$SLURM_JOB_ID.log
+mpirun ./murphy60 --eps --ilevel=7 > log_60_$SLURM_JOB_ID.log
 ARCH_FILE=make_arch/make.nic5 make destroy
 
-
-
+#==============================================================================
+## wavelet 6.2
+ARCH_FILE=make_arch/make.nic5 make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=6"
+mv murphy murphy62
+#mpirun ./murphy62 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol > log_40_$SLURM_JOB_ID.log
+#mpirun ./murphy62 --sadv --profile --iter-max=5000 --iter-dump=10000 --rtol=1e-2 --ctol=1e-4 --grid-on-sol --no-weno > log_40_$SLURM_JOB_ID.log
+mpirun ./murphy62 --eps --ilevel=7 > log_62_$SLURM_JOB_ID.log
+ARCH_FILE=make_arch/make.nic5 make destroy
 
