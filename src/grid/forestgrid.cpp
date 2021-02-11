@@ -41,8 +41,9 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
     // create the forest at a given level, the associated ghost and mesh object
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-    int min_quad  = ((int)pow(2, 3 * ilvl)) / comm_size;
-    p4est_forest_ = p8est_new_ext(comm, connect, min_quad, 0, 1, datasize, nullptr, nullptr);
+    // int min_quad  = ((int)pow(2, 3 * ilvl)) / comm_size;
+    // p4est_forest_ = p8est_new_ext(comm, connect, min_quad, 0, 1, datasize, nullptr, nullptr);
+    p4est_forest_ = p8est_new_ext(comm, connect,0, ilvl, 1, datasize, nullptr, nullptr);
     // forest_ - p8est_new(comm,connect,datasize,nullptr,nullptr);
     // set the pointer to null
     p4est_forest_->user_pointer = nullptr;
@@ -54,6 +55,9 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
     domain_periodic_[1] = isper[1];
     domain_periodic_[2] = isper[2];
     //-------------------------------------------------------------------------
+    // m_assert(this->MinLevel() == ilvl, "the current level = %d must match the level asked = %d", this->MinLevel(), ilvl);
+    // m_assert(this->MaxLevel() == ilvl, "the current level = %d must match the level asked = %d", this->MaxLevel(), ilvl);
+    m_assert(p4est_forest_->global_num_quadrants == (int)pow(2, 3 * ilvl), "the number of global quad = %d must match the initial level number = %d", p4est_forest_->global_num_quadrants, (int)pow(2, 3 * ilvl));
     m_end;
 }
 
