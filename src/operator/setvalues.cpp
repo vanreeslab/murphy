@@ -527,7 +527,7 @@ void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
         const real_t rad2r   = radr + radius_;
         const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center[idz], 2);
         const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center[idz], 2);
-        const real_t vort    = oo_pisigma2 * (exp(-rad1_sq * oo_sigma2) - exp(-rad2_sq * oo_sigma2));
+        const real_t vort    = oo_pisigma2 * (exp(-rad1_sq * oo_sigma2) + exp(-rad2_sq * oo_sigma2));
 
         w[m_idx(i0, i1, i2)] = vort;
     };
