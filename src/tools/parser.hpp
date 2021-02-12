@@ -9,9 +9,8 @@
 #include "core/types.hpp"
 #include "patch.hpp"
 
-class ParserArguments {
-   public:
-    int              init_lvl  = 0;                      //!< the level at which the grid is initialized
+struct ParserArguments {
+    level_t              init_lvl  = 0;                      //!< the level at which the grid is initialized
     bool             period[3] = {false, false, false};  //!< the periodicity of the domain
     lid_t            length[3] = {1, 1, 1};              //!< the aspect ratio of the domain
     std::list<Patch> patch;                              //!< list of imposed level regions for the initialization

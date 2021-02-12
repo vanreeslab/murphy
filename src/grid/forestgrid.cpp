@@ -57,7 +57,7 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
     //-------------------------------------------------------------------------
     // m_assert(this->MinLevel() == ilvl, "the current level = %d must match the level asked = %d", this->MinLevel(), ilvl);
     // m_assert(this->MaxLevel() == ilvl, "the current level = %d must match the level asked = %d", this->MaxLevel(), ilvl);
-    m_assert(p4est_forest_->global_num_quadrants == (int)pow(2, 3 * ilvl), "the number of global quad = %d must match the initial level number = %d", p4est_forest_->global_num_quadrants, (int)pow(2, 3 * ilvl));
+    m_assert(p4est_forest_->global_num_quadrants == ((int)pow(2, 3 * ilvl) * l[0] * l[1] * l[2]), "the number of global quad = %d must match the initial level number = %d", p4est_forest_->global_num_quadrants, (int)pow(2, 3 * ilvl));
     m_end;
 }
 

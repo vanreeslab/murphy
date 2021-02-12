@@ -8,9 +8,9 @@
  * @name typename for standard variables
  * @{
  */
-using iface_t  = int8_t;            //!< face index type (0->26)
-using lda_t    = int8_t;            //!< leading dimension array type
-using level_t  = int8_t;            //!< data type for a level
+using iface_t  = char;            //!< face index type (0->26)
+using lda_t    = char;            //!< leading dimension array type
+using level_t  = char;            //!< data type for a level
 using bidx_t   = int;               //!< indexing inside a block
 using iter_t   = int;               //!< indexing iterations
 using rank_t   = int;               //!< rank data type
@@ -55,8 +55,8 @@ typedef enum m_direction_t {
 
 //-------------------------------------------------------------------------
 // must be removed from the code
-typedef int32_t lid_t;
-typedef int8_t  sid_t;
+typedef int lid_t;
+typedef char  sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
 
 #endif  // SRC_CORE_TYPES_HPP_

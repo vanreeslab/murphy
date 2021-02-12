@@ -23,9 +23,9 @@ inline static T* p4est_GetPointer(sc_array_t* array, const int id) {
     return reinterpret_cast<T*>(sc_array_index_int(array, id));
 };
 
-inline static int8_t p4est_MaxLocalLevel(const p8est_t* forest) {
+inline static char p4est_MaxLocalLevel(const p8est_t* forest) {
     //---------------------------------------------------------------------
-    int8_t l_max_level = 0;
+    char l_max_level = 0;
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
         // get the current tree
         p8est_tree_t* ctree = p8est_tree_array_index(forest->trees, it);
@@ -51,7 +51,7 @@ inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, p
     //---------------------------------------------------------------------
 };
 
-inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const int8_t level) {
+inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const char level) {
     m_assert(level >= 0, "the level = %d must be >=0", level);
     //---------------------------------------------------------------------
     size_t num = mesh->quad_level[level].elem_count;
@@ -59,7 +59,7 @@ inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, cons
     return num;
     //---------------------------------------------------------------------
 };
-inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, const int8_t level, const p4est_locidx_t quad_id) {
+inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, const char level, const p4est_locidx_t quad_id) {
     m_assert(quad_id < numeric_limits<int>::max(), "quad id is too big");
     //---------------------------------------------------------------------
     sc_array_t quad_id_array = mesh->quad_level[level];

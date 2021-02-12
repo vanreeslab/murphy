@@ -25,16 +25,16 @@ static int count_list(const char* arg) {
     return count + 1;
 }
 
-static error_t atoi8_list(const int length, char* arg, int8_t* list) {
+static error_t atoc_list(const int length, char* arg, char* list) {
     const int count = count_list(arg);
     if (count != length) {
         return ARGP_ERR_UNKNOWN;
     } else {
         char* num = strtok(arg, ",");
         for (int id = 0; id < length; id++) {
-            int8_t temp = atoi(num);
-            m_assert(std::numeric_limits<int8_t>::max() > temp, "the number read is too big to be cast in a int8_t");
-            list[id] = (int8_t)(temp);
+            int temp = atoi(num);
+            m_assert(std::numeric_limits<char>::max() > temp, "the number read is too big to be cast in a char");
+            list[id] = (char)(temp);
             num      = strtok(NULL, ",");
         }
     }
@@ -160,8 +160,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             return err;
         }
         case 2002: { /* level */
-            int*    lvl = &arguments->init_lvl;
-            error_t err = atoi_list(1, arg, lvl);
+            char*    lvl = &arguments->init_lvl;
+            error_t err = atoc_list(1, arg, lvl);
             m_log("init level: %d", lvl[0]);
             return err;
         }
@@ -197,14 +197,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             return 0;
         }
         case 2008: { /* level_min */
-            level_t*    lvl = &arguments->level_min;
-            error_t err = atoi8_list(1, arg, lvl);
+            level_t* lvl = &arguments->level_min;
+            error_t  err = atoc_list(1, arg, lvl);
             m_log("level min: %d", lvl[0]);
             return err;
         }
         case 2009: { /* level_max */
-            level_t*    lvl = &arguments->level_max;
-            error_t err = atoi8_list(1, arg, lvl);
+            level_t* lvl = &arguments->level_max;
+            error_t  err = atoc_list(1, arg, lvl);
             m_log("level max: %d", lvl[0]);
             return err;
         }
@@ -319,7 +319,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     return 0;
 }
 
-static struct argp argp = {options, parse_opt, 0, doc};
+struct argp argp = {options, parse_opt, 0, doc};
 
 void ParseArgument(int argc, char** argv, ParserArguments* arguments) {
     argp_parse(&argp, argc, argv, ARGP_NO_EXIT, 0, arguments);
