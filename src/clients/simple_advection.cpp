@@ -54,7 +54,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
     // set the min/max level
-    grid_->level_limit(param->level_min,param->level_max);
+    grid_->level_limit(param->level_min, param->level_max);
 
     // get the fields
     vel_.Alloc("velocity", 3);
@@ -71,8 +71,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->AddField(sol_);
 
     // setup the scalar ring
-    real_t velocity[3] = {1.0, 1.0, 1.0};
-    real_t center[3] = {L[0]*3.0/8.0, L[1]*3.0/8.0, L[2]*3.0/8.0};
+    real_t velocity[3] = {0.0, 0.0, 1.0};
+    real_t center[3]   = {L[0] * 0.5, L[1] * 0.5, L[2] * 0.5};
     ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
     ring_->Profile(prof_);
     ring_->SetTime(0.0);
@@ -90,7 +90,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     const real_t dir[3]   = {1.0, 0.0, 0.0};
     const real_t shift[3] = {0.0, 0.0, 0.0};
     vel_field_.Alloc(deg, dir, shift);
-    (*vel_field_)(grid_, vel_);
+    (*vel_field_)(grid_, vel_, 2);
     // take the ghosts
     grid_->GhostPull(vel_);
 
@@ -105,7 +105,7 @@ void SimpleAdvection::Run() {
     // time
     lid_t  iter    = 0;
     real_t t_start = 0.0;
-    real_t t_final = 2.0/8.0;
+    real_t t_final = 0.1;  //2.0/8.0;
     real_t t       = 0.0;
 
     RKFunctor* advection;
