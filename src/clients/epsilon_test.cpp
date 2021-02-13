@@ -106,17 +106,22 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 
     // get the level
     level_start_ = param->init_lvl;
+    level_min_   = param->level_min;
+    level_max_   = param->level_max;
+
+    eps_start_ = param->eps_start;
+    delta_eps_ = param->delta_eps;
 
     //-------------------------------------------------------------------------
 }
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = 0.5;
-    real_t epsilon  = 1.0;  //epsilon_start_;
-    while (epsilon >= std::pow(2.0,-26)) {
+    real_t depsilon = delta_eps_;
+    real_t epsilon  = eps_start_;  //epsilon_start_;
+    while (epsilon >= std::pow(2.0, -26)) {
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {false, false, false};
+        bool period[3] = {false, false, false};
         // bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
@@ -125,7 +130,7 @@ void EpsilonTest::Run() {
         grid.AddField(&scal);
         scal.bctype(M_BC_EXTRAP);
 
-        real_t offset    = 1.0 / M_PI * 1.0/(std::pow(2, level_start_) * M_N);  // this is a fraction of h
+        real_t offset    = 0.0;//1.0 / M_PI * 1.0/(std::pow(2, level_start_) * M_N);  // this is a fraction of h
         real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
 
         // ring
@@ -179,7 +184,7 @@ void EpsilonTest::Run() {
             level_t tmp_max_lvl = grid.MaxLevel();
             m_log("Coarsening: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
 
-        } while (grid.MinLevel() < min_level && grid.MinLevel() > 0);
+        } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(1,level_min_));
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
 
         // measure the moments

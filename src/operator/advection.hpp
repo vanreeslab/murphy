@@ -360,7 +360,7 @@ static real_t PhiWeno(const real_t a, const real_t b, const real_t c, const real
 };
 
 template <>
-inline lid_t Advection<M_ADV_WENO_VEL, 5>::NGhost() const { return 3; };
+inline lid_t Advection<M_ADV_WENO_VEL, 5>::NGhost() const { return (1.0 / 2.7); };
 
 /**
  * @brief WENO fith order implementation of the conservative advection equation, use a velocity based flux-splitting

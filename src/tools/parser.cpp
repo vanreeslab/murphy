@@ -102,7 +102,7 @@ static struct argp_option options[] = {
     {"patch", 2004, "o_x,o_y,o_z,l_x,l_y,l_z,lvl", 0, "patch from (o_x,o_y,o_z) and of length (l_x,l_y,l_z) at level (lvl)"},
     {"rtol", 2005, "tol", 0, "refinement tolerance"},
     {"ctol", 2006, "tol", 0, "coarsening tolerance"},
-    {"no-adapt", 2007, 0, OPTION_ARG_OPTIONAL, "disable the mesh adaptation", 1},
+    {"no-adapt", 2007, 0, OPTION_ARG_OPTIONAL, "disable the mesh adaptation"},
     {"level-min", 2008, "level", 0, "the minimum level on the grid (integer: num)"},
     {"level-max", 2009, "level", 0, "the maximum level on the grid (integer: num)"},
 
@@ -120,9 +120,11 @@ static struct argp_option options[] = {
     {"iter-diag", 3010, "int", 0, "run the diagnostics every x iterations"},
     {"iter-adapt", 3011, "int", 0, "adapt the grid every x iterations"},
     {"iter-dump", 3012, "int", 0, "dump the field every x iterations"},
-    {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil", 1},
-    {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution", 1},
-    {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil", 1},
+    {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil"},
+    {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution"},
+    {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil"},
+    {"eps-start", 3016, "value", 0, "start epsilon"},
+    {"delta-eps", 3017, "value", 0, "factor from one epsilon to another"},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients:", 4},
@@ -296,6 +298,18 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             arguments->weno_5 = true;
             m_log("weno");
             return 0;
+        }
+        case 3016: { /* rtol */
+            real_t* tol = &arguments->eps_start;
+            error_t err = atof_list(1, arg, tol);
+            m_log("epsilon start: %f", tol[0]);
+            return err;
+        }
+        case 3017: { /* rtol */
+            real_t* tol = &arguments->delta_eps;
+            error_t err = atof_list(1, arg, tol);
+            m_log("delta epsilon: %f", tol[0]);
+            return err;
         }
         //................................................
         case 4000: { /* Navier-Stockes */

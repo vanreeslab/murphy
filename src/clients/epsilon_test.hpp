@@ -8,6 +8,11 @@
 class EpsilonTest : public TestCase {
     real_t  epsilon_start_ = 0.1;
     level_t level_start_   = 4;
+    level_t level_min_ = 0;
+    level_t level_max_ = 10;
+
+    real_t eps_start_ = 1.0;
+    real_t delta_eps_ = 0.5;
 
    public:
     void InitParam(ParserArguments* param) override;
