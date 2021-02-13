@@ -14,7 +14,7 @@ CXXFLAGS := -g -O3  -fopenmp -march=skylake
 LDFLAGS := -fopenmp -lstdc++ -lm
 
 #FFTW_DIR := /home/software/gcc/6.2.0/pkg/fftw/3.3.8
-FFTW_DIR := /home/tgillis/lib-mpich/fftw-3.3.9
+FFTW_DIR := /home/tgillis/lib-mpich/fftw-3.3.8
 FFTW_INC := ${FFTW_DIR}/include
 FFTW_LIB := ${FFTW_DIR}/lib
 

@@ -4,27 +4,27 @@
 SCRATCH=/nobackup1/tgillis/perf_vs_acc
 rm -rf ${SCRATCH}
 
-## produce the different exec
-## 4.0
-#make destroy
-#ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
-#mv murphy murphy40
-## 4.2
-#make destroy
-#ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4"
-#mv murphy murphy42
-##
-#make destroy
-#ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=4 -DBLOCK_GS=6"
-#mv murphy murphy44
-##
-#make destroy
-#ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=6"
-#mv murphy murphy60
-##
-#make destroy
-#ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=6"
-#mv murphy murphy62
+# produce the different exec
+# 4.0
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
+mv murphy murphy40
+# 4.2
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4"
+mv murphy murphy42
+#
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=4 -DBLOCK_GS=6"
+mv murphy murphy44
+#
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=6"
+mv murphy murphy60
+#
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=6"
+mv murphy murphy62
 
 
 NCPUS=216
