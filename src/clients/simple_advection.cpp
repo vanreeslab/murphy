@@ -38,12 +38,13 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     no_adapt_    = param->no_adapt;
     no_weno_     = param->no_weno;
     grid_on_sol_ = param->grid_on_sol;
+    weno_5_      = param->weno_5;
 
     // the the standard stuffs
     if (param->profile) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks");
+        string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks")+string("_w")+to_string(M_WAVELET_N)+to_string(M_WAVELET_NT) ;
         prof_.Alloc(name);
     }
 
@@ -113,10 +114,13 @@ void SimpleAdvection::Run() {
     RKFunctor* advection;
     if (no_weno_) {
         advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
-        m_log("conservative advection chosen, cfl = %f",advection->cfl_rk3());
+        m_log("conservative advection chosen, cfl = %f", advection->cfl_rk3());
+    } else if (weno_5_) {
+        advection = new Advection<M_ADV_WENO_VEL, 5>(vel_);
+        m_log("WENO 5 advection chosen, cfl = %f", advection->cfl_rk3());
     } else {
         advection = new Advection<M_ADV_WENO_VEL, 3>(vel_);
-        m_log("WENO advection chosen, cfl = %f",advection->cfl_rk3());
+        m_log("WENO 3 advection chosen, cfl = %f", advection->cfl_rk3());
     }
     RK3_TVD rk3(grid_, scal_, advection, prof_);
 

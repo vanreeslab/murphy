@@ -125,20 +125,21 @@ void EpsilonTest::Run() {
         grid.AddField(&scal);
         scal.bctype(M_BC_EXTRAP);
 
-        real_t center[3]   = {0.5, 0.5, 0.5};
-        
+        real_t offset    = 1.0 / M_PI * 1.0/(std::pow(2, level_start_) * M_N);  // this is a fraction of h
+        real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
+
         // ring
-        // lda_t  normal      = 2;
-        // real_t sigma       = 0.025;
-        // real_t radius      = 0.25;
-        // real_t velocity[3] = {0.0, 0.0, 0.0};
-        // SetScalarRing ring(normal, center, sigma, radius, velocity);
+        lda_t         normal      = 2;
+        real_t        sigma       = 0.025;
+        real_t        radius      = 0.25;
+        real_t        velocity[3] = {0.0, 0.0, 0.0};
+        SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
-        real_t sigma     = 0.1;
-        real_t sigmav[3] = {sigma,sigma,sigma};
-        SetExponential ring(center, sigmav, 1.0);
-        ring.SetTime(0.0);
+        // real_t sigma     = 0.1;
+        // real_t sigmav[3] = {sigma,sigma,sigma};
+        // SetExponential ring(center, sigmav, 1.0);
+        // ring.SetTime(0.0);
 
         // // testing polynomial
         // const lid_t  deg[3]   = {5, 2, 3};
@@ -178,7 +179,7 @@ void EpsilonTest::Run() {
             level_t tmp_max_lvl = grid.MaxLevel();
             m_log("Coarsening: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
 
-        } while (grid.MinLevel() < min_level && grid.MinLevel() > 2);
+        } while (grid.MinLevel() < min_level && grid.MinLevel() > 0);
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
 
         // measure the moments

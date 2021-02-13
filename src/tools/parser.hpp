@@ -10,7 +10,7 @@
 #include "patch.hpp"
 
 struct ParserArguments {
-    level_t              init_lvl  = 0;                      //!< the level at which the grid is initialized
+    level_t          init_lvl  = 0;                      //!< the level at which the grid is initialized
     bool             period[3] = {false, false, false};  //!< the periodicity of the domain
     lid_t            length[3] = {1, 1, 1};              //!< the aspect ratio of the domain
     std::list<Patch> patch;                              //!< list of imposed level regions for the initialization
@@ -43,6 +43,7 @@ struct ParserArguments {
     iter_t iter_adapt    = 1;
     iter_t iter_dump     = 1;
     bool   no_weno       = false;
+    bool   weno_5        = false;
     bool   grid_on_sol   = false;
 };
 

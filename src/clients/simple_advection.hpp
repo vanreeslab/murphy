@@ -12,6 +12,7 @@ class SimpleAdvection : public TestCase {
     bool no_adapt_    = false;
     bool no_weno_     = false;
     bool grid_on_sol_ = false;
+    bool weno_5_      = false;
 
     level_t level_min_ = 0;
     level_t level_max_ = P8EST_QMAXLEVEL;

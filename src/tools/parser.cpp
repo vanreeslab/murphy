@@ -122,6 +122,7 @@ static struct argp_option options[] = {
     {"iter-dump", 3012, "int", 0, "dump the field every x iterations"},
     {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil", 1},
     {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution", 1},
+    {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil", 1},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients:", 4},
@@ -289,6 +290,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 3014: { /* grid-on-sol */
             arguments->grid_on_sol = true;
             m_log("grid based on the solution");
+            return 0;
+        }
+        case 3015: { /* weno_5 */
+            arguments->weno_5 = true;
+            m_log("weno");
             return 0;
         }
         //................................................
