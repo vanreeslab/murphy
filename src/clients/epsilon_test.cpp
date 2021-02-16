@@ -121,8 +121,8 @@ void EpsilonTest::Run() {
     real_t epsilon  = eps_start_;  //epsilon_start_;
     while (epsilon >= std::pow(2.0, -26)) {
         // create a grid, put a ring on it on the fixel level
-        bool period[3] = {false, false, false};
-        // bool  period[3]   = {true, true, true};
+        // bool period[3] = {false, false, false};
+        bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
 
