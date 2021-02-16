@@ -143,8 +143,9 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);
     //-------------------------------------------------------------------------
     // get the starting pointer:
+    const real_t* h    = block->hgrid();
     const real_t* data = block->data(fid_x, ida_).Read();
-
+    
     real_t lmoment0    = 0.0;
     real_t lmoment1[3] = {0.0, 0.0, 0.0};
 
@@ -188,46 +189,123 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
     // moment1_[1] += fact * vol * lmoment1[1];
     // moment1_[2] += fact * vol * lmoment1[2];
     // let's go!
-    for (bidx_t i2 = start_; i2 < end_; i2 += 8) {
-        for (bidx_t i1 = start_; i1 < end_; i1 += 8) {
-            for (bidx_t i0 = start_; i0 < end_; i0 += 8) {
-                const real_t* f = data + m_idx(i0, i1, i2);
+    // for (bidx_t i2 = start_; i2 < end_; i2 += 8) {
+    //     for (bidx_t i1 = start_; i1 < end_; i1 += 8) {
+    //         for (bidx_t i0 = start_; i0 < end_; i0 += 8) {
+    //             const real_t* f = data + m_idx(i0, i1, i2);
 
-                // define the simpson coefficients - cfr Abramowitz p887, formula 25.4.13
-                constexpr real_t denom = 4.0 / 14175.0;
-                constexpr real_t c[9]  = {989.0 * denom,
-                                         5888.0 * denom,
-                                         -928.0 * denom,
-                                         +10496.0 * denom,
-                                         -4540.0 * denom,
-                                         +10496.0 * denom,
-                                         -928.0 * denom,
-                                         5888.0 * denom,
-                                         989.0 * denom};
+    //             // define the simpson coefficients - cfr Abramowitz p887, formula 25.4.13
+    //             constexpr real_t denom = 4.0 / 14175.0;
+    //             constexpr real_t c[9]  = {989.0 * denom,
+    //                                      5888.0 * denom,
+    //                                      -928.0 * denom,
+    //                                      +10496.0 * denom,
+    //                                      -4540.0 * denom,
+    //                                      +10496.0 * denom,
+    //                                      -928.0 * denom,
+    //                                      5888.0 * denom,
+    //                                      989.0 * denom};
 
-                for (bidx_t s2 = 0; s2 <= 8; ++s2) {
-                    for (bidx_t s1 = 0; s1 <= 8; ++s1) {
-                        for (bidx_t s0 = 0; s0 <= 8; ++s0) {
-                            // get the local value
-                            const real_t value = f[m_idx(s0, s1, s2)];
+    //             for (bidx_t s2 = 0; s2 <= 8; ++s2) {
+    //                 for (bidx_t s1 = 0; s1 <= 8; ++s1) {
+    //                     for (bidx_t s0 = 0; s0 <= 8; ++s0) {
+    //                         // get the local value
+    //                         const real_t value = f[m_idx(s0, s1, s2)];
 
-                            // get the position
-                            real_t pos[3];
-                            m_pos(pos, i0 + s0, i1 + s1, i2 + s2, block->hgrid(), block->xyz());
+    //                         // get the position
+    //                         real_t pos[3];
+    //                         m_pos(pos, i0 + s0, i1 + s1, i2 + s2, block->hgrid(), block->xyz());
 
-                            // get the coefficient
-                            const real_t coef = (c[s0] * c[s1] * c[s2]);
+    //                         // get the coefficient
+    //                         const real_t coef = (c[s0] * c[s1] * c[s2]);
 
-                            lmoment0 += coef * value;
-                            lmoment1[0] += coef * value * pos[0];
-                            lmoment1[1] += coef * value * pos[1];
-                            lmoment1[2] += coef * value * pos[2];
-                        }
-                    }
-                }
-            }
+    //                         lmoment0 += coef * value;
+    //                         lmoment1[0] += coef * value * pos[0];
+    //                         lmoment1[1] += coef * value * pos[1];
+    //                         lmoment1[2] += coef * value * pos[2];
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    // let's go!
+    auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        // get the position
+        real_t origin[3];
+        m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
+
+        constexpr real_t coef = 1.0 / 8.0;
+        const real_t*    f    = data + m_idx(i0, i1, i2);
+
+        // 0,0,0
+        {
+            const real_t value = f[m_idx(0, 0, 0)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0]);
+            lmoment1[1] += coef * value * (origin[1]);
+            lmoment1[2] += coef * value * (origin[2]);
         }
-    }
+        // 1,0,0
+        {
+            const real_t value = f[m_idx(1, 0, 0)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0] + h[0]);
+            lmoment1[1] += coef * value * (origin[1]);
+            lmoment1[2] += coef * value * (origin[2]);
+        }
+        // 0,1,0
+        {
+            const real_t value = f[m_idx(0, 1, 0)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0]);
+            lmoment1[1] += coef * value * (origin[1] + h[1]);
+            lmoment1[2] += coef * value * (origin[2]);
+        }
+        // 0,0,1
+        {
+            const real_t value = f[m_idx(0, 0, 1)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0]);
+            lmoment1[1] += coef * value * (origin[1]);
+            lmoment1[2] += coef * value * (origin[2] + h[2]);
+        }
+        // 1,1,0
+        {
+            const real_t value = f[m_idx(1, 1, 0)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0] + h[0]);
+            lmoment1[1] += coef * value * (origin[1] + h[1]);
+            lmoment1[2] += coef * value * (origin[2]);
+        }
+        // 0,1,1
+        {
+            const real_t value = f[m_idx(0, 1, 1)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0]);
+            lmoment1[1] += coef * value * (origin[1] + h[1]);
+            lmoment1[2] += coef * value * (origin[2] + h[2]);
+        }
+        // 1,0,1
+        {
+            const real_t value = f[m_idx(1, 0, 1)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0] + h[0]);
+            lmoment1[1] += coef * value * (origin[1]);
+            lmoment1[2] += coef * value * (origin[2] + h[2]);
+        }
+        // 1,1,1
+        {
+            const real_t value = f[m_idx(1, 1, 1)];
+            lmoment0 += coef * value;
+            lmoment1[0] += coef * value * (origin[0] + h[0]);
+            lmoment1[1] += coef * value * (origin[1] + h[1]);
+            lmoment1[2] += coef * value * (origin[2] + h[2]);
+        }
+    };
+    
+    for_loop(&op,start_,end_);
+
     const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
     moment0_    += vol * lmoment0;
     moment1_[0] += vol * lmoment1[0];

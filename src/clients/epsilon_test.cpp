@@ -130,7 +130,7 @@ void EpsilonTest::Run() {
         grid.AddField(&scal);
         scal.bctype(M_BC_EXTRAP);
 
-        real_t offset    = 0.0;//1.0 / M_PI * 1.0/(std::pow(2, level_start_) * M_N);  // this is a fraction of h
+        real_t offset    = 0.0;  //1.0 / M_PI * 1.0/(std::pow(2, level_start_) * M_N);  // this is a fraction of h
         real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
 
         // ring
@@ -141,7 +141,7 @@ void EpsilonTest::Run() {
         SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
-        // real_t sigma     = 0.1;
+        // real_t sigma     = 0.05;
         // real_t sigmav[3] = {sigma,sigma,sigma};
         // SetExponential ring(center, sigmav, 1.0);
         // ring.SetTime(0.0);
@@ -169,9 +169,9 @@ void EpsilonTest::Run() {
         BMoment moment;
         real_t  sol_moment0, sol_moment1[3];
         moment(&grid, &scal, &sol_moment0, sol_moment1);
-        // BDiscreteMoment dmoment;
-        // real_t  sol_dmoment0, sol_dmoment1[3];
-        // moment(&grid, &scal, &sol_dmoment0, sol_dmoment1);
+        BDiscreteMoment dmoment;
+        real_t          sol_dmoment0, sol_dmoment1[3];
+        dmoment(&grid, &scal, &sol_dmoment0, sol_dmoment1);
 
         // coarsen
         level_t min_level = level_start_;
@@ -191,11 +191,13 @@ void EpsilonTest::Run() {
         grid.GhostPull(&scal);
         real_t coarse_moment0, coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
-        // real_t coarse_dmoment0, coarse_dmoment1[3];
-        // dmoment(&grid, &scal, &coarse_dmoment0, coarse_dmoment1);
+        real_t coarse_dmoment0, coarse_dmoment1[3];
+        dmoment(&grid, &scal, &coarse_dmoment0, coarse_dmoment1);
+
+        m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
+        m_log("discrete after coarsening: %e vs %e -> error = %e", sol_dmoment0, coarse_dmoment0, abs(sol_dmoment0 - coarse_dmoment0));
 
         //dump(&grid,&scal,1);
-
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();
@@ -242,9 +244,11 @@ void EpsilonTest::Run() {
 
         // measure the moments
         real_t moment0, moment1[3];
-        // moment(&grid, &err, &moment0, moment1);
-        // m_log("error moment: %e",moment0);
         moment(&grid, &scal, &moment0, moment1);
+        real_t dmoment0, dmoment1[3];
+        dmoment(&grid, &scal, &dmoment0, dmoment1);
+        m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_moment0, moment0, abs(sol_moment0 - moment0));
+        m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_dmoment0, dmoment0, abs(sol_dmoment0 - dmoment0));
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));
         // m_log("moment 1x: from %e to %e: error %e", sol_moment1[0], moment1[0], fabs(sol_moment1[0] - moment1[0]));
@@ -266,11 +270,12 @@ void EpsilonTest::Run() {
             FILE* file = fopen(std::string("data/moments_w" + std::to_string(M_WAVELET_N) + std::to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
             fprintf(file, "%e;%ld;%d;%d;%16.16e", epsilon, nblock, grid_level_min, grid_level_max, normi);
             fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", coarse_moment0, coarse_moment1[0], coarse_moment1[1], coarse_moment1[2]);
-            // fprintf(file, ";%16.16e", coarse_moment0);
             fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", moment0, moment1[0], moment1[1], moment1[2]);
-            // fprintf(file, ";%16.16e", moment0);
             fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", sol_moment0, sol_moment1[0], sol_moment1[1], sol_moment1[2]);
-            // fprintf(file, ";%16.16e", sol_moment0);
+
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", coarse_dmoment0, coarse_dmoment1[0], coarse_dmoment1[1], coarse_dmoment1[2]);
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", sol_dmoment0, sol_dmoment1[0], sol_dmoment1[1], sol_dmoment1[2]);
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
             fprintf(file, "\n");
             fclose(file);
         }
