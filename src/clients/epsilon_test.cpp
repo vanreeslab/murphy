@@ -184,7 +184,7 @@ void EpsilonTest::Run() {
             level_t tmp_max_lvl = grid.MaxLevel();
             m_log("Coarsening: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
 
-        } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(1,level_min_));
+        } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0,level_min_));
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
 
         // measure the moments
@@ -269,13 +269,27 @@ void EpsilonTest::Run() {
         if (rank == 0) {
             FILE* file = fopen(std::string("data/moments_w" + std::to_string(M_WAVELET_N) + std::to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
             fprintf(file, "%e;%ld;%d;%d;%16.16e", epsilon, nblock, grid_level_min, grid_level_max, normi);
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", coarse_moment0, coarse_moment1[0], coarse_moment1[1], coarse_moment1[2]);
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", moment0, moment1[0], moment1[1], moment1[2]);
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", sol_moment0, sol_moment1[0], sol_moment1[1], sol_moment1[2]);
 
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", coarse_dmoment0, coarse_dmoment1[0], coarse_dmoment1[1], coarse_dmoment1[2]);
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", sol_dmoment0, sol_dmoment1[0], sol_dmoment1[1], sol_dmoment1[2]);
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
+                    std::fabs(coarse_moment0 - sol_moment0),
+                    std::fabs(coarse_moment1[0] - sol_moment1[0]),
+                    std::fabs(coarse_moment1[1] - sol_moment1[1]),
+                    std::fabs(coarse_moment1[2] - sol_moment1[2]));
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
+                    std::fabs(moment0 - sol_moment0),
+                    std::fabs(moment1[0] - sol_moment1[0]),
+                    std::fabs(moment1[1] - sol_moment1[1]),
+                    std::fabs(moment1[2] - sol_moment1[2]));
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
+                    std::fabs(coarse_dmoment0 - sol_dmoment0),
+                    std::fabs(coarse_dmoment1[0] - sol_dmoment1[0]),
+                    std::fabs(coarse_dmoment1[1] - sol_dmoment1[1]),
+                    std::fabs(coarse_dmoment1[2] - sol_dmoment1[2]));
+            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
+                    std::fabs(dmoment0 - sol_dmoment0),
+                    std::fabs(dmoment1[0] - sol_dmoment1[0]),
+                    std::fabs(dmoment1[1] - sol_dmoment1[1]),
+                    std::fabs(dmoment1[2] - sol_dmoment1[2]));
             fprintf(file, "\n");
             fclose(file);
         }
