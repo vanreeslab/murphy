@@ -17,29 +17,32 @@
  * 
  * Since the interpolation is done within threads, those values cannot belong to the object 
  * and must be created each time an interpolation is needed
+ * 
+ * @warning the exact meaning of each field depends on the wavelet function called! please check the documentation.
  */
 typedef struct interp_ctx_t {
-    lid_t srcstr;       //!< the source stride
-    lid_t trgstr;       //!< the target stride
-    lid_t trgstart[3];  //!< first index needed in the target memory
-    lid_t trgend[3];    //!< last index needed in the target memory
+    bidx_t srcstr;  //!< the source stride
+    bidx_t trgstr;  //!< the target stride
+
+    bidx_t trgstart[3];  //!< first index needed in the target memory
+    bidx_t trgend[3];    //!< last index needed in the target memory
 #ifndef NDEBUG
     // for debug only
-    lid_t srcstart[3];  //!< first index available in the source memory
-    lid_t srcend[3];    //!< last index available in the source memory
+    bidx_t srcstart[3];  //!< first index available in the source memory
+    bidx_t srcend[3];    //!< last index available in the source memory
 #endif
-    real_t alpha = 0.0;  //!< the constant multiplication factor: target = alpha * constant + interpolation(source)
+
+    real_t alpha = 0.0;  //!< a factor used in different ways depending on the context
 
     /**
      * @name position pointers
-     * 
-     * They both refer the position (0,0,0) of the target, hence the ghostsize is assumed to be zero
      * @{
      */
-    const_data_ptr sdata;  //!< refers the (0,0,0) location of the target memory, in the source memory layout
-    const_data_ptr cdata;  //!< refers the (0,0,0) location of the target memory, in the constant memory layout
+    const_data_ptr sdata;  //!< refers the (0,0,0) location of the source memory, in the source memory layout
     data_ptr       tdata;  //!< refers the (0,0,0) location of the target memory
+    // data_ptr       temp;   //!< refers the (0,0,0) location of the temporary memory (has the layour of trg!)
     /** @} */
+
 } interp_ctx_t;
 
 // check if the compilation defines the order of the wavelet. if not, we do it
@@ -85,10 +88,12 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(m_ptr<const MemLayout> block, const_data_ptr data) const;
-    void   Details(m_ptr<MemLayout> block, const_data_ptr data_block, m_ptr<real_t> details_max) const;
-    void   WriteDetails(m_ptr<const MemLayout> block, const_data_ptr data_src, data_ptr data_trg) const;
-
+    real_t Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const;
+    real_t CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const;
+    // intermediate functions
+    void Details(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const;
+    void Smooth(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& detail, const m_ptr<const MemLayout>& block, const data_ptr& data) const;
+    void WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const;
     /** @} */
 
     //................................................
@@ -99,8 +104,8 @@ class Wavelet {
     */
     std::string Identity() const { return "interpolating wavelet " + std::to_string(N()) + "." + std::to_string(Nt()); }
 
-    virtual const sid_t N() const  = 0;
-    virtual const sid_t Nt() const = 0;
+    virtual const short_t N() const  = 0;
+    virtual const short_t Nt() const = 0;
     /** @} */
 
     //................................................
@@ -109,8 +114,8 @@ class Wavelet {
      * @{
      */
    public:
-    virtual const sid_t len_ha() const = 0;
-    virtual const sid_t len_gs() const = 0;
+    virtual const short_t len_ha() const = 0;
+    virtual const short_t len_sd() const = 0;
 
     // shift for the details
     const lid_t shift_front() const { return m_max(Nt() - 1, 0); };  //!< return the num of detail to take into account outside the block, in front
@@ -119,14 +124,14 @@ class Wavelet {
     // nghosts
     const lid_t ncoarsen_front() const { return m_max(len_ha() / 2, 0); };                         //!< returns the number of gp needed for the coarsening operation, in front
     const lid_t ncoarsen_back() const { return m_max(len_ha() / 2 - 1, 0); };                      //!< returns the number of gp needed for the coarsening operation, in the back
-    const lid_t nrefine_front() const { return m_max(len_gs() / 2 - 1, 0); };                      //!< returns the number of gp needed for the refinement operation, in front
-    const lid_t nrefine_back() const { return m_max(len_gs() / 2, 0); };                           //!< returns the number of gp needed for the refinement operation, in the back
-    const lid_t ncriterion_front() const { return m_max(m_max(Nt() - 1, -1) + len_gs() - 1, 0); }  //!< returns the number of gp needed for the detail operation, in front
-    const lid_t ncriterion_back() const { return m_max(m_max(Nt() - 2, 0) + len_gs() - 1, 0); }    //!< returns the number of gp needed for the detail operation, in the back
+    const lid_t nrefine_front() const { return m_max(len_sd() / 2 - 1, 0); };                      //!< returns the number of gp needed for the refinement operation, in front
+    const lid_t nrefine_back() const { return m_max(len_sd() / 2, 0); };                           //!< returns the number of gp needed for the refinement operation, in the back
+    const lid_t ncriterion_front() const { return m_max(m_max(Nt() - 1, -1) + len_sd() - 1, 0); }  //!< returns the number of gp needed for the detail operation, in front
+    const lid_t ncriterion_back() const { return m_max(m_max(Nt() - 2, 0) + len_sd() - 1, 0); }    //!< returns the number of gp needed for the detail operation, in the back
 
     // nghosts
     const lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
-    const lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())); }
+    const lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())) + 2; }
 
     /** @} */
 
@@ -216,11 +221,11 @@ class Wavelet {
      */
     virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
-    virtual void Coarsen_(m_ptr<const interp_ctx_t> ctx) const                                = 0;
-    virtual void Refine_(m_ptr<const interp_ctx_t> ctx) const                                 = 0;
-    virtual void Detail_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_norm) const = 0;
-    // virtual void Detail_2_(m_ptr<const interp_ctx_t> ctx, m_ptr<real_t> details_norm) const   = 0;
-    virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                            = 0;
+    virtual void Coarsen_(const m_ptr<const interp_ctx_t>& ctx) const                                  = 0;
+    virtual void Refine_(const m_ptr<const interp_ctx_t>& ctx) const                                   = 0;
+    virtual void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const = 0;
+    virtual void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const                                   = 0;
+    // virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                                     = 0;
     /** @} */
 
     // defined function -- might be overriden

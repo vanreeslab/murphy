@@ -111,7 +111,7 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
     // get the correct aligned arrays
     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
     ctx.sdata = data_src.Read(shift[0], shift[1], shift[2], 0, block_src->stride());
-    ctx.cdata = data_cst;
+    // ctx.cdata = data_cst;
     ctx.tdata = data_trg;
 
     // call the correct function
@@ -147,7 +147,7 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
 
     auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         // check we do not have to take the constant into account (not coded yet, weird behavior while saying trg = 0.0 * trg)
-        m_assert(ctx->cdata.IsEmpty(), "the constant data must be nullptr for the moment");
+        // m_assert(ctx->cdata.IsEmpty(), "the constant data must be nullptr for the moment");
         // check the accesses
         m_assert(((scaling * i0) >= ctx->srcstart[0]) && ((scaling * i0) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx->srcstart[0], i0, ctx->srcend[0]);
         m_assert(((scaling * i1) >= ctx->srcstart[1]) && ((scaling * i1) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx->srcstart[1], i1, ctx->srcend[1]);
@@ -284,9 +284,10 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
  *
  * @param block the block to analyze
  * @param data the data
- * @return real_t the infinite norm of the max detail coefficient in the extended region
+ * @param smooth 
+ * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
-real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data) const {
+real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const {
     //-------------------------------------------------------------------------
     // get the extended memory layout
     lid_t start[3];
@@ -299,38 +300,99 @@ real_t Wavelet::Criterion(m_ptr<const MemLayout> block, const_data_ptr data) con
 
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(&extended_block, data, &details_max);
+    Details(&extended_block, data, nullptr, 0.0, &details_max);
+
+    return details_max;
+    //-------------------------------------------------------------------------
+}
+
+real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
+    //-------------------------------------------------------------------------
+    // get the extended memory layout
+    lid_t start[3];
+    lid_t end[3];
+    for (lda_t id = 0; id < 3; id++) {
+        start[id] = block->start(id) - shift_front();
+        end[id]   = block->end(id) + shift_back();
+    }
+    const SubBlock detail_block(block->gs(), block->stride(), start, end);
+
+    // reset the detail array
+    memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
+    data_ptr detail_data = detail(0,block);
+
+    // get the detail coefficients
+    real_t details_max = 0.0;
+    Details(&detail_block, data, detail_data, tol, &details_max);
+
+    // smooth them
+    Smooth(&detail_block,detail_data,block,data);
 
     return details_max;
     //-------------------------------------------------------------------------
 }
 
 /**
- * @brief compute the max detail coefficients on a given MemLayout
+ * @brief compute the max detail coefficients on a given MemLayout.
  * 
  * @param block the memory layout on which we compute the max detail
- * @param data the data_ptr associated to the layout
+ * @param data the data to use to compute the detail, assumed valid on the whole [-nghost_front(), M_N + nghost_back()]^3 range
  * @param details_max the ptr to a value to put the max detail coefficient
  */
-void Wavelet::Details(m_ptr<MemLayout> block, const_data_ptr data, m_ptr<real_t> details_max) const {
+void Wavelet::Details(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = block->start(id);
-        ctx.srcend[id]   = block->end(id);
+        ctx.srcstart[id] = 0 - nghost_front();
+        ctx.srcend[id]   = M_N + nghost_back();
+#endif
+        ctx.trgstart[id] = detail_block->start(id);
+        ctx.trgend[id]   = detail_block->end(id)+2;
+    }
+    ctx.srcstr = detail_block->stride();
+    ctx.sdata  = data;
+    ctx.trgstr = detail_block->stride();
+    ctx.tdata  = detail;
+    // we do not neeed to store
+    ctx.alpha = tol;
+
+    // m_log("tol = %e", tol);
+    // we go for the two norm over the block
+    Detail_(&ctx, details_max);
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief Smooth the values given already computed details (cfr Details() )
+ * 
+ * Remove from the current field all the negligible details
+ * 
+ * @param detail_block 
+ * @param detail 
+ * @param data 
+ * @param tol 
+ */
+void Wavelet::Smooth(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& detail, const m_ptr<const MemLayout>& block, const data_ptr& data) const {
+    //-------------------------------------------------------------------------
+    // get memory details
+    interp_ctx_t ctx;
+    for (lda_t id = 0; id < 3; id++) {
+#ifndef NDEBUG
+        ctx.srcstart[id] = detail_block->start(id);  // 0 - nghost_front();
+        ctx.srcend[id]   = detail_block->end(id)+2;    // M_N + nghost_back();
 #endif
         ctx.trgstart[id] = block->start(id);
         ctx.trgend[id]   = block->end(id);
     }
-    ctx.srcstr = block->stride();
-    ctx.sdata  = data;
-    ctx.trgstr = -1;
-    ctx.tdata  = nullptr;
+    ctx.srcstr = detail_block->stride();
+    ctx.sdata  = detail;
+    ctx.trgstr = block->stride();
+    ctx.tdata  = data;
 
     // we go for the two norm over the block
-    Detail_(&ctx, details_max);
+    Smooth_(&ctx);
     //-------------------------------------------------------------------------
 }
 
@@ -341,7 +403,7 @@ void Wavelet::Details(m_ptr<MemLayout> block, const_data_ptr data, m_ptr<real_t>
  * @param data_trg 
  * @param data_src 
  */
-void Wavelet::WriteDetails(m_ptr<const MemLayout> block, const_data_ptr data_src, data_ptr data_trg) const {
+void Wavelet::WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
@@ -358,6 +420,11 @@ void Wavelet::WriteDetails(m_ptr<const MemLayout> block, const_data_ptr data_src
     ctx.trgstr = block->stride();
     ctx.sdata  = data_src;
     ctx.tdata  = data_trg;
-    WriteDetail_(&ctx);
+    // set alpha to a huuge value
+    ctx.alpha  = std::numeric_limits<real_t>::max();
+    
+    // compute
+    real_t detail_max; // -> will be discarded
+    Detail_(&ctx,&detail_max);
     //-------------------------------------------------------------------------
 }

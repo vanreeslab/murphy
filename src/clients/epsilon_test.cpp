@@ -18,7 +18,7 @@ class InitialCondition : public SetValue {
         const real_t* xyz   = block->xyz();
         const real_t* hgrid = block->hgrid();
 
-        real_t sigma     = 0.1;
+        real_t sigma     = 0.05;
         real_t center[3] = {0.5, 0.5, 0.5};
 
         const real_t oo_sigma2 = 1.0 / (sigma * sigma);
@@ -38,8 +38,9 @@ class InitialCondition : public SetValue {
             const real_t rhoz = (pos[2] - center[2]) / sigma;
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
-            // data[m_idx(i0, i1, i2)] =  fact * std::exp(-rho);
-            data[m_idx(i0, i1, i2)] = cos(128.0 * pos[0] * M_PI) + 1.0;
+            data[m_idx(i0, i1, i2)] =  fact * std::exp(-rho);
+            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox,2))+std::exp(-pow(rhoy,2));
+            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox,2));
         };
 
         for_loop(&op, start_, end_);
@@ -50,52 +51,52 @@ class InitialCondition : public SetValue {
     InitialCondition() : SetValue(nullptr){};
 };
 
-class CompactInitialCondition : public SetValue {
-   protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
-        //-------------------------------------------------------------------------
-        real_t        pos[3];
-        const real_t* xyz   = block->xyz();
-        const real_t* hgrid = block->hgrid();
+// class CompactInitialCondition : public SetValue {
+//    protected:
+//     void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+//         //-------------------------------------------------------------------------
+//         real_t        pos[3];
+//         const real_t* xyz   = block->xyz();
+//         const real_t* hgrid = block->hgrid();
 
-        real_t R         = 0.4;
-        real_t sigma     = 0.3;
-        real_t center[3] = {0.5, 0.5, 0.5};
+//         real_t R         = 0.4;
+//         real_t sigma     = 0.3;
+//         real_t center[3] = {0.5, 0.5, 0.5};
 
-        const real_t oo_sigma2 = 1.0 / (sigma * sigma);
-        const real_t oo_R2     = 1.0 / (R * R);
-        const real_t fact      = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
+//         const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+//         const real_t oo_R2     = 1.0 / (R * R);
+//         const real_t fact      = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
 
-        // get the pointers correct
-        real_t* data = block->data(fid, 0).Write();
+//         // get the pointers correct
+//         real_t* data = block->data(fid, 0).Write();
 
-        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            // get the position
-            real_t pos[3];
-            m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+//         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//             // get the position
+//             real_t pos[3];
+//             m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
 
-            // compute the gaussian
-            const real_t rx   = (pos[0] - center[0]);
-            const real_t ry   = (pos[1] - center[1]);
-            const real_t rz   = (pos[2] - center[2]);
-            const real_t r2   = (rx * rx + ry * ry + rz * rz);
-            const real_t rho2 = r2 * oo_sigma2;
-            const real_t Rho2 = r2 * oo_R2;
+//             // compute the gaussian
+//             const real_t rx   = (pos[0] - center[0]);
+//             const real_t ry   = (pos[1] - center[1]);
+//             const real_t rz   = (pos[2] - center[2]);
+//             const real_t r2   = (rx * rx + ry * ry + rz * rz);
+//             const real_t rho2 = r2 * oo_sigma2;
+//             const real_t Rho2 = r2 * oo_R2;
 
-            if (Rho2 < 1.0) {
-                data[m_idx(i0, i1, i2)] = fact * exp(-rho2 / (1.0 - Rho2));
-            } else {
-                data[m_idx(i0, i1, i2)] = 0.0;
-            }
-        };
+//             if (Rho2 < 1.0) {
+//                 data[m_idx(i0, i1, i2)] = fact * exp(-rho2 / (1.0 - Rho2));
+//             } else {
+//                 data[m_idx(i0, i1, i2)] = 0.0;
+//             }
+//         };
 
-        for_loop(&op, start_, end_);
-        //-------------------------------------------------------------------------
-    };
+//         for_loop(&op, start_, end_);
+//         //-------------------------------------------------------------------------
+//     };
 
-   public:
-    CompactInitialCondition() : SetValue(nullptr){};
-};
+//    public:
+//     CompactInitialCondition() : SetValue(nullptr){};
+// };
 
 
 
@@ -125,6 +126,7 @@ void EpsilonTest::Run() {
         bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
+        grid.level_limit(level_min_,level_max_);
 
         Field scal("scalar", 1);
         grid.AddField(&scal);
@@ -134,11 +136,11 @@ void EpsilonTest::Run() {
         real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
 
         // ring
-        lda_t         normal      = 2;
-        real_t        sigma       = 0.025;
-        real_t        radius      = 0.25;
-        real_t        velocity[3] = {0.0, 0.0, 0.0};
-        SetScalarRing ring(normal, center, sigma, radius, velocity);
+        // lda_t         normal      = 2;
+        // real_t        sigma       = 0.025;
+        // real_t        radius      = 0.25;
+        // real_t        velocity[3] = {0.0, 0.0, 0.0};
+        // SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
         // real_t sigma     = 0.05;
@@ -153,7 +155,7 @@ void EpsilonTest::Run() {
         // SetPolynom   ring(deg, dir, shift);
 
         // custon stuffs
-        // InitialCondition ring;
+        InitialCondition ring;
         // CompactInitialCondition ring;
 
         // apply it
@@ -162,7 +164,7 @@ void EpsilonTest::Run() {
 
         grid.GhostPull(&scal);
         IOH5 dump("data");
-        //dump(&grid,&scal,0);
+        dump(&grid,&scal,0);
 
         // compute the moment at the start
         grid.GhostPull(&scal);
@@ -182,9 +184,14 @@ void EpsilonTest::Run() {
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();
-            m_log("Coarsening: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
+            m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
-        } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0,level_min_));
+            grid.GhostPull(&scal);
+            real_t coarse_moment0, coarse_moment1[3];
+            moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+            m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
+
+        } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0, level_min_));
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
 
         // measure the moments
@@ -197,7 +204,7 @@ void EpsilonTest::Run() {
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
         m_log("discrete after coarsening: %e vs %e -> error = %e", sol_dmoment0, coarse_dmoment0, abs(sol_dmoment0 - coarse_dmoment0));
 
-        //dump(&grid,&scal,1);
+        dump(&grid,&scal,1);
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();

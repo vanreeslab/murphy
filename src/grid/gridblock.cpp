@@ -89,6 +89,10 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
     for (sid_t id = 0; id < P8EST_CHILDREN; ++id) {
         dependency_[id] = nullptr;
     }
+    // allocate the coarse ptr
+    // size_t alloc_size = m_max(interp->CoarseSize(), );
+    // AllocateCoarsePtr(m_blockmemsize(1));
+    coarse_ptr_.Calloc(m_blockmemsize(1));
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -111,16 +115,16 @@ GridBlock::~GridBlock() {
     //-------------------------------------------------------------------------
 }
 
-/**
- * @brief allocate the ptr for the ghost if not already exiting
- * 
- * @param memsize the memory size (in BYTES)
- */
-void GridBlock::AllocateCoarsePtr(const size_t memsize) {
-    //-------------------------------------------------------------------------
-    coarse_ptr_.Calloc(memsize);
-    //-------------------------------------------------------------------------
-}
+// /**
+//  * @brief allocate the ptr for the ghost if not already exiting
+//  * 
+//  * @param memsize the memory size (in BYTES)
+//  */
+// void GridBlock::AllocateCoarsePtr(const size_t memsize) {
+//     //-------------------------------------------------------------------------
+//     coarse_ptr_.Calloc(memsize);
+//     //-------------------------------------------------------------------------
+// }
 
 // /**
 //  * @brief returns the (aligned!) pointer for write access that corresponds to the first point in the block, i.e. (0,0,0), for the first dimension.
@@ -302,8 +306,11 @@ void GridBlock::UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t 
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
         data_ptr data = this->data(field_citerion, ida);
-        real_t   norm = interp->Criterion(this, data);//, hgrid_[0] * hgrid_[1] * hgrid_[2]);
+        real_t norm = interp->CriterionAndSmooth(this,data,coarse_ptr_,ctol);
+        // interp->Criterion(this, data);//, hgrid_[0] * hgrid_[1] * hgrid_[2]);
 
+        m_log("max detail = %e",norm);
+        
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
         if (refine) {
@@ -420,7 +427,8 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
+                        // interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
+                        interp->Copy(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
                     }
                 }
             }
@@ -477,8 +485,11 @@ void GridBlock::PushDependency(const sid_t child_id, GridBlock* dependent_block)
  */
 void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> grid, m_ptr<const Wavelet> interp, MPI_Win local2disp_window) {
     //-------------------------------------------------------------------------
-    // allocate the ghost pointer
-    AllocateCoarsePtr(interp->CoarseSize());
+    // allocate the ghost pointer, which is reused for the wavelets smoothing
+    // size_t alloc_size = m_max(interp->CoarseSize(), m_blockmemsize(1));
+    // AllocateCoarsePtr(alloc_size);
+    // m_log("I allocate %ld doubles",alloc_size);
+    m_assert(interp->CoarseSize()<= m_blockmemsize(1),"the coars size must be smaller than a blockmemsize to fit in the coarse memory");
 
     //................................................
     p8est_t*              forest  = grid->p4est_forest();
@@ -670,7 +681,7 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
 void GridBlock::GhostFreeLists() {
     //-------------------------------------------------------------------------
     // need to free the memory as well, otherwise I cannot reallocate it later on
-    coarse_ptr_.Free();
+    // coarse_ptr_.Free();
 
     // clear the ghost lists
     auto remove_block = [](auto block) { delete (block); };
