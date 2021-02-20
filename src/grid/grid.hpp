@@ -121,12 +121,14 @@ class Grid : public ForestGrid {
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
+    void GetStatusAndSmooth(m_ptr<Field> field);
+
     void Refine(m_ptr<Field> field);
     void Coarsen(m_ptr<Field> field);
     void Adapt(m_ptr<Field> field);
     void Adapt(m_ptr<Field> field, m_ptr<SetValue> expression);
     void Adapt(m_ptr<std::list<Patch> > patches);
-    void Adapt(m_ptr<const Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
+    void Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
     void DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details);
     /**@}*/
 };

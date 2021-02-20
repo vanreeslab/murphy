@@ -128,7 +128,7 @@
     })
 
 /**
- * @brief returns the sign of a number
+ * @brief returns the sign of a number: +1 if positive, 0 if 0 and -1 if negative
  * 
  */
 #define m_sign(a)                                                \

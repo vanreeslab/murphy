@@ -81,7 +81,8 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     //-------------------------------------------------------------------------
     m_log("ghost for refinement: %d %d", interp_->nrefine_front(), interp_->nrefine_back());
     m_log("ghost for coarsening: %d %d", interp_->ncoarsen_front(), interp_->ncoarsen_back());
-    m_log("ghost for criterion: %d %d + shift: %d %d", interp_->ncriterion_front(), interp_->ncriterion_back(), interp_->shift_front(), interp_->shift_back());
+    m_log("ghost for criterion: %d %d ",interp_->ncriterion_front(), interp_->ncriterion_back());
+    m_log("criterion shift : %d %d",  interp_->criterion_shift_front(), interp_->criterion_shift_back());
     m_log("ghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
     m_end;
 }

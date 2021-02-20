@@ -47,13 +47,13 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -88,9 +88,9 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const;
+    // real_t Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const;
     real_t CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const;
-    // intermediate functions
+
     void Details(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const;
     void Smooth(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& detail, const m_ptr<const MemLayout>& block, const data_ptr& data) const;
     void WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const;
@@ -104,34 +104,107 @@ class Wavelet {
     */
     std::string Identity() const { return "interpolating wavelet " + std::to_string(N()) + "." + std::to_string(Nt()); }
 
-    virtual const short_t N() const  = 0;
-    virtual const short_t Nt() const = 0;
+    virtual const short_t N() const  = 0;  // return the interpolation order
+    virtual const short_t Nt() const = 0;  // return the moments order
+
+    const bool smoothed() const { return (Nt() != 0); };  // return if the wavelet details will smooth or not.
+
     /** @} */
 
     //................................................
     /**
-     * @name filter management and various lengths
+     * @name filter management and associated lengths
      * @{
      */
    public:
-    virtual const short_t len_ha() const = 0;
-    virtual const short_t len_sd() const = 0;
+    virtual const short_t len_ha() const = 0;  //!< length of filter Ha
+    virtual const short_t len_ga() const = 0;  //!< length of filter Ga
+    virtual const short_t len_js() const = 0;  //!< length of filter Js
+    virtual const short_t len_ks() const = 0;  //!< length of filter Ks
 
-    // shift for the details
-    const lid_t shift_front() const { return m_max(Nt() - 1, 0); };  //!< return the num of detail to take into account outside the block, in front
-    const lid_t shift_back() const { return m_max(Nt() - 2, 0); };   //!< return the num of detail to take into account outside the block, in the back
+    /**
+     * @brief id of the first detail that has to be 0 to guarantee a safe coarsening, in front of the block
+     * 
+     * a safe coarsening = every fine information can be reconstructed exactly assuming no detail contribution, i.e. we can do the IDWT with scalings only
+     * 
+     * @warning this number is NOT the filter length if we do not have lifting
+     */
+    const bidx_t criterion_shift_front() const {
+        const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
+        const bidx_t n_scal = n_js - (1 - n_js % 2);  // remove the last point if it's a scaling
+        const bidx_t n_det  = n_ks - (n_ks % 2);      // remove the last point if it's a scaling
+        return m_sign(Nt()) * m_max(n_scal, n_det - 1);
+    };
 
-    // nghosts
-    const lid_t ncoarsen_front() const { return m_max(len_ha() / 2, 0); };                         //!< returns the number of gp needed for the coarsening operation, in front
-    const lid_t ncoarsen_back() const { return m_max(len_ha() / 2 - 1, 0); };                      //!< returns the number of gp needed for the coarsening operation, in the back
-    const lid_t nrefine_front() const { return m_max(len_sd() / 2 - 1, 0); };                      //!< returns the number of gp needed for the refinement operation, in front
-    const lid_t nrefine_back() const { return m_max(len_sd() / 2, 0); };                           //!< returns the number of gp needed for the refinement operation, in the back
-    const lid_t ncriterion_front() const { return m_max(m_max(Nt() - 1, -1) + len_sd() - 1, 0); }  //!< returns the number of gp needed for the detail operation, in front
-    const lid_t ncriterion_back() const { return m_max(m_max(Nt() - 2, 0) + len_sd() - 1, 0); }    //!< returns the number of gp needed for the detail operation, in the back
+    /**
+     * @brief id of the last detail that has to be 0 to guarantee a safe coarsening, at the back of the block
+     * 
+     * a safe coarsening = every fine information can be reconstructed exactly assuming no detail contribution
+     * 
+     * @warning this number is NOT the filter length if we do not have lifting
+     */
+    const bidx_t criterion_shift_back() const {
+        const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
+        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
+        const bidx_t n_det  = n_ks - (n_ks % 2);      // remove the last point if it's a scaling
+        return m_sign(Nt()) * m_max(n_scal - 1, n_det);
+    };
+
+    /**
+     * @brief returns the number of gp needed for the coarsening operation = get the scaling, in front
+     */
+    const lid_t ncoarsen_front() const { return m_max(len_ha() / 2, 0); };
+    /**
+     * @brief returns the number of gp needed for the coarsening operation = get the scaling, in the back
+     */
+    const lid_t ncoarsen_back() const { return m_max(len_ha() / 2 - 1, 0); };
+    /**
+     * @brief returns the number of gp needed for the refinement operation assuming detail = 0, in front
+     */
+    const lid_t nrefine_front() const {
+        const bidx_t n_js = len_js() / 2;
+        const bidx_t n_ks = len_ks() / 2;
+        const bidx_t n_scal = n_js - (n_js%2);// remove the last point if it's a detail
+        const bidx_t n_det = n_ks - (1-n_ks%2); // remove the last point if it's a detail
+        return m_max(n_scal,n_det-1);
+    };
+    /**
+     * @brief returns the number of gp needed for the refinement operation assuming detail = 0, in the back
+     */
+    const lid_t nrefine_back() const {
+        const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
+        const bidx_t n_scal = n_js - (n_js % 2);      // remove the last point if it's a detail
+        const bidx_t n_det  = n_ks - (1 - n_ks % 2);  // remove the last point if it's a detail
+        return m_max(n_scal - 1, n_det);
+    };
+
+    /**
+     * @brief returns the number of gp needed to compute the criterion + smoothing, in front
+     */
+    const lid_t ncriterion_front() const {
+        // I need to compute the value of the last detail coefficient required to have a safe coarsening, 0 if we don't lift:
+        const bidx_t criterion_extern = m_sign(Nt()) * (criterion_shift_front() + len_ga() / 2);
+        // I also need to compute the detail for my current block
+        const bidx_t criterion_block = m_max(len_ga() / 2 - 1, 0);
+        return m_max(criterion_extern, criterion_block);
+    };
+    /**
+     * @brief returns the number of gp needed to compute the criterion + smoothing, in the back
+     */
+    const lid_t ncriterion_back() const {
+        // I need to compute the value of the last detail coefficient required to have a safe coarsening, 0 if we don't lift:
+        const bidx_t criterion_extern = m_sign(Nt()) * (criterion_shift_back() + len_ga() / 2);
+        // I also need to compute the detail for my current block
+        const bidx_t criterion_block = m_max(len_ga() / 2, 0);
+        return m_max(criterion_extern, criterion_block);
+    };
 
     // nghosts
     const lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
-    const lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())) + 2; }
+    const lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())); }
 
     /** @} */
 

@@ -278,7 +278,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
 /**
  * @brief return the biggest detail coefficient (infinite norm) as a refinement/coarsening criterion
  * 
- * The max detail is computed on an extension of the memory layout ( by shift_front and shift_back).
+ * The max detail is computed on an extension of the memory layout ( by criterion_shift_front and criterion_shift_back).
  * The reason for that comes from the coarsening of a block and that the scaling values are the function values
  * only if the contributing details are zero.
  *
@@ -287,24 +287,24 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
  * @param smooth 
  * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
-real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const {
-    //-------------------------------------------------------------------------
-    // get the extended memory layout
-    lid_t start[3];
-    lid_t end[3];
-    for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - shift_front();
-        end[id]   = block->end(id) + shift_back();
-    }
-    SubBlock extended_block(block->gs(), block->stride(), start, end);
+// real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const {
+//     //-------------------------------------------------------------------------
+//     // get the extended memory layout
+//     lid_t start[3];
+//     lid_t end[3];
+//     for (lda_t id = 0; id < 3; id++) {
+//         start[id] = block->start(id) - criterion_shift_front();
+//         end[id]   = block->end(id) + criterion_shift_back();
+//     }
+//     SubBlock extended_block(block->gs(), block->stride(), start, end);
 
-    // get the detail coefficients
-    real_t details_max = 0.0;
-    Details(&extended_block, data, nullptr, 0.0, &details_max);
+//     // get the detail coefficients
+//     real_t details_max = 0.0;
+//     Details(&extended_block, data, nullptr, 0.0, &details_max);
 
-    return details_max;
-    //-------------------------------------------------------------------------
-}
+//     return details_max;
+//     //-------------------------------------------------------------------------
+// }
 
 real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
     //-------------------------------------------------------------------------
@@ -312,8 +312,8 @@ real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const da
     lid_t start[3];
     lid_t end[3];
     for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - shift_front();
-        end[id]   = block->end(id) + shift_back();
+        start[id] = block->start(id) - criterion_shift_front();
+        end[id]   = block->end(id) + criterion_shift_back();
     }
     const SubBlock detail_block(block->gs(), block->stride(), start, end);
 
@@ -324,7 +324,7 @@ real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const da
     // get the detail coefficients
     real_t details_max = 0.0;
     Details(&detail_block, data, detail_data, tol, &details_max);
-
+    
     // smooth them
     Smooth(&detail_block,detail_data,block,data);
 
@@ -349,7 +349,7 @@ void Wavelet::Details(const m_ptr<const MemLayout>& detail_block, const const_da
         ctx.srcend[id]   = M_N + nghost_back();
 #endif
         ctx.trgstart[id] = detail_block->start(id);
-        ctx.trgend[id]   = detail_block->end(id)+2;
+        ctx.trgend[id]   = detail_block->end(id);
     }
     ctx.srcstr = detail_block->stride();
     ctx.sdata  = data;
@@ -381,7 +381,7 @@ void Wavelet::Smooth(const m_ptr<const MemLayout>& detail_block, const const_dat
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
         ctx.srcstart[id] = detail_block->start(id);  // 0 - nghost_front();
-        ctx.srcend[id]   = detail_block->end(id)+2;    // M_N + nghost_back();
+        ctx.srcend[id]   = detail_block->end(id);    // M_N + nghost_back();
 #endif
         ctx.trgstart[id] = block->start(id);
         ctx.trgend[id]   = block->end(id);

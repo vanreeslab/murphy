@@ -110,7 +110,7 @@ void Grid::level_limit(const level_t min, const level_t max) {
     //-------------------------------------------------------------------------
     level_limit_min_ = min;
     level_limit_max_ = max;
-    m_log("limit leves are now %d to %d ", min, max);
+    m_verb("limit leves are now %d to %d ", min, max);
     //-------------------------------------------------------------------------
 };
 
@@ -343,14 +343,32 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
 }
 
 /**
+ * @brief Get the refinement status of the block and smooth if needed
+ * 
+ * If a smoothing is done, the ghost values are updated as well.
+ * 
+ * @param field 
+ */
+void Grid::GetStatusAndSmooth(m_ptr<Field> field) {
+    m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
+    //-------------------------------------------------------------------------
+    m_log("computing the detail + smoothing on field <%s>", field->name().c_str());
+    // reset the status
+    DoOpTree(nullptr, &GridBlock::ResetStatus, this);
+    // compute the max detail on the block + smooth the field everywhere (if needed)
+    DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, interp_, rtol_, ctol_, field, prof_);
+    // if smoothing was needed, update the ghost values, if not, nothing has changed.
+    field->ghost_status(!interp_->smoothed());
+    m_log("setting field to %d after smoothing",field->ghost_status());
+    // update the ghosts as we did a smoothing
+    GhostPull(field);
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief Refine the grid by delta_level locally
  * 
  * @param delta_level the number of level every block will be refined
- */
-/**
- * @brief coarsen one field if the criterion matches
- * 
- * @param field the field to coarsen 
  */
 void Grid::Refine(m_ptr<Field> field) {
     m_begin;
@@ -491,7 +509,7 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
  * @param interp 
  * @param interp_ptr 
  */
-void Grid::Adapt(m_ptr<const Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr) {
+void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr) {
     m_begin;
     m_assert(interp != nullptr, "the interpolation function cannot be a nullptr");
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
@@ -510,8 +528,6 @@ void Grid::Adapt(m_ptr<const Field> field, cback_coarsen_citerion_t coarsen_crit
     // log
     m_log("--> grid adaptation started... (recursive = %d)", recursive_adapt());
     //................................................
-    // delete the soon-to be outdated ghost and mesh
-    DestroyGhost();
 
     // store the ptrs and the grid
     cback_criterion_ptr_        = criterion_ptr;
@@ -532,28 +548,33 @@ void Grid::Adapt(m_ptr<const Field> field, cback_coarsen_citerion_t coarsen_crit
         n_quad_to_adapt_       = 0;
         global_n_quad_to_adapt = 0;
 
-        // if we consider a field, reset the status and comptue the criterion for each block
+        // if we consider a field, get the status and smooth the field
         if (!field.IsEmpty()) {
-            m_log("computing the criterion on field <%s>", field->name().c_str());
-            const Wavelet* wavelet_interp = interp_;
-            DoOpTree(nullptr, &GridBlock::ResetStatus, this);
-            DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, wavelet_interp, rtol_, ctol_, field, prof_);
+            GetStatusAndSmooth(field);
         }
-
-        // refinement -> only one level
-        if (refine_crit != nullptr) {
-            m_profStart(prof_, "p4est refine");
-            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
-            m_profStop(prof_, "p4est refine");
+        // at this point, the ghosting mesh is not needed anymore
+        if (iteration == 0) {
+            // delete the soon-to be outdated ghost and mesh
+            DestroyGhost();
         }
 
         // coarsening -> only one level
+        // The limit in levels are handled directly on the block, not in p4est
         if (coarsen_crit != nullptr) {
             m_profStart(prof_, "p4est coarsen");
             p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_crit, nullptr, interp);
             m_profStop(prof_, "p4est coarsen");
         }
 
+        // refinement -> only one level
+        // The limit in levels are handled directly on the block, not in p4est
+        if (refine_crit != nullptr) {
+            m_profStart(prof_, "p4est refine");
+            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
+            m_profStop(prof_, "p4est refine");
+        }
+
+        
         // if we are recursive, we need to update the rank partitioning and check for new block to change
         if (recursive_adapt()) {
             // if we balance the grid, it enters a endless circle as the coarsening and refinement corrects the balanced parition

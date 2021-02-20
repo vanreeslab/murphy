@@ -38,9 +38,9 @@ class InitialCondition : public SetValue {
             const real_t rhoz = (pos[2] - center[2]) / sigma;
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
-            data[m_idx(i0, i1, i2)] =  fact * std::exp(-rho);
-            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox,2))+std::exp(-pow(rhoy,2));
-            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox,2));
+            // data[m_idx(i0, i1, i2)] =  fact * std::exp(-rho);
+            data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox,2))+std::exp(-pow(rhoy,2));
+            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox, 2));
         };
 
         for_loop(&op, start_, end_);
@@ -98,8 +98,6 @@ class InitialCondition : public SetValue {
 //     CompactInitialCondition() : SetValue(nullptr){};
 // };
 
-
-
 void EpsilonTest::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
     // call the general testcase parameters
@@ -122,11 +120,11 @@ void EpsilonTest::Run() {
     real_t epsilon  = eps_start_;  //epsilon_start_;
     while (epsilon >= std::pow(2.0, -26)) {
         // create a grid, put a ring on it on the fixel level
-        // bool period[3] = {false, false, false};
-        bool  period[3]   = {true, true, true};
+        bool period[3] = {false, false, false};
+        // bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
-        grid.level_limit(level_min_,level_max_);
+        grid.level_limit(level_min_, level_max_);
 
         Field scal("scalar", 1);
         grid.AddField(&scal);
@@ -138,7 +136,7 @@ void EpsilonTest::Run() {
         // ring
         // lda_t         normal      = 2;
         // real_t        sigma       = 0.025;
-        // real_t        radius      = 0.25;
+        // real_t        radius      = 0.05;
         // real_t        velocity[3] = {0.0, 0.0, 0.0};
         // SetScalarRing ring(normal, center, sigma, radius, velocity);
 
@@ -164,16 +162,16 @@ void EpsilonTest::Run() {
 
         grid.GhostPull(&scal);
         IOH5 dump("data");
-        dump(&grid,&scal,0);
+        // dump(&grid, &scal, 0);
 
         // compute the moment at the start
         grid.GhostPull(&scal);
         BMoment moment;
         real_t  sol_moment0, sol_moment1[3];
         moment(&grid, &scal, &sol_moment0, sol_moment1);
-        BDiscreteMoment dmoment;
-        real_t          sol_dmoment0, sol_dmoment1[3];
-        dmoment(&grid, &scal, &sol_dmoment0, sol_dmoment1);
+        // BDiscreteMoment dmoment;
+        // real_t          sol_dmoment0, sol_dmoment1[3];
+        // dmoment(&grid, &scal, &sol_dmoment0, sol_dmoment1);
 
         // coarsen
         level_t min_level = level_start_;
@@ -191,6 +189,12 @@ void EpsilonTest::Run() {
             moment(&grid, &scal, &coarse_moment0, coarse_moment1);
             m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
 
+            // grid.Coarsen(&scal);
+            // grid.GhostPull(&scal);
+            // // real_t coarse_moment0, coarse_moment1[3];
+            // moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+            // m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
+
         } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0, level_min_));
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
 
@@ -198,13 +202,12 @@ void EpsilonTest::Run() {
         grid.GhostPull(&scal);
         real_t coarse_moment0, coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
-        real_t coarse_dmoment0, coarse_dmoment1[3];
-        dmoment(&grid, &scal, &coarse_dmoment0, coarse_dmoment1);
+        // real_t coarse_dmoment0, coarse_dmoment1[3];
+        // dmoment(&grid, &scal, &coarse_dmoment0, coarse_dmoment1);
 
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
-        m_log("discrete after coarsening: %e vs %e -> error = %e", sol_dmoment0, coarse_dmoment0, abs(sol_dmoment0 - coarse_dmoment0));
 
-        dump(&grid,&scal,1);
+        // dump(&grid,&scal,1);
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();
@@ -224,7 +227,7 @@ void EpsilonTest::Run() {
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();
-            m_log("Refinement: level is now %d to %d", tmp_min_lvl,tmp_max_lvl);
+            m_log("Refinement: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
         } while (grid.MinLevel() < level_start_);
 
@@ -253,9 +256,9 @@ void EpsilonTest::Run() {
         real_t moment0, moment1[3];
         moment(&grid, &scal, &moment0, moment1);
         real_t dmoment0, dmoment1[3];
-        dmoment(&grid, &scal, &dmoment0, dmoment1);
+        // dmoment(&grid, &scal, &dmoment0, dmoment1);
         m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_moment0, moment0, abs(sol_moment0 - moment0));
-        m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_dmoment0, dmoment0, abs(sol_dmoment0 - dmoment0));
+        // m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_dmoment0, dmoment0, abs(sol_dmoment0 - dmoment0));
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));
         // m_log("moment 1x: from %e to %e: error %e", sol_moment1[0], moment1[0], fabs(sol_moment1[0] - moment1[0]));
@@ -287,16 +290,16 @@ void EpsilonTest::Run() {
                     std::fabs(moment1[0] - sol_moment1[0]),
                     std::fabs(moment1[1] - sol_moment1[1]),
                     std::fabs(moment1[2] - sol_moment1[2]));
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
-                    std::fabs(coarse_dmoment0 - sol_dmoment0),
-                    std::fabs(coarse_dmoment1[0] - sol_dmoment1[0]),
-                    std::fabs(coarse_dmoment1[1] - sol_dmoment1[1]),
-                    std::fabs(coarse_dmoment1[2] - sol_dmoment1[2]));
-            fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
-                    std::fabs(dmoment0 - sol_dmoment0),
-                    std::fabs(dmoment1[0] - sol_dmoment1[0]),
-                    std::fabs(dmoment1[1] - sol_dmoment1[1]),
-                    std::fabs(dmoment1[2] - sol_dmoment1[2]));
+            // fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
+            //         std::fabs(coarse_dmoment0 - sol_dmoment0),
+            //         std::fabs(coarse_dmoment1[0] - sol_dmoment1[0]),
+            //         std::fabs(coarse_dmoment1[1] - sol_dmoment1[1]),
+            //         std::fabs(coarse_dmoment1[2] - sol_dmoment1[2]));
+            // fprintf(file, ";%16.16e;%16.16e;%16.16e;%16.16e",
+            //         std::fabs(dmoment0 - sol_dmoment0),
+            //         std::fabs(dmoment1[0] - sol_dmoment1[0]),
+            //         std::fabs(dmoment1[1] - sol_dmoment1[1]),
+            //         std::fabs(dmoment1[2] - sol_dmoment1[2]));
             fprintf(file, "\n");
             fclose(file);
         }

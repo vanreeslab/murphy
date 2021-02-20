@@ -306,11 +306,8 @@ void GridBlock::UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t 
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
         data_ptr data = this->data(field_citerion, ida);
-        real_t norm = interp->CriterionAndSmooth(this,data,coarse_ptr_,ctol);
+        real_t   norm = interp->CriterionAndSmooth(this, data, coarse_ptr_, ctol);
         // interp->Criterion(this, data);//, hgrid_[0] * hgrid_[1] * hgrid_[2]);
-
-        m_log("max detail = %e",norm);
-        
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
         if (refine) {
@@ -427,8 +424,7 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
-                        // interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
-                        interp->Copy(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
+                        interp->Interpolate(1, shift, &mem_src, child_block->data(current_field, ida), &mem_trg, this->data(current_field, ida));
                     }
                 }
             }
@@ -805,7 +801,7 @@ void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<c
 
 void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
-    // get the sibligngs
+    // get the siblings
     {
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
         const data_ptr data_trg = data(field, ida);
@@ -828,7 +824,6 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
         //     interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
         // }
     }
-
     //................................................
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
@@ -1012,7 +1007,7 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             // the source block is the ghost extended block
             const lid_t    shift[3] = {0, 0, 0};
             const SubBlock me_extended(M_GS, M_STRIDE, -interp->nghost_front(), M_N + interp->nghost_back());
-            // interp()olate, the level is 1 coarser and the shift is unchanged
+            // interpolate, the level is 1 coarser and the shift is unchanged
             interp->Interpolate(1, shift, &me_extended, data(field, ida), &coarse_block, data_coarse);
 
             //................................................
