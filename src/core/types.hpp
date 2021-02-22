@@ -1,6 +1,8 @@
 #ifndef SRC_CORE_TYPES_HPP_
 #define SRC_CORE_TYPES_HPP_
 
+#include <p8est.h>
+
 //-------------------------------------------------------------------------
 /**
  * @name typename for standard variables
