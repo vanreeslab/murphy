@@ -66,9 +66,9 @@ class MemLayout {
 inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx_t stride, const bidx_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
-    m_assert(start[0] < end[0], "the end = %d is smaller than the start = %d", end[0], start[0]);
-    m_assert(start[1] < end[1], "the end = %d is smaller than the start = %d", end[1], start[1]);
-    m_assert(start[2] < end[2], "the end = %d is smaller than the start = %d", end[2], start[2]);
+    m_assert(start[0] <= end[0], "the end = %d is smaller than the start = %d", end[0], start[0]);
+    m_assert(start[1] <= end[1], "the end = %d is smaller than the start = %d", end[1], start[1]);
+    m_assert(start[2] <= end[2], "the end = %d is smaller than the start = %d", end[2], start[2]);
     //-------------------------------------------------------------------------
     // get how much is one real
     MPI_Aint stride_x, trash_lb;

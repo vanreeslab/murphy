@@ -47,7 +47,7 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 2
+#define M_WAVELET_N 4
 #else
 #define M_WAVELET_N WAVELET_N
 #endif

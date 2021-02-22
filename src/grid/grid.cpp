@@ -358,10 +358,10 @@ void Grid::GetStatusAndSmooth(m_ptr<Field> field) {
     // compute the max detail on the block + smooth the field everywhere (if needed)
     DoOpTree(nullptr, &GridBlock::UpdateStatusCriterion, this, interp_, rtol_, ctol_, field, prof_);
     // if smoothing was needed, update the ghost values, if not, nothing has changed.
-    field->ghost_status(!interp_->smoothed());
-    m_log("setting field to %d after smoothing",field->ghost_status());
+    // field->ghost_status(!interp_->smoothed());
+    // m_log("setting field to %d after smoothing",field->ghost_status());
     // update the ghosts as we did a smoothing
-    GhostPull(field);
+    // GhostPull(field);
     //-------------------------------------------------------------------------
 }
 
