@@ -22,7 +22,7 @@ class InitialCondition : public SetValue {
         real_t center[3] = {0.5, 0.5, 0.5};
 
         const real_t oo_sigma2 = 1.0 / (sigma * sigma);
-        const real_t fact      = 1.0;  /// sqrt(M_PI * sigma_ * sigma_); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
+        const real_t fact      = 1.0/ sqrt(M_PI * sigma * sigma); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
 
         // get the pointers correct
         real_t* data = block->data(fid, 0).Write();
@@ -38,9 +38,12 @@ class InitialCondition : public SetValue {
             const real_t rhoz = (pos[2] - center[2]) / sigma;
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
-            // data[m_idx(i0, i1, i2)] =  fact * std::exp(-rho);
-            data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox,2))+std::exp(-pow(rhoy,2));
-            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox, 2));
+            // data[m_idx(i0, i1, i2)] =   fact * std::exp(-rho);
+            data[m_idx(i0, i1, i2)] = fact * std::exp(-pow(rhox,2) -pow(rhoy,2) );//-pow(rhoz,2));
+
+            // const real_t rhox_1     = (pos[1] - center[1] - 0.25) / sigma;
+            // const real_t rhox_2     = (pos[1] - center[1] + 0.25) / sigma;
+            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox_1, 2)) + std::exp(-pow(rhox_2, 2));
         };
 
         for_loop(&op, start_, end_);
@@ -120,8 +123,8 @@ void EpsilonTest::Run() {
     real_t epsilon  = eps_start_;  //epsilon_start_;
     while (epsilon >= std::pow(2.0, -26)) {
         // create a grid, put a ring on it on the fixel level
-        bool period[3] = {false, false, false};
-        // bool  period[3]   = {true, true, true};
+        // bool period[3] = {false, false, false};
+        bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
@@ -134,11 +137,11 @@ void EpsilonTest::Run() {
         real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
 
         // ring
-        // lda_t         normal      = 2;
-        // real_t        sigma       = 0.025;
-        // real_t        radius      = 0.05;
-        // real_t        velocity[3] = {0.0, 0.0, 0.0};
-        // SetScalarRing ring(normal, center, sigma, radius, velocity);
+        lda_t         normal      = 2;
+        real_t        sigma       = 0.05;
+        real_t        radius      = 0.25;
+        real_t        velocity[3] = {0.0, 0.0, 0.0};
+        SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
         // real_t sigma     = 0.05;
@@ -153,7 +156,7 @@ void EpsilonTest::Run() {
         // SetPolynom   ring(deg, dir, shift);
 
         // custon stuffs
-        InitialCondition ring;
+        // InitialCondition ring;
         // CompactInitialCondition ring;
 
         // apply it
@@ -174,6 +177,7 @@ void EpsilonTest::Run() {
         // dmoment(&grid, &scal, &sol_dmoment0, sol_dmoment1);
 
         // coarsen
+        short_t count = 1;
         level_t min_level = level_start_;
         do {
             min_level = grid.MinLevel();
@@ -189,11 +193,51 @@ void EpsilonTest::Run() {
             moment(&grid, &scal, &coarse_moment0, coarse_moment1);
             m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
 
+
+            // {
+            //     // set the solution field
+            //     Field sol("solution", 1);
+            //     grid.AddField(&sol);
+            //     ring(&grid, &sol);
+            //     sol.bctype(M_BC_EXTRAP);
+
+            //     grid.GhostPull(&sol);
+            //     grid.GhostPull(&scal);
+
+            //     // measure the error
+            //     real_t          normi;
+            //     ErrorCalculator error;
+            //     error.Normi(&grid, &scal, &sol, &normi);
+            //     m_log("epsilon = %e, error = %.12e", epsilon, normi);
+
+            //     grid.DeleteField(&sol);
+            // }
+
+            // dump(&grid,&scal,count);
+            // count++;
+
             // grid.Coarsen(&scal);
             // grid.GhostPull(&scal);
             // // real_t coarse_moment0, coarse_moment1[3];
             // moment(&grid, &scal, &coarse_moment0, coarse_moment1);
             // m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
+
+            // dump(&grid,&scal,count);
+
+            // set the solution field
+            // Field sol("solution", 1);
+            // grid.AddField(&sol);
+            // ring(&grid, &sol);
+            // sol.bctype(M_BC_EXTRAP);
+
+            // grid.GhostPull(&sol);
+            // grid.GhostPull(&scal);
+
+            // // measure the error
+            // real_t          normi;
+            // ErrorCalculator error;
+            // error.Normi(&grid, &scal, &sol, &normi);
+            // m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
         } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0, level_min_));
         // } while (grid.MinLevel() < min_level && grid.MinLevel() > (level_start_ - 2));
@@ -220,6 +264,27 @@ void EpsilonTest::Run() {
         real_t           length[3] = {(real_t)grid_len[0], (real_t)grid_len[1], (real_t)grid_len[2]};
         patch.push_back(Patch(origin, length, level_start_));
         do {
+
+            // {
+            //     // set the solution field
+            //     Field sol("solution", 1);
+            //     grid.AddField(&sol);
+            //     ring(&grid, &sol);
+            //     sol.bctype(M_BC_EXTRAP);
+
+            //     grid.GhostPull(&sol);
+            //     grid.GhostPull(&scal);
+
+            //     // measure the error
+            //     real_t          normi;
+            //     ErrorCalculator error;
+            //     error.Normi(&grid, &scal, &sol, &normi);
+            //     m_log("epsilon = %e, error = %.12e", epsilon, normi);
+
+            //     grid.DeleteField(&sol);
+            // }
+
+
             min_level = grid.MinLevel();
             // force the field refinement using a patch
             grid.GhostPull(&scal);
@@ -257,7 +322,7 @@ void EpsilonTest::Run() {
         moment(&grid, &scal, &moment0, moment1);
         real_t dmoment0, dmoment1[3];
         // dmoment(&grid, &scal, &dmoment0, dmoment1);
-        m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_moment0, moment0, abs(sol_moment0 - moment0));
+        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment0, moment0, abs(sol_moment0 - moment0));
         // m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_dmoment0, dmoment0, abs(sol_dmoment0 - dmoment0));
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));
@@ -273,7 +338,7 @@ void EpsilonTest::Run() {
         // m_log("discrete moment 1y: from %e to %e: error %e", sol_dmoment1[1], coarse_dmoment1[1], fabs(sol_dmoment1[1] - coarse_dmoment1[1]));
         // m_log("discrete moment 1z: from %e to %e: error %e", sol_dmoment1[2], coarse_dmoment1[2], fabs(sol_dmoment1[2] - coarse_dmoment1[2]));
 
-        m_log("epsilon = %e, error = %e", epsilon, normi);
+        m_log("epsilon = %e, error = %.12e", epsilon, normi);
         rank_t rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) {

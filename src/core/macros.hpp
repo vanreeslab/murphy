@@ -10,6 +10,8 @@
 
 #include "hdf5.h"
 
+#include "core/types.hpp"
+
 /**
  * @name user changeable parameters 
  * @{
@@ -30,6 +32,16 @@
  */
 #define M_HN (M_N / 2)  //!< half size of a block
 #define M_STRIDE (2 * M_GS + M_N)
+
+// #ifndef BLOCK_GS
+// static constexpr bidx_t m_gs = 4;
+// #else
+// static constexpr bidx_t m_gs = BLOCK_GS;
+// #endif
+
+// static constexpr bidx_t m_stride_reg = (2 * m_gs + M_N);
+// static constexpr bidx_t m_stride_ext = ((m_stride_reg * sizeof(real_t)) % M_ALIGNMENT == 0) ? 
+// static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
 /** @} */
 
 /**

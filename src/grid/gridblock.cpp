@@ -275,6 +275,32 @@ void GridBlock::DeleteField(m_ptr<const Field> fid) {
     //-------------------------------------------------------------------------
 }
 
+void GridBlock::UpdateSmoothingMask(const m_ptr<const Wavelet>& interp) {
+    // //-------------------------------------------------------------------------
+    // real_t* data = coarse_ptr_(0, this).Write();
+
+    // // define usefull opeations
+    // auto set_one = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //     data[m_idx(i0, i1, i2, 0, stride())] = 1.0;
+    // };
+    // auto set_zero = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //     data[m_idx(i0, i1, i2, 0, stride())] = 0.0;
+    // };
+
+    // // start by setting 1.0 to everybody
+    // bidx_t start[3] = {-interp->nghost_front(), -interp->nghost_front(), -interp->nghost_front()};
+    // bidx_t end[3]   = {M_N + interp->nghost_front(), M_N + interp->nghost_front(), M_N + interp->nghost_front()};
+    // for_loop(&set_one, start, end);
+
+    // // zero the mask for neighbors
+    // auto zero_mask = [=, &data](auto block) -> void {
+        
+    // };
+    // std::for_each(local_children_.begin(),local_children_.end(),zero_mask);
+
+    // //-------------------------------------------------------------------------
+}
+
 /**
  * @brief compute the criterion and update GridBlock::status_lvl_ if we need to refine/coarsen
  * 
@@ -300,14 +326,19 @@ void GridBlock::UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t 
     //-------------------------------------------------------------------------
     m_profStart(profiler(), "criterion detail");
 
+    // need to compute the mask, i.e. the place where smoothing cannot happen
+    // m_profStart(profiler(),"update mask");
+    // UpdateSmoothingMask(interp);
+    // m_profStop(profiler(),"update mask");
+
     // I need to visit every dimension and determine if we have to refine and/or coarsen.
     // afterthat we choose given the conservative approach
     bool coarsen = true;
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
-        data_ptr data = this->data(field_citerion, ida);
-        real_t   norm = interp->CriterionAndSmooth(this, data, coarse_ptr_, ctol);
-        // interp->Criterion(this, data);//, hgrid_[0] * hgrid_[1] * hgrid_[2]);
+        data_ptr     data = this->data(field_citerion, ida);
+        const real_t norm = interp->Criterion(this, data);  //, hgrid_[0] * hgrid_[1] * hgrid_[2]);;
+        
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
         if (refine) {

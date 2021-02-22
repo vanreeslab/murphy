@@ -289,6 +289,8 @@ class InterpolatingWavelet : public Wavelet {
 
         constexpr short_t   ks_lim = len_ks_<TN, TNT> / 2;
         const real_t* const ks     = ks_<TN, TNT> + ks_lim;
+        constexpr short_t   js_lim = len_js_<TN, TNT> / 2;
+        const real_t* const js     = js_<TN, TNT> + js_lim;
 
         // get the pointers
         real_t* const       tdata = ctx->tdata.Write();
@@ -305,9 +307,9 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
 
             //get the start adress of the source, we need to shift by one backward if we are odd (see the filter loop)
-            const lid_t   i0_s   = (i0 - odd_x) / 2;
-            const lid_t   i1_s   = (i1 - odd_y) / 2;
-            const lid_t   i2_s   = (i2 - odd_z) / 2;
+            const lid_t i0_s = (i0 - odd_x) / 2;
+            const lid_t i1_s = (i1 - odd_y) / 2;
+            const lid_t i2_s = (i2 - odd_z) / 2;
             m_assert((i0_s * 2) <= i0, "if not, we made something wrong...: source = %d, target = %d", i0_s, i0);
             m_assert((i1_s * 2) <= i1, "if not, we made something wrong...: source = %d, target = %d", i1_s, i1);
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
@@ -315,19 +317,21 @@ class InterpolatingWavelet : public Wavelet {
             const real_t* const lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
 
             // get the filter, depending on if I am odd or even
-            const real_t* const ks_x = (odd_x) ? (ks) : (&one);
-            const real_t* const ks_y = (odd_y) ? (ks) : (&one);
-            const real_t* const ks_z = (odd_z) ? (ks) : (&one);
+            const real_t* const ks_x = (odd_x) ? (ks) : (js);
+            const real_t* const ks_y = (odd_y) ? (ks) : (js);
+            const real_t* const ks_z = (odd_z) ? (ks) : (js);
 
-            // we start at the last scaling = the last even odd number
+            // we start at the last scaling:
+            //  - if we are odd = the last odd number
+            //  - if we are even = the last even number
             const bidx_t lim[3] = {
-                (odd_x) ? (ks_lim - (1 - ks_lim % 2)) : 0,
-                (odd_y) ? (ks_lim - (1 - ks_lim % 2)) : 0,
-                (odd_z) ? (ks_lim - (1 - ks_lim % 2)) : 0};
+                (odd_x) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
+                (odd_y) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
+                (odd_z) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2))};
 
-            m_assert(((i0 / 2 - lim[0]) >= ctx->srcstart[0]) && ((i0 / 2 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 / 2 - lim[0]), ctx->srcstart[0], (i0 / 2 + lim[0]), ctx->srcend[0]);
-            m_assert(((i1 / 2 - lim[1]) >= ctx->srcstart[1]) && ((i1 / 2 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 / 2 - lim[1]), ctx->srcstart[1], (i1 / 2 + lim[1]), ctx->srcend[1]);
-            m_assert(((i2 / 2 - lim[2]) >= ctx->srcstart[2]) && ((i2 / 2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 / 2 - lim[2]), ctx->srcstart[2], (i2 / 2 + lim[2]), ctx->srcend[2]);
+            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->srcstart[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 / 2 - lim[0]), ctx->srcstart[0], (i0 / 2 + lim[0]), ctx->srcend[0]);
+            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->srcstart[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 / 2 - lim[1]), ctx->srcstart[1], (i1 / 2 + lim[1]), ctx->srcend[1]);
+            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx->srcstart[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 / 2 - lim[2]), ctx->srcstart[2], (i2 / 2 + lim[2]), ctx->srcend[2]);
 
             // if we are a detail, we never pass by the index 0 as we start from an odd number
             // the source is taken as (i+1)/2 so that when i=-1, we access the position 0 and when i=1, we access the position 1
@@ -399,9 +403,9 @@ class InterpolatingWavelet : public Wavelet {
             const real_t* const f_y = (odd_y == 1) ? (ga) : (ha);
             const real_t* const f_z = (odd_z == 1) ? (ga) : (ha);
 
-            // get the limits, if we are a scaling coefficent, we don't care about it's value -> bypass the loop
-            const bool   is_scaling   = (!odd_x) && (!odd_y) && (!odd_z);
-            const bidx_t lim[3]       = {
+            // get the limits, if we are a scaling coefficent, we don't care as we know it's 0.0 -> bypass the loop
+            const bool   is_scaling = (!odd_x) && (!odd_y) && (!odd_z);
+            const bidx_t lim[3]     = {
                 (is_scaling) ? (-1) : ((odd_x) ? (ga_lim) : (ha_lim)),
                 (is_scaling) ? (-1) : ((odd_y) ? (ga_lim) : (ha_lim)),
                 (is_scaling) ? (-1) : ((odd_z) ? (ga_lim) : (ha_lim))};
@@ -430,7 +434,6 @@ class InterpolatingWavelet : public Wavelet {
             const real_t value    = detail * (fabs(detail) < ctx->alpha);
             const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->trgstr);
             tdata[store_id]       = value;
-           
         };
 
         // reset the detail max (to be sure)
@@ -473,23 +476,22 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
 
             // get the filters
-            const real_t*const f_x    = (odd_x) ? (ks) : (js);
-            const real_t*const f_y    = (odd_y) ? (ks) : (js);
-            const real_t*const f_z    = (odd_z) ? (ks) : (js);
-            
+            const real_t* const f_x = (odd_x) ? (ks) : (js);
+            const real_t* const f_y = (odd_y) ? (ks) : (js);
+            const real_t* const f_z = (odd_z) ? (ks) : (js);
+
             // get the limits
-            const bidx_t  lim[3] = {
+            const bidx_t lim[3] = {
                 (js_lim) * (!odd_x) + (ks_lim) * (odd_x),
                 (js_lim) * (!odd_y) + (ks_lim) * (odd_y),
                 (js_lim) * (!odd_z) + (ks_lim) * (odd_z)};
-
 
             m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
             m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
             m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
 
             // get the local datassss
-            real_t*       const ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
+            real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
             const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->srcstr);
 
             // let's go tocard
@@ -513,75 +515,6 @@ class InterpolatingWavelet : public Wavelet {
         const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         for_loop(&op, start, end);
     };
-
-        //     /**
-        //      * @brief Compute the details using the source field and write them in the target field
-        //      *
-        //      * @param ctx the interpolation context
-        //      */
-        //     void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const override {
-        //         m_assert(ctx->srcstart[0] == 0 && ctx->srcend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[0], ctx->srcend[0]);
-        //         m_assert(ctx->srcstart[1] == 0 && ctx->srcend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[1], ctx->srcend[1]);
-        //         m_assert(ctx->srcstart[2] == 0 && ctx->srcend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->srcstart[2], ctx->srcend[2]);
-        //         m_assert(ctx->trgstart[0] == 0 && ctx->trgend[0] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[0], ctx->trgend[0]);
-        //         m_assert(ctx->trgstart[1] == 0 && ctx->trgend[1] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[1], ctx->trgend[1]);
-        //         m_assert(ctx->trgstart[2] == 0 && ctx->trgend[2] == M_N, "the start index = %d and the end one = %d must be 0 and M_N", ctx->trgstart[2], ctx->trgend[2]);
-        //         //-------------------------------------------------------------------------
-        //         // the size is know @ compiler time
-        //         constexpr short_t gs_lim = (len_gs_<TN, TNT> / 2 - 1);
-
-        //         const real_t        one = 1.0;
-        //         const real_t* const gs  = gs_<TN, TNT> + gs_lim;
-
-        //         // get the target + criterion field
-        //         const real_t* sdata = ctx->sdata.Read();
-        //         real_t*       tdata = ctx->tdata.Write();
-
-        //         // declare the lambda to run
-        //         auto lambda = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        //             // get 0 if odd, 1 if even (even if negative!!)
-        //             const lda_t iy = m_sign(i1) * (i1 % 2);
-        //             const lda_t ix = m_sign(i0) * (i0 % 2);
-        //             const lda_t iz = m_sign(i2) * (i2 % 2);
-        //             m_assert(ix == 0 || ix == 1, "this are the two possible values");
-        //             m_assert(iy == 0 || iy == 1, "this are the two possible values");
-        //             m_assert(iz == 0 || iz == 1, "this are the two possible values");
-
-        //             const lid_t   i0_s   = (i0 - ix);
-        //             const lid_t   i1_s   = (i1 - iy);
-        //             const lid_t   i2_s   = (i2 - iz);
-        //             const real_t* lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->srcstr);
-
-        //             // get the filter, depending on if I am odd or even
-        //             const real_t* const gs_x         = (ix == 1) ? (gs) : (&one);
-        //             const real_t* const gs_y         = (iy == 1) ? (gs) : (&one);
-        //             const real_t* const gs_z         = (iz == 1) ? (gs) : (&one);
-        //             const bidx_t        lim_start[3] = {(gs_lim)*ix, (gs_lim)*iy, (gs_lim)*iz};
-        //             const bidx_t        lim_end[3]   = {(gs_lim + 1) * ix, (gs_lim + 1) * iy, (gs_lim + 1) * iz};
-
-        //             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
-        //             // if one dim is odd, id = 1, -> we loop on gs, business as usual
-        //             real_t interp = 0.0;
-        //             for (bidx_t id2 = -lim_start[2]; id2 <= lim_end[2]; ++id2) {
-        //                 for (bidx_t id1 = -lim_start[1]; id1 <= lim_end[1]; ++id1) {
-        //                     for (bidx_t id0 = -lim_start[0]; id0 <= lim_end[0]; ++id0) {
-        //                         const real_t fact = gs_x[id0] * gs_y[id1] * gs_z[id2];
-        //                         interp += fact * lsdata[m_idx(id0 * 2, id1 * 2, id2 * 2, 0, ctx->srcstr)];
-        //                     }
-        //                 }
-        //             }
-        //             real_t* ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
-        //             ltdata[0]      = sdata[m_idx(i0, i1, i2, 0, ctx->srcstr)] - interp;
-
-        //             // check that we retrieve the original value if we are a scaling coef
-        //             m_assert(!(ix == 0 && iy == 0 && iz == 0 && tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] != 0.0), "the target value should be 0.0 instead of %e", tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)]);
-        //         };
-
-        //         // do the loop
-        //         for_loop<0, M_N>(&lambda);
-        //         //-------------------------------------------------------------------------
-        //     };
-        // };
 };
 
 #endif  // SRC_INTERPOLATING_WAVELET_HPP_

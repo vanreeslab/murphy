@@ -53,7 +53,7 @@ typedef struct interp_ctx_t {
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 2
+#define M_WAVELET_NT 0
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -88,7 +88,7 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    // real_t Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const;
+    real_t Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const;
     real_t CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const;
 
     void Details(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const;
@@ -203,8 +203,14 @@ class Wavelet {
     };
 
     // nghosts
-    const lid_t nghost_front() const { return m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front())); }
-    const lid_t nghost_back() const { return m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back())); }
+    const bidx_t nghost_front() const {
+        const bidx_t min_wavelet = m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front()));
+        return min_wavelet;
+    }
+    const bidx_t nghost_back() const {
+        const bidx_t min_wavelet = m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back()));
+        return min_wavelet;
+    }
 
     /** @} */
 
@@ -215,7 +221,7 @@ class Wavelet {
     inline lid_t CoarseNGhostFront() const {
         // we need the max between the number of scaling in front
         //      = (nghost_front() / 2)
-        // and the number of details
+        // and the number of details that need to be computed
         //      = (nghost_front() / 2) + nrefine_front()
         const lid_t gp = (nghost_front() / 2) + nrefine_front();
         return gp;

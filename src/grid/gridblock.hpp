@@ -39,10 +39,11 @@ class GridBlock : public MemLayout {
     // list of ghosting
     std::list<GhostBlock<GridBlock*>*> local_sibling_;         //<! local neighbors at my resolution
     std::list<GhostBlock<GridBlock*>*> local_parent_;          //!< local neighbors coarser (neighbor to me)
+    std::list<GhostBlock<GridBlock*>*> local_children_;          //!< local neighbors finer
     std::list<GhostBlock<GridBlock*>*> local_parent_reverse_;  //!< local neighbors coarser (me to neighbors)
     std::list<GhostBlock<MPI_Aint>*>   ghost_sibling_;         //<! ghost neighbors at my resolution
-    std::list<GhostBlock<MPI_Aint>*>   ghost_parent_;          //!<ghost neighbors coarser (neighbor to me)
-    std::list<GhostBlock<MPI_Aint>*>   ghost_children_;        //!<ghost neighbors coarser (neighbor to me)
+    std::list<GhostBlock<MPI_Aint>*>   ghost_parent_;          //!< ghost neighbors coarser (neighbor to me)
+    std::list<GhostBlock<MPI_Aint>*>   ghost_children_;        //!< ghost neighbors coarser (neighbor to me)
     std::list<GhostBlock<MPI_Aint>*>   ghost_parent_reverse_;  //!<  ghost neighbors coarser (me to neighbors)
     std::list<PhysBlock*>              phys_;                  //!<  physical boundary condition
 
@@ -78,6 +79,7 @@ class GridBlock : public MemLayout {
     void  ResetStatus() { status_lvl_ = 0; };
     void  UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
     void  ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
+    void  UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
     /** @} */
 
     /**
@@ -124,6 +126,7 @@ class GridBlock : public MemLayout {
      */
     std::list<GhostBlock<GridBlock*>*>* local_sibling() { return &local_sibling_; };
     std::list<GhostBlock<GridBlock*>*>* local_parent() { return &local_parent_; };
+    std::list<GhostBlock<GridBlock*>*>* local_children() { return &local_children_; };
     std::list<GhostBlock<GridBlock*>*>* local_parent_reverse() { return &local_parent_reverse_; };
     std::list<GhostBlock<MPI_Aint>*>*   ghost_sibling() { return &ghost_sibling_; };
     std::list<GhostBlock<MPI_Aint>*>*   ghost_parent() { return &ghost_parent_; };

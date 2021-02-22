@@ -61,9 +61,9 @@ class GhostBlock : public SubBlock {
             lid_t end_idx = (lid_t)((src_pos[id] + src_len[id] - trg_pos[id]) / trg_hgrid[id]);
             end_[id]      = m_min(end_idx, trg_max[id]);
         }
-        m_assert(start_[0] < end_[0], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[0], end_[0], shift_[0], src_pos[0], trg_pos[0]);
-        m_assert(start_[1] < end_[1], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[1], end_[1], shift_[1], src_pos[1], trg_pos[1]);
-        m_assert(start_[2] < end_[2], "the starting index must be < the ending index, here: %d < %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
+        m_assert(start_[0] <= end_[0], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[0], end_[0], shift_[0], src_pos[0], trg_pos[0]);
+        m_assert(start_[1] <= end_[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[1], end_[1], shift_[1], src_pos[1], trg_pos[1]);
+        m_assert(start_[2] <= end_[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
         //-------------------------------------------------------------------------
     }
 

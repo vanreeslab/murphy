@@ -287,24 +287,25 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
  * @param smooth 
  * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
-// real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const {
-//     //-------------------------------------------------------------------------
-//     // get the extended memory layout
-//     lid_t start[3];
-//     lid_t end[3];
-//     for (lda_t id = 0; id < 3; id++) {
-//         start[id] = block->start(id) - criterion_shift_front();
-//         end[id]   = block->end(id) + criterion_shift_back();
-//     }
-//     SubBlock extended_block(block->gs(), block->stride(), start, end);
+real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const {
+    //-------------------------------------------------------------------------
+    // get the extended memory layout
+    lid_t start[3];
+    lid_t end[3];
+    for (lda_t id = 0; id < 3; id++) {
+        start[id] = block->start(id) - criterion_shift_front();
+        end[id]   = block->end(id) + criterion_shift_back();
+    }
+    SubBlock extended_block(block->gs(), block->stride(), start, end);
 
-//     // get the detail coefficients
-//     real_t details_max = 0.0;
-//     Details(&extended_block, data, nullptr, 0.0, &details_max);
+    // get the detail coefficients
+    real_t details_max = 0.0;
+    Details(&extended_block, data, nullptr, 0.0, &details_max);
 
-//     return details_max;
-//     //-------------------------------------------------------------------------
-// }
+    return details_max;
+    //-------------------------------------------------------------------------
+}
+
 
 real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
     //-------------------------------------------------------------------------
@@ -318,7 +319,7 @@ real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const da
     const SubBlock detail_block(block->gs(), block->stride(), start, end);
 
     // reset the detail array
-    memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
+    // memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
     data_ptr detail_data = detail(0,block);
 
     // get the detail coefficients
@@ -326,7 +327,7 @@ real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const da
     Details(&detail_block, data, detail_data, tol, &details_max);
     
     // smooth them
-    Smooth(&detail_block,detail_data,block,data);
+    // Smooth(&detail_block,detail_data,block,data);
 
     return details_max;
     //-------------------------------------------------------------------------

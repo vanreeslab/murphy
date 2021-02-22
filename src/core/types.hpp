@@ -1,8 +1,6 @@
 #ifndef SRC_CORE_TYPES_HPP_
 #define SRC_CORE_TYPES_HPP_
 
-#include "core/macros.hpp"
-
 //-------------------------------------------------------------------------
 /**
  * @name typename for standard variables
