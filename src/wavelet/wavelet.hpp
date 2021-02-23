@@ -47,16 +47,18 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
+
+#define M_GS_MIN 2
 
 /**
  * @brief defines a generic wavelet class
@@ -205,11 +207,11 @@ class Wavelet {
     // nghosts
     const bidx_t nghost_front() const {
         const bidx_t min_wavelet = m_max(ncoarsen_front(), m_max(ncriterion_front(), nrefine_front()));
-        return min_wavelet;
+        return m_max(min_wavelet,M_GS_MIN);
     }
     const bidx_t nghost_back() const {
         const bidx_t min_wavelet = m_max(ncoarsen_back(), m_max(ncriterion_back(), nrefine_back()));
-        return min_wavelet;
+        return m_max(min_wavelet,M_GS_MIN);
     }
 
     /** @} */

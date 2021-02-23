@@ -43,9 +43,12 @@ void FlowABC::InitParam(ParserArguments* param) {
     const real_t L[3] = {1.0, 1.0, 1.0};
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
+    // set the levels
+    grid_->level_limit(param->level_min, param->level_max);
+
     // get the fields
     vel_.Alloc("velocity", 3);
-    scal_.Alloc("scalar", 2);
+    scal_.Alloc("scalar", 1);
     grid_->AddField(vel_);
     grid_->AddField(scal_);
 
