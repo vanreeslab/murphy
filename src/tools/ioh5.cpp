@@ -119,7 +119,7 @@ void IOH5::operator()(ForestGrid* grid, const Field* field, const string name, c
     //................................................
     // get the filename
     char index_char[256];
-    sprintf(index_char, "%6.6d", index);
+    sprintf(index_char, "%10.10d", index);
     if (dump_ghost_) {
         filename_hdf5_ = "g_" + name + "_" + string(index_char) + ".h5";
         filename_xdmf_ = "g_" + name + "_" + string(index_char) + ".xmf";
