@@ -52,6 +52,9 @@ void FlowABC::InitParam(ParserArguments* param) {
     grid_->AddField(vel_);
     grid_->AddField(scal_);
 
+    // temp the velocity as we reimpose it's value right after adapt
+    vel_->is_temp(true);
+
     // setup the flow ring
     SetScalarTube flow_ring(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
     flow_ring.Profile(prof_);
@@ -69,7 +72,7 @@ void FlowABC::Run() {
     // time
     lid_t  iter    = 0;
     real_t t_start = 0.0;
-    real_t t_final = 1.0;
+    real_t t_final = 1000.0;
     real_t t       = 0.0;
 
     SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
@@ -172,9 +175,9 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_);
-        grid_->GhostPull(vel_);
+        // grid_->GhostPull(vel_);
         dump(grid_(), scal_(), iter);
-        dump(grid_(), vel_(), iter);
+        // dump(grid_(), vel_(), iter);
 
         // dump the details
         if (dump_detail()) {
