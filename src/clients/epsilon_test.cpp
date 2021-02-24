@@ -165,7 +165,7 @@ void EpsilonTest::Run() {
 
         grid.GhostPull(&scal);
         IOH5 dump("data");
-        // dump(&grid, &scal, 0);
+        dump(&grid, &scal, 0);
 
         // compute the moment at the start
         grid.GhostPull(&scal);
@@ -251,7 +251,7 @@ void EpsilonTest::Run() {
 
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
 
-        // dump(&grid,&scal,1);
+        dump(&grid,&scal,1);
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();
