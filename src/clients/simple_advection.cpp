@@ -51,7 +51,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     // setup the grid
     bool period[3] = {false, false, false};
     grid_.Alloc(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
-    const real_t L[3] = {1.0, 1.0, 1.0};
+    const real_t L[3] = {1.0, 1.0, 4.0};
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
     // set the min/max level
@@ -108,7 +108,7 @@ void SimpleAdvection::Run() {
     // time
     lid_t  iter    = 0;
     real_t t_start = 0.0;
-    real_t t_final = 0.1;  //2.0/8.0;
+    real_t t_final = 3.0;  //2.0/8.0;
     real_t t       = 0.0;
 
     RKFunctor* advection;
