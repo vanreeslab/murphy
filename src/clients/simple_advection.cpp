@@ -44,14 +44,15 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     if (param->profile) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks")+string("_w")+to_string(M_WAVELET_N)+to_string(M_WAVELET_NT) ;
+        string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
         prof_.Alloc(name);
     }
 
     // setup the grid
-    bool period[3] = {false, false, false};
-    grid_.Alloc(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
-    const real_t L[3] = {1.0, 1.0, 4.0};
+    bool   period[3] = {false, false, false};
+    const lid_t L[3]      = {1, 1, 4};
+    grid_.Alloc(param->init_lvl, period, L, MPI_COMM_WORLD, prof_);
+
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
     // set the min/max level
@@ -73,7 +74,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // setup the scalar ring
     real_t velocity[3] = {0.0, 0.0, 1.0};
-    real_t center[3]   = {L[0] * 0.5, L[1] * 0.5, L[2] * 0.5};
+    real_t center[3]   = {0.5, 0.5, 0.5};
     ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
     ring_->Profile(prof_);
     ring_->SetTime(0.0);
