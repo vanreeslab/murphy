@@ -50,7 +50,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // setup the grid
     bool   period[3] = {false, false, false};
-    const lid_t L[3]      = {1, 1, 4};
+    const lid_t L[3]      = {1, 1, 1};
     grid_.Alloc(param->init_lvl, period, L, MPI_COMM_WORLD, prof_);
 
     m_assert(grid_.IsOwned(), "the grid must be owned");
@@ -109,7 +109,7 @@ void SimpleAdvection::Run() {
     // time
     lid_t  iter    = 0;
     real_t t_start = 0.0;
-    real_t t_final = 3.0;  //2.0/8.0;
+    real_t t_final = 0.1;  //2.0/8.0;
     real_t t       = 0.0;
 
     RKFunctor* advection;
@@ -126,6 +126,8 @@ void SimpleAdvection::Run() {
     RK3_TVD rk3(grid_, scal_, advection, prof_);
 
     m_log("advection cfl is %e",advection->cfl_rk3());
+
+    real_t time_start = MPI_Wtime();
 
     // let's gooo
     m_profStart(prof_(), "run");
@@ -158,7 +160,8 @@ void SimpleAdvection::Run() {
         if (iter == 0) {
             m_profStart(prof_(), "diagnostics");
             m_log("---- run diag");
-            Diagnostics(t, 0, iter);
+            real_t time_now = MPI_Wtime();
+            Diagnostics(t, 0, iter, time_now - time_start);
             m_profStop(prof_(), "diagnostics");
         }
 
@@ -182,20 +185,22 @@ void SimpleAdvection::Run() {
         if (iter % iter_diag() == 0) {
             m_profStart(prof_(), "diagnostics");
             m_log("---- run diag");
-            Diagnostics(t, dt, iter);
+            real_t time_now = MPI_Wtime();
+            Diagnostics(t, dt, iter, time_now);
             m_profStop(prof_(), "diagnostics");
         }
     }
     m_profStop(prof_(), "run");
     // run the last diag
     if (iter % iter_diag() != 0) {
-        Diagnostics(t, 0.0, iter);
+        real_t time_now = MPI_Wtime();
+        Diagnostics(t, 0.0, iter, time_now);
     }
     //-------------------------------------------------------------------------
     m_end;
 }
 
-void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_t iter) {
+void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_t iter, const real_t wtime) {
     m_begin;
     m_assert(scal_->lda() == 1, "the scalar field must be scalar");
     //-------------------------------------------------------------------------
@@ -235,6 +240,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
+        fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());
         fprintf(file_diag, ";%e;%e", err2, erri);
         fprintf(file_diag, ";%e;%e;%e;%e", moment0, moment1[0], moment1[1], moment1[2]);
@@ -242,6 +248,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         fprintf(file_diag, "\n");
         fclose(file_diag);
     }
+
+    grid_->DumpLevels(iter, folder_diag_, string("_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT)));
 
     if (iter % iter_dump() == 0 && iter != 0) {
         // dump the vorticity field

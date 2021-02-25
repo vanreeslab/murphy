@@ -215,3 +215,38 @@ real_t ForestGrid::CoarsestH() const {
     //-------------------------------------------------------------------------
     // m_end;
 }
+
+/**
+ * @brief Dump the number of blocks on each level
+ * 
+ * @param id the id put in the begining of the IO line
+ */
+void ForestGrid::DumpLevels(const iter_t id, const std::string folder, const std::string suffix) const {
+    m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
+    //-------------------------------------------------------------------------
+    long_t n_per_level[P8EST_MAXLEVEL];
+    long_t local_n_per_level[P8EST_MAXLEVEL];
+    for (level_t il = 0; il < P8EST_MAXLEVEL; ++il) {
+        local_n_per_level[il] = p4est_NumQuadOnLevel(p4est_mesh_, il);
+    }
+    // get the sum over the comm world
+    MPI_Reduce(local_n_per_level, n_per_level, P8EST_MAXLEVEL, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // get the rank
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // dump it
+    FILE* file_diag;
+    if (rank == 0) {
+        file_diag = fopen(std::string(folder + "/grid_levels" + suffix + ".data").c_str(), "a+");
+        fprintf(file_diag, "%d", id);
+        for (level_t il = 0; il < P8EST_MAXLEVEL; ++il) {
+            fprintf(file_diag, ";%ld", n_per_level[il]);
+        }
+        fprintf(file_diag, "\n");
+        fclose(file_diag);
+    }
+
+    //-------------------------------------------------------------------------
+}

@@ -68,6 +68,7 @@ class Grid : public ForestGrid {
     void SetupGhost();
     void DestroyGhost();
 
+
     /**
      * @name Fields management
      * 

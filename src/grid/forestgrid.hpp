@@ -61,6 +61,8 @@ class ForestGrid {
     level_t      MinLevel() const;
     real_t       FinestH() const;
     real_t       CoarsestH() const;
+
+    void DumpLevels(const iter_t id, const std::string folder, const std::string suffix = "") const;
     /** @} */
 
     /**

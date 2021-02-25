@@ -310,6 +310,8 @@ void EpsilonTest::Run() {
         ErrorCalculator error;
         error.Normi(&grid, &scal, &sol, &normi);
 
+        grid.DumpLevels(1, "data", string("w" + std::to_string(M_WAVELET_N) + std::to_string(M_WAVELET_NT)));
+
         // real_t norm2;
         // Field err("error",1);
         // grid.AddField(&err);

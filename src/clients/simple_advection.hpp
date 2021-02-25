@@ -34,7 +34,7 @@ class SimpleAdvection : public TestCase {
     void Run() override;
 
    protected:
-    void Diagnostics(const real_t time, const real_t dt, const lid_t iter);
+    void Diagnostics(const real_t time, const real_t dt, const lid_t iter,const real_t wtime);
 };
 
 #endif  // SRC_CLIENTS_SIMPLEADVECTION_HPP_
