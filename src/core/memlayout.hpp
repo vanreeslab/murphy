@@ -5,19 +5,22 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 
+#include <cstring>
+
 /**
- * @brief descibes the most fundamental 3D memory layout and a region of interest (start-end)
+ * @brief descibe a fundamental 3D memory layout and a region of interest (start-end)
  * 
- * WARNING: we consider a cell-decentered information
+ * WARNING: we consider a cell-decentered information,
  * 
- * In 2D, a memory layout can be represented as (with "x" meaning a ghost point and "o" a block point)
+ * In 2D, a memory layout can be represented as:
+ *  (with "x" meaning a ghost point and "o" a block point)
  * ```
- *                              stride
- *          <------------------------------------------------>
- *          +-------+----------------------------------+---------+ (stride-gs,stride-gs)
+ *                                 stride
+ *          <--------------------------------------------------->
+ *          +-------+----------------------------------+---------+
  *          |  gs   |                                  |    gs   |
  *          |<----->|                                  |<------->|
- *          +-------+----------------------------------+---------+
+ *          +-------x----------------------------------+---------+
  *          |       |                                  |         |
  *          |       |                      end         |         |
  *          |       o    +------------------+          |         |
@@ -42,12 +45,12 @@
  */
 class MemLayout {
    public:
-    virtual lid_t gs() const                = 0;  //!< the ghost point size
-    virtual lid_t stride() const            = 0;  //!< the stride in memory
-    virtual lid_t start(const int id) const = 0;  //!< the starting point for the region of interest
-    virtual lid_t end(const int id) const   = 0;  //!< the end point of the region of interest
+    virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
+    virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
+    virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
+    virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
 
-    virtual ~MemLayout(){};
+    virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
 };
 
 /**

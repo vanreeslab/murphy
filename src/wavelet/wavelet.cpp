@@ -306,6 +306,57 @@ real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_
     //-------------------------------------------------------------------------
 }
 
+// /**
+//  * @brief compute the Forward wavelet transform on a given block (scaling + detail) and return the max detail
+//  * 
+//  * The details are computed on an extended domain as we need their values to drive the coarsening/refinement
+//  * 
+//  * @param block_src the block for the data to be transformed (including ghosting points)
+//  * @param block_trg the block for data to be computed
+//  * @param data the data that will be transformed (in place)
+//  * @param data_tmp the memory used as a copy (size @ref m_blockmemsize(1) )
+//  * @return real_t 
+//  */
+// real_t  Wavelet::FWT(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& tmp) const {
+//     //-------------------------------------------------------------------------
+//     data_ptr data_tmp = tmp(0,block);
+
+//     // copy the block
+//     ToTempMemory(block, data, data_tmp);
+
+//     // get the extended memory layout
+//     lid_t start[3];
+//     lid_t end[3];
+//     for (lda_t id = 0; id < 3; id++) {
+//         start[id] = block->start(id) - criterion_shift_front();
+//         end[id]   = block->end(id) + criterion_shift_back();
+//     }
+//     const SubBlock detail_block(block->gs(), block->stride(), start, end);
+
+//     // get the detail coefficients
+//     real_t details_max = 0.0;
+//     Details(&detail_block, data, data_tmp, std::numeric_limits<real_t>::max(), &details_max);
+
+//     // get now the scaling coefficients in the normal block
+//     interp_ctx_t ctx;
+//     for (sid_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = block->start(id) - nghost_front();
+//         ctx.srcend[id]   = block->end(id) + nghost_back();
+// #endif
+//         ctx.trgstart[id] = block->start(id);
+//         ctx.trgend[id]   = block->end(id);
+//     }
+//     ctx.srcstr = block->stride();
+//     ctx.trgstr = block->stride();
+//     ctx.sdata = data_tmp; // we use data_tmp to get the scaling
+//     ctx.tdata = data;
+
+//     Coarsen_(&ctx)
+
+//     return details_max;
+//     //-------------------------------------------------------------------------
+// }
 
 real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
     //-------------------------------------------------------------------------
@@ -334,7 +385,7 @@ real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const da
 }
 
 /**
- * @brief compute the max detail coefficients on a given MemLayout.
+ * @brief compute the max detail coefficients on a given MemLayout and store the result if wanted
  * 
  * @param block the memory layout on which we compute the max detail
  * @param data the data to use to compute the detail, assumed valid on the whole [-nghost_front(), M_N + nghost_back()]^3 range
@@ -364,6 +415,31 @@ void Wavelet::Details(const m_ptr<const MemLayout>& detail_block, const const_da
     Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
+
+// void Wavelet::Scalings(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const {
+//     //-------------------------------------------------------------------------
+//     // get memory details
+//     interp_ctx_t ctx;
+//     for (lda_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = 0 - nghost_front();
+//         ctx.srcend[id]   = M_N + nghost_back();
+// #endif
+//         ctx.trgstart[id] = detail_block->start(id);
+//         ctx.trgend[id]   = detail_block->end(id);
+//     }
+//     ctx.srcstr = detail_block->stride();
+//     ctx.sdata  = data;
+//     ctx.trgstr = detail_block->stride();
+//     ctx.tdata  = detail;
+//     // we do not neeed to store
+//     ctx.alpha = tol;
+
+//     // m_log("tol = %e", tol);
+//     // we go for the two norm over the block
+//     Detail_(&ctx, details_max);
+//     //-------------------------------------------------------------------------
+// }
 
 /**
  * @brief Smooth the values given already computed details (cfr Details() )

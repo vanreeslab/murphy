@@ -20,6 +20,7 @@ struct ParserArguments {
     bool do_abc_flow      = false;
     bool do_simple_adv    = false;
     bool do_epsilon_test  = false;
+    bool do_debug_lifting = false;
 
     real_t reynolds    = 0.0;
     real_t refine_tol  = 1e-2;

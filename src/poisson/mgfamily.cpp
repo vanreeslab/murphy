@@ -54,31 +54,31 @@ void MGFamily::ToChildren(Field* field_src, Field* field_trg, Field* field_cst, 
     lid_t     parent_end[3]   = {0, 0, 0};
     SubBlock* mem_block       = new SubBlock(M_GS, M_STRIDE, parent_start, parent_end);
 
-    for (lid_t id = 0; id < parent_count_; id++) {
-        GridBlock* parent = parents_[id];
-        for (sid_t ic = 0; ic < P8EST_CHILDREN; ic++) {
-            GridBlock* child = children_[id * P8EST_CHILDREN + ic];
+    // for (lid_t id = 0; id < parent_count_; id++) {
+    //     GridBlock* parent = parents_[id];
+    //     for (sid_t ic = 0; ic < P8EST_CHILDREN; ic++) {
+    //         GridBlock* child = children_[id * P8EST_CHILDREN + ic];
 
-            // get the shift given the child position (trg) wrt to the parent framework (src)
-            lid_t shift[3];
-            shift[0] = (child->xyz(0) - parent->xyz(0)) / parent->hgrid(0);
-            shift[1] = (child->xyz(1) - parent->xyz(1)) / parent->hgrid(1);
-            shift[2] = (child->xyz(2) - parent->xyz(2)) / parent->hgrid(2);
+    //         // get the shift given the child position (trg) wrt to the parent framework (src)
+    //         lid_t shift[3];
+    //         shift[0] = (child->xyz(0) - parent->xyz(0)) / parent->hgrid(0);
+    //         shift[1] = (child->xyz(1) - parent->xyz(1)) / parent->hgrid(1);
+    //         shift[2] = (child->xyz(2) - parent->xyz(2)) / parent->hgrid(2);
 
-            // create a subblock that contains the correct memory zone, we refine
-            for (int id = 0; id < 3; id++) {
-                parent_start[id] = shift[id] - M_GS;
-                parent_end[id]   = shift[id] + M_HN + M_GS;
-            }
-            mem_block->Reset(M_GS, M_STRIDE, parent_start, parent_end);
+    //         // create a subblock that contains the correct memory zone, we refine
+    //         for (int id = 0; id < 3; id++) {
+    //             parent_start[id] = shift[id] - M_GS;
+    //             parent_end[id]   = shift[id] + M_HN + M_GS;
+    //         }
+    //         mem_block->Reset(M_GS, M_STRIDE, parent_start, parent_end);
 
-            // interpolate for every dimension
-            for (sid_t ida = 0; ida < field_src->lda(); ida++) {
-                // get the pointers
-                // interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida), alpha, child->data(field_cst, ida));
-            }
-        }
-    }
+    //         // interpolate for every dimension
+    //         for (sid_t ida = 0; ida < field_src->lda(); ida++) {
+    //             // get the pointers
+    //             // interp->Interpolate(-1, shift, mem_block, parent->data(field_src, ida), child, child->data(field_trg, ida), alpha, child->data(field_cst, ida));
+    //         }
+    //     }
+    // }
     // un-validate the ghost status
     field_trg->ghost_status(false);
     // delete the temp subblock
@@ -96,33 +96,33 @@ void MGFamily::ToParents(Field* field_src, Field* field_trg, Field* field_cst, c
     lid_t     parent_end[3]   = {0, 0, 0};
     SubBlock* mem_block       = new SubBlock(M_GS, M_STRIDE, parent_start, parent_end);
 
-    for (lid_t id = 0; id < parent_count_; id++) {
-        GridBlock* parent = parents_[id];
-        for (sid_t ic = 0; ic < P8EST_CHILDREN; ic++) {
-            GridBlock* child = children_[id * P8EST_CHILDREN + ic];
+    // for (lid_t id = 0; id < parent_count_; id++) {
+    //     GridBlock* parent = parents_[id];
+    //     for (sid_t ic = 0; ic < P8EST_CHILDREN; ic++) {
+    //         GridBlock* child = children_[id * P8EST_CHILDREN + ic];
 
-            // get the shift given the parent position (trg) wrt to the child framework (src)
-            lid_t shift[3];
-            shift[0] = (parent->xyz(0) - child->xyz(0)) / child->hgrid(0);
-            shift[1] = (parent->xyz(1) - child->xyz(1)) / child->hgrid(1);
-            shift[2] = (parent->xyz(2) - child->xyz(2)) / child->hgrid(2);
+    //         // get the shift given the parent position (trg) wrt to the child framework (src)
+    //         lid_t shift[3];
+    //         shift[0] = (parent->xyz(0) - child->xyz(0)) / child->hgrid(0);
+    //         shift[1] = (parent->xyz(1) - child->xyz(1)) / child->hgrid(1);
+    //         shift[2] = (parent->xyz(2) - child->xyz(2)) / child->hgrid(2);
 
-            // create a subblock that contains the correct memory zone, we coarsen
-            parent_start[0] = (child->xyz(0) - parent->xyz(0)) / parent->hgrid(0);
-            parent_start[1] = (child->xyz(1) - parent->xyz(1)) / parent->hgrid(1);
-            parent_start[2] = (child->xyz(2) - parent->xyz(2)) / parent->hgrid(2);
-            for (int id = 0; id < 3; id++) {
-                parent_end[id] = parent_start[id] + M_HN;
-            }
-            mem_block->Reset(M_GS, M_STRIDE, parent_start, parent_end);
+    //         // create a subblock that contains the correct memory zone, we coarsen
+    //         parent_start[0] = (child->xyz(0) - parent->xyz(0)) / parent->hgrid(0);
+    //         parent_start[1] = (child->xyz(1) - parent->xyz(1)) / parent->hgrid(1);
+    //         parent_start[2] = (child->xyz(2) - parent->xyz(2)) / parent->hgrid(2);
+    //         for (int id = 0; id < 3; id++) {
+    //             parent_end[id] = parent_start[id] + M_HN;
+    //         }
+    //         mem_block->Reset(M_GS, M_STRIDE, parent_start, parent_end);
 
-            // interpolate for every dimension
-            for (sid_t ida = 0; ida < field_src->lda(); ida++) {
-                // get the pointers
-                // interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida), alpha, parent->data(field_cst, ida));
-            }
-        }
-    }
+    //         // interpolate for every dimension
+    //         for (sid_t ida = 0; ida < field_src->lda(); ida++) {
+    //             // get the pointers
+    //             // interp->Interpolate(+1, shift, child, child->data(field_src, ida), mem_block, parent->data(field_trg, ida), alpha, parent->data(field_cst, ida));
+    //         }
+    //     }
+    // }
     // un-validate the ghost status
     field_trg->ghost_status(false);
     // delete the temp memblock

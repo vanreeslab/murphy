@@ -19,11 +19,7 @@ SubBlock::SubBlock(const lid_t gs, const lid_t stride, const lid_t start[3], con
 
 /**
  * @brief Construct a new Sub Block with the given ghost size, stride, start and end, see @ref MemLayout
- * 
- * @param gs the ghost size
- * @param stride the stride
- * @param start the start index in 3D (same value for the 3 dimensions)
- * @param end the end index in 3D (same value for the 3 dimensions)
+ * where the start and end is the same in each direction
  */
 SubBlock::SubBlock(const lid_t gs, const lid_t stride, const lid_t start, const lid_t end) {
     gs_     = gs;

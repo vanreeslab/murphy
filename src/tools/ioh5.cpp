@@ -108,7 +108,7 @@ void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
 void IOH5::operator()(ForestGrid* grid, const Field* field, const string name, const lid_t index) {
     m_begin;
     //-------------------------------------------------------------------------
-    m_assert(field->ghost_status(), "the field <%s> has outdated ghosts, please update them, even if dump ghost is false",field->name().c_str());
+    // m_assert(field->ghost_status(), "the field <%s> has outdated ghosts, please update them, even if dump ghost is false",field->name().c_str());
     m_log("dumping field %s to disk (ghost = %d)", name.c_str(), dump_ghost_);
     // get the field name
     rank_t mpirank = grid->mpirank();
@@ -118,7 +118,7 @@ void IOH5::operator()(ForestGrid* grid, const Field* field, const string name, c
 
     //................................................
     // get the filename
-    char index_char[256];
+    char index_char[512];
     sprintf(index_char, "%10.10d", index);
     if (dump_ghost_) {
         filename_hdf5_ = "g_" + name + "_" + string(index_char) + ".h5";
@@ -135,7 +135,7 @@ void IOH5::operator()(ForestGrid* grid, const Field* field, const string name, c
     }
 
     // get the bstride given the dumpghost status
-    block_stride_ = (dump_ghost_) ? M_STRIDE : (M_N + 1);
+    block_stride_ = (dump_ghost_) ? M_STRIDE : (M_N);
     block_shift_  = (dump_ghost_) ? 0 : M_GS;
 
     // get the block offset and the number of global blocks
@@ -326,7 +326,9 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     string      filename = folder_ + string("/") + filename_xdmf_;
     m_assert(stat(filename.c_str(), &st) != 0, "ERROR while opening  <%s>, the file already exists", filename.c_str());
     // fopen the xmf, every proc
-    int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
+    m_log("opening file <%s>", filename.c_str());
+    // int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
+    int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &xmf_file_);
     // if something went wrong, check if the file already exist of something else was baaad
     m_assert(err == MPI_SUCCESS, "ERROR while opening  <%s>, MPI_File_open failed (error = %d)", filename.c_str(), err);
 

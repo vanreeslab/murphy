@@ -1,34 +1,24 @@
 #ifndef SRC_GRID_BOUNDARY_HPP_
 #define SRC_GRID_BOUNDARY_HPP_
 
-#include "core/macros.hpp"
-#include "core/types.hpp"
-#include "core/pointers.hpp"
 #include "core/forloop.hpp"
+#include "core/macros.hpp"
+#include "core/pointers.hpp"
 #include "grid/subblock.hpp"
+#include "grid/cartblock.hpp"
 
 /**
- * @brief implements a boundary conditions that uses points inside the block to extrapolate a ghost value
+ * @brief functor that implements a boundary conditions that uses some points inside the block to extrapolate a ghost value
  * 
- * @tparam npoint the number of points needed within the block to be used in @ref Stencil_()
+ * @tparam the number of points used within the block to build the extrapolation
  */
 template <lda_t npoint>
 class Boundary {
    protected:
-    static constexpr real_t face_sign[6][3] = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
-
     /**
-     * @brief dictates if the first point in the grid, i.e. the point [0] in the physical direction is overwritten or not.
-     * 
-     * if the sign is different than 0, return true
-     */
-    virtual inline bool OverWriteFirst(const real_t sign) const { return (sign * sign) > 0.5; }
-
-   public:
-    /**
-    * @brief has to be implemented by boundary condition classes
+    * @brief has to be implemented by the different boundary condition classes
     * 
-    * given the data values, builds a polynomial representation of the ghost points:
+    * given the data values and their positions, builds a polynomial representation of the ghost points in xp
     * 
     * ```
     *          GHOST   |                       BLOCK                      |    GHOST
@@ -36,50 +26,64 @@ class Boundary {
     *      normal = -1 |                                                  | normal = +1
     *                  |                                                  |
     *           x (<0) |                                                  |   x (>0) 
-    *     <----------->|                                                  |<-------->
+    *     <----------->|   xf[0]   xf[1]                 xf[1]  xf[0]     |<-------->
     * ---o------o------o------o------o---   ...       -----o------o-------o------o------
     *                       f[0]   f[1]     ...         f[1]    f[0]
     * ```
-    * 
-    * The point `x` is overwritten or not, given the boolean returned by OverWriteFirst().
     */
-    virtual inline real_t Stencil_(m_ptr<const real_t> f, m_ptr<const real_t> xf, const real_t xp, const real_t bc_value) = 0;
+    virtual inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const = 0;
 
     /**
-     * @brief Given a subblock and a boundary condition value, apply a physical BC on a face
+     * @brief returns true if the border element of the block is overwritten
      * 
-     * note: unless other functions using SubBlocks, we need to decouple the starting point (fstart)
-     * and the symmetry done on the left and on the right of it for the interpolation, hence we need both arguments
-     * 
-     * @param iface the index of the face on which we apply it (x-=0, x+=1, y-=2, y+=3, z-=4, z-=5)
-     * @param fstart the starting index of the face, i.e. the index of the last point wich is adjacent to the face (see @ref face_start in ghost.cpp)
-     * @param hgrid the local grid spacing
-     * @param boundary_condition the boundary condition value
-     * @param block the sub-block on which we apply it
-     * @param data the data pointer that refers to the (0,0,0) location associated to the subblock.
+     * by default we overwrite the last element (fsign > 0 ) but not the first one (fsign < 0)
      */
-    virtual void operator()(const sid_t iface, const lid_t fstart[3], const real_t hgrid[3], const real_t boundary_condition, m_ptr<const SubBlock> block, data_ptr data) {
+    virtual inline bool OverWriteFirst_() const { return false; };
+
+   public:
+    /**
+     * @brief compute the boundary condition on a block, in the area of a ghost block
+     * 
+     * @param iface the index of the face on which we apply it (X- = 0, X+ = 1, Y- = 2, Y+ = 3, Z- = 4, Z- = 5)
+     * @param first_last the index of the first/last point in the block
+     * @param boundary_condition the BC value
+     * @param block the original block (needed for hgrid and block start/end)
+     * @param gblock the ghost block where to apply it
+     * @param data the data
+     */
+    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const m_ptr<const SubBlock>& gblock, const data_ptr data) const {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
+        // m_assert(block->stride() == gblock->stride(), "the two strides must be the same");
+        // m_assert(block->gs() == gblock->gs(), "the two gs must be the same");
         //-------------------------------------------------------------------------
-        // get the face direction and a boolean array with it
+        const real_t face_sign[6][3] = {{-1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, -1.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, -1.0}, {0.0, 0.0, 1.0}};
+
+        // get the face direction and other informations
         const iface_t dir       = iface / 2;
         const bool    isphys[3] = {dir == 0, dir == 1, dir == 2};
         const real_t* fsign     = face_sign[iface];
-        m_assert((fsign[0] + fsign[1] + fsign[2] == -1) || (fsign[0] + fsign[1] + fsign[2] == +1), "only 1 component of face_sign must be non null: %f %f %f ", fsign[0], fsign[1], fsign[2]);
 
-        // shift the data to compute the region on the left or on the right of fstart
-        const bidx_t start[3] = {block->start(0) - fstart[0], block->start(1) - fstart[1], block->start(2) - fstart[2]};
-        const bidx_t end[3]   = {block->end(0) - fstart[0], block->end(1) - fstart[1], block->end(2) - fstart[2]};
+        // move the data around the starting point of the face to fill
+        bidx_t  b_stride = gblock->stride();
+        real_t* sdata    = data.Write(0, gblock);
 
-        // move the data around fstart
-        rank_t rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        // m_log("sdata from data = %ld", (sdata - data()) / sizeof(real_t));
+        // m_log("the boundary will be from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
 
-        const bidx_t b_stride = block->stride();
-        real_t*      ldata   = data.Write(fstart[0], fstart[1], fstart[2], 0, b_stride);
+        auto op = [=, &sdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            // get the local information
+            real_t* ldata = sdata + m_idx(i0, i1, i2, 0, b_stride);
 
-        auto op = [=, &ldata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            // get the distance between me and the face
+            const bidx_t dis0 = i0 - first_last[0];
+            const bidx_t dis1 = i1 - first_last[1];
+            const bidx_t dis2 = i2 - first_last[2];
+
+            // m_log("local is %d %d % d-> %d", i0, i1, i2, m_idx(i0, i1, i2, 0, b_stride));
+            // m_log("distance is %d %d %d", dis0, dis1, dis2);
+            // m_log("ghost stride = %d", b_stride);
+
             // we need three interpolations points in the face direction
             real_t f[npoint];
             real_t xf[npoint];
@@ -87,84 +91,50 @@ class Boundary {
                 // if the direction is not physics, just consider the current ID,
                 // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
                 // these are local increments on the source which is already in position fstart
-                const bidx_t idx0 = (!isphys[0]) ? i0 : (-(ip + OverWriteFirst(fsign[0])) * fsign[0]);
-                const bidx_t idx1 = (!isphys[1]) ? i1 : (-(ip + OverWriteFirst(fsign[1])) * fsign[1]);
-                const bidx_t idx2 = (!isphys[2]) ? i2 : (-(ip + OverWriteFirst(fsign[2])) * fsign[2]);
+                const bidx_t idx0 = (!isphys[0]) ? 0 : (-(ip + OverWriteFirst_()) * fsign[0] - dis0);
+                const bidx_t idx1 = (!isphys[1]) ? 0 : (-(ip + OverWriteFirst_()) * fsign[1] - dis1);
+                const bidx_t idx2 = (!isphys[2]) ? 0 : (-(ip + OverWriteFirst_()) * fsign[2] - dis2);
+
+                // m_log("npoint is %d %d %d", idx0, idx1, idx2);
 
                 // check that we stay at the correct sport for everybody
-                m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
-                m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
-                m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
+                m_assert((i0 + idx0) >= (-gblock->gs()) && (i0 + idx0) < (b_stride), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), b_stride);
+                m_assert((i1 + idx1) >= (-gblock->gs()) && (i1 + idx1) < (b_stride), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), b_stride);
+                m_assert((i2 + idx2) >= (-gblock->gs()) && (i2 + idx2) < (b_stride), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), b_stride);
                 // check the specific isphys direction
-                m_assert((((fstart[0] + idx0) * isphys[0]) >= 0) && ((fstart[0] + idx0) * isphys[0]) < (block->stride() - block->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
-                m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block->stride() - block->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
-                m_assert((((fstart[2] + idx2) * isphys[2]) >= 0) && ((fstart[2] + idx2) * isphys[2]) < (block->stride() - block->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
+                m_assert((((i0 + idx0) * isphys[0]) >= 0) && ((i0 + idx0) * isphys[0]) < (b_stride - gblock->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), gblock->stride());
+                m_assert((((i1 + idx1) * isphys[1]) >= 0) && ((i1 + idx1) * isphys[1]) < (b_stride - gblock->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), gblock->stride());
+                m_assert((((i2 + idx2) * isphys[2]) >= 0) && ((i2 + idx2) * isphys[2]) < (b_stride - gblock->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), gblock->stride());
 
                 // store the result
                 f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];
-                // get the data position
-                real_t data_pos[3];
-                m_pos_relative(data_pos, idx0, idx1, idx2, hgrid);
+
+                // get the data position, relative to me, i.e. using the idx indexes
+                const real_t data_pos[3] = {(idx0)*hgrid[0],
+                                            (idx1)*hgrid[1],
+                                            (idx2)*hgrid[2]};
+
                 xf[ip] = data_pos[dir];
             }
             // get the position of the ghost
-            real_t pos[3];
-            m_pos_relative(pos, i0, i1, i2, hgrid);
+            // real_t pos[3] = {0.0, 0.0, 0.0};
+            // m_pos_relative(pos, i0, i1, i2, hgrid);
 
             // get the ghost value
-            ldata[m_idx(i0, i1, i2, 0, b_stride)] = Stencil_(f, xf, pos[dir], boundary_condition);
+            ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
         };
 
-        for_loop(&op,start,end);
-
-        // // let's goooo
-        // for (lid_t i2 = start[2]; i2 < end[2]; i2++) {
-        //     for (lid_t i1 = start[1]; i1 < end[1]; i1++) {
-        //         for (lid_t i0 = start[0]; i0 < end[0]; i0++) {
-        //             // we need three interpolations points in the face direction
-        //             real_t f[npoint];
-        //             real_t xf[npoint];
-        //             for (sid_t ip = 0; ip < npoint; ip++) {
-        //                 // if the direction is not physics, just consider the current ID,
-        //                 // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
-        //                 // these are local increments on the source which is already in position fstart
-        //                 const lid_t idx0 = (!isphys[0]) ? i0 : (-(ip + OverWriteFirst(fsign[0])) * fsign[0]);
-        //                 const lid_t idx1 = (!isphys[1]) ? i1 : (-(ip + OverWriteFirst(fsign[1])) * fsign[1]);
-        //                 const lid_t idx2 = (!isphys[2]) ? i2 : (-(ip + OverWriteFirst(fsign[2])) * fsign[2]);
-
-        //                 // check that we stay at the correct sport for everybody
-        //                 m_assert((fstart[0] + idx0) >= (-block->gs()) && (fstart[0] + idx0) < (block->stride()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
-        //                 m_assert((fstart[1] + idx1) >= (-block->gs()) && (fstart[1] + idx1) < (block->stride()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
-        //                 m_assert((fstart[2] + idx2) >= (-block->gs()) && (fstart[2] + idx2) < (block->stride()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
-        //                 // check the specific isphys direction
-        //                 m_assert((((fstart[0] + idx0) * isphys[0]) >= 0) && ((fstart[0] + idx0) * isphys[0]) < (block->stride() - block->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", fstart[0] + idx0, block->gs(), block->stride());
-        //                 m_assert((((fstart[1] + idx1) * isphys[1]) >= 0) && ((fstart[1] + idx1) * isphys[1]) < (block->stride() - block->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", fstart[1] + idx1, block->gs(), block->stride());
-        //                 m_assert((((fstart[2] + idx2) * isphys[2]) >= 0) && ((fstart[2] + idx2) * isphys[2]) < (block->stride() - block->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", fstart[2] + idx2, block->gs(), block->stride());
-
-        //                 // store the result
-        //                 f[ip] = ldata[m_midx(idx0, idx1, idx2, 0, block)];
-        //                 // get the data position
-        //                 real_t data_pos[3];
-        //                 m_pos_relative(data_pos, idx0, idx1, idx2, hgrid);
-        //                 xf[ip] = data_pos[dir];
-        //             }
-        //             // get the position of the ghost
-        //             real_t pos[3];
-        //             m_pos_relative(pos, i0, i1, i2, hgrid);
-
-        //             // get the ghost value
-        //             ldata[m_midx(i0, i1, i2, 0, block)] = Stencil_(f, xf, pos[dir], boundary_condition);
-        //         }
-        //     }
-        // }
+        // get the starting and ending indexes
+        const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
+        const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
+        for_loop(&op, start, end);
     }
     //-------------------------------------------------------------------------
 };
 
 class ZeroBoundary : public Boundary<0> {
    protected:
-    // real_t Stencil_(const real_t* f, const real_t x, const real_t h, const real_t normal, const real_t value) override;
-    inline real_t Stencil_(m_ptr<const real_t> f, m_ptr<const real_t> xf, const real_t xp, const real_t bc_value)  override { return 0.0; };
+    inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const override { return 0.0; };
 };
 
 template <lda_t len>
@@ -187,14 +157,14 @@ real_t NevilleInterp(real_t* c, real_t* d, const real_t* x, const real_t xp) {
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Extrapolating boundary condition
+ * 
+ * @tparam npoint polynomial order = npoint - 1
+ */
 template <lda_t npoint>
 class ExtrapBoundary : public Boundary<npoint> {
    protected:
-    /**
-    * @brief do not overwrite the first element if the face is oriented negatively (sign = -1)
-    */
-    virtual inline bool OverWriteFirst(const real_t sign) const override { return (sign > 0.5); }
-
     /**
      * @brief Impletement the Neville algorithm to extrapolate the value of the polynomial with no boundary information
      * 
@@ -209,7 +179,7 @@ class ExtrapBoundary : public Boundary<npoint> {
      * @param bc_value 
      * @return real_t 
      */
-    inline real_t Stencil_(m_ptr<const real_t> f, m_ptr<const real_t> xf, const real_t xp, const real_t bc_value)  override {
+    inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const override {
         //-------------------------------------------------------------------------
         constexpr lda_t len = npoint;
         // get the arrays
@@ -230,9 +200,19 @@ class ExtrapBoundary : public Boundary<npoint> {
     }
 };
 
+/**
+ * @brief Dirichlet boundary conditions
+ * 
+ * @tparam npoint polynomial order = npoint
+ */
 template <lda_t npoint>
 class DirichletBoundary : public Boundary<npoint> {
    protected:
+    /**
+    * @brief do overwrite the first element
+    */
+    virtual inline bool OverWriteFirst_() const override { return true; }
+
     /**
      * @brief Impletement the Neville algorithm to obtain an ODD polynomial around a value, i.e. a Dirichlet boundary condition
      * 
@@ -241,7 +221,7 @@ class DirichletBoundary : public Boundary<npoint> {
      * 
      * -> this one is easy, we know the value to use for the boundary
      */
-    inline real_t Stencil_(m_ptr<const real_t> f, m_ptr<const real_t> xf, const real_t xp, const real_t bc_value)  override {
+    inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const override {
         m_assert(bc_value == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         //-------------------------------------------------------------------------
         constexpr lda_t len = npoint + 1;
@@ -268,9 +248,19 @@ class DirichletBoundary : public Boundary<npoint> {
     }
 };
 
+/**
+ * @brief Neuman boundary conditions
+ * 
+ * @tparam npoint polynomial order = npoint
+ */
 template <lda_t npoint>
 class NeumanBoundary : public Boundary<npoint> {
    protected:
+    /**
+    * @brief do overwrite the first element
+    */
+    virtual inline bool OverWriteFirst_() const override { return true; }
+
     /**
      * @brief Impletement the Neville algorithm to obtain an EVEN polynomial around a flux, i.e. a Neuman boundary condition
      * 
@@ -287,7 +277,7 @@ class NeumanBoundary : public Boundary<npoint> {
      * @param bc_value is the flux value COMING IN * hgrid !!!!
      * @return real_t 
      */
-    inline real_t Stencil_(m_ptr<const real_t> f, m_ptr<const real_t> xf, const real_t xp, const real_t bc_value)  override {
+    inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const override {
         //-------------------------------------------------------------------------
         m_assert(bc_value == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         // get the correct

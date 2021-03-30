@@ -37,6 +37,19 @@ real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const
     //-------------------------------------------------------------------------
 }
 
+// /**
+//  * @brief return a write access to the data starting in the position layout->start()
+//  * 
+//  * @param layout 
+//  * @param ida 
+//  * @return real_t* 
+//  */
+// real_t* data_ptr::Write(const m_ptr<const MemLayout>& layout, const lda_t ida) const {
+//     //-------------------------------------------------------------------------
+//     return this->Write(layout->start(0), layout->start(1), layout->start(2), ida, layout->stride());
+//     //-------------------------------------------------------------------------
+// }
+
 /**
  * @brief  return a write access to the data in (0,0,0)
  * 

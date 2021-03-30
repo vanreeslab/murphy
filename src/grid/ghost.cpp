@@ -17,7 +17,7 @@
 /**
  * @brief the localization of the interface
  */
-static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
+// static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
 /**
  * @brief Construct a new Ghost object 
@@ -148,7 +148,7 @@ void Ghost::InitList_() {
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             // store the displacement in the local2disp_ array
             iblock_t local_id     = mirror->p.piggy3.local_num;
-            local2disp_[local_id] = (active_mirror_count++) * m_blockmemsize(1);
+            local2disp_[local_id] = (active_mirror_count++) * CartBlockMemNum(1);
         }
     }
     // make sure everybody did it
@@ -241,7 +241,7 @@ void Ghost::InitComm_() {
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
-    MPI_Aint win_mem_size = n_mirror_to_send_ * m_blockmemsize(1) * sizeof(real_t);
+    MPI_Aint win_mem_size = n_mirror_to_send_ * CartBlockMemNum(1) * sizeof(real_t);
     mirrors_              = reinterpret_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_window_);
     MPI_Info_free(&info);
@@ -357,11 +357,13 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
+    m_log("get post");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
     m_profStop(prof_(), "RMA post get");
 
+    m_log("get compute");
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
     m_profStart(prof_(), "computation");
@@ -711,11 +713,11 @@ void Ghost::PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
     // recover the mirro spot using the mirror id
-    real_p  mirror = mirrors_ + qid->mid * m_blockmemsize(1);
+    real_p  mirror = mirrors_ + qid->mid * CartBlockMemNum(1);
     mem_ptr data   = block->pointer(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
-    memcpy(mirror, data(), m_blockmemsize(1) * sizeof(real_t));
+    memcpy(mirror, data(), CartBlockMemNum(1) * sizeof(real_t));
     //-------------------------------------------------------------------------
 }
 
@@ -730,7 +732,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p   mirror = mirrors_ + qid->mid * m_blockmemsize(1) + m_zeroidx(0, block());
+    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, block());
     data_ptr data   = block->data(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);

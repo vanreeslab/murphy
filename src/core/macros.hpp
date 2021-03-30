@@ -13,36 +13,37 @@
 #include "core/types.hpp"
 
 /**
- * @name user changeable parameters 
+ * @name user-defined parameters 
  * @{
  */
-#define M_N 16          //!< size of one block (M_N x M_N x M_N)
+#define M_N 9          //!< size of one block (M_N x M_N x M_N), must be ODD
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 4  //!< number of ghost points
+#define M_GS 4  //!< memory space for the ghost points (not the actual number of ghost points!)
 #else
 #define M_GS BLOCK_GS
 #endif
 /** @} */
 
-/**
- * @name memory sizes shortcuts
- * @{
- */
-#define M_HN (M_N / 2)  //!< half size of a block
+// /**
+//  * @name memory sizes shortcuts
+//  * @{
+//  */
+#define M_NCENTER (M_N / 2)  //!< center ID of a block
+#define M_NHALF (M_N / 2 + 1)  //!< center ID of a block
 #define M_STRIDE (2 * M_GS + M_N)
 
-// #ifndef BLOCK_GS
-// static constexpr bidx_t m_gs = 4;
-// #else
-// static constexpr bidx_t m_gs = BLOCK_GS;
-// #endif
+// // #ifndef BLOCK_GS
+// // static constexpr bidx_t m_gs = 4;
+// // #else
+// // static constexpr bidx_t m_gs = BLOCK_GS;
+// // #endif
 
-// static constexpr bidx_t m_stride_reg = (2 * m_gs + M_N);
-// static constexpr bidx_t m_stride_ext = ((m_stride_reg * sizeof(real_t)) % M_ALIGNMENT == 0) ? 
-// static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
-/** @} */
+// // static constexpr bidx_t m_stride_reg = (2 * m_gs + M_N);
+// // static constexpr bidx_t m_stride_ext = ((m_stride_reg * sizeof(real_t)) % M_ALIGNMENT == 0) ? 
+// // static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
+// /** @} */
 
 /**
  * @name memory management
@@ -198,15 +199,15 @@
         offset[2] = m_pos_relative_i2_ * hgrid[2]; \
     })
 
-/**
- * @brief returns the size (in elements) of one block
- * 
- */
-#define m_blockmemsize(lda)                                             \
-    ({                                                                  \
-        __typeof__(lda) m_blockmemsize_lda_ = (lda);                    \
-        (bidx_t)(m_blockmemsize_lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
-    })
+// /**
+//  * @brief returns the size (in elements) of one block
+//  * 
+//  */
+// #define m_blockmemsize(lda)                                             \
+//     ({                                                                  \
+//         __typeof__(lda) m_blockmemsize_lda_ = (lda);                    \
+//         (bidx_t)(m_blockmemsize_lda_ * M_STRIDE * M_STRIDE * M_STRIDE); \
+//     })
 
 /**
  * @brief returns the memory offset of the first block element: (0,0,0)

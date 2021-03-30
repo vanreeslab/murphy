@@ -60,6 +60,9 @@ class Ghost {
     Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_level, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler);
     ~Ghost();
 
+    MPI_Group mirror_origin_group() const { return mirror_origin_group_; };
+    MPI_Group mirror_target_group() const { return mirror_target_group_; };
+
     /**
      * @name RMA-based high-level ghosting - post and wait
      * @{

@@ -69,8 +69,8 @@ class ForestGrid {
      * @name Mesh and Ghost structure management
      * @{
      */
-    void ResetP4estGhostMesh();
-    void SetupP4estGhostMesh();
+    void DestroyP4estMeshAndGhost();
+    void SetupP4estMeshAndGhost();
     /** @} */
 };
 

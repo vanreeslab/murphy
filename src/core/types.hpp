@@ -8,9 +8,9 @@
  * @name typename for standard variables
  * @{
  */
-using iface_t  = char;              //!< face index type (0->26)
-using lda_t    = char;              //!< leading dimension array type
-using level_t  = char;              //!< data type for a level
+using iface_t  = short;             //!< face index type (0->26)
+using lda_t    = short;             //!< leading dimension array type
+using level_t  = short;             //!< data type for a level
 using bidx_t   = int;               //!< indexing inside a block
 using iter_t   = int;               //!< indexing iterations
 using rank_t   = int;               //!< rank data type

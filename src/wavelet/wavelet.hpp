@@ -90,9 +90,11 @@ class Wavelet {
     void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
     void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
+    real_t FWT(const m_ptr<const MemLayout>& block_src, const m_ptr<const MemLayout>& block_trg, const data_ptr& data, const data_ptr& data_tmp) const;
     real_t Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const;
     real_t CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const;
 
+    void Scalings(const m_ptr<const MemLayout>& scaling_block, const const_data_ptr& data, const data_ptr& scaling) const;
     void Details(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const;
     void Smooth(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& detail, const m_ptr<const MemLayout>& block, const data_ptr& data) const;
     void WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const;
@@ -123,6 +125,11 @@ class Wavelet {
     virtual const short_t len_ga() const = 0;  //!< length of filter Ga
     virtual const short_t len_js() const = 0;  //!< length of filter Js
     virtual const short_t len_ks() const = 0;  //!< length of filter Ks
+
+
+    // const bidx_t buffer_front() const{
+
+    // };
 
     /**
      * @brief id of the first detail that has to be 0 to guarantee a safe coarsening, in front of the block
@@ -240,7 +247,7 @@ class Wavelet {
     inline size_t CoarseStride() const {
         const lid_t gp_front = CoarseNGhostFront();
         const lid_t gp_back  = CoarseNGhostBack();
-        return gp_front + M_HN + gp_back;
+        return gp_front + M_NHALF + gp_back;
     };
     inline size_t CoarseSize() const {
         return CoarseStride() * CoarseStride() * CoarseStride();
@@ -262,7 +269,7 @@ class Wavelet {
     *      = 0 if a is in the negative ghost points
     *      = 1 if a is in the center points, including 0, we scale it by two but preserve the odd numbers
     *      = 2 if a is M_N
-    *      = 3 if a is in the negative GP
+    *      = 3 if a is in the positive GP
     * 
     * the correct ID is returned based on the value of c
     * 
@@ -275,7 +282,7 @@ class Wavelet {
         const lid_t gp_back  = CoarseNGhostBack();
         const lid_t b        = (a + M_N);
         const lid_t c        = (b / M_N) + (a > M_N);
-        const lid_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_HN, M_HN + gp_back};
+        const lid_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_NHALF, M_NHALF + gp_back};
         // return the correct choice
         return res[c];
     }
@@ -302,10 +309,12 @@ class Wavelet {
      */
     virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
-    virtual void Coarsen_(const m_ptr<const interp_ctx_t>& ctx) const                                  = 0;
-    virtual void Refine_(const m_ptr<const interp_ctx_t>& ctx) const                                   = 0;
-    virtual void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const = 0;
-    virtual void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const                                   = 0;
+    virtual void Coarsen_(const m_ptr<const interp_ctx_t>& ctx) const                                                   = 0;
+    virtual void Refine_(const m_ptr<const interp_ctx_t>& ctx) const                                                    = 0;
+    // virtual void Scaling_(const m_ptr<const interp_ctx_t>& ctx) const                                                   = 0;
+    virtual void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const                  = 0;
+    virtual void ForwardWaveletTransform_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const = 0;
+    virtual void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const                                                    = 0;
     // virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                                     = 0;
     /** @} */
 

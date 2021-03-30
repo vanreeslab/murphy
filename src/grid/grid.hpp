@@ -11,7 +11,7 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "core/pointers.hpp"
-
+\
 #include "grid/gridblock.hpp"
 
 #include "wavelet/wavelet.hpp"
@@ -24,7 +24,7 @@
 #include "gridcallback.hpp"
 
 /**
- * @brief implements the grid management and the related responsabilities on top of ForestGrid
+ * @brief provide understandable grid management
  * 
  */
 class Grid : public ForestGrid {
@@ -46,6 +46,9 @@ class Grid : public ForestGrid {
     void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
+    MPI_Win status_window_ = MPI_WIN_NULL;  //!< window to access the status of ghost blocks
+    bool*   status_        = nullptr;       //!< status of every block: true = coarsen, false = do not coarsen
+
    public:
     explicit Grid();
     Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, const m_ptr<Prof>& prof);
@@ -65,8 +68,11 @@ class Grid : public ForestGrid {
     bool HasProfiler() { return prof_ == nullptr; }
 
     void CopyFrom(m_ptr<const Grid> grid);
-    void SetupGhost();
-    void DestroyGhost();
+    void SetupMeshGhost();
+    void DestroyMeshGhost();
+
+    void SetupAdapt();
+    void DestroyAdapt();
 
 
     /**
@@ -122,8 +128,6 @@ class Grid : public ForestGrid {
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
-    void GetStatusAndSmooth(m_ptr<Field> field);
-
     void Refine(m_ptr<Field> field);
     void Coarsen(m_ptr<Field> field);
     void Adapt(m_ptr<Field> field);
@@ -131,6 +135,9 @@ class Grid : public ForestGrid {
     void Adapt(m_ptr<std::list<Patch> > patches);
     void Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
     void DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details);
+
+   private:
+    void GetStatus_(m_ptr<Field> field) const;
     /**@}*/
 };
 

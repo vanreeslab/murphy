@@ -444,6 +444,75 @@ class InterpolatingWavelet : public Wavelet {
         for_loop(&op, start, end);
     };
 
+    void ForwardWaveletTransform_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const override {
+        m_assert(*details_max == 0.0, "the value must be 0.0");
+        //-------------------------------------------------------------------------
+        constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
+        constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
+        const real_t* const ha     = ha_<TN, TNT> + ha_lim;
+        const real_t* const ga     = ga_<TN, TNT> + ga_lim;
+
+        // check if we need to store some value -> get the target pointer
+
+        // get the source pointer
+        const real_t* const sdata = ctx->sdata.Read();
+        real_t* const       tdata = ctx->tdata.Write();
+
+        // go
+        auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            // get if we are odd or even in the current location
+            const short_t odd_x = m_sign(i0) * (i0 % 2);
+            const short_t odd_y = m_sign(i1) * (i1 % 2);
+            const short_t odd_z = m_sign(i2) * (i2 % 2);
+            m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
+            m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
+            m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
+
+            const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->srcstr);
+
+            // get the filters
+            const real_t* const f_x = (odd_x == 1) ? (ga) : (ha);
+            const real_t* const f_y = (odd_y == 1) ? (ga) : (ha);
+            const real_t* const f_z = (odd_z == 1) ? (ga) : (ha);
+
+            // get the limits of this
+            const bidx_t lim[3] = {((odd_x) ? (ga_lim) : (ha_lim)),
+                                   ((odd_y) ? (ga_lim) : (ha_lim)),
+                                   ((odd_z) ? (ga_lim) : (ha_lim))};
+
+            m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
+            m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
+            m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
+
+            real_t wave_data = 0.0;
+            for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
+                for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
+                    for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
+                        const real_t fact = f_x[id0] * f_y[id1] * f_z[id2];
+                        wave_data += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)];
+                    }
+                }
+            }
+            m_assert(wave_data == wave_data, "the data in %d %d %d is nan %e", i0, i1, i2, wave_data);
+
+            // store the value
+            tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = wave_data;
+
+            // Store the max if we are a detail
+            const bool   is_scaling = (!odd_x) && (!odd_y) && (!odd_z);
+            const real_t detail     = (is_scaling) ? 0.0 : wave_data;
+            (*details_max)          = m_max(fabs(detail), (*details_max));
+        };
+
+        // reset the detail max (to be sure)
+        *details_max = 0.0;
+
+        // compute the start and end indexes, we need more details than the number of scalings
+        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        for_loop(&op, start, end);
+    };
+
     /**
      * @brief Use the computed details to discard the values
      * 

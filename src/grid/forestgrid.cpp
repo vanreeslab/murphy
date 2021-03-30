@@ -93,7 +93,7 @@ ForestGrid::~ForestGrid() {
     m_begin;
     //-------------------------------------------------------------------------
     // delete the ghost and the mesh
-    ResetP4estGhostMesh();
+    DestroyP4estMeshAndGhost();
     // destroy the connectivity and the forest
     p8est_connectivity_t* connect = nullptr;
     if (is_connect_owned_) {
@@ -113,7 +113,7 @@ ForestGrid::~ForestGrid() {
  * This is a mandatory step when changing the grid
  * 
  */
-void ForestGrid::ResetP4estGhostMesh() {
+void ForestGrid::DestroyP4estMeshAndGhost() {
     m_begin;
     //-------------------------------------------------------------------------
     // destroy the structures
@@ -138,7 +138,7 @@ void ForestGrid::ResetP4estGhostMesh() {
  * This a mandatory step when changing the grid
  * 
  */
-void ForestGrid::SetupP4estGhostMesh() {
+void ForestGrid::SetupP4estMeshAndGhost() {
     m_begin;
     m_assert(p4est_ghost_ == nullptr && p4est_mesh_ == nullptr, "cannot initialize something that already exist");
     //-------------------------------------------------------------------------
@@ -166,8 +166,8 @@ level_t ForestGrid::MaxLevel() const {
         }
     }
     level_t global_level = P8EST_QMAXLEVEL;
-    m_assert(sizeof(level_t) == sizeof(char),"the MPI call is done for a char");
-    MPI_Allreduce(&il, &global_level, 1, MPI_CHAR, MPI_MAX, MPI_COMM_WORLD);
+    m_assert(sizeof(level_t) == sizeof(short),"the MPI call is done for a char");
+    MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MAX, MPI_COMM_WORLD);
     m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
     return global_level;
     //-------------------------------------------------------------------------
@@ -190,8 +190,8 @@ level_t ForestGrid::MinLevel() const {
 
     // get the max among the cpus
     level_t global_level = 0;
-    m_assert(sizeof(level_t) == sizeof(char),"the MPI call is done for a char");
-    MPI_Allreduce(&il, &global_level, 1, MPI_CHAR, MPI_MIN, MPI_COMM_WORLD);
+    m_assert(sizeof(level_t) == sizeof(short),"the MPI call is done for a char");
+    MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MIN, MPI_COMM_WORLD);
     m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
     return global_level;
     //-------------------------------------------------------------------------

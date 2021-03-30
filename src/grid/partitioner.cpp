@@ -2,7 +2,7 @@
 
 #include <cstring>
 #include <map>
-
+#include <unordered_map>
 
 using std::unordered_map;
 using std::string;
@@ -125,8 +125,8 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
         // init the send
         if (opart_n > 0) {
             // the send buffer is used to copy the current blocks as they are not continuous to memory
-            send_buf_ = reinterpret_cast<real_t *>(m_calloc(opart_n * m_blockmemsize(n_lda_) * sizeof(real_t)));
-            m_verb("sending buffer initialize of size %ld bytes",opart_n * m_blockmemsize(n_lda_) * sizeof(real_t));
+            send_buf_ = reinterpret_cast<real_t *>(m_calloc(opart_n * CartBlockMemNum(n_lda_) * sizeof(real_t)));
+            m_verb("sending buffer initialize of size %ld bytes",opart_n * CartBlockMemNum(n_lda_) * sizeof(real_t));
 
             // receivers = from opart_begin to opart_end-1 in the new partition
             const rank_t first_recver = bsearch_comm(forest->global_first_quadrant, opart_begin, commsize, 0);
@@ -175,9 +175,9 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
                 q_send_cum_request_[rcount] = qcount;
 
                 // create the send request
-                real_t *buf = send_buf_() + qcount * m_blockmemsize(n_lda_);
-                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(for_send_request_[rcount]));
-                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(back_recv_request_[rcount]));
+                real_t *buf = send_buf_() + qcount * CartBlockMemNum(n_lda_);
+                MPI_Send_init(buf, CartBlockMemNum(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(for_send_request_[rcount]));
+                MPI_Recv_init(buf, CartBlockMemNum(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(back_recv_request_[rcount]));
 
                 // update the counters
                 qcount += n_q2send;
@@ -232,8 +232,8 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
             m_assert(bcount == cpart_n, "the counters should match");
 
             // the receive buffer is used as a new data location for the blocks
-            recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * m_blockmemsize(n_lda_) * sizeof(real_t)));
-            m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)",cpart_n * m_blockmemsize(n_lda_) * sizeof(real_t),n_lda_);
+            recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t)));
+            m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)",cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t),n_lda_);
 
             // senders = from cpart_begin to cpart_end-1 in the new partition
             m_verb("looking for the senders of my new block: %ld -> %ld", cpart_begin, cpart_end);
@@ -285,9 +285,9 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
                 q_recv_cum_block_[scount]   = tqcount;
                 q_recv_cum_request_[scount] = qcount;
                 // create the send request
-                real_p buf = recv_buf_() + qcount * m_blockmemsize(n_lda_);
-                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(for_recv_request_[scount]));
-                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(back_send_request_[scount]));
+                real_p buf = recv_buf_() + qcount * CartBlockMemNum(n_lda_);
+                MPI_Recv_init(buf, CartBlockMemNum(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(for_recv_request_[scount]));
+                MPI_Send_init(buf, CartBlockMemNum(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(back_send_request_[scount]));
                 // update the counters
                 qcount += n_q2recv;
                 tqcount += n_q2recv;
@@ -397,7 +397,7 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
         lid_t n_q2send = q_send_cum_request[is + 1] - q_send_cum_request[is];
         for (lid_t iq = 0; iq < n_q2send; iq++) {
             GridBlock *block = old_blocks[q_send_cum_block[is] + iq];
-            real_p     buf   = send_buf + (q_send_cum_request[is] + iq) * m_blockmemsize(n_lda_);
+            real_p     buf   = send_buf + (q_send_cum_request[is] + iq) * CartBlockMemNum(n_lda_);
             lid_t idacount = 0;
             for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
                 const Field *fid  = iter->second();
@@ -407,9 +407,9 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
                 // the memory returnded by block->data is shifted, so we unshift it :-)
                 // m_log("doing field %s shift by %ld",m_zeroidx(0, block));
                 real_p data = block->data(fid)() - m_zeroidx(0, block);
-                real_p lbuf = buf + m_blockmemsize(idacount);
+                real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
-                memcpy(lbuf, data, m_blockmemsize(fid->lda()) * sizeof(real_t));
+                memcpy(lbuf, data, CartBlockMemNum(fid->lda()) * sizeof(real_t));
                 // update the counters
                 idacount += fid->lda();
             }
@@ -472,7 +472,7 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
 
         for (lid_t iq = 0; iq < n_q2recv; iq++) {
             GridBlock *block = new_blocks[q_recv_cum_block[idx] + iq];
-            real_p     buf   = recv_buf + (q_recv_cum_request[idx] + iq) * m_blockmemsize(n_lda_);
+            real_p     buf   = recv_buf + (q_recv_cum_request[idx] + iq) * CartBlockMemNum(n_lda_);
             m_assert(block != nullptr, "this block shouldn't be accessed here");
 
             lid_t idacount = 0;
@@ -483,9 +483,9 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
                 real_p data = block->data(fid)() - m_zeroidx(0, block);
-                real_p lbuf = buf + m_blockmemsize(idacount);
+                real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
-                memcpy(data, lbuf, m_blockmemsize(fid->lda()) * sizeof(real_t));
+                memcpy(data, lbuf, CartBlockMemNum(fid->lda()) * sizeof(real_t));
                 // update the counters
                 idacount += fid->lda();
             }
