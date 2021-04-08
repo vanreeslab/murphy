@@ -16,7 +16,7 @@ class InitialCondition : public SetValue {
         const real_t* hgrid = block->hgrid();
 
         real_t sigma     = 0.05;
-        real_t center[3] = {0.5, 0.5, 0.5};
+        real_t center[3] = {1.0, 0.5, 0.5};
 
         const real_t oo_sigma2 = 1.0 / (sigma * sigma);
         const real_t fact      = 1.0;  /// sqrt(M_PI * sigma * sigma);  //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
@@ -35,10 +35,10 @@ class InitialCondition : public SetValue {
             const real_t rhoz = (pos[2] - center[2]) / sigma;
             const real_t rho  = rhox * rhox;  //+ rhoy * rhoy + rhoz * rhoz;
 
-            // data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
+            data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
 
             // simply give the level
-            data[m_idx(i0, i1, i2)] = block->level();
+            // data[m_idx(i0, i1, i2)] = block->level();
         };
 
         for_loop(&op, start_, end_);
@@ -57,41 +57,34 @@ void DebugLifting::Run() {
     bool period[3] = {false, false, false};
     // bool  period[3]   = {true, true, true};
     lid_t grid_len[3] = {2, 1, 1};
-    Grid  grid(0, period, grid_len, MPI_COMM_WORLD, nullptr);
-    grid.level_limit(0, 3);
+    Grid  grid(1, period, grid_len, MPI_COMM_WORLD, nullptr);
+    grid.level_limit(0, 1);
 
-    real_t           p1_o[3] = {0.0, 0.0, 0.0};
+    real_t           p1_o[3] = {1.0, 0.0, 0.0};
     real_t           p1_l[3] = {1.0, 1.0, 1.0};
-    Patch            patch(p1_o, p1_l, 1);
+    Patch            patch(p1_o, p1_l, 0);
     std::list<Patch> plist;
     plist.push_back(patch);
 
-    grid.Adapt(&plist);
-
+    // add the field
     Field scal("scalar", 1);
     grid.AddField(&scal);
-    scal.bctype(M_BC_EXTRAP);  // not really needed, we are periodic
+    scal.bctype(M_BC_EXTRAP);
 
-    real_t offset    = 0.0;  //1.0 / M_PI * 1.0/(std::pow(2, level_start_) * M_N);  // this is a fraction of h
-    real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
-
-    // ring
-    lda_t            normal      = 2;
-    real_t           sigma       = 0.05;
-    real_t           radius      = 0.25;
-    real_t           velocity[3] = {0.0, 0.0, 0.0};
+    // set the initial condition
     InitialCondition ring;
     ring(&grid, &scal);
 
-    // print
+    // dump
     IOH5 dump("data");
+    grid.GhostPull(&scal);
     dump(&grid, &scal, 0);
 
+    grid.Adapt(&plist);
+
+    // dump again, the ghosts should be ok
     grid.GhostPull(&scal);
     dump(&grid, &scal, 1);
-
-    dump.dump_ghost(true);
-    dump(&grid, &scal, 2);
 
     //-------------------------------------------------------------------------
 }

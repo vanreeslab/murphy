@@ -23,29 +23,38 @@ real_t BMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) 
 void BMax::ComputeBMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
     m_assert(fid_x->lda() <= 3, "the array for the address has a size of 3, increase the size if %d dims are needed", fid_x->lda());
     //-------------------------------------------------------------------------
-    const sid_t lda = fid_x->lda();
-
+    // get the data for each direction
+    const sid_t   lda = fid_x->lda();
     const real_t* data[3];
-
     for (sid_t ida = 0; ida < lda; ida++) {
         data[ida] = block->data(fid_x, ida).Read();
     }
 
-    // get the correct place given the current thread and the dimension
-    for (bidx_t i2 = start_; i2 < end_; i2++) {
-        for (bidx_t i1 = start_; i1 < end_; i1++) {
-            for (bidx_t i0 = start_; i0 < end_; i0++) {
-                const size_t idx = m_idx(i0, i1, i2);
+    // get the max among them
+    real_t local_max = 0.0;
+    auto   op        = [=, &local_max](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        const size_t idx = m_idx(i0, i1, i2);
 
-                real_t value = 0.0;
-                for (sid_t ida = 0; ida < lda; ida++) {
-                    value += fabs(data[ida][idx]);
-                }
-
-                max_ = m_max(fabs(value), max_);
-            }
+        real_t value = 0.0;
+        for (sid_t ida = 0; ida < lda; ida++) {
+            value += fabs(data[ida][idx]);
         }
-    }
+
+        local_max = m_max(fabs(value), max_);
+    };
+
+    for_loop(&op, start_, end_);
+
+    max_ = m_max(local_max, max_);
+
+    // // get the correct place given the current thread and the dimension
+    // for (bidx_t i2 = start_; i2 < end_; i2++) {
+    //     for (bidx_t i1 = start_; i1 < end_; i1++) {
+    //         for (bidx_t i0 = start_; i0 < end_; i0++) {
+
+    //         }
+    //     }
+    // }
     //-------------------------------------------------------------------------
 }
 

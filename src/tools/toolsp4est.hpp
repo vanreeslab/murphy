@@ -53,6 +53,7 @@ inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, p
 
 inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const char level) {
     m_assert(level >= 0, "the level = %d must be >=0", level);
+    m_assert(level < P8EST_MAXLEVEL, "the level = %d must be <= %d", level, P8EST_MAXLEVEL);
     //---------------------------------------------------------------------
     size_t num = mesh->quad_level[level].elem_count;
     m_assert(num < numeric_limits<p4est_locidx_t>::max(), "the number of element is too big to be local");
@@ -72,10 +73,10 @@ inline static real_t p4est_QuadLen(const level_t level) {
     //---------------------------------------------------------------------
     // const real_t val = 1.0 / (real_t)(P8EST_ROOT_LEN / P8EST_QUADRANT_LEN(level));
     const real_t val = 1.0 / ((real_t)(1 << (level)));
-    m_assert(val>0.0,"the length = %e must be >0",val);
+    m_assert(val > 0.0, "the length = %e must be >0", val);
     return val;
     //---------------------------------------------------------------------
-}
+};
 
 inline static int p4est_GetChildID(const real_t xyz[3], const level_t level) {
     m_assert(level > 0, "the level = %d must be > 0", level);
@@ -89,14 +90,21 @@ inline static int p4est_GetChildID(const real_t xyz[3], const level_t level) {
     id += (fmod(xyz[2], len_coarse) == 0.0) ? 0 : 4;
     return id;
     //---------------------------------------------------------------------
-}
+};
 
+/**
+ * @brief return lists with: the quadrants, the cummulative id and the rank to access the neighor
+ * 
+ * @param local_id the local (non-cummulative!!) id of the quadrant
+ * 
+ */
 inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8est_connectivity_t* connect, p8est_ghost_t* ghost, p8est_mesh_t* mesh,
                                      /* looking for */ const p4est_topidx_t tree_id, const p4est_locidx_t local_id, const iface_t ibidule,
-                                     /* result */ std::list<qdrt_t*>* ngh_list, std::list<rank_t>* rank_list) {
+                                     /* result */ std::list<qdrt_t*>* ngh_list, std::list<iblock_t>* id_list, std::list<rank_t>* rank_list) {
     //---------------------------------------------------------------------
     // clear the lists
     ngh_list->clear();
+    id_list->clear();
     rank_list->clear();
 
     // get me as quad
@@ -119,25 +127,36 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
 
     // add them to the list
     for (iblock_t ib = 0; ib < ngh_quad->elem_count; ++ib) {
+        m_assert(ngh_qid->elem_count == ngh_quad->elem_count, "the counters = %d and %d must be =", ngh_qid->elem_count, ngh_quad->elem_count);
+        m_assert(ngh_enc->elem_count == ngh_quad->elem_count, "the counters = %d and %d must be =", ngh_enc->elem_count, ngh_quad->elem_count);
+        m_verb("ngh_qid = %d, ngh_enc = %d, ngh_quad = %d", ngh_qid->elem_count, ngh_quad->elem_count, ngh_enc->elem_count);
         // p8est_quadrant_t* ngh = p8est_quadrant_array_index(ngh_quad, ib);
-        p8est_quadrant_t* ngh = p4est_GetElement<p8est_quadrant_t*>(ngh_quad, ib);
 
-        // finish the check
-        m_verb("adding %p to the list", ngh);
+        p8est_quadrant_t* ngh = p4est_GetElement<p8est_quadrant_t*>(ngh_quad, ib);
         ngh_list->push_back(ngh);
 
         // find out the rank, if not ghost, myself, if ghost, take the piggy number
         const int  status  = p4est_GetElement<int>(ngh_enc, ib);
         const bool isghost = (status < 0);
+        m_verb("block %d searching for ghost #%d: status = %d", cum_id, ibidule, status);
 
         if (!isghost) {
             m_verb("pushing to list: rank %d", my_rank);
             rank_list->push_back(my_rank);
+            // if it's a local block, we trust the id
+            int ngh_block_id = p4est_GetElement<int>(ngh_qid, ib);
+            m_assert(ngh_block_id < std::numeric_limits<iblock_t>::max(), "the id %d must be smaller than the limit %d ", ngh_block_id, std::numeric_limits<iblock_t>::max());
+            id_list->push_back(ngh_block_id);
         } else {
             m_verb("found block at level %d, local num = %d and tree %d", ngh->level, ngh->p.piggy3.local_num, ngh->p.piggy3.which_tree);
             const int ngh_rank = p8est_quadrant_find_owner(forest, ngh->p.piggy3.which_tree, -1, ngh);
             m_verb("pushing to list: rank %d", ngh_rank);
             rank_list->push_back(ngh_rank);
+
+            // if it's a ghost we use the piggy3 id instead (they don't match, no clue why)
+            int ngh_block_id = ngh->p.piggy3.local_num;  // p4est_GetElement<int>(ngh_qid, ib);
+            m_assert(ngh_block_id < std::numeric_limits<iblock_t>::max(), "the id %d must be smaller than the limit %d ", ngh_block_id, std::numeric_limits<iblock_t>::max());
+            id_list->push_back(ngh_block_id);
         }
     }
     // if it's a corner, do an extra check with the new method
@@ -153,8 +172,6 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
         // get the surrogate block
         const iface_t corner_id = ibidule - 18;
         p8est_quadrant_corner_neighbor_extra(quad, tree_id, corner_id, surrogate_list, treeid_list, NULL, connect);
-        m_verb("looking for block @tree %d  and corner %d", tree_id, corner_id);
-        m_verb("we found %d surrogate blocks", surrogate_list->elem_count);
 
         // for each surrogate block
         for (sid_t is = 0; is < surrogate_list->elem_count; is++) {
@@ -187,6 +204,11 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
                 } else {
                     ngh_list->push_back(quad_to_push);
                     rank_list->push_back(rank_to_push);
+
+                    // get the cummulative ID
+                    int ngh_block_id = quad_piggy->p.piggy3.local_num;
+                    m_assert(ngh_block_id < std::numeric_limits<iblock_t>::max(), "the id %d must be smaller than the limit %d ", ngh_block_id, std::numeric_limits<iblock_t>::max());
+                    id_list->push_back(ngh_block_id);
                 }
 
                 m_verb("pushing to list: adress: %p  and rank %d", quad_to_push, rank_to_push);
@@ -203,6 +225,10 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
                 } else {
                     ngh_list->push_back(ghost_to_push);
                     rank_list->push_back(rank_to_push);
+                    // get the cummulative ID
+                    int ngh_block_id = ghost_to_push->p.piggy3.local_num;
+                    m_assert(ngh_block_id < std::numeric_limits<iblock_t>::max(), "the id %d must be smaller than the limit %d ", ngh_block_id, std::numeric_limits<iblock_t>::max());
+                    id_list->push_back(ngh_block_id);
                 }
             }
         }

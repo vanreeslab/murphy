@@ -38,7 +38,7 @@ class Boundary {
      * 
      * by default we overwrite the last element (fsign > 0 ) but not the first one (fsign < 0)
      */
-    virtual inline bool OverWriteFirst_() const { return false; };
+    virtual inline bool OverWriteFirst_(const real_t fsign) const { return (fsign > 0.5); };
 
    public:
     /**
@@ -76,9 +76,10 @@ class Boundary {
             real_t* ldata = sdata + m_idx(i0, i1, i2, 0, b_stride);
 
             // get the distance between me and the face
-            const bidx_t dis0 = i0 - first_last[0];
-            const bidx_t dis1 = i1 - first_last[1];
-            const bidx_t dis2 = i2 - first_last[2];
+            // the face_start is given as M_N, so if I am positive signed, I need add 1 to reach the last element of the block
+            const bidx_t dis0 = i0 - first_last[0];  //+ 2 * (fsign[0] > 0.5);
+            const bidx_t dis1 = i1 - first_last[1];  //+ 2 * (fsign[1] > 0.5);
+            const bidx_t dis2 = i2 - first_last[2];  //+ 2 * (fsign[2] > 0.5);
 
             // m_log("local is %d %d % d-> %d", i0, i1, i2, m_idx(i0, i1, i2, 0, b_stride));
             // m_log("distance is %d %d %d", dis0, dis1, dis2);
@@ -91,11 +92,9 @@ class Boundary {
                 // if the direction is not physics, just consider the current ID,
                 // if the direction is physics, takes the first, second and third point INSIDE the block (0 = first inside)
                 // these are local increments on the source which is already in position fstart
-                const bidx_t idx0 = (!isphys[0]) ? 0 : (-(ip + OverWriteFirst_()) * fsign[0] - dis0);
-                const bidx_t idx1 = (!isphys[1]) ? 0 : (-(ip + OverWriteFirst_()) * fsign[1] - dis1);
-                const bidx_t idx2 = (!isphys[2]) ? 0 : (-(ip + OverWriteFirst_()) * fsign[2] - dis2);
-
-                // m_log("npoint is %d %d %d", idx0, idx1, idx2);
+                const bidx_t idx0 = (!isphys[0]) ? 0 : (-(ip + OverWriteFirst_(fsign[0])) * fsign[0] - dis0);
+                const bidx_t idx1 = (!isphys[1]) ? 0 : (-(ip + OverWriteFirst_(fsign[1])) * fsign[1] - dis1);
+                const bidx_t idx2 = (!isphys[2]) ? 0 : (-(ip + OverWriteFirst_(fsign[2])) * fsign[2] - dis2);
 
                 // check that we stay at the correct sport for everybody
                 m_assert((i0 + idx0) >= (-gblock->gs()) && (i0 + idx0) < (b_stride), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), b_stride);
@@ -108,6 +107,8 @@ class Boundary {
 
                 // store the result
                 f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];
+
+                // m_log("npoint is %d %d %d, value is %f", idx0 + i0, idx1 + i1, idx2 + i2, ldata[m_idx(idx0, idx1, idx2, 0, b_stride)]);
 
                 // get the data position, relative to me, i.e. using the idx indexes
                 const real_t data_pos[3] = {(idx0)*hgrid[0],
@@ -122,8 +123,13 @@ class Boundary {
 
             // get the ghost value
             ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
+            // m_assert(-1.0 <= ldata[0] && ldata[0] <= 3.0, "the value we put = %f must be 0 <= data <= 2.5", ldata[0]);
+            // if(!(-1.0 <= ldata[0] && ldata[0] <= 3.0)){
+            //     m_log("FAILURE : the value we put = %f must be 0 <= data <= 2.5", ldata[0]);
+            // }
         };
 
+        // m_log("doing boundary from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
         // get the starting and ending indexes
         const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
         const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
@@ -211,7 +217,7 @@ class DirichletBoundary : public Boundary<npoint> {
     /**
     * @brief do overwrite the first element
     */
-    virtual inline bool OverWriteFirst_() const override { return true; }
+    virtual inline bool OverWriteFirst_(const real_t fsign) const override { return true; }
 
     /**
      * @brief Impletement the Neville algorithm to obtain an ODD polynomial around a value, i.e. a Dirichlet boundary condition
@@ -259,7 +265,7 @@ class NeumanBoundary : public Boundary<npoint> {
     /**
     * @brief do overwrite the first element
     */
-    virtual inline bool OverWriteFirst_() const override { return true; }
+    virtual inline bool OverWriteFirst_(const real_t fsign) const override { return true; }
 
     /**
      * @brief Impletement the Neville algorithm to obtain an EVEN polynomial around a flux, i.e. a Neuman boundary condition

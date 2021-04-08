@@ -46,8 +46,8 @@ class Grid : public ForestGrid {
     void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
 
-    MPI_Win status_window_ = MPI_WIN_NULL;  //!< window to access the status of ghost blocks
-    bool*   status_        = nullptr;       //!< status of every block: true = coarsen, false = do not coarsen
+    MPI_Win coarsen_status_window_ = MPI_WIN_NULL;  //!< window to access the status of ghost blocks
+    bool*   coarsen_status_        = nullptr;       //!< status of every block: true = coarsen, false = do not coarsen
 
    public:
     explicit Grid();

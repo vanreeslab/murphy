@@ -1,364 +1,364 @@
-#include <mpi.h>
+// #include <mpi.h>
 
-#include "operator/blas.hpp"
-#include "core/doop.hpp"
-#include "operator/error.hpp"
-#include "grid/grid.hpp"
-#include "gridcallback.hpp"
-#include "gtest/gtest.h"
-#include "tools/ioh5.hpp"
-#include "core/macros.hpp"
-#include "core/types.hpp"
-#include "core/pointers.hpp"
-#include "operator/setvalues.hpp"
-#include "grid/subblock.hpp"
-#include "wavelet/interpolating_wavelet.hpp"
+// #include "operator/blas.hpp"
+// #include "core/doop.hpp"
+// #include "operator/error.hpp"
+// #include "grid/grid.hpp"
+// #include "gridcallback.hpp"
+// #include "gtest/gtest.h"
+// #include "tools/ioh5.hpp"
+// #include "core/macros.hpp"
+// #include "core/types.hpp"
+// #include "core/pointers.hpp"
+// #include "operator/setvalues.hpp"
+// #include "grid/subblock.hpp"
+// #include "wavelet/interpolating_wavelet.hpp"
 
-#define DOUBLE_TOL 1e-13
-#define BLVL 1
+// #define DOUBLE_TOL 1e-13
+// #define BLVL 1
 
-using std::list;
+// using std::list;
 
-class valid_Wavelet_Epsilon : public ::testing::Test {
-   protected:
-    void SetUp() override{};
-    void TearDown() override{};
-};
+// class valid_Wavelet_Epsilon : public ::testing::Test {
+//    protected:
+//     void SetUp() override{};
+//     void TearDown() override{};
+// };
 
-static constexpr lid_t m_gs     = 8;
-static constexpr lid_t m_n      = M_N;
-static constexpr lid_t m_hn     = M_HN;
-static constexpr lid_t m_stride = m_n + 6 * m_gs;
+// static constexpr lid_t m_gs     = 8;
+// static constexpr lid_t m_n      = M_N;
+// static constexpr lid_t m_hn     = M_HN;
+// static constexpr lid_t m_stride = m_n + 6 * m_gs;
 
-static Wavelet* GetWavelet(const sid_t n, const sid_t nt) {
-    if (n == 2 && nt == 2) {
-        return (new InterpolatingWavelet<2, 2>);
-    } else if (n == 4 && nt == 0) {
-        return (new InterpolatingWavelet<4, 0>);
-    } else if (n == 4 && nt == 2) {
-        return (new InterpolatingWavelet<4, 2>);
-    } else if (n == 4 && nt == 4) {
-        return (new InterpolatingWavelet<4, 4>);
-    } else if (n == 6 && nt == 0) {
-        return (new InterpolatingWavelet<6, 0>);
-    } else if (n == 6 && nt == 2) {
-        return (new InterpolatingWavelet<6, 2>);
-    } else if (n == 6 && nt == 4) {
-        return (new InterpolatingWavelet<6, 4>);
-    }
-    return nullptr;
-};
+// static Wavelet* GetWavelet(const sid_t n, const sid_t nt) {
+//     if (n == 2 && nt == 2) {
+//         return (new InterpolatingWavelet<2, 2>);
+//     } else if (n == 4 && nt == 0) {
+//         return (new InterpolatingWavelet<4, 0>);
+//     } else if (n == 4 && nt == 2) {
+//         return (new InterpolatingWavelet<4, 2>);
+//     } else if (n == 4 && nt == 4) {
+//         return (new InterpolatingWavelet<4, 4>);
+//     } else if (n == 6 && nt == 0) {
+//         return (new InterpolatingWavelet<6, 0>);
+//     } else if (n == 6 && nt == 2) {
+//         return (new InterpolatingWavelet<6, 2>);
+//     } else if (n == 6 && nt == 4) {
+//         return (new InterpolatingWavelet<6, 4>);
+//     }
+//     return nullptr;
+// };
 
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
-    constexpr real_t hcoarse = 1.0 / (m_hn);
-    constexpr real_t hfine   = 1.0 / (m_n);
+// //==============================================================================================================================
+// TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
+//     constexpr real_t hcoarse = 1.0 / (m_hn);
+//     constexpr real_t hfine   = 1.0 / (m_n);
 
-    Wavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
+//     Wavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
 
-    real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    real_p ptr_tmp    = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+//     real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+//     real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
+//     real_p ptr_tmp    = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
-    lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
+//     lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
 
-    // for (sid_t id = 0; id < 7; ++id) {
-    // create the memory, start in full configuration
-    SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
-    SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
+//     // for (sid_t id = 0; id < 7; ++id) {
+//     // create the memory, start in full configuration
+//     SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
+//     SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
 
-    real_t* data_fine   = ptr_fine + m_zeroidx(0, &block_fine);
-    real_t* data_coarse = ptr_coarse + m_zeroidx(0, &block_coarse);
+//     real_t* data_fine   = ptr_fine + m_zeroidx(0, &block_fine);
+//     real_t* data_coarse = ptr_coarse + m_zeroidx(0, &block_coarse);
 
-    // fill the fine block!
-    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
-        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
-            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
-                real_t x      = i0 * hfine;
-                real_t y      = i1 * hfine;
-                real_t z      = i2 * hfine;
-                real_t pos[3] = {x, y, z};
+//     // fill the fine block!
+//     for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
+//         for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
+//             for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
+//                 real_t x      = i0 * hfine;
+//                 real_t y      = i1 * hfine;
+//                 real_t z      = i2 * hfine;
+//                 real_t pos[3] = {x, y, z};
 
-                data_fine[m_idx(i0, i1, i2, 0, block_fine.stride())] = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
-            }
-        }
-    }
-    //................................................
-    // compute the max detail
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-    // get the coarse version of life
-    const lid_t m_hgs = m_gs / 2;
-    SubBlock    tmp_block(3 * m_hgs, m_hn + 6 * m_hgs, -3 * m_hgs, m_hn + 3 * m_hgs);
-    real_t*     data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
-    for (lid_t i2 = tmp_block.start(2); i2 < tmp_block.end(2); i2++) {
-        for (lid_t i1 = tmp_block.start(1); i1 < tmp_block.end(1); i1++) {
-            for (lid_t i0 = tmp_block.start(0); i0 < tmp_block.end(0); i0++) {
-                data_tmp[m_idx(i0, i1, i2, 0, tmp_block.stride())] = data_fine[m_idx(i0 * 2, i1 * 2, i2 * 2, 0, block_fine.stride())];
-            }
-        }
-    }
+//                 data_fine[m_idx(i0, i1, i2, 0, block_fine.stride())] = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
+//             }
+//         }
+//     }
+//     //................................................
+//     // compute the max detail
+//     block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+//     // get the coarse version of life
+//     const lid_t m_hgs = m_gs / 2;
+//     SubBlock    tmp_block(3 * m_hgs, m_hn + 6 * m_hgs, -3 * m_hgs, m_hn + 3 * m_hgs);
+//     real_t*     data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
+//     for (lid_t i2 = tmp_block.start(2); i2 < tmp_block.end(2); i2++) {
+//         for (lid_t i1 = tmp_block.start(1); i1 < tmp_block.end(1); i1++) {
+//             for (lid_t i0 = tmp_block.start(0); i0 < tmp_block.end(0); i0++) {
+//                 data_tmp[m_idx(i0, i1, i2, 0, tmp_block.stride())] = data_fine[m_idx(i0 * 2, i1 * 2, i2 * 2, 0, block_fine.stride())];
+//             }
+//         }
+//     }
 
-    // Wavelet* interp = GetWavelet(n[id][0], n[id][1]);
-    real_t detail_max = 0.0;
-    interp->Details(&block_fine, data_fine, &detail_max);
+//     // Wavelet* interp = GetWavelet(n[id][0], n[id][1]);
+//     real_t detail_max = 0.0;
+//     interp->Details(&block_fine, data_fine, &detail_max);
 
-    //................................................
-    // set the index for coarsening computation
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
-    // do the coarsening
-    lid_t shift[3] = {0};
-    interp->Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
+//     //................................................
+//     // set the index for coarsening computation
+//     block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
+//     // do the coarsening
+//     lid_t shift[3] = {0};
+//     interp->Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
 
-    // set the index for refinement computation
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-    interp->Interpolate(-1, shift, &block_coarse, data_coarse, &block_fine, data_fine);
+//     // set the index for refinement computation
+//     block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
+//     interp->Interpolate(-1, shift, &block_coarse, data_coarse, &block_fine, data_fine);
 
-    // now compute the error
-    real_t erri = 0.0;
-    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
-        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
-            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
-                real_t x      = i0 * hfine;
-                real_t y      = i1 * hfine;
-                real_t z      = i2 * hfine;
-                real_t pos[3] = {x, y, z};
+//     // now compute the error
+//     real_t erri = 0.0;
+//     for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
+//         for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
+//             for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
+//                 real_t x      = i0 * hfine;
+//                 real_t y      = i1 * hfine;
+//                 real_t z      = i2 * hfine;
+//                 real_t pos[3] = {x, y, z};
 
-                real_t exact = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
-                real_t value = data_fine[m_idx(i0, i1, i2, 0, block_fine.stride())];
+//                 real_t exact = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
+//                 real_t value = data_fine[m_idx(i0, i1, i2, 0, block_fine.stride())];
 
-                real_t err = fabs(exact - value);
+//                 real_t err = fabs(exact - value);
 
-                // if (err > erri) {
-                //     m_log("update the value, I have %e instead of %e @ %d %d %d", value, exact, i0, i1, i2);
-                // }
-                erri = m_max(erri, err);
-            }
-        }
-    }
-    ASSERT_LE(erri, detail_max);
-    m_log("[%s] erri = %e vs detail = %e", interp->Identity().c_str(), erri, detail_max);
-    delete (interp);
-    // }
+//                 // if (err > erri) {
+//                 //     m_log("update the value, I have %e instead of %e @ %d %d %d", value, exact, i0, i1, i2);
+//                 // }
+//                 erri = m_max(erri, err);
+//             }
+//         }
+//     }
+//     ASSERT_LE(erri, detail_max);
+//     m_log("[%s] erri = %e vs detail = %e", interp->Identity().c_str(), erri, detail_max);
+//     delete (interp);
+//     // }
 
-    // ciao
-    m_free(ptr_fine);
-    m_free(ptr_coarse);
+//     // ciao
+//     m_free(ptr_fine);
+//     m_free(ptr_coarse);
 
-    ASSERT_NEAR(0.0, 0.0, DOUBLE_TOL);
-}
+//     ASSERT_NEAR(0.0, 0.0, DOUBLE_TOL);
+// }
 
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
-    // adapt the mesh
-    real_t epsilon[2] = {1e-2, 1e-3};
-    // real_t epsilon[1] = {1.0e-1};
-    // lda_t  ieps       = 0;
-    for (lda_t ieps = 0; ieps < 1; ++ieps) {
-        level_t max_level   = 4;
-        bool    periodic[3] = {true, true, true};
-        lid_t   L[3]        = {1, 1, 1};
-        Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
+// //==============================================================================================================================
+// TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
+//     // adapt the mesh
+//     real_t epsilon[2] = {1e-2, 1e-3};
+//     // real_t epsilon[1] = {1.0e-1};
+//     // lda_t  ieps       = 0;
+//     for (lda_t ieps = 0; ieps < 1; ++ieps) {
+//         level_t max_level   = 4;
+//         bool    periodic[3] = {true, true, true};
+//         lid_t   L[3]        = {1, 1, 1};
+//         Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
 
-        // create the field + the solution
-        Field vort("vort", 3);
-        grid.AddField(&vort);
+//         // create the field + the solution
+//         Field vort("vort", 3);
+//         grid.AddField(&vort);
 
-        // create a patch of the current domain
-        list<Patch> patch;
-        real_t      origin[3] = {0.0, 0.0, 0.0};
-        real_t      length[3] = {L[0], L[1], L[2]};
-        patch.push_back(Patch(origin, length, max_level));
+//         // create a patch of the current domain
+//         list<Patch> patch;
+//         real_t      origin[3] = {0.0, 0.0, 0.0};
+//         real_t      length[3] = {L[0], L[1], L[2]};
+//         patch.push_back(Patch(origin, length, max_level));
 
-        const real_t         center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
-        const lda_t          normal    = 2;
-        const real_t         sigma     = 0.1;
-        const real_t         radius    = 0.3;
-        const real_t         cutoff    = (center[0] - radius) * 0.9;
-        SetCompactVortexRing vr_init(normal, center, sigma, radius, cutoff);
-        SetCompactVortexRing vr_init_full(normal, center, sigma, radius, cutoff, grid.interp());
+//         const real_t         center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
+//         const lda_t          normal    = 2;
+//         const real_t         sigma     = 0.1;
+//         const real_t         radius    = 0.3;
+//         const real_t         cutoff    = (center[0] - radius) * 0.9;
+//         SetCompactVortexRing vr_init(normal, center, sigma, radius, cutoff);
+//         SetCompactVortexRing vr_init_full(normal, center, sigma, radius, cutoff, grid.interp());
 
-        vr_init(&grid, &vort);
+//         vr_init(&grid, &vort);
 
-        grid.SetTol(1e+5, epsilon[ieps]);
+//         grid.SetTol(1e+5, epsilon[ieps]);
 
-        // do the coarsening, go the the min level if needed
-        for (level_t il = max_level; il > 2; --il) {
-            grid.Coarsen(&vort);
-        }
+//         // do the coarsening, go the the min level if needed
+//         for (level_t il = max_level; il > 2; --il) {
+//             grid.Coarsen(&vort);
+//         }
 
-        // go up again by forcing the refinement based on the patch
-        for (level_t sil = 2; sil < max_level; ++sil) {
-            grid.GhostPull(&vort);
-            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_UpdateDependency, nullptr);
-        }
-        level_t current_min_level = grid.MinLevel();
-        level_t current_max_level = grid.MaxLevel();
-        m_log("\t re-adaptation done! we have block between %d and %d", current_min_level, current_max_level);
+//         // go up again by forcing the refinement based on the patch
+//         for (level_t sil = 2; sil < max_level; ++sil) {
+//             grid.GhostPull(&vort);
+//             grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_UpdateDependency, nullptr);
+//         }
+//         level_t current_min_level = grid.MinLevel();
+//         level_t current_max_level = grid.MaxLevel();
+//         m_log("\t re-adaptation done! we have block between %d and %d", current_min_level, current_max_level);
 
-        // recreate the solution
-        Field sol("sol", 3);
-        grid.AddField(&sol);
-        vr_init(&grid, &sol);
-        // compute the error
-        real_t          err2, erri;
-        ErrorCalculator error;
-        error.Norms(&grid, &vort, &sol, &err2, &erri);
-        m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+//         // recreate the solution
+//         Field sol("sol", 3);
+//         grid.AddField(&sol);
+//         vr_init(&grid, &sol);
+//         // compute the error
+//         real_t          err2, erri;
+//         ErrorCalculator error;
+//         error.Norms(&grid, &vort, &sol, &err2, &erri);
+//         m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
 
-        grid.DeleteField(&sol);
+//         grid.DeleteField(&sol);
 
-        ASSERT_LE(err2, epsilon[ieps]);
-        ASSERT_LE(erri, epsilon[ieps]);
-    }
-}
+//         ASSERT_LE(err2, epsilon[ieps]);
+//         ASSERT_LE(erri, epsilon[ieps]);
+//     }
+// }
 
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
-    // adapt the mesh
-    real_t epsilon[3] = {1e-2, 1e-3};
-    // real_t epsilon[1] = {1.0e-1};
-    // lda_t  ieps       = 0;
-    for (lda_t ieps = 0; ieps < 2; ++ieps) {
-        level_t max_level   = 4;
-        bool    periodic[3] = {false, false, false};
-        lid_t   L[3]        = {1, 1, 1};
-        Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
+// //==============================================================================================================================
+// TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
+//     // adapt the mesh
+//     real_t epsilon[3] = {1e-2, 1e-3};
+//     // real_t epsilon[1] = {1.0e-1};
+//     // lda_t  ieps       = 0;
+//     for (lda_t ieps = 0; ieps < 2; ++ieps) {
+//         level_t max_level   = 4;
+//         bool    periodic[3] = {false, false, false};
+//         lid_t   L[3]        = {1, 1, 1};
+//         Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
 
-        // create the field + the solution
-        Field vort("vort", 3);
-        grid.AddField(&vort);
+//         // create the field + the solution
+//         Field vort("vort", 3);
+//         grid.AddField(&vort);
 
-        vort.bctype(M_BC_EXTRAP);
+//         vort.bctype(M_BC_EXTRAP);
 
-        // create a patch of the current domain
-        list<Patch> patch;
-        real_t      origin[3] = {0.0, 0.0, 0.0};
-        real_t      length[3] = {L[0], L[1], L[2]};
-        patch.push_back(Patch(origin, length, max_level));
+//         // create a patch of the current domain
+//         list<Patch> patch;
+//         real_t      origin[3] = {0.0, 0.0, 0.0};
+//         real_t      length[3] = {L[0], L[1], L[2]};
+//         patch.push_back(Patch(origin, length, max_level));
 
-        const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
-        const lda_t  normal    = 2;
-        const real_t sigma     = 0.05;
-        const real_t radius    = 0.3;
-        // const real_t  cutoff    = (center[0] - radius) * 0.9;
-        SetVortexRing vr_init(normal, center, sigma, radius);
-        SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
+//         const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
+//         const lda_t  normal    = 2;
+//         const real_t sigma     = 0.05;
+//         const real_t radius    = 0.3;
+//         // const real_t  cutoff    = (center[0] - radius) * 0.9;
+//         SetVortexRing vr_init(normal, center, sigma, radius);
+//         SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
 
-        vr_init(&grid, &vort);
+//         vr_init(&grid, &vort);
 
-        grid.SetTol(1e+5, epsilon[ieps]);
+//         grid.SetTol(1e+5, epsilon[ieps]);
 
-        // do the coarsening, go the the min level if needed
-        for (level_t il = max_level; il > 2; --il) {
-            grid.Coarsen(&vort);
-        }
+//         // do the coarsening, go the the min level if needed
+//         for (level_t il = max_level; il > 2; --il) {
+//             grid.Coarsen(&vort);
+//         }
 
-        // grid.GhostPull(&vort);
-        // IOH5        io("data_test");
-        // std::string name = "vort_coarse" + std::to_string(epsilon[ieps]);
-        // io(&grid, &vort, name);
+//         // grid.GhostPull(&vort);
+//         // IOH5        io("data_test");
+//         // std::string name = "vort_coarse" + std::to_string(epsilon[ieps]);
+//         // io(&grid, &vort, name);
 
-        // go up again by forcing the refinement based on the patch
-        for (level_t sil = 2; sil < max_level; ++sil) {
-            grid.GhostPull(&vort);
-            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_UpdateDependency, nullptr);
+//         // go up again by forcing the refinement based on the patch
+//         for (level_t sil = 2; sil < max_level; ++sil) {
+//             grid.GhostPull(&vort);
+//             grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_UpdateDependency, nullptr);
 
-            // recreate the solution
-            Field sol("sol", 3);
-            grid.AddField(&sol);
-            vr_init(&grid, &sol);
-            // compute the error
-            real_t          err2, erri;
-            ErrorCalculator error;
-            error.Norms(&grid, &vort, &sol, &err2, &erri);
-            m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+//             // recreate the solution
+//             Field sol("sol", 3);
+//             grid.AddField(&sol);
+//             vr_init(&grid, &sol);
+//             // compute the error
+//             real_t          err2, erri;
+//             ErrorCalculator error;
+//             error.Norms(&grid, &vort, &sol, &err2, &erri);
+//             m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
 
-            ASSERT_LE(err2, epsilon[ieps]);
-            ASSERT_LE(erri, epsilon[ieps]);
+//             ASSERT_LE(err2, epsilon[ieps]);
+//             ASSERT_LE(erri, epsilon[ieps]);
 
-            grid.DeleteField(&sol);
-        }
-        level_t current_min_level = grid.MinLevel();
-        level_t current_max_level = grid.MaxLevel();
-        m_log("\t re-adaptation done! we have block between %d and %d", current_min_level, current_max_level);
+//             grid.DeleteField(&sol);
+//         }
+//         level_t current_min_level = grid.MinLevel();
+//         level_t current_max_level = grid.MaxLevel();
+//         m_log("\t re-adaptation done! we have block between %d and %d", current_min_level, current_max_level);
 
-        // recreate the solution
-        Field sol("sol", 3);
-        grid.AddField(&sol);
-        vr_init(&grid, &sol);
-        // compute the error
-        real_t          err2, erri;
-        ErrorCalculator error;
-        error.Norms(&grid, &vort, &sol, &err2, &erri);
-        m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
+//         // recreate the solution
+//         Field sol("sol", 3);
+//         grid.AddField(&sol);
+//         vr_init(&grid, &sol);
+//         // compute the error
+//         real_t          err2, erri;
+//         ErrorCalculator error;
+//         error.Norms(&grid, &vort, &sol, &err2, &erri);
+//         m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
 
-        // grid.GhostPull(&vort);
-        // IOH5 io("data_test");
-        // io(&grid, &vort, "vort_fine");
+//         // grid.GhostPull(&vort);
+//         // IOH5 io("data_test");
+//         // io(&grid, &vort, "vort_fine");
 
-        ASSERT_LE(err2, epsilon[ieps]);
-        ASSERT_LE(erri, epsilon[ieps]);
+//         ASSERT_LE(err2, epsilon[ieps]);
+//         ASSERT_LE(erri, epsilon[ieps]);
 
-        grid.DeleteField(&sol);
-    }
-}
+//         grid.DeleteField(&sol);
+//     }
+// }
 
 
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_detail_IO) {
-    // adapt the mesh
-    real_t epsilon[3] = {1e-2, 1e-4};
+// //==============================================================================================================================
+// TEST_F(valid_Wavelet_Epsilon, epsilon_detail_IO) {
+//     // adapt the mesh
+//     real_t epsilon[3] = {1e-2, 1e-4};
     
-        bool    periodic[3] = {false, false, false};
-        lid_t   L[3]        = {1, 1, 1};
-        Grid    grid(1, periodic, L, MPI_COMM_WORLD, nullptr);
+//         bool    periodic[3] = {false, false, false};
+//         lid_t   L[3]        = {1, 1, 1};
+//         Grid    grid(1, periodic, L, MPI_COMM_WORLD, nullptr);
 
-        // create a patch of the current domain
-        list<Patch> patch;
-        real_t      origin[3] = {0.0, 0.0, 0.0};
-        real_t      length[3] = {L[0], L[1], L[2]};
-        patch.push_back(Patch(origin, length, 2));
-        real_t origin2[3] = {0.25, 0.25, 0.0};
-        real_t length2[3] = {0.375 * L[0], L[1], L[2]};
-        patch.push_back(Patch(origin2, length2, 3));
-        real_t origin3[3] = {0.25, 0.25, 0.0};
-        real_t length3[3] = {L[0], 1.0 * L[1] / 2.0, L[2]};
-        patch.push_back(Patch(origin3, length3, 3));
+//         // create a patch of the current domain
+//         list<Patch> patch;
+//         real_t      origin[3] = {0.0, 0.0, 0.0};
+//         real_t      length[3] = {L[0], L[1], L[2]};
+//         patch.push_back(Patch(origin, length, 2));
+//         real_t origin2[3] = {0.25, 0.25, 0.0};
+//         real_t length2[3] = {0.375 * L[0], L[1], L[2]};
+//         patch.push_back(Patch(origin2, length2, 3));
+//         real_t origin3[3] = {0.25, 0.25, 0.0};
+//         real_t length3[3] = {L[0], 1.0 * L[1] / 2.0, L[2]};
+//         patch.push_back(Patch(origin3, length3, 3));
 
-        grid.SetTol(1e-2, 1e-4);
-        grid.SetRecursiveAdapt(true);
-        grid.Adapt(&patch);
+//         grid.SetTol(1e-2, 1e-4);
+//         grid.SetRecursiveAdapt(true);
+//         grid.Adapt(&patch);
 
-        // create the field + the solution
-        Field vort("vort", 3);
-        grid.AddField(&vort);
+//         // create the field + the solution
+//         Field vort("vort", 3);
+//         grid.AddField(&vort);
 
-        vort.bctype(M_BC_EXTRAP);
+//         vort.bctype(M_BC_EXTRAP);
 
-        const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
-        const lda_t  normal    = 2;
-        const real_t sigma     = 0.025;
-        const real_t radius    = 0.25;
-        // const real_t  cutoff    = (center[0] - radius) * 0.9;
-        SetVortexRing vr_init(normal, center, sigma, radius);
-        SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
+//         const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
+//         const lda_t  normal    = 2;
+//         const real_t sigma     = 0.025;
+//         const real_t radius    = 0.25;
+//         // const real_t  cutoff    = (center[0] - radius) * 0.9;
+//         SetVortexRing vr_init(normal, center, sigma, radius);
+//         SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
 
-        // vr_init(&grid, &vort);
-        vr_init_full(&grid, &vort);
+//         // vr_init(&grid, &vort);
+//         vr_init_full(&grid, &vort);
 
-        IOH5 dump("data");
-        // grid.GhostPull(&vort);
-        dump(&grid, &vort);
+//         IOH5 dump("data");
+//         // grid.GhostPull(&vort);
+//         dump(&grid, &vort);
 
-        Field details("details", 3);
-        grid.AddField(&details);
-        grid.DumpDetails(&vort, &details);
-        details.bctype(M_BC_EXTRAP);
-        grid.GhostPull(&details);
+//         Field details("details", 3);
+//         grid.AddField(&details);
+//         grid.DumpDetails(&vort, &details);
+//         details.bctype(M_BC_EXTRAP);
+//         grid.GhostPull(&details);
 
-        dump(&grid, &details);
+//         dump(&grid, &details);
 
-        grid.DeleteField(&vort);
-        grid.DeleteField(&details);
+//         grid.DeleteField(&vort);
+//         grid.DeleteField(&details);
 
-}
+// }

@@ -138,9 +138,11 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
         // m_log("should be refined? %d: levels %d vs %d",refine,block->level(),patch->level());
         if (refine) {
             grid->AddOneQuadToAdapt();
+            m_log("adapt please!");
             return true;
         }
     }
+    m_log("never mind");
     return false;
     //-------------------------------------------------------------------------
 }
@@ -171,12 +173,13 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
             m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
             m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
 
+            m_log("comparing level: %d vs %d",block->level(),patch->level());
             // if we already have the correct level or a lower one, we skip the patch
             if (block->level() <= patch->level()) {
                 continue;
             }
             // if not, we have a finer block and we might want to coarsen if the location matches
-            bool coarsen = false;
+            bool coarsen = true;
             for (lda_t id = 0; id < 3; id++) {
                 // we have to satisfy both the our max > min and the min < our max
                 coarsen = coarsen &&
@@ -185,10 +188,12 @@ int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) 
             }
             if (coarsen) {
                 grid->AddOneQuadToAdapt();
+                m_log("we request adaptation");
                 return true;
             }
         }
     }
+    m_log("never mind");
     return false;
     //-------------------------------------------------------------------------
 }

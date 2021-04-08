@@ -28,7 +28,7 @@ PhysBlock::PhysBlock(const iface_t iface, const MemLayout* block, const lid_t ng
     const iface_t sign = iface_ % 2;  // sign = 1, -> we go plus, sign = 0 -> we go minus
 
     // update the needed coordinates in the dir direction (we overwrite the first info if we go minus)
-    start_[dir] = (sign == 0) ? start_[dir] : M_N;
+    start_[dir] = (sign == 0) ? start_[dir] : (M_N);
     end_[dir]   = (sign == 0) ? 1 : end_[dir];
     //-------------------------------------------------------------------------
 }

@@ -79,10 +79,11 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     m_profStop(prof_(), "ghost_init");
 
     //-------------------------------------------------------------------------
-    m_log("ghost for refinement: %d %d", interp_->nrefine_front(), interp_->nrefine_back());
-    m_log("ghost for coarsening: %d %d", interp_->ncoarsen_front(), interp_->ncoarsen_back());
-    m_log("ghost for criterion: %d %d ",interp_->ncriterion_front(), interp_->ncriterion_back());
-    m_log("criterion shift : %d %d",  interp_->criterion_shift_front(), interp_->criterion_shift_back());
+    m_log("#ghost for refinement: %d %d", interp_->nghost_front_refine(), interp_->nghost_back_refine());
+    m_log("#ghost for coarsening: %d %d", interp_->nghost_front_coarsen(), interp_->nghost_back_coarsen());
+    m_log("#ghost for citerion and smoothing: %d %d", interp_->nghost_front_criterion_smooth(), interp->nghost_back_criterion_smooth());
+    m_log("#detail for criterion: %d %d", interp_->ndetail_citerion_extend_front(), interp_->ndetail_citerion_extend_back());
+    m_log("#detail for smoothing: %d %d", interp_->ndetail_smooth_extend_front(), interp_->ndetail_smooth_extend_back());
     m_log("ghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
     m_end;
 }

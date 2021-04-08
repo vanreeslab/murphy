@@ -161,23 +161,22 @@ void Grid::SetupAdapt() {
     MPI_Info_set(info, "no_locks", "true");
 
     MPI_Aint status_mem_size = local_num_quadrants() * sizeof(bool);
-    MPI_Win_create(status_, status_mem_size, sizeof(bool), info, mpicomm(), &status_window_);
-    status_ = reinterpret_cast<bool*>(m_calloc(status_mem_size));
+    MPI_Win_create(coarsen_status_, status_mem_size, sizeof(bool), info, mpicomm(), &coarsen_status_window_);
+    coarsen_status_ = reinterpret_cast<bool*>(m_calloc(status_mem_size));
 
     MPI_Info_free(&info);
     //-------------------------------------------------------------------------
     m_end;
 }
 
-
-void Grid::DestroyAdapt(){
+void Grid::DestroyAdapt() {
     m_begin;
     //-------------------------------------------------------------------------
-    if(status_ != nullptr){
-        m_free(status_);
+    if (coarsen_status_ != nullptr) {
+        m_free(coarsen_status_);
     }
-    if(status_window_!= MPI_WIN_NULL){
-        MPI_Win_free(&status_window_);
+    if (coarsen_status_window_ != MPI_WIN_NULL) {
+        MPI_Win_free(&coarsen_status_window_);
     }
     //-------------------------------------------------------------------------
 }
@@ -451,7 +450,7 @@ void Grid::Adapt(m_ptr<Field> field) {
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_UpdateDependency);
-    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
+    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field()), &cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -502,9 +501,10 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
         return;
     }
     // set the recursive mode to true
-    SetRecursiveAdapt(true);
+    // SetRecursiveAdapt(recursive_adapt);
     // go to the magical adapt function
-    Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches()), &cback_AllocateOnly, nullptr);
+    // Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches()), &cback_AllocateOnly, nullptr);
+    Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches()), &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -612,19 +612,13 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
     // Solve the dependencies is some have been created -> no dep created if we are recursive
     // this is check in the callback UpdateDependency function
     if (!recursive_adapt()) {
-        // recompute the Mesh and the Ghost as I need them to solve the dependencies in my blocks
-        // // I cannot wait for the partitioning to happen, otherwise I will lose the blocks
-        // SetupMeshGhost();
-
-
-
-        // // warn the user that we do not interpolate a temporary field
-        // for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
-        //     m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
-        // }
+        // warn the user that we do not interpolate a temporary field
+        for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
+            m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
+        }
         // do the solve dependency, level by level!
-        // DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
-        // DoOpMeshLevel
+        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        DoOpTree(nullptr, &GridBlock::SolveResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
 
         // we need to process
     } else {
@@ -703,26 +697,26 @@ void Grid::GetStatus_(m_ptr<Field> field) const {
     m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
     m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
     //-------------------------------------------------------------------------
-    // compute the forward wavelet transform
-    DoOpTree(nullptr, &GridBlock::FWTAndGetStatus, this, interp_, rtol_, ctol_, field, prof_);
-    // swith the field to wavelet space
-    // field->is_wavelet(true);
 
-    // start the exposure epochs if any
-    MPI_Win_post(ghost_->mirror_origin_group(), MPI_MODE_NOPUT, status_window_);
+    //.........................................................................
+    //compute the criterion and update the status for every block on the finest level
+    m_log("compute the criterion");
+    DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this,
+             m_ptr<bool>(coarsen_status_), m_ptr<const Wavelet>(interp_), rtol_, ctol_, m_ptr<const Field>(field), m_ptr<Prof>(prof_));
+
+    //.........................................................................
+    // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
+    MPI_Win_post(ghost_->mirror_origin_group(), 0, coarsen_status_window_);
     // start the access epochs if we are not empty (otherwise it fails on the beast)
-    if (ghost_->mirror_origin_group() != MPI_GROUP_EMPTY) {
-        MPI_Win_start(ghost_->mirror_origin_group(), 0, status_window_);
-    }
-    // update neigbbor status
-    DoOpTree(nullptr, &GridBlock::UpdateStatusNeighbors, this);
+    MPI_Win_start(ghost_->mirror_origin_group(), 0, coarsen_status_window_);
 
-    if (ghost_->mirror_origin_group() != MPI_GROUP_EMPTY) {
-        MPI_Win_complete(status_window_);
-    }
-    MPI_Win_wait(status_window_);
+    // update neigbbor status, only use the already computed status on level il + 1
+    DoOpTree(nullptr, &GridBlock::GetStatusFromNeighbors, this, m_ptr<bool>(coarsen_status_), coarsen_status_window_);
 
-    // update my action given the others
-    DoOpTree(nullptr, &GridBlock::UpdateDetails, this);
+    // close the access epochs
+    MPI_Win_complete(coarsen_status_window_);
+    // close the exposure epochs
+    MPI_Win_wait(coarsen_status_window_);
+
     //-------------------------------------------------------------------------
 }

@@ -15,7 +15,7 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
     level_ = level;
     for (lda_t id = 0; id < 3; id++) {
         xyz_[id]   = xyz[id];
-        hgrid_[id] = CartBlockHGrid(length);// length / (M_N - 1);
+        hgrid_[id] = CartBlockHGrid(length);  // length / (M_N - 1);
     }
     //-------------------------------------------------------------------------
     m_end;

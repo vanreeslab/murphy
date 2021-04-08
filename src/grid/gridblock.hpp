@@ -21,10 +21,10 @@
  */
 class GridBlock : public CartBlock {
    protected:
-    short_t    status_lvl_ = 0;                  //!< indicat the status of the level: +1 should refine, -1 should coarsen
-    bool       status_neighbors_[M_NNEIGHBORS];  //!< indicate if my neighbor is going to be coarsened, stored as (local_sibling/parent/children then ghost sibling/parent/children)
-    short_t    n_dependency_active_ = 0;         //!< list of dependency = how to create my information after refinement/coarsening
-    GridBlock* dependency_[P8EST_CHILDREN];      //!< the pointer to the dependency block
+    short_t    status_lvl_ = 0;              //!< indicat the status of the level: +1 should refine, -1 should coarsen
+    bool*      status_siblings_neighbors_;   //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
+    short_t    n_dependency_active_ = 0;     //!< list of dependency = how to create my information after refinement/coarsening
+    GridBlock* dependency_[P8EST_CHILDREN];  //!< the pointer to the dependency block
 
     mem_ptr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
 
@@ -49,12 +49,16 @@ class GridBlock : public CartBlock {
      * @{ */
     sid_t status_level() const { return status_lvl_; };
     void  ResetStatus() { status_lvl_ = 0; };
-    void  UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
-    void  ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
-    void  UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
+
+    void UpdateStatusFromCriterion(/* block info */ m_ptr<const qid_t> qid, m_ptr<bool> coarsen_vector,
+                                   /* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
+                                   /* prof */ m_ptr<Prof> profiler);
+
+    void ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
+    void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
 
     void FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
-    void UpdateStatusNeighbors();
+    void GetStatusFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window);
     void UpdateDetails();
     /** @} */
 
@@ -67,6 +71,7 @@ class GridBlock : public CartBlock {
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
     void       SolveDependency(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
+    void       SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
     /** @} */
 
     /**
@@ -103,7 +108,7 @@ class GridBlock : public CartBlock {
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
-static inline GridBlock* p4est_GetGridBlock(qdrt_t* quad) {
+static inline GridBlock* p4est_GetGridBlock(const qdrt_t* quad) {
     return *(reinterpret_cast<GridBlock**>(quad->p.user_data));
 }
 

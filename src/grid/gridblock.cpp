@@ -26,6 +26,50 @@ enum NghStatus { NS_NONE   = 0,
 
 static const lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
+constexpr void face_sign(const iface_t iface, iface_t* face_dir, real_t sign[3]) {
+    //-------------------------------------------------------------------------
+    const iface_t dir   = iface / 2;
+    (*face_dir)         = dir;
+    sign[dir]           = ((iface % 2) == 1) ? 1.0 : -1.0;
+    sign[(dir + 1) % 3] = 0.0;
+    sign[(dir + 2) % 3] = 0.0;
+    //-------------------------------------------------------------------------
+}
+constexpr void edge_sign(const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
+    /*
+    the plane convention for the sign variable convention for the sign
+    2 +--------------+ 3
+      |              |
+      |              |
+      |dir2          |
+      |              |
+    0 +--------------+ 1
+        dir1
+    */
+    //-------------------------------------------------------------------------
+    iface_t dir  = iedge / 4;           // this is the direction of the edge
+    iface_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
+    iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
+    // store the info
+    (*edge_dir) = dir;
+    sign[dir]   = 0.0;
+    sign[dir1]  = ((iedge % 4) % 2) == 1 ? +1.0 : -1.0;
+    sign[dir2]  = ((iedge % 4) / 2) == 1 ? +1.0 : -1.0;
+    //-------------------------------------------------------------------------
+}
+constexpr void corner_sign(const iface_t icorner, real_t sign[3]) {
+    //-------------------------------------------------------------------------
+    sign[0] = (icorner % 2) == 1 ? +1.0 : -1.0;
+    sign[1] = ((icorner % 4) / 2) == 1 ? +1.0 : -1.0;
+    sign[2] = (icorner / 4) == 1 ? +1.0 : -1.0;
+    //-------------------------------------------------------------------------
+}
+
+constexpr real_t CoarseHGrid(const real_t len) {
+    // return len/ (real_t) (M_NHALF-1);
+    return len / (real_t)(M_NHALF);
+}
+
 /**
  * @brief Given a face, edge or a corner returns the outgoing normal (sign)
  * 
@@ -33,45 +77,25 @@ static const lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_
  * @param sign the sign of the outgoing normal
  */
 static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
-    // we need to find the sign = the direction of the normal:
-    sign[0] = 0.0;
-    sign[1] = 0.0;
-    sign[2] = 0.0;
-
+    //-------------------------------------------------------------------------
     // check depending on the plane, the edge of the corner
     if (ibidule < 6) {
-        iface_t dir = ibidule / 2;
-        sign[dir]   = ((ibidule % 2) == 1) ? 1.0 : -1.0;
+        iface_t dir;
+        face_sign(ibidule, &dir, sign);
         m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 1, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
     } else if (ibidule < 18) {
-        iface_t iedge = ibidule - 6;
-        /*
-        the plane convention for the sign variable convention for the sign
-        2 +--------------+ 3
-          |              |
-          |              |
-          |dir2          |
-          |              |
-        0 +--------------+ 1
-            dir1
-        */
-        iface_t dir  = iedge / 4;           // this is the direction of the edge
-        iface_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
-        iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-        sign[dir1]   = ((iedge % 4) % 2) == 1 ? +1.0 : -1.0;
-        sign[dir2]   = ((iedge % 4) / 2) == 1 ? +1.0 : -1.0;
+        iface_t dir;
+        edge_sign(ibidule - 6, &dir, sign);
         m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 2, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d, dir = %d)", sign[0], sign[1], sign[2], ibidule, dir);
     } else {
-        iface_t icorner = ibidule - 18;
-        sign[0]         = (icorner % 2) == 1 ? +1.0 : -1.0;
-        sign[1]         = ((icorner % 4) / 2) == 1 ? +1.0 : -1.0;
-        sign[2]         = (icorner / 4) == 1 ? +1.0 : -1.0;
+        corner_sign(ibidule - 18, sign);
         m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 3, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
     }
 
     m_assert(sign[0] == 0.0 || sign[0] == 1.0 || sign[0] == -1.0, "wrong sign value: %e", sign[0]);
     m_assert(sign[1] == 0.0 || sign[1] == 1.0 || sign[1] == -1.0, "wrong sign value: %e", sign[1]);
     m_assert(sign[2] == 0.0 || sign[2] == 1.0 || sign[2] == -1.0, "wrong sign value: %e", sign[2]);
+    //-------------------------------------------------------------------------
 };
 
 /**
@@ -93,74 +117,170 @@ static void GhostGetExtend(/* input */ const iface_t ibidule, const NghStatus st
                            /* output */ bool restrict_start[3], bool extend_end[3]) {
     m_assert(ibidule < M_NNEIGHBORS, "the ibidule = %d must be < %d", ibidule, M_NNEIGHBORS);
     //-------------------------------------------------------------------------
-    //from burstedde2011
-    static iface_t face_2_edges[6][4] = {
-        /*face 0*/ {4, 6, 8, 10},
-        /*face 1*/ {5, 7, 9, 11},
-        /*face 2*/ {0, 2, 8, 9},
-        /*face 3*/ {1, 3, 10, 11},
-        /*face 4*/ {0, 1, 4, 5},
-        /*face 5*/ {2, 3, 6, 7}};
+    restrict_start[0] = false;
+    restrict_start[1] = false;
+    restrict_start[2] = false;
+    extend_end[0]     = false;
+    extend_end[1]     = false;
+    extend_end[2]     = false;
+    // //from burstedde2011
+    // static iface_t face_2_edges[6][4] = {
+    //     /*face 0*/ {4, 6, 8, 10},
+    //     /*face 1*/ {5, 7, 9, 11},
+    //     /*face 2*/ {0, 2, 8, 9},
+    //     /*face 3*/ {1, 3, 10, 11},
+    //     /*face 4*/ {0, 1, 4, 5},
+    //     /*face 5*/ {2, 3, 6, 7}};
 
-    static iface_t edge_2_corners[12][2]{
-        /*edge 0 */ {0, 1},
-        /*edge 1 */ {2, 3},
-        /*edge 2 */ {4, 5},
-        /*edge 3 */ {6, 7},
-        /*edge 4 */ {0, 2},
-        /*edge 5 */ {1, 3},
-        /*edge 6 */ {4, 6},
-        /*edge 7 */ {5, 7},
-        /*edge 8 */ {0, 4},
-        /*edge 9 */ {1, 5},
-        /*edge 10 */ {2, 6},
-        /*edge 11 */ {3, 7}};
+    // static iface_t edge_2_corners[12][2]{
+    //     /*edge 0 */ {0, 1},
+    //     /*edge 1 */ {2, 3},
+    //     /*edge 2 */ {4, 5},
+    //     /*edge 3 */ {6, 7},
+    //     /*edge 4 */ {0, 2},
+    //     /*edge 5 */ {1, 3},
+    //     /*edge 6 */ {4, 6},
+    //     /*edge 7 */ {5, 7},
+    //     /*edge 8 */ {0, 4},
+    //     /*edge 9 */ {1, 5},
+    //     /*edge 10 */ {2, 6},
+    //     /*edge 11 */ {3, 7}};
 
+    // if (ibidule < 6) {
+    //     iface_t iface = ibidule;
+    //     // get the dir and the sign
+    //     iface_t dir;
+    //     real_t  sign[3];
+    //     face_sign(iface, &dir, sign);
+    //     restrict_start[dir] = (src_level < trg_level) && (sign[dir] > 0.5);
+    //     extend_end[dir]     = (src_level > trg_level) && (sign[dir] < -0.5);
+    //     m_log("FACE: in dir %d (sign = %f %f %f): level: %d vs %d", dir, sign[0], sign[1], sign[2], src_level, trg_level);
+
+    //     // loop over the edge and extend to cover the edge if needed
+    //     // we extend in the direction which is not the face, nor the edge:
+    //     // the sum of the dir is 3, so we substract the two dimension and obtain the extention one
+    //     for (lda_t ida = 0; ida < 4; ++ida) {
+    //         //..........................
+    //         // start point, first edge
+    //         iface_t iedge      = face_2_edges[iface][ida];
+    //         lda_t   dir_extend = 3 - dir - (iedge / 4);
+    //         m_assert((dir_extend != dir) && (dir_extend != (iedge / 4)), "the direction of extension = %d cannot be the current dir = %d, nor the direction of the edge = %d", dir_extend, dir, iedge / 4);
+
+    //         // update the start
+    //         restrict_start[dir_extend] = (status[iface] < status[6 + iedge]);  // I cannot take the full face
+    //         m_log("in dir %d: status: %d vs %d", dir_extend, status[iface], status[6 + iedge]);
+
+    //         //..........................
+    //         // end
+    //         ++ida;
+
+    //         //..........................
+    //         // get new edge and chedk the dir
+    //         iedge = face_2_edges[iface][ida];
+    //         // check
+    //         m_assert(face_2_edges[iface][ida - 1] < face_2_edges[iface][ida], "the two edges must be ordered");
+    //         m_assert(dir_extend == (3 - dir - (iedge / 4)), "the dir extend of two successive edges must match");
+    //         m_assert((dir_extend != dir) && (dir_extend != (iedge / 4)), "the direction of extension = %d cannot be the current dir = %d, nor the direction of the edge = %d", dir_extend, dir, iedge / 4);
+    //         // update the extend info
+    //         extend_end[dir_extend] = (status[iface] > status[6 + iedge]) || (status[iface] == status[6 + iedge] && status[iface] == NS_COARSE);
+    //         m_log("in dir %d: status: %d vs %d", dir_extend, status[iface], status[6 + iedge]);
+    //     }
+    // } else if (ibidule < 18) {
+    //     iface_t iedge = ibidule - 6;
+
+    //     iface_t dir;
+    //     real_t  sign[3];
+    //     edge_sign(iedge, &dir, sign);
+
+    //     // update the direction
+    //     iface_t dir1         = (dir + 1) % 3;
+    //     iface_t dir2         = (dir + 2) % 3;
+    //     restrict_start[dir1] = (src_level < trg_level) && (sign[dir1] > 0.5);
+    //     extend_end[dir1]     = (src_level > trg_level) && (sign[dir1] < -0.5);
+    //     restrict_start[dir2] = (src_level < trg_level) && (sign[dir2] > 0.5);
+    //     extend_end[dir2]     = (src_level > trg_level) && (sign[dir2] < -0.5);
+
+    //     m_log("EDGE: in dir %d (sign = %f %f %f): level: %d vs %d", dir, sign[0], sign[1], sign[2], src_level, trg_level);
+
+    //     // look for the corners
+    //     for (lda_t ida = 0; ida < 2; ++ida) {
+    //         // start
+    //         iface_t icorner     = edge_2_corners[iedge][ida];
+    //         restrict_start[dir] = (status[6 + iedge] < status[18 + icorner]);  // I cannot take the full edge
+
+    //         // end
+    //         ++ida;
+    //         icorner         = edge_2_corners[iedge][ida];
+    //         extend_end[dir] = (status[6 + iedge] > status[18 + icorner]) || (status[6 + iedge] == status[18 + icorner] && status[6 + iedge] == NS_COARSE);
+
+    //         // check
+    //         m_assert(edge_2_corners[iedge][ida - 1] < edge_2_corners[iedge][ida], "the corners must be ordered");
+    //     }
+    // } else {
+    //     real_t sign[3];
+    //     corner_sign(ibidule - 18, sign);
+    //     // we use the sign associated to the corner to modify correctly the restrict/extend
+    //     for (lda_t id = 0; id < 3; ++id) {
+    //         restrict_start[id] = (src_level < trg_level) && (sign[id] > 0.5);
+    //         extend_end[id]     = (src_level > trg_level) && (sign[id] < -0.5);
+    //     }
+    // }
+    //-------------------------------------------------------------------------
+};
+
+/**
+ * @brief reverse the perspective of the extend from the fine block point of view to the coarse one
+ * 
+ * if the fine decides to do nothing, we are all good,
+ * if the fine decides to restrict its start, we need to extend the end
+ * if the fine decides to extend its end, we need to restrict our start
+ * 
+ */
+static void GhostReverseExtend(const iface_t ibidule, /* in */ const bool fine_restrict_start[3], const bool fine_extend_end[3],
+                               /* out */ bool coarse_restrict_start[3], bool coarse_extend_end[3]) {
+    //-------------------------------------------------------------------------
     if (ibidule < 6) {
-        // we have a face
-        iface_t iface       = ibidule;
-        iface_t dir         = iface / 2;
-        restrict_start[dir] = src_level < trg_level;
-        extend_end[dir]     = src_level > trg_level;
+        iface_t dir;
+        real_t  sign[3];
+        face_sign(ibidule, &dir, sign);
 
-        // loop over the edge and extend to cover the edge if needed
-        // we extend in the direction which is not the face, nor the edge:
-        // the sum of the dir is 3, so we substract the two dimension and obtain the extention one
-        for (lda_t ida = 0; ida < 4; ++ida) {
-            iface_t iedge              = face_2_edges[iface][ida];
-            lda_t   dir_extend         = 3 - dir - (iedge / 4);
-            restrict_start[dir_extend] = (status[iface] < status[6 + iedge]);  // I cannot take the full face
-            extend_end[dir_extend]     = (status[iface] > status[6 + iedge]);
+        // inverse in the direction of the face
+        coarse_restrict_start[dir] = fine_extend_end[dir];
+        coarse_extend_end[dir]     = fine_restrict_start[dir];
 
-            // check
-            m_assert((dir_extend != dir) && (dir_extend != (iedge / 4)), "the direction of extension = %d cannot be the current dir = %d, nor the direction of the edge = %d", dir_extend, dir, iedge / 4);
-        }
+        // preserve in the other directions
+        iface_t dir1                = (dir + 1) % 3;
+        iface_t dir2                = (dir + 2) % 3;
+        coarse_restrict_start[dir1] = fine_restrict_start[dir1];
+        coarse_extend_end[dir1]     = fine_extend_end[dir1];
+        coarse_restrict_start[dir2] = fine_restrict_start[dir2];
+        coarse_extend_end[dir2]     = fine_extend_end[dir2];
+
     } else if (ibidule < 18) {
-        // cfr function GhostGetSign and burstedde2011
-        iface_t iedge = ibidule - 6;
-        iface_t dir   = iedge / 4;           // this is the direction of the edge
-        iface_t dir1  = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
-        iface_t dir2  = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-        // check
-        m_assert((dir + dir1 + dir2) == 3, "the sum of the direction must match: %d + %d + %d", dir, dir1, dir2);
+        iface_t dir;
+        real_t  sign[3];
+        edge_sign(ibidule - 6, &dir, sign);
 
-        restrict_start[dir1] = src_level < trg_level;
-        restrict_start[dir2] = src_level < trg_level;
-        extend_end[dir1]     = src_level > trg_level;
-        extend_end[dir2]     = src_level > trg_level;
+        // inverse in the two directions
+        iface_t dir1                = (dir + 1) % 3;
+        iface_t dir2                = (dir + 2) % 3;
+        coarse_restrict_start[dir1] = fine_extend_end[dir1];
+        coarse_extend_end[dir1]     = fine_restrict_start[dir1];
+        coarse_restrict_start[dir2] = fine_extend_end[dir2];
+        coarse_extend_end[dir2]     = fine_restrict_start[dir2];
 
-        for (lda_t ida = 0; ida < 2; ++ida) {
-            iface_t icorner     = edge_2_corners[iedge][ida];
-            restrict_start[dir] = (status[6 + iedge] < status[18 + icorner]);  // I cannot take the full edge
-            extend_end[dir]     = (status[6 + iedge] > status[18 + icorner]);
-        }
+        // preserve along the edge
+        coarse_restrict_start[dir] = fine_restrict_start[dir];
+        coarse_extend_end[dir]     = fine_extend_end[dir];
+
     } else {
-        // by default, everything is false
-        for (lda_t id = 0; id < 3; ++id) {
-            restrict_start[id] = src_level < trg_level;
-            extend_end[id]     = src_level > trg_level;
+        // we have a corner, inverse the three directions
+        for (lda_t ida = 0; ida < 3; ++ida) {
+            coarse_restrict_start[ida] = fine_extend_end[ida];
+            coarse_extend_end[ida]     = fine_restrict_start[ida];
         }
     }
+
     //-------------------------------------------------------------------------
 };
 
@@ -209,37 +329,38 @@ GridBlock::~GridBlock() {
 }
 
 /**
- * @brief compute the criterion and update GridBlock::status_lvl_ if we need to refine/coarsen
+ * @brief compute the criterion, update the block status accordingly and register the coarsening if needed
  * 
  * The criterion of the block must always be:
  *  rtol >= criterion >= ctol
  * 
- * if citerion > rtol, we must refine, whatever the other field's dimension value
- * if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
+ * - if citerion > rtol, we must refine, whatever the other field's dimension value
+ * - if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
  * 
- * We loop over the field dimensions and we take the conservative approach:
- * if we need to refine, we always do it, even if other dimension may be coarsened
- * if we need to coarsen, we make sure that every dimension is ok with it.
- * 
- * @param interp the wavelet to use to compute the criterion
- * @param rtol the refinement tolerance
- * @param ctol the coarsening tolerance
- * @param field_citerion the field that will be used as a criterion
  */
-void GridBlock::UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler) {
+void GridBlock::UpdateStatusFromCriterion(/* block info */ m_ptr<const qid_t> qid, m_ptr<bool> coarsen_vector,
+                                          /* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
+                                          /* prof */ m_ptr<Prof> profiler) {
+    //-------------------------------------------------------------------------
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
     m_assert(field_citerion->ghost_status(), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
     //-------------------------------------------------------------------------
     m_profStart(profiler(), "criterion detail");
 
+    // by default we do not coarsen the block
+    coarsen_vector[qid->cid] = false;
+
+    // prevent coarsening if we have finer neighbors
+    bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+
     // I need to visit every dimension and determine if we have to refine and/or coarsen.
     // afterthat we choose given the conservative approach
     bool coarsen = true;
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
-        data_ptr     data = this->data(field_citerion, ida);
-        const real_t norm = interp->Criterion(this, data);
+        SubBlock     block_detail(this->gs(), this->stride(), interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back());
+        const real_t norm = interp->Criterion(this, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
@@ -253,9 +374,13 @@ void GridBlock::UpdateStatusCriterion(m_ptr<const Wavelet> interp, const real_t 
         coarsen &= (norm < ctol);
     }
     // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
-    status_lvl_ = (coarsen) ? -1 : 0;
+    // also make sure that we can coarsen!
+    status_lvl_ = (coarsen && !forbid_coarsening) ? -1 : 0;
+    // register the coarsening
+    coarsen_vector[qid->cid] = coarsen;
 
     m_profStop(profiler(), "criterion detail");
+    return;
     //-------------------------------------------------------------------------
 }
 
@@ -293,10 +418,134 @@ void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, 
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::UpdateStatusNeighbors() {
+/**
+ * @brief update my status based on the status from my finer neighbors
+ * 
+ * allocate the @ref status_siblings_neighbors_ array, which will be destroyed in the @ref SolveNeighbor function.
+ */
+void GridBlock::GetStatusFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window) {
+    //-------------------------------------------------------------------------
+    // get the number of status to obtain
+    iblock_t nblocks           = (local_sibling_.size() + ghost_sibling_.size());
+    status_siblings_neighbors_ = reinterpret_cast<bool*>(m_calloc(nblocks * sizeof(bool)));
+
+    // loop over the same level neighbors and get the status
+    iblock_t count = local_sibling_.size();
+    for (auto gblock : ghost_children_) {
+        MPI_Get(status_siblings_neighbors_ + count, 1, MPI_C_BOOL, gblock->rank(), gblock->cum_block_id(), 1, MPI_C_BOOL, status_window);
+        ++count;
+    }
+    m_assert(count == nblocks, "the two numbers must match: %d vs %d", count, nblocks);
+
+    // get the local ones now
+    count = 0;
+    for (auto gblock : local_children_) {
+        //MPI_Get(status_siblings_neighbors_ + count, 1, MPI_C_BOOL, gblock->rank(), gblock->cum_block_id(), 1, MPI_C_BOOL, status_window);
+        status_siblings_neighbors_[count] = status_vec[gblock->cum_block_id()];
+        ++count;
+    }
+    m_assert(count == nblocks, "the two numbers must match: %d vs %d", count, nblocks);
+    //-------------------------------------------------------------------------
 }
 
-void GridBlock::UpdateDetails() {
+void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+    //-------------------------------------------------------------------------
+    // builld the mask
+    //................................................
+    // reset the temp memory to 0.0
+    memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+    data_ptr mask      = coarse_ptr_(0, this);
+    real_t*  mask_data = mask.Write();
+
+    auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
+    };
+
+    // for each ghost block, set the mask to 1.0 if needed
+    iblock_t block_count = 0;
+    for (auto gblock : local_sibling_) {
+        if (status_siblings_neighbors_[block_count]) {
+            real_t sign[3];
+            GhostGetSign(gblock->ibidule(), sign);
+
+            // create the start and end indexes
+            bidx_t smooth_start[3], smooth_end[3];
+            for (lda_t ida = 0; ida < 3; ++ida) {
+                if(sign[ida] > 0.5){
+                    // my ngh assumed 0 details in my block
+                    smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
+                    // the number of my ngh details influencing my values
+                    smooth_end[ida] = this->end(ida) + interp->ndetail_smooth_extend_back();
+                }
+                else if (sign[ida] < 0.5){
+                    // my ngh assumed 0 details in my block
+                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
+                    // the number of my ngh details influencing my values
+                    smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
+                }
+                else{
+                    smooth_start[ida] = this->start(ida);
+                    smooth_end[ida] = this->end(ida);
+                }
+            }
+            m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
+                  smooth_start[0], smooth_start[1], smooth_start[2],
+                  smooth_end[0], smooth_end[1], smooth_end[2]);
+            // apply it
+            for_loop(&set_mask_to_one, smooth_start, smooth_end);
+        }
+        // update the counter
+        ++block_count;
+    }
+    for (auto gblock : ghost_sibling_) {
+        if (status_siblings_neighbors_[block_count]) {
+            real_t sign[3];
+            GhostGetSign(gblock->ibidule(), sign);
+
+            // create the start and end indexes
+            bidx_t smooth_start[3], smooth_end[3];
+            for (lda_t ida = 0; ida < 3; ++ida) {
+                if(sign[ida] > 0.5){
+                    // my ngh assumed 0 details in my block
+                    smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
+                    // the number of my ngh details influencing my values
+                    smooth_end[ida] = this->end(ida) + interp->ndetail_smooth_extend_back();
+                }
+                else if (sign[ida] < 0.5){
+                    // my ngh assumed 0 details in my block
+                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
+                    // the number of my ngh details influencing my values
+                    smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
+                }
+                else{
+                    smooth_start[ida] = this->start(ida);
+                    smooth_end[ida] = this->end(ida);
+                }
+            }
+            m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
+                  smooth_start[0], smooth_start[1], smooth_start[2],
+                  smooth_end[0], smooth_end[1], smooth_end[2]);
+            // apply it
+            for_loop(&set_mask_to_one, smooth_start, smooth_end);
+        }
+        // update the counter
+        ++block_count;
+    }
+    //................................................
+    // smooth depending on the mask
+    // get the blocks
+    SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+    SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + -interp->ndetail_smooth_extend_back());
+    m_log("not sure about the needed details");
+
+    // do it for every field
+    for (auto fid = field_start; fid != field_end; ++fid) {
+        auto current_field = fid->second;
+        for (lda_t ida = 0; ida < current_field->lda(); ida++) {
+            interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+        }
+    }
+    //-------------------------------------------------------------------------
 }
 
 /**
@@ -459,7 +708,7 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
     // AllocateCoarsePtr(alloc_size);
     // m_log("I allocate %ld doubles",alloc_size);
     m_assert(interp->CoarseSize() <= CartBlockMemNum(1), "the coarse size must be smaller than a blockmemsize to fit in the coarse memory");
-    m_log("Coarse = %ld vs block size = %ld", interp->CoarseSize(), CartBlockMemNum(1));
+    // m_log("Coarse = %ld vs block size = %ld", interp->CoarseSize(), CartBlockMemNum(1));
 
     //................................................
     p8est_t*              forest  = grid->p4est_forest();
@@ -467,8 +716,9 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
     p8est_ghost_t*        ghost   = grid->p4est_ghost();
     p8est_connectivity_t* connect = forest->connectivity;
 
-    std::list<qdrt_t*> ngh_list;
-    std::list<rank_t>  rank_list;
+    std::list<qdrt_t*>  ngh_list;
+    std::list<iblock_t> bid_list;
+    std::list<rank_t>   rank_list;
 
     //................................................
     // get the number of ghost and the min/max of a block
@@ -481,22 +731,22 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
         block_min[id]    = -interp->nghost_front();
         block_max[id]    = M_N + interp->nghost_back();
         block_len[id]    = p4est_QuadLen(level());
-        coarse_hgrid[id] = p4est_QuadLen(level()) / (M_NHALF - 1);
+        coarse_hgrid[id] = CoarseHGrid(p4est_QuadLen(level()));
     }
 
     rank_t my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
     // init the level list:
-    NghStatus ngh_status[M_NNEIGHBORS];
+    // NghStatus ngh_status[M_NNEIGHBORS];
 
     // we do the loop in the opposite way, starting with the corners, edges and finally the
     for (iface_t ibidule = (M_NNEIGHBORS - 1); ibidule >= 0; ibidule--) {
         // set the current status to none, whatever happends next
-        ngh_status[ibidule] = NS_NONE;
+        // ngh_status[ibidule] = NS_NONE;
 
         //................................................
-        p4est_GetNeighbor(forest, connect, ghost, mesh, qid->tid, qid->qid, ibidule, &ngh_list, &rank_list);
+        p4est_GetNeighbor(forest, connect, ghost, mesh, qid->tid, qid->qid, ibidule, &ngh_list, &bid_list, &rank_list);
         const iblock_t nghosts = ngh_list.size();
 
         //................................................
@@ -505,8 +755,7 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
             // we only apply the physics to entire faces
             if (ibidule < 6) {
                 // register the status
-                ngh_status[ibidule] = NS_PHYS;
-
+                // ngh_status[ibidule] = NS_PHYS;
                 PhysBlock* pb = new PhysBlock(ibidule, this, interp->nghost_front(), interp->nghost_back());
                 //#pragma omp critical
                 phys_.push_back(pb);
@@ -518,9 +767,10 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
         //................................................
         // this is a real block or a ghost
         for (iblock_t nid = 0; nid < nghosts; ++nid) {
-            qdrt_t*    nghq     = ngh_list.back();
-            rank_t     ngh_rank = rank_list.back();
-            const bool isghost  = (ngh_rank != my_rank);
+            const qdrt_t*  nghq       = ngh_list.back();
+            const iblock_t ngh_cum_id = bid_list.back();
+            const rank_t   ngh_rank   = rank_list.back();
+            const bool     isghost    = (ngh_rank != my_rank);
             m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
 
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
@@ -560,150 +810,120 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
             //................................................
             // create the new block and push back
             if (!isghost) {
+                // m_log("the block is not a ghost");
                 // associate the corresponding neighboring block
-                GridBlock*     ngh_block    = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
-                const iblock_t ngh_local_id = nghq->p.piggy1.which_tree;
-
-                m_log("block @ %f %f %f: neighbor num %d @ level = %d", xyz_[0], xyz_[1], xyz_[2], ibidule, ngh_block->level());
+                GridBlock* ngh_block = p4est_GetGridBlock(nghq);
+                // #ifndef NDEBUG
+                // {  // check the indexing... you never know with this shitty functions
+                //     m_log("check the indexing...");
+                //     m_log("try to get tree number %d", nghq->p.piggy3.which_tree);
+                //     p8est_tree_t*  tree    = p8est_tree_array_index(forest->trees, nghq->p.piggy1.which_tree);
+                //     p4est_locidx_t quad_id = ngh_cum_id - tree->quadrants_offset;
+                //     m_assert(quad_id >= 0, "the quad id must be >0: %d = %d - %d", ngh_cum_id, tree->quadrants_offset);
+                //     p8est_quadrant* quad = p8est_quadrant_array_index(&tree->quadrants, quad_id);
+                //     m_assert(p4est_GetGridBlock(quad) == ngh_block, "these two addresses must be the same! %p vs %p", p4est_GetGridBlock(quad), ngh_block);
+                //     m_log("end of check, compute the intersections");
+                // }
+                // #endif
+                // m_log("block @ %f %f %f: neighbor num %d @ level = %d", xyz_[0], xyz_[1], xyz_[2], ibidule, ngh_block->level());
 
                 // register the gb in a list
                 if (nghq->level == level()) {
-                    // register the status
-                    ngh_status[ibidule] = NS_EVEN;
-                    // get the extend information
-                    bool restrict_start[3], extend_end[3];
-                    GhostGetExtend(ibidule, ngh_status, ngh_block->level(), level_, restrict_start, extend_end);
-
-                    m_log("restrict = %d %d %d, extend = %d %d %d", restrict_start[0], restrict_start[1], restrict_start[2], extend_end[0], extend_end[1], extend_end[2]);
-
+                    // m_log("creating a same level");
                     // sibling: source = neighbor GridBlock, target = me
-                    GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
-                                              /* extend */ restrict_start, extend_end,
-                                              /* traget */ level_, xyz_, hgrid_, block_min, block_max, gs(), stride(), -1);
+                    GBLocal* gb = new GBLocal(ibidule, ngh_cum_id);
+                    gb->Intersect(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
+                                  /* traget */ level_, xyz_, hgrid_, block_min, block_max, gs(), stride());
                     gb->data_src(ngh_block);
+
                     //#pragma omp critical
                     local_sibling_.push_back(gb);
 
                 } else if (nghq->level < level()) {
-                    // register the status
-                    ngh_status[ibidule] = NS_COARSE;
-                    {
-                        // get the extend information
-                        bool restrict_start[3], extend_end[3];
-                        GhostGetExtend(ibidule, ngh_status, ngh_block->level(), level_, restrict_start, extend_end);
-                        m_log("restrict = %d %d %d, extend = %d %d %d", restrict_start[0], restrict_start[1], restrict_start[2], extend_end[0], extend_end[1], extend_end[2]);
+                    // m_log("creating a coarser");
+                    // parent: source = neighbor, target = me
+                    GBLocal* gb = new GBLocal(ibidule, ngh_cum_id);
+                    gb->Intersect(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
+                                  /* target */ level_, xyz_, hgrid_, block_min, block_max, gs(), stride());
+                    gb->data_src(ngh_block);
+                    //#pragma omp critical
+                    local_parent_.push_back(gb);
 
-                        // parent: source = neighbor, target = me
-                        GBLocal* gb = new GBLocal(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
-                                                  /* extend */ restrict_start, extend_end,
-                                                  /* target */ level_, xyz_, hgrid_, block_min, block_max, gs(), stride(), -1);
-                        gb->data_src(ngh_block);
-                        //#pragma omp critical
-                        local_parent_.push_back(gb);
-                    }
-                    {
-                        // get the extend information, source level = my level = the root of the information
-                        bool restrict_start[3], extend_end[3];
-                        GhostGetExtend(ibidule, ngh_status, level_, ngh_block->level(), restrict_start, extend_end);
-                        m_log("restrict = %d %d %d, extend = %d %d %d", restrict_start[0], restrict_start[1], restrict_start[2], extend_end[0], extend_end[1], extend_end[2]);
-
-                        // the children: the source = the coarse myself, target = my neighbor
-                        m_log("record the inverted relation");
-                        GBLocal* invert_gb = new GBLocal(/* source */ level_ - 1, xyz_, coarse_hgrid, block_len,
-                                                         /* extend */ restrict_start, extend_end,
-                                                         /* target */ ngh_block->level(), ngh_pos, ngh_hgrid, block_min, block_max, gs(), stride(), -1);
-                        invert_gb->data_src(ngh_block);
-                        //#pragma omp critical
-                        local_parent_reverse_.push_back(invert_gb);
-                    }
-
-                } else {
-                    // register the status
-                    ngh_status[ibidule] = NS_FINE;
+                    // m_log("creating a reverse");
+                    // the children: the source = the coarse myself, target = my neighbor
+                    GBLocal* invert_gb = new GBLocal(-1, ngh_cum_id);
+                    invert_gb->Intersect(/* source */ level_ - 1, xyz_, coarse_hgrid, block_len,
+                                         /* target */ ngh_block->level(), ngh_pos, ngh_hgrid, block_min, block_max, gs(), stride());
+                    invert_gb->data_src(ngh_block);
+                    //#pragma omp critical
+                    local_parent_reverse_.push_back(invert_gb);
+                } else if (nghq->level > level()) {
+                    // m_log("creating a finer");
                     m_assert((nghq->level - level_) == 1, "The delta level is not correct: %d - %d", nghq->level, level_);
+                    // register the coarse
+                    GBLocal* gb = new GBLocal(ibidule, ngh_cum_id);
+                    //#pragma omp critical
+                    local_children_.push_back(gb);
+                } else {
+                    m_assert(false,"this shouldn't happen");
                 }
             }
             //................................................
             else {
                 // get the local number in the remote rank and the remote rank
-                iblock_t ngh_local_id = nghq->p.piggy3.local_num;
+                // iblock_t ngh_local_id = nghq->p.piggy3.local_num;
+                m_assert(ngh_cum_id == nghq->p.piggy3.local_num, "the two numbering must match: %d vs %d", ngh_cum_id, nghq->p.piggy3.local_num);
                 // rank_t ngh_rank     = p4est_GetOwnerFromGhost(forest, nghq);
                 m_assert(ngh_rank >= 0, "p4est unable to recover the rank... baaaad news: %d", ngh_rank);
                 m_assert(ngh_rank < forest->mpisize, "the rank must be smaller than the comm size: %d vs %d ", ngh_rank, forest->mpisize);
                 m_assert((forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]) > 0, "the neighbor must have quadrants");
-                m_assert(0 <= ngh_local_id, "the piggy3.local_num must fall in the quad's limits: %d < %d", 0, ngh_local_id);
-                m_assert(ngh_local_id < (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]), "the piggy3.local_num must fall in the quad's limits: %d < %ld", ngh_local_id, (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]));
+                m_assert(0 <= ngh_cum_id, "the piggy3.local_num must fall in the quad's limits: %d < %d", 0, ngh_cum_id);
+                m_assert(ngh_cum_id < (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]), "the piggy3.local_num must fall in the quad's limits: %d < %ld", ngh_cum_id, (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]));
 
                 // register the ghost block in a list
                 //................................................
                 if (nghq->level == level_) {
-                    // register the status
-                    ngh_status[ibidule] = NS_EVEN;
-                    // get the extend information
-                    bool restrict_start[3], extend_end[3];
-                    GhostGetExtend(ibidule, ngh_status, nghq->level, level(), restrict_start, extend_end);
-
-                    // create the new mirror block
-                    // GBMirror* gb = new GBMirror(block->level(), block->xyz(), block->hgrid(), nghq->level, ngh_pos, ngh_block->hgrid(), block_len, block_min, block_max, block->gs(), block->stride(), ngh_rank);
                     // sibling: source = neighbor GridBlock, target = me
-                    GBMirror* gb = new GBMirror(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
-                                                /* extend */ restrict_start, extend_end,
-                                                /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride(), ngh_rank);
-                    // ask the displacement (will be available later, when completing the call
-                    // m_log("arguments are %p,1,MPI_AINT,%d,%d,1,MPI_AINT",gb->data_src_ptr(), ngh_rank, ngh_local_id);
-                    // m_log("I need block %d in rank %d (the rank has %d blocks)", ngh_local_id, ngh_rank, (forest->global_first_quadrant[ngh_rank + 1] - forest->global_first_quadrant[ngh_rank]));
-                    m_assert(ngh_local_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_local_id);
-                    MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window);
+                    GBMirror* gb = new GBMirror(ibidule, ngh_cum_id, ngh_rank);
+                    gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
+                                  /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride());
+                    // ask the displacement (will be available later, when completing the call)
+                    m_assert(ngh_cum_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_cum_id);
+                    MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_sibling_.push_back(gb);
 
                 }
                 //................................................
                 else if (nghq->level < level_) {
-                    ngh_status[ibidule] = NS_COARSE;
-                    {
-                        // get the extend information
-                        bool restrict_start[3], extend_end[3];
-                        GhostGetExtend(ibidule, ngh_status, nghq->level, level(), restrict_start, extend_end);
+                    // parent: source = neighbor, target = me
+                    GBMirror* gb = new GBMirror(ibidule, ngh_cum_id, ngh_rank);
+                    gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
+                                  /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride());
+                    // ask the displacement (will be available later, when completing the call
+                    m_assert(ngh_cum_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_cum_id);
+                    MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
+                    //#pragma omp critical
+                    ghost_parent_.push_back(gb);
 
-                        // TODO: change this to the coarse block to avoid any cast afterwards...
-                        // parent: source = neighbor, target = me
-                        GBMirror* gb = new GBMirror(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
-                                                    /* extend */ restrict_start, extend_end,
-                                                    /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride(), ngh_rank);
-                        // ask the displacement (will be available later, when completing the call
-                        MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window);
-                        //#pragma omp critical
-                        ghost_parent_.push_back(gb);
-                    }
-                    {
-                        // get the extend information
-                        bool restrict_start[3], extend_end[3];
-                        GhostGetExtend(ibidule, ngh_status, level(), nghq->level, restrict_start, extend_end);
-                        // I compute my own contribution to my neighbor ghost points
-                        GBMirror* invert_gb = new GBMirror(/* source */ level() - 1, xyz(), coarse_hgrid, block_len,
-                                                           /* extend */ restrict_start, extend_end,
-                                                           /* target */ nghq->level, ngh_pos, ngh_hgrid, block_min, block_max, gs(), stride(), ngh_rank);
-                        MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_local_id, 1, MPI_AINT, local2disp_window);
-                        //#pragma omp critical
-                        ghost_parent_reverse_.push_back(invert_gb);
-                        // register the status
-                    }
+                    // I compute my own contribution to my neighbor ghost points
+                    GBMirror* invert_gb = new GBMirror(ibidule, ngh_cum_id, ngh_rank);
+                    invert_gb->Intersect(/* source */ level() - 1, xyz(), coarse_hgrid, block_len,
+                                         /* target */ nghq->level, ngh_pos, ngh_hgrid, block_min, block_max, gs(), stride());
+                    m_assert(ngh_cum_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_cum_id);
+                    MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
+                    //#pragma omp critical
+                    ghost_parent_reverse_.push_back(invert_gb);
+
                 }
                 //................................................
                 else if (nghq->level > level_) {
-                    // register the status
-                    ngh_status[ibidule] = NS_FINE;
+                    const real_t ngh_hgrid_coarse[3] = {CoarseHGrid(ngh_len[0]), CoarseHGrid(ngh_len[1]), CoarseHGrid(ngh_len[2])};
 
-                    // get the extend information
-                    bool restrict_start[3], extend_end[3];
-                    GhostGetExtend(ibidule, ngh_status, nghq->level, level(), restrict_start, extend_end);
-
-                    const real_t ngh_hgrid_coarse[3] = {ngh_len[0] / (M_NHALF - 1), ngh_len[1] / (M_NHALF - 1), ngh_len[2] / (M_NHALF - 1)};
                     // children: source = coarse version of my neighbor, target = myself
-                    GBMirror* gb = new GBMirror(/* source */ nghq->level - 1, ngh_pos, ngh_hgrid_coarse, ngh_len,
-                                                /* extend */ restrict_start, extend_end,
-                                                /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride(), ngh_rank);
+                    GBMirror* gb = new GBMirror(ibidule, ngh_cum_id, ngh_rank);
+                    gb->Intersect(/* source */ nghq->level - 1, ngh_pos, ngh_hgrid_coarse, ngh_len,
+                                  /* target */ level(), xyz(), hgrid(), block_min, block_max, gs(), stride());
                     //#pragma omp critical
                     ghost_children_.push_back(gb);
                 }
@@ -715,13 +935,14 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
             // pop the last element, will go to the next one
             ngh_list.pop_back();
             rank_list.pop_back();
+            bid_list.pop_back();
         }
     }
-    //-------------------------------------------------------------------------
-    for (iface_t ibidule = (M_NNEIGHBORS - 1); ibidule >= 0; ibidule--) {
-        // set the current status to
-        ngh_status[ibidule] = NS_NONE;
-    }
+    // //-------------------------------------------------------------------------
+    // for (iface_t ibidule = (M_NNEIGHBORS - 1); ibidule >= 0; ibidule--) {
+    //     // set the current status to
+    //     ngh_status[ibidule] = NS_NONE;
+    // }
 }
 
 /**
@@ -770,7 +991,7 @@ void GridBlock::GhostFreeLists() {
 void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
     //-------------------------------------------------------------------------
     // get the siblings
-    m_log("get the siblings for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
+    // m_log("get the siblings for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
     {
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
         const data_ptr data_trg = data(field, ida);
@@ -794,7 +1015,6 @@ void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<c
         }
     }
 
-    m_log("get the coarse for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
     //................................................
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
@@ -955,7 +1175,7 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
     if (do_coarse) {
         //................................................
         {
-            m_log("reset the coarse block to %d and stride %d ", interp->CoarseNGhostFront(), interp->CoarseStride());
+            // m_log("reset the coarse block to %d and stride %d ", interp->CoarseNGhostFront(), interp->CoarseStride());
             const SubBlock coarse_block(interp->CoarseNGhostFront(), interp->CoarseStride(), 0, M_NHALF);
             // copy myself to the coarse, one point out of 2
             const lid_t    shift[3] = {0, 0, 0};
@@ -977,7 +1197,7 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             interp->CoarseFromFine(face_start[gblock->iface()], fstart);
             data_ptr data_trg = coarse_ptr_(0, &coarse_block);
             // apply the BC
-            m_log("apply bc on coarse for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
+            // m_log("apply bc on coarse for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
             if (bctype == M_BC_NEU) {
                 NeumanBoundary<M_WAVELET_N - 1> bc;
                 bc(gblock->iface(), fstart, hgrid_, 0.0, &coarse_block, data_trg);
@@ -1002,9 +1222,9 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             const data_ptr data_src = coarse_ptr_(0, &block_src);
             lid_t          shift[3] = {0, 0, 0};
 
-            m_log("we have %d local parents", local_parent_.size());
+            // m_log("we have %d local parents", local_parent_.size());
             for (const auto gblock : local_parent_) {
-                m_log("interpolating for parent");
+                // m_log("interpolating for parent");
                 interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
             }
             for (const auto gblock : ghost_parent_) {
@@ -1038,6 +1258,8 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
         // apply the physics to the best of my knowledge
         // some ghosts are missing but this is okay
         data_ptr data_trg = data(field, ida);
+
+        // m_log("apply bc for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
         for (auto gblock : phys_) {
             bctype_t bctype = field->bctype(ida, gblock->iface());
             // get the correct face_start
@@ -1103,6 +1325,7 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
 void GridBlock::GhostPut_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
     //-------------------------------------------------------------------------
     data_ptr data_trg = data(field, ida);
+    // m_log("apply bc for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
     for (auto gblock : phys_) {
         bctype_t bctype = field->bctype(ida, gblock->iface());
         // get the correct face_start

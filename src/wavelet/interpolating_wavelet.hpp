@@ -362,10 +362,12 @@ class InterpolatingWavelet : public Wavelet {
     };
 
     /**
-     * @brief gets the maximum infinite norm of the detail coefficients over the block, no change to the block memory is performed
+     * @brief compute the details over a memory block and store the maximum infinite norm of the details
      * 
-     * if the ctx->tdata is empty, we return the max detail
-     * if the ctx->tdata is not empty, we additionally store it's value in the field if the abs(detail) < ctx->alpha
+     * Depending on the values of @ref interp_ctx_t::tdata and @ref interp_ctx_t::alpha, the detail coefficients are stored.
+     *     - if the @ref interp_ctx_t::tdata is empty, nothing is stored
+     *     - if the @ref interp_ctx_t::tdata is not empty and @ref interp_ctx_t::alpha >= 0, the value is stored if the abs(detail) < ctx->alpha
+     *     - if the @ref interp_ctx_t::tdata is not empty and @ref interp_ctx_t::alpha < 0, the value is stored as tdata * detail
      * 
      * @param ctx the interpolation context
      * @param details_max the maximum of the local detail coefficients
@@ -379,9 +381,12 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const ga     = ga_<TN, TNT> + ga_lim;
 
         // check if we need to store some value -> get the target pointer
-        bool          store = !(ctx->tdata.IsEmpty());
-        real_t        temp  = 0.0;
-        real_t* const tdata = (store) ? (ctx->tdata.Write()) : (&temp);
+        bool          store         = !(ctx->tdata.IsEmpty());
+        bool          store_on_mask = (ctx->alpha < 0.0) && store;
+        real_t        temp          = 0.0;
+        real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
+
+        m_log("store? %d, store on mask? %d",store,store_on_mask);
 
         // get the source pointer
         const real_t* const sdata = ctx->sdata.Read();
@@ -431,8 +436,8 @@ class InterpolatingWavelet : public Wavelet {
             (*details_max) = m_max(fabs(detail), (*details_max));
 
             // store if needed, the index is 0 if not store
-            const real_t value    = detail * (fabs(detail) < ctx->alpha);
             const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->trgstr);
+            const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
             tdata[store_id]       = value;
         };
 

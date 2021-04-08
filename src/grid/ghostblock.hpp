@@ -19,12 +19,35 @@
 template <typename T>
 class GhostBlock : public SubBlock {
    protected:
-    level_t dlvl_;      //!< delta level = source level - target level (see @ref Wavelet)
-    bidx_t  shift_[3];  //!< target point (0,0,0) in the framework of the source  (see @ref Wavelet::interpolate_())
-    T       data_src_;  //!< provide a mean to access the source data (in practice a GridBlock* or a displacement MPI_Aint)
-    rank_t  rank_rma_;  //!< the source rank of the info
+    iface_t  ibidule_;        //!< the id of the face, edge or corner that is responsible for this ghostblock
+    iblock_t cum_block_id_;  //!< cummulative id of the corresponding block or id to use to retrieve information on another rank
+    level_t  dlvl_;          //!< delta level = source level - target level (see @ref Wavelet)
+    bidx_t   shift_[3];      //!< target point (0,0,0) in the framework of the source  (see @ref Wavelet::interpolate_())
+    T        data_src_;      //!< provide a mean to access the source data (in practice a GridBlock* or a displacement MPI_Aint)
+    rank_t   rank_rma_;      //!< the source rank of the info
 
    public:
+    /**
+     * @brief create a block with no information but the corresponding block_id and the rank for MPI communications
+     * 
+     * @param block_id the cummulative id corresponding to the local block, or the id to use to get the information on another rank
+     * @param rank the rank to use in case of MPI call
+     */
+    GhostBlock(const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) {
+        ibidule_      = ibidule;
+        cum_block_id_ = block_id;
+        rank_rma_     = rank;
+
+        // init stupid stuffs
+        gs_     = 0;
+        stride_ = 0;
+        dlvl_   = 0;
+        for (lda_t ida = 0; ida < 3; ++ida) {
+            start_[ida] = 0;
+            end_[ida]   = 0;
+            shift_[ida] = 0;
+        }
+    }
     /**
     * @brief Construct a new Ghost Block object
     * 
@@ -39,7 +62,6 @@ class GhostBlock : public SubBlock {
     * @param src_pos the position of the source block
     * @param src_hgrid the grid spacing of the source block
     * @param src_len the length (in the physical domain) of the source block
-    * @param restrict_start true if the source must be shorter than usual, i.e. don't take the first point
     * @param trg_lvl the level of the target block
     * @param trg_pos the position of the target block
     * @param trg_hgrid the grid spacing of the target block
@@ -50,15 +72,15 @@ class GhostBlock : public SubBlock {
     * @param trg_stride the stide of the target block
     * @param rank_rma the rank needed for RMA calls
     */
-    GhostBlock(/* source info */ const level_t src_lvl, const real_t src_pos[3], const real_t src_hgrid[3], const real_t src_len[3],
-               /* extend info */ const bool restrict_start[3], const bool extend_end[3],
-               /* target info */ const level_t trg_lvl, const real_t trg_pos[3], const real_t trg_hgrid[3],
-               /* target block */ const bidx_t trg_min[3], const bidx_t trg_max[3], const bidx_t trg_gs, const bidx_t trg_stride, const rank_t rank_rma) {
+    void Intersect(/* source info */ const level_t src_lvl, const real_t src_pos[3], const real_t src_hgrid[3], const real_t src_len[3],
+                   //    /* extend info */ const bool restrict_start[3], const bool extend_end[3],
+                   /* target info */ const level_t trg_lvl, const real_t trg_pos[3], const real_t trg_hgrid[3],
+                   /* target block */ const bidx_t trg_min[3], const bidx_t trg_max[3], const bidx_t trg_gs, const bidx_t trg_stride) {  //, const rank_t rank_rma) {
         //-------------------------------------------------------------------------
         // store the source rank, the stride and the ghost size
-        rank_rma_ = rank_rma;
-        gs_       = trg_gs;
-        stride_   = trg_stride;
+        // rank_rma_ = rank_rma;
+        gs_     = trg_gs;
+        stride_ = trg_stride;
 
         // set the level gap > 0 if the source if finer
         dlvl_ = src_lvl - trg_lvl;
@@ -69,9 +91,9 @@ class GhostBlock : public SubBlock {
 
             // the source start and end must be changed to match the last/first grid point policy
             // start: the first point on the source is included so we need to remove 1h (the target h!!!) if the source level < trg level
-            const real_t src_start = src_pos[id] + trg_hgrid[id] * restrict_start[id];
+            const real_t src_start = src_pos[id];  //+ trg_hgrid[id] * restrict_start[id];
             // end: the last point is never included, so we need to add it if the source level > target level
-            const real_t src_end = src_pos[id] + src_len[id] + trg_hgrid[id] * extend_end[id];
+            const real_t src_end = src_pos[id] + src_len[id];  // + trg_hgrid[id] * extend_end[id];
 
             // // if the target is lover or the same level (dlvl > 0), nothing changes.
             // // if the target is higher (dlvl < 0), the target thrust its points more than the source
@@ -96,7 +118,7 @@ class GhostBlock : public SubBlock {
         m_assert(start_[1] <= end_[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[1], end_[1], shift_[1], src_pos[1], trg_pos[1]);
         m_assert(start_[2] <= end_[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
 
-        m_log("ghost created: from [%d %d %d] to [%d %d %d]", start_[0], start_[1], start_[2], end_[0], end_[1], end_[2]);
+        // m_log("ghost created: from [%d %d %d] to [%d %d %d]", start_[0], start_[1], start_[2], end_[0], end_[1], end_[2]);
         //-------------------------------------------------------------------------
     }
 
@@ -105,6 +127,8 @@ class GhostBlock : public SubBlock {
     lid_t        shift(const int id) const { return shift_[id]; }
     const lid_t* shift() const { return shift_; }
     rank_t       rank() const { return rank_rma_; }
+    iblock_t     cum_block_id() const { return cum_block_id_; };
+    iface_t      ibidule() const { return ibidule_; };
 
     T data_src() {
         return data_src_;

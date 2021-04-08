@@ -8,15 +8,14 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "hdf5.h"
-
 #include "core/types.hpp"
+#include "hdf5.h"
 
 /**
  * @name user-defined parameters 
  * @{
  */
-#define M_N 9          //!< size of one block (M_N x M_N x M_N), must be ODD
+#define M_N 8           //!< size of one block (M_N x M_N x M_N), must be EVEN
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
@@ -30,9 +29,9 @@
 //  * @name memory sizes shortcuts
 //  * @{
 //  */
-#define M_NCENTER (M_N / 2)  //!< center ID of a block
-#define M_NHALF (M_N / 2 + 1)  //!< center ID of a block
-#define M_STRIDE (2 * M_GS + M_N)
+#define M_NCENTER (M_N / 2)        //!< center ID of a block
+#define M_NHALF (M_N / 2)          //!< number of points in a half block
+#define M_STRIDE (2 * M_GS + M_N)  //!< stride in memory
 
 // // #ifndef BLOCK_GS
 // // static constexpr bidx_t m_gs = 4;
@@ -41,7 +40,7 @@
 // // #endif
 
 // // static constexpr bidx_t m_stride_reg = (2 * m_gs + M_N);
-// // static constexpr bidx_t m_stride_ext = ((m_stride_reg * sizeof(real_t)) % M_ALIGNMENT == 0) ? 
+// // static constexpr bidx_t m_stride_ext = ((m_stride_reg * sizeof(real_t)) % M_ALIGNMENT == 0) ?
 // // static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
 // /** @} */
 

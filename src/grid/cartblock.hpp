@@ -22,22 +22,22 @@ constexpr size_t CartBlockMemNum(const lda_t ida) {
 }
 
 constexpr real_t CartBlockHGrid(const real_t length) {
-    return length / (M_N - 1);
+    // return length / (M_N - 1);
+    return length / (real_t)(M_N);
 }
 
 /**
  * @brief Cartesian block of data, contains its location, level, a map with fields and a grid spacing
  * 
  * 
- * We consider a cartesian block where the number of point is ODD and the first/last information are
- * located on the boundary. 
+ * We consider a cartesian block where the number of point is EVEN
  * A cartesian block is schematically represented as:
  * 
  * ```
- *      M_GS                  M_N                    M_GS
- *   <------>   <------------------------------>   <------>
+ *      M_GS                  M_N                   M_GS
+ *   <------>  <------------------------------>   <------>
  *  |         |                                  |         |
- *  x----x----o----o----o----o----o----o----o----o----x----x
+ *  x----x----o----o----o----o----o----o----o----x----x----|
  *  |         |                                  |         |
  * ```
  * 
@@ -75,15 +75,16 @@ class CartBlock : public MemLayout {
         m_pos[2] = i2 * hgrid_[2] + xyz_[2];
     }
 
-    /**
-     * @brief return the half length of a block
-     */
-    inline bidx_t half_len() const { return M_N / 2 + 1; }
+    // /**
+    //  * @brief return the half length of a block
+    //  */
+    // // inline bidx_t half_len() const { return M_N / 2 + 1; }
+    // // inline bidx_t half_len() const { return M_N / 2; }
 
-    /**
-     * @brief returns the id of the center point
-     */
-    inline bidx_t center_len() const { return M_N / 2; }
+    // /**
+    //  * @brief returns the id of the center point
+    //  */
+    // // inline bidx_t center_len() const { return M_N / 2; }
 
     /**
      * @name CartBlock utility functions
