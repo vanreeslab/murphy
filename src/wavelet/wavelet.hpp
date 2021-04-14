@@ -147,7 +147,7 @@ class Wavelet {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (n_js % 2);      // remove the last point if it's a detail
-        const bidx_t n_det  = n_ks - (1 - n_ks % 2);  // remove the last point if it's a detail
+        const bidx_t n_det  = n_ks - (1 - (n_ks % 2));  // remove the last point if it's a detail
         return m_max(n_scal, n_det - 1);
     };
     /**
@@ -157,7 +157,7 @@ class Wavelet {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (n_js % 2);      // remove the last point if it's a detail
-        const bidx_t n_det  = n_ks - (1 - n_ks % 2);  // remove the last point if it's a detail
+        const bidx_t n_det  = n_ks - (1 - (n_ks % 2));  // remove the last point if it's a detail
         return m_max(n_scal - 1, n_det);
     };
 
@@ -171,7 +171,7 @@ class Wavelet {
      */
     const bidx_t ndetail_citerion_extend_front() const {
         const bidx_t n_js   = len_js() / 2;
-        const bidx_t n_scal = n_js - (1 - n_js % 2);  // remove the last point if it's a scaling
+        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         return m_sign(Nt()) * m_max(n_scal, 0);
     };
 
@@ -192,7 +192,7 @@ class Wavelet {
     const bidx_t ndetail_smooth_extend_front() const {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
-        const bidx_t n_scal = n_js - (1 - n_js % 2);  // remove the last point if it's a scaling
+        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         const bidx_t n_det  = n_ks - (n_ks % 2);      // remove the last point if it's a scaling
         return m_sign(Nt()) * m_max(n_scal, n_det - 1);
     };
@@ -203,7 +203,7 @@ class Wavelet {
     const bidx_t ndetail_smooth_extend_back() const {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
-        const bidx_t n_scal = n_js - (1 - n_js % 2);  // remove the last point if it's a scaling
+        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         const bidx_t n_det  = n_ks - (n_ks % 2);      // remove the last point if it's a scaling
         return m_sign(Nt()) * m_max(n_scal - 1, n_det);
     };

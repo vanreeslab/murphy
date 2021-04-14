@@ -288,7 +288,8 @@ void EpsilonTest::Run() {
             min_level = grid.MinLevel();
             // force the field refinement using a patch
             grid.GhostPull(&scal);
-            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), cback_UpdateDependency, nullptr);
+            m_log("need to adapt the call to Adapt Magic");
+            // grid.AdaptMagic(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), cback_UpdateDependency, nullptr);
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();

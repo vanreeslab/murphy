@@ -3,6 +3,8 @@
 
 #include <p8est.h>
 
+#include <list>
+
 #include "core/macros.hpp"
 #include "core/pointers.hpp"
 #include "core/types.hpp"
@@ -10,10 +12,20 @@
 #include "grid/forestgrid.hpp"
 #include "grid/ghostblock.hpp"
 #include "grid/physblock.hpp"
+#include "tools/patch.hpp"
 #include "tools/prof.hpp"
 #include "wavelet/wavelet.hpp"
 
 #define M_NNEIGHBORS 26
+
+typedef enum StatusAdapt {
+    M_ADAPT_NONE,
+    M_ADAPT_COARSER,
+    M_ADAPT_FINER,
+    M_ADAPT_SAME,
+    M_ADAPT_NEW_COARSE,
+    M_ADAPT_NEW_FINE
+} StatusAdapt;
 
 /**
  * @brief a @ref CartBlock with ghosting and wavelet capabilities
@@ -21,8 +33,8 @@
  */
 class GridBlock : public CartBlock {
    protected:
-    short_t    status_lvl_ = 0;              //!< indicat the status of the level: +1 should refine, -1 should coarsen
-    bool*      status_siblings_neighbors_;   //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
+    StatusAdapt status_lvl_ = M_ADAPT_NONE;  //!< indicat the status of the level: +1 should refine, -1 should coarsen
+    bool*      status_ngh_new_coarsen_;   //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
     short_t    n_dependency_active_ = 0;     //!< list of dependency = how to create my information after refinement/coarsening
     GridBlock* dependency_[P8EST_CHILDREN];  //!< the pointer to the dependency block
 
@@ -47,18 +59,21 @@ class GridBlock : public CartBlock {
      * @name Status level management
      *
      * @{ */
-    sid_t status_level() const { return status_lvl_; };
-    void  ResetStatus() { status_lvl_ = 0; };
+    StatusAdapt status_level() const { return status_lvl_; };
+    void        status_level(const StatusAdapt status) { status_lvl_ = status; };
+    void        ResetStatus() { status_lvl_ = M_ADAPT_NONE; };
 
-    void UpdateStatusFromCriterion(/* block info */ m_ptr<const qid_t> qid, m_ptr<bool> coarsen_vector,
-                                   /* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
+    void UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
                                    /* prof */ m_ptr<Prof> profiler);
+    void UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
+                                 /* prof */ m_ptr<Prof> profiler);
 
     void ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
     void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
 
     void FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
-    void GetStatusFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window);
+    void SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<bool> coarsen_vec) const;
+    void GetNewByCoarseningFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window);
     void UpdateDetails();
     /** @} */
 

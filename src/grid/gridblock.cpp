@@ -294,7 +294,7 @@ static void GhostReverseExtend(const iface_t ibidule, /* in */ const bool fine_r
 GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level) : CartBlock(length, xyz, level) {
     m_begin;
     //-------------------------------------------------------------------------
-    status_lvl_ = 0;
+    status_lvl_ = M_ADAPT_NONE;
 
     // init the dependencies
     n_dependency_active_ = 0;
@@ -338,18 +338,14 @@ GridBlock::~GridBlock() {
  * - if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
  * 
  */
-void GridBlock::UpdateStatusFromCriterion(/* block info */ m_ptr<const qid_t> qid, m_ptr<bool> coarsen_vector,
-                                          /* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
+void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
                                           /* prof */ m_ptr<Prof> profiler) {
     //-------------------------------------------------------------------------
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
-    m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
+    m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
     m_assert(field_citerion->ghost_status(), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
     //-------------------------------------------------------------------------
     m_profStart(profiler(), "criterion detail");
-
-    // by default we do not coarsen the block
-    coarsen_vector[qid->cid] = false;
 
     // prevent coarsening if we have finer neighbors
     bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
@@ -365,7 +361,7 @@ void GridBlock::UpdateStatusFromCriterion(/* block info */ m_ptr<const qid_t> qi
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
         if (refine) {
-            status_lvl_ = +1;
+            status_lvl_ = M_ADAPT_FINER;
             // finito
             m_profStop(profiler(), "criterion detail");
             return;
@@ -375,11 +371,70 @@ void GridBlock::UpdateStatusFromCriterion(/* block info */ m_ptr<const qid_t> qi
     }
     // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
     // also make sure that we can coarsen!
-    status_lvl_ = (coarsen && !forbid_coarsening) ? -1 : 0;
+    status_lvl_ = (coarsen && !forbid_coarsening) ? M_ADAPT_COARSER : M_ADAPT_SAME;
     // register the coarsening
-    coarsen_vector[qid->cid] = coarsen;
-
     m_profStop(profiler(), "criterion detail");
+    m_assert(status_lvl_ != M_ADAPT_NONE, "the status of the block cannot be NONE");
+    return;
+    //-------------------------------------------------------------------------
+}
+
+void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
+                                        /* prof */ m_ptr<Prof> profiler) {
+    //-------------------------------------------------------------------------
+    m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
+    //-------------------------------------------------------------------------
+
+    // prevent coarsening if we have finer neighbors
+    bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+
+    // get the block length
+    real_t len = p4est_QuadLen(this->level());
+
+    // loop over the patches and determine if I am in it or not
+    for (auto iter = patch_list->begin(); iter != patch_list->end(); ++iter) {
+        Patch* patch = &(*iter);
+
+        // if we already have the correct level or a higher one, we skip the patch
+        if (this->level() > patch->level()) {
+            // if not, we have a coarser block and we might want to refine if the location matches
+            bool coarsen = true;
+
+            for (lda_t id = 0; id < 3; id++) {
+                // we have to satisfy both the our max > min and the min < our max
+                coarsen = coarsen &&
+                          (this->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+                          (patch->origin(id) < (this->xyz(id) + len));
+            }
+            // register the status
+            status_lvl_ = (coarsen && !forbid_coarsening) ? (M_ADAPT_COARSER) : M_ADAPT_NONE;
+
+            // if we found a matching patch, it's done
+            if (coarsen) {
+                return;
+            }
+
+        } else if (this->level() < patch->level()) {
+            // if not, we have a coarser block and we might want to refine if the location matches
+            bool refine = true;
+
+            for (lda_t id = 0; id < 3; id++) {
+                // we have to satisfy both the our max > min and the min < our max
+                refine = refine &&
+                         (this->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+                         (patch->origin(id) < (this->xyz(id) + len));
+            }
+            // register the status
+            status_lvl_ = (refine) ? (M_ADAPT_FINER) : M_ADAPT_NONE;
+
+            // if we found a matching patch, it's done
+            if (refine) {
+                return;
+            }
+        }
+    }
+    status_lvl_ = M_ADAPT_SAME;
+    m_assert(status_lvl_ != M_ADAPT_NONE,"the status of the block cannot be NONE");
     return;
     //-------------------------------------------------------------------------
 }
@@ -419,73 +474,97 @@ void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, 
 }
 
 /**
+ * @brief sets TRUE in the coarsen_vec if the block has been newly created by coarsening
+ * 
+ * @param qid 
+ * @param coarsen_vec 
+ */
+void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<bool> coarsen_vec) const {
+    //-------------------------------------------------------------------------
+    coarsen_vec[qid->cid] = (status_lvl_ == M_ADAPT_NEW_COARSE);
+    m_log("block # %d is puting %d at location %d", qid->cid, coarsen_vec[qid->cid],qid->cid);
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief update my status based on the status from my finer neighbors
  * 
  * allocate the @ref status_siblings_neighbors_ array, which will be destroyed in the @ref SolveNeighbor function.
  */
-void GridBlock::GetStatusFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window) {
+void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window) {
     //-------------------------------------------------------------------------
     // get the number of status to obtain
-    iblock_t nblocks           = (local_sibling_.size() + ghost_sibling_.size());
-    status_siblings_neighbors_ = reinterpret_cast<bool*>(m_calloc(nblocks * sizeof(bool)));
+    iblock_t nblocks        = (local_parent_.size() + ghost_parent_.size());
+    status_ngh_new_coarsen_ = reinterpret_cast<bool*>(m_calloc(nblocks * sizeof(bool)));
 
     // loop over the same level neighbors and get the status
-    iblock_t count = local_sibling_.size();
-    for (auto gblock : ghost_children_) {
-        MPI_Get(status_siblings_neighbors_ + count, 1, MPI_C_BOOL, gblock->rank(), gblock->cum_block_id(), 1, MPI_C_BOOL, status_window);
+    iblock_t count = local_parent_.size();
+    for (auto gblock : ghost_parent_) {
+        MPI_Get(status_ngh_new_coarsen_ + count, 1, MPI_C_BOOL, gblock->rank(), gblock->cum_block_id(), 1, MPI_C_BOOL, status_window);
         ++count;
     }
     m_assert(count == nblocks, "the two numbers must match: %d vs %d", count, nblocks);
 
     // get the local ones now
     count = 0;
-    for (auto gblock : local_children_) {
-        //MPI_Get(status_siblings_neighbors_ + count, 1, MPI_C_BOOL, gblock->rank(), gblock->cum_block_id(), 1, MPI_C_BOOL, status_window);
-        status_siblings_neighbors_[count] = status_vec[gblock->cum_block_id()];
+    for (auto gblock : local_parent_) {
+        m_log("neighbor id %d gets value %d at id = %d", count, status_vec[gblock->cum_block_id()], gblock->cum_block_id());
+        status_ngh_new_coarsen_[count] = status_vec[gblock->cum_block_id()];
         ++count;
     }
-    m_assert(count == nblocks, "the two numbers must match: %d vs %d", count, nblocks);
+    m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %d", count, local_parent_.size());
     //-------------------------------------------------------------------------
 }
 
 void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+    // the status level has to be 0, otherwise it means that one of the block is not coarsened
+    m_assert(status_lvl_ != M_ADAPT_NONE, "here, all the blocks have been visited and the status level of everybody should be something else than M_ADAPT_NONE: here %d for block @ %f %f %f", status_lvl_, this->xyz(0), this->xyz(1), this->xyz(2));
     //-------------------------------------------------------------------------
     // builld the mask
+    m_log("-------------------");
+    m_log("smoothing block at %f %f %f", this->xyz(0), this->xyz(1), this->xyz(2));
     //................................................
     // reset the temp memory to 0.0
     memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
     data_ptr mask      = coarse_ptr_(0, this);
     real_t*  mask_data = mask.Write();
 
+    // create the lambda
     auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
     };
 
+    m_log("solve the jumps for %d + %d neighbors", local_parent_.size(), ghost_parent_.size());
+
     // for each ghost block, set the mask to 1.0 if needed
     iblock_t block_count = 0;
-    for (auto gblock : local_sibling_) {
-        if (status_siblings_neighbors_[block_count]) {
+    for (auto gblock : local_parent_) {
+        m_log("status of my neighbor (ibidule = %d,id = %d) = %d", gblock->ibidule(), gblock->cum_block_id(), status_ngh_new_coarsen_[block_count]);
+        if (status_ngh_new_coarsen_[block_count]) {
+            m_assert(status_lvl_ == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
             real_t sign[3];
             GhostGetSign(gblock->ibidule(), sign);
+
+            m_log("sign = %f %f %f", sign[0], sign[1], sign[2]);
 
             // create the start and end indexes
             bidx_t smooth_start[3], smooth_end[3];
             for (lda_t ida = 0; ida < 3; ++ida) {
-                if(sign[ida] > 0.5){
+                if (sign[ida] > 0.5) {
                     // my ngh assumed 0 details in my block
                     smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
                     // the number of my ngh details influencing my values
                     smooth_end[ida] = this->end(ida) + interp->ndetail_smooth_extend_back();
-                }
-                else if (sign[ida] < 0.5){
+                } else if (sign[ida] < -0.5) {
                     // my ngh assumed 0 details in my block
                     smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
                     // the number of my ngh details influencing my values
                     smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
-                }
-                else{
-                    smooth_start[ida] = this->start(ida);
-                    smooth_end[ida] = this->end(ida);
+                } else {
+                    // in the transverse directions, it's tricky when a face parent also covers the corners
+                    // if we detect that the ghost covers more than the
+                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front() * (gblock->start(ida) < this->start(ida));
+                    smooth_end[ida]   = this->end(ida) + interp->ndetail_smooth_extend_back() * (gblock->end(ida) > this->end(ida));
                 }
             }
             m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
@@ -497,29 +576,30 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
         // update the counter
         ++block_count;
     }
-    for (auto gblock : ghost_sibling_) {
-        if (status_siblings_neighbors_[block_count]) {
+    m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %d", block_count, local_parent_.size());
+    for (auto gblock : ghost_parent_) {
+        if (status_ngh_new_coarsen_[block_count]) {
             real_t sign[3];
             GhostGetSign(gblock->ibidule(), sign);
 
             // create the start and end indexes
             bidx_t smooth_start[3], smooth_end[3];
             for (lda_t ida = 0; ida < 3; ++ida) {
-                if(sign[ida] > 0.5){
+                if (sign[ida] > 0.5) {
                     // my ngh assumed 0 details in my block
                     smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
                     // the number of my ngh details influencing my values
                     smooth_end[ida] = this->end(ida) + interp->ndetail_smooth_extend_back();
-                }
-                else if (sign[ida] < 0.5){
+                } else if (sign[ida] < -0.5) {
                     // my ngh assumed 0 details in my block
                     smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
                     // the number of my ngh details influencing my values
                     smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
-                }
-                else{
-                    smooth_start[ida] = this->start(ida);
-                    smooth_end[ida] = this->end(ida);
+                } else {
+                    // in the transverse directions, it's tricky when a face parent also covers the corners
+                    // if we detect that the ghost covers more than the
+                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front() * (gblock->start(ida) < this->start(ida));
+                    smooth_end[ida]   = this->end(ida) + interp->ndetail_smooth_extend_back() * (gblock->end(ida) > this->end(ida));
                 }
             }
             m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
@@ -531,11 +611,12 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
         // update the counter
         ++block_count;
     }
+    m_assert(block_count == (local_parent_.size() + ghost_parent_.size()), "the two numbers must match: %d vs %d", block_count, (local_parent_.size() + ghost_parent_.size()));
     //................................................
     // smooth depending on the mask
     // get the blocks
     SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-    SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + -interp->ndetail_smooth_extend_back());
+    SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + interp->ndetail_smooth_extend_back());
     m_log("not sure about the needed details");
 
     // do it for every field
@@ -580,6 +661,9 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
         GridBlock* root = this->PopDependency(0);
         m_assert(n_dependency_active_ == 0, "I should be empty now");
 
+        m_assert(this->status_level() == M_ADAPT_NEW_FINE, "my status must be M_ADAPT_NEW_FINE instead of %d", this->status_level());
+        m_assert(root->status_level() == M_ADAPT_FINER, "the status of the new root must be M_ADAPT_FINER instead of %d", root->status_level());
+
         // from the parent, we interpolate to me
         int childid = p4est_GetChildID(xyz_, level_);
 
@@ -603,6 +687,8 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
                 }
             }
         }
+        // set the status of my newblock
+
         // remove my ref from the parent
         GridBlock* this_should_be_me = root->PopDependency(childid);
         m_assert(this_should_be_me == this, "this should be me");
@@ -612,6 +698,7 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
             delete (root);
         }
     } else if (n_dependency_active_ == P8EST_CHILDREN) {  // this is COARSENING
+        m_assert(this->status_level() == M_ADAPT_NEW_COARSE, "my status must be M_ADAPT_COARSER instead of %d", this->status_level());
         // I have 8 deps, I am a root, waiting data from coarsening of my children
         //allocate the new fields
         m_assert(mem_map_.size() == 0, "the block should be empty here");
@@ -626,6 +713,7 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
             GridBlock* child_block = this->PopDependency(childid);
             m_assert(child_block->level() - this->level() == 1, "the child block is not a child");
             m_assert(childid == p4est_GetChildID(child_block->xyz(), child_block->level()), "the two ids must match");
+            m_assert(child_block->status_level() == M_ADAPT_COARSER, "the status of the new root must be M_ADAPT_NEW_COARSE instead of %d", child_block->status_level());
 
             // get the shift for me
             const lid_t shift[3]     = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};

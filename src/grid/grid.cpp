@@ -375,11 +375,12 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_end;
 }
 
-
 /**
- * @brief Refine the grid by delta_level locally
+ * @brief Refine the grid if the criterion says so on the field
  * 
- * @param delta_level the number of level every block will be refined
+ * Interpolate the field (which are not temporary) to match the new mesh structure
+ * 
+ * @param field the field to use for the criterion computation
  */
 void Grid::Refine(m_ptr<Field> field) {
     m_begin;
@@ -396,16 +397,19 @@ void Grid::Refine(m_ptr<Field> field) {
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_Interpolate);
     // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_UpdateDependency);
-    Adapt(field, nullptr, &cback_StatusCheck, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
+    // Adapt(field, nullptr, &cback_StatusCheck, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief coarsen one field if the criterion matches
+ * @brief Coarsen the grid if the criterion says so on the field
  * 
- * @param field the field to coarsen 
+ * Interpolate the field (which are not temporary) to match the new mesh structure
+ * 
+ * @param field the field to use for the criterion computation
  */
 void Grid::Coarsen(m_ptr<Field> field) {
     m_begin;
@@ -422,7 +426,8 @@ void Grid::Coarsen(m_ptr<Field> field) {
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_Interpolate);
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_UpdateDependency);
-    Adapt(field, &cback_StatusCheck, nullptr, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
+    // Adapt(field, &cback_StatusCheck, nullptr, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -450,7 +455,7 @@ void Grid::Adapt(m_ptr<Field> field) {
 
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
     // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_UpdateDependency);
-    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field()), &cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field()), &cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -476,7 +481,7 @@ void Grid::Adapt(m_ptr<Field> field, m_ptr<SetValue> expression) {
     // refine given the value
     Field*    myfield = field();
     SetValue* my_expr = expression();
-    Adapt(field, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(myfield), &cback_ValueFill, reinterpret_cast<void*>(my_expr));
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(myfield), &cback_ValueFill, reinterpret_cast<void*>(my_expr));
 
     // we modified one block after another, so we set the ghost value from the SetValue
     field->ghost_status(expression->do_ghost());
@@ -504,30 +509,34 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
     // SetRecursiveAdapt(recursive_adapt);
     // go to the magical adapt function
     // Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches()), &cback_AllocateOnly, nullptr);
-    Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches()), &cback_UpdateDependency, nullptr);
+    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(patches()), &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Adapt the grid in a (non)recursive way given the output of recursive_adapt()
+ * @brief Adapt the grid, this function performs the actual adaptation for all the others
  * 
- * This function is a "do all the magic function" and therefore should be changed carefully.
+ * @warning This function is a "do all the magic function" and therefore should be changed carefully.
  * 
- * @param field if not empty, a field that will be used to update the status of the block, cfr GetStatus_
- * @param coarsen_crit callback function used by p4est to determine if we coarsen of not a block. If nullptr, p4est is not called for coarsening
- * @param refine_crit callback function used by p4est to determine if we coarsen of not a block. If nullptr, p4est is not called for refinement
- * @param criterion_ptr user data stored under @ref cback_criterion_ptr_ and becomes available to the coarsen_crit and refine_crit
- * @param interp callback function used by p4est to actually perform the block adaptation (cannot be nullptr)
- * @param interp_ptr user data stored under @ref cback_interpolate_ptr_ and becomes available to the @ref interp callback function 
+ * @param field_detail if not empty, the field used to computer the details on the blocks
+ * @param patches if not empty, a list of patches to dictate the grid layout
+ * @param coarsen_cback p4est callback function for deciding on coarsening
+ * @param refine_cback p4est callback function for deciding on refinement
+ * @param coarseref_cback_ptr pointer to data used in these refine/coarsen p4est callback functions
+ * @param interpolate_fct p4est callback function for interpolation: do the actual refinement/coarsening
+ * @param interpolate_ptr pointer to data used in the interpolate callback function
  */
-void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr) {
+void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patch> > patches,
+                      /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
+                      /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr) {
     m_begin;
-    m_assert(interp != nullptr, "the interpolation function cannot be a nullptr");
+    m_assert(interpolate_fct != nullptr, "the interpolation function cannot be a nullptr");
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
-    m_assert(!(recursive_adapt() && interp == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
+    m_assert(field_detail.IsEmpty() || patches.IsEmpty(), "you cannot give both a field for detail computation and a patch list");
+    // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
@@ -539,14 +548,13 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
     m_log("--> grid adaptation started... (recursive = %d)", recursive_adapt());
 
     //................................................
-    // store the ptrs and the grid
-    cback_criterion_ptr_        = criterion_ptr;
-    cback_interpolate_ptr_      = interp_ptr;
-    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+    DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
 
-    // delete the soon-to be outdated ghost and mesh
-    // invalidate the mesh but the ghost list stays unchanged on the block!
-    DestroyMeshGhost();
+    //................................................
+    // store the ptrs and the grid
+    cback_criterion_ptr_        = coarseref_cback_ptr;
+    cback_interpolate_ptr_      = interpolate_ptr;
+    p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
     //................................................
     // coarsening, need to have the 8 children on the same rank
@@ -557,25 +565,51 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
         n_quad_to_adapt_       = 0;
         global_n_quad_to_adapt = 0;
 
-        // if we consider a field, get the status and smooth the field
-        // also get the status of my neighbors
-        if (!field.IsEmpty()) {
-            GetStatus_(field);
+        //................................................
+
+        // if we consider a field, compute the criterion based on the field
+        // if not, just go ahead
+        if (!field_detail.IsEmpty()) {
+            // compute the details
+            m_log("using details");
+            DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this,
+                     m_ptr<const Wavelet>(interp_), rtol_, ctol_, m_ptr<const Field>(field_detail), m_ptr<Prof>(prof_));
         }
+        if (!patches.IsEmpty()) {
+            // get the patches processed
+            m_log("using patches");
+            DoOpTree(nullptr, &GridBlock::UpdateStatusFromPatches, this,
+                     m_ptr<const Wavelet>(interp_), patches, m_ptr<Prof>(prof_));
+        }
+
+        // // need to put the status in the array
+        // DoOpTree(nullptr, &GridBlock::SetNewByCoarsening, this, m_ptr<bool>(coarsen_status_));
+
+        // // need to know now otherwise I loose the access
+        // ExchangeStatus_PostStart_();
+        // ExchangeStatus_CompleteWait_();
+
+        //................................................
+        // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
+        // we still save them as dependencies but all the rest is gone.
+        //................................................
+        // need to update on the neighbors before doing anything
+        DestroyMeshGhost();
+        DestroyAdapt();
 
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
-        if (coarsen_crit != nullptr) {
+        if (coarsen_cback != nullptr) {
             m_profStart(prof_, "p4est coarsen");
-            p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_crit, nullptr, interp);
+            p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est coarsen");
         }
 
         // refinement -> only one level
         // The limit in levels are handled directly on the block, not in p4est
-        if (refine_crit != nullptr) {
+        if (refine_cback != nullptr) {
             m_profStart(prof_, "p4est refine");
-            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_crit, nullptr, interp);
+            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est refine");
         }
 
@@ -604,12 +638,14 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
     //................................................
     // get the 2:1 constrain on the grid
     m_profStart(prof_, "p4est balance");
-    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interp);
+    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
     m_profStop(prof_, "p4est balance");
 
-    
     //................................................
-    // Solve the dependencies is some have been created -> no dep created if we are recursive
+    // exchange the status
+    // ExchangeStatus_PostStart_();
+
+    // Solve the dependencies if some have been created -> no dep created if we are recursive
     // this is check in the callback UpdateDependency function
     if (!recursive_adapt()) {
         // warn the user that we do not interpolate a temporary field
@@ -617,8 +653,8 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
             m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
         }
         // do the solve dependency, level by level!
+        m_log("solve dependencies");
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
-        DoOpTree(nullptr, &GridBlock::SolveResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
 
         // we need to process
     } else {
@@ -626,10 +662,6 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
     }
 
     //................................................
-    // redestroy the mesh and the ghost
-    DestroyMeshGhost();
-    DestroyAdapt();
-
     // finally fix the rank partition
     m_profStart(prof_, "partition init");
     Partitioner partition(&fields_, this, true);
@@ -644,6 +676,18 @@ void Grid::Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cbac
     SetupMeshGhost();
     SetupAdapt();
 
+    //................................................
+    // need to do the cleanup pass using the old ghosted values!
+    DoOpTree(nullptr, &GridBlock::SetNewByCoarsening, this, m_ptr<bool>(coarsen_status_));
+
+    // sync the coarsen status to know if my neighbors have just been refined
+    ExchangeStatus_PostStart_();
+    ExchangeStatus_CompleteWait_();
+
+    // solve resolution jump if needed
+    DoOpTree(nullptr, &GridBlock::SolveResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
+
+    //................................................
     // set the ghosting fields as non-valid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
         fid->second->ghost_status(false);
@@ -693,26 +737,24 @@ void Grid::DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details) {
  * 
  * @param field 
  */
-void Grid::GetStatus_(m_ptr<Field> field) const {
-    m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
-    m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
+void Grid::ExchangeStatus_PostStart_() const {
+    // m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
+    // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
     //-------------------------------------------------------------------------
 
-    //.........................................................................
-    //compute the criterion and update the status for every block on the finest level
-    m_log("compute the criterion");
-    DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this,
-             m_ptr<bool>(coarsen_status_), m_ptr<const Wavelet>(interp_), rtol_, ctol_, m_ptr<const Field>(field), m_ptr<Prof>(prof_));
-
-    //.........................................................................
     // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
     MPI_Win_post(ghost_->mirror_origin_group(), 0, coarsen_status_window_);
     // start the access epochs if we are not empty (otherwise it fails on the beast)
     MPI_Win_start(ghost_->mirror_origin_group(), 0, coarsen_status_window_);
 
     // update neigbbor status, only use the already computed status on level il + 1
-    DoOpTree(nullptr, &GridBlock::GetStatusFromNeighbors, this, m_ptr<bool>(coarsen_status_), coarsen_status_window_);
-
+    DoOpTree(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, this, m_ptr<bool>(coarsen_status_), coarsen_status_window_);
+    //-------------------------------------------------------------------------
+}
+void Grid::ExchangeStatus_CompleteWait_() const {
+    // m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
+    // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
+    //-------------------------------------------------------------------------
     // close the access epochs
     MPI_Win_complete(coarsen_status_window_);
     // close the exposure epochs

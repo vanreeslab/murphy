@@ -130,14 +130,20 @@ class Grid : public ForestGrid {
 
     void Refine(m_ptr<Field> field);
     void Coarsen(m_ptr<Field> field);
+    void DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details);
+
     void Adapt(m_ptr<Field> field);
     void Adapt(m_ptr<Field> field, m_ptr<SetValue> expression);
     void Adapt(m_ptr<std::list<Patch> > patches);
-    void Adapt(m_ptr<Field> field, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp, void* interp_ptr);
-    void DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details);
+
+    // void AdaptMagic(m_ptr<Field> field, m_ptr<list<Patch> > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);
+    void AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<std::list<Patch> > patches,
+                    /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
+                    /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr);
 
    private:
-    void GetStatus_(m_ptr<Field> field) const;
+    void ExchangeStatus_PostStart_() const;
+    void ExchangeStatus_CompleteWait_() const;
     /**@}*/
 };
 

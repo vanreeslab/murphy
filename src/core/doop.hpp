@@ -208,8 +208,8 @@ void DoOpTree(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
 
             // get the id
             qid_t myid;
-            myid.cid = bid;                           // cummulative id
-            myid.qid = bid + tree->quadrants_offset;  // quadrant id
+            myid.cid = bid + tree->quadrants_offset;  // cummulative id
+            myid.qid = bid;                           // quadrant id
             myid.tid = it;                            // tree id
 
             // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions

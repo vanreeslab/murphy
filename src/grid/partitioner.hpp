@@ -18,11 +18,12 @@
  *      - when destroying the Partitioner, it will deallocate the old blocks
  *      - the fields allocated must be all the fields of the Grid
  *      - the communication is done all the fields at once
+ *      - the status_level_ of the block is transfered to the new block
  * If destructive is false: we DO care about the previous grid and it cannot be destroyed.
  *      - when destroying the partitioner, the old blocks are kept untouched
  *      - we can restrict the fields of the Grid to not allocate all of them
  *      - the communication is done one field at a time and hence requires less memory
- * 
+ *      - the status_level_ of the block is NOT transfered to the new block
  */
 class Partitioner {
    protected:
@@ -40,9 +41,17 @@ class Partitioner {
     mem_ptr send_buf_ = nullptr;  //<! the send buffer, since the memory is not continuous accross the blocks
     mem_ptr recv_buf_ = nullptr;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
 
+    int*   send_status_count_   = nullptr;  //<! count to send the status of the old blocks
+    int*   send_status_cum_sum_ = nullptr;  //<! cummulative sum to send the status of the old blocks
+    int*   recv_status_count_   = nullptr;  //<! count to send the status of the old blocks
+    int*   recv_status_cum_sum_ = nullptr;  //<! cummulative sum to send the status of the old blocks
+    short* send_status_buf_     = nullptr;  //<! the send buffer for the status, since the memory is not continuous accross the blocks
+    // int    recv_status_count_    = 0;        //!< how many status will be received
+    short* recv_status_buf_     = nullptr;  //<! the receive buffer for the status, sicne the memory is not continuous accross the blocks
+
     iblock_t*   q_send_cum_block_   = nullptr;  //!< remember at which local block we started for the request[i]
     iblock_t*   q_send_cum_request_ = nullptr;  //!< cummulative count on the moving blocks for the request[i]
-    GridBlock** old_blocks_         = nullptr;
+    GridBlock** old_blocks_         = nullptr;  //!< array with the addresses to each old block
 
     // note: since every block owns his own memory, I have to copy it to the buffer for the receive as well
     iblock_t*   q_recv_cum_block_   = nullptr;  //!< remember at which local block we started for the request[i]

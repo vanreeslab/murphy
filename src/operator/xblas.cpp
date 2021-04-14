@@ -150,6 +150,7 @@ void BMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x,
  */
 void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);
+    m_assert(fid_x->ghost_status(),"the field <%s> must have uptodate ghosts",fid_x->name());
     //-------------------------------------------------------------------------
     // get the starting pointer:
     const real_t* h    = block->hgrid();
@@ -244,7 +245,7 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
         real_t origin[3];
         m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
 
-        constexpr real_t coef = 1.0 / 8.0;
+        constexpr real_t coef = 0.125;  //1.0 / 8.0;
         const real_t*    f    = data + m_idx(i0, i1, i2);
 
         // 0,0,0
@@ -312,14 +313,19 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
             lmoment1[2] += coef * value * (origin[2] + h[2]);
         }
     };
-    
-    for_loop(&op,start_,end_);
+    // we need to visit one more point than usual:
+
+    for_loop(&op, start_, end_);
 
     const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
-    moment0_    += vol * lmoment0;
+    moment0_ += vol * lmoment0;
     moment1_[0] += vol * lmoment1[0];
     moment1_[1] += vol * lmoment1[1];
     moment1_[2] += vol * lmoment1[2];
+
+    if (block->xyz(0) == 0.5) {
+        m_log("block @ %f %f %f moments from %d to %d = %.12e -> cum = %e", block->xyz(0), block->xyz(1), block->xyz(2), start_, end_, vol * 4.0 * lmoment0, moment0_);
+    }
     //-------------------------------------------------------------------------
 }
 

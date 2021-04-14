@@ -386,14 +386,16 @@ class InterpolatingWavelet : public Wavelet {
         real_t        temp          = 0.0;
         real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
 
-        m_log("store? %d, store on mask? %d",store,store_on_mask);
+        // m_log("store? %d, store on mask? %d", store, store_on_mask);
+        // m_log("computing details from %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2],
+        //       ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
 
         // get the source pointer
         const real_t* const sdata = ctx->sdata.Read();
 
         // go
         auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            // get if we are odd or even in the current location
+            // get if we are odd or even in the cupgridblockrrent location
             const short_t odd_x = m_sign(i0) * (i0 % 2);
             const short_t odd_y = m_sign(i1) * (i1 % 2);
             const short_t odd_z = m_sign(i2) * (i2 % 2);
@@ -439,6 +441,10 @@ class InterpolatingWavelet : public Wavelet {
             const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->trgstr);
             const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
             tdata[store_id]       = value;
+
+            // if (fabs(value) > 1e-13) {
+            //     m_log("registering value for %d %d %d", i0, i1, i2);
+            // }
         };
 
         // reset the detail max (to be sure)
@@ -575,7 +581,6 @@ class InterpolatingWavelet : public Wavelet {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
                         const real_t fact = (f_x[id0]) * (f_y[id1]) * (f_z[id2]);
                         corr += fact * lddata[m_idx(id0, id1, id2, 0, ctx->srcstr)];
-
                         // sanity check
                         m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata[m_idx(id0, id1, id2, 0, ctx->srcstr)]) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata[m_idx(id0, id1, id2, 0, ctx->srcstr)], i0 + id0, i1 + id1, i2 + id2);
                     }
@@ -583,6 +588,10 @@ class InterpolatingWavelet : public Wavelet {
             }
             m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
             ltdata[0] -= corr;
+
+            // if (fabs(corr) > 1e-13) {
+            //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
+            // }
         };
 
         const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
