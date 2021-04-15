@@ -156,30 +156,30 @@ void Grid::SetupAdapt() {
     m_begin;
     m_assert(is_mesh_valid(), "the mesh must be valid");
     //-------------------------------------------------------------------------
-    MPI_Info info;
-    MPI_Info_create(&info);
-    MPI_Info_set(info, "no_locks", "true");
+    // MPI_Info info;
+    // MPI_Info_create(&info);
+    // MPI_Info_set(info, "no_locks", "true");
 
-    MPI_Aint status_mem_size = local_num_quadrants() * sizeof(bool);
-    MPI_Win_create(coarsen_status_, status_mem_size, sizeof(bool), info, mpicomm(), &coarsen_status_window_);
-    coarsen_status_ = reinterpret_cast<bool*>(m_calloc(status_mem_size));
+    // MPI_Aint status_mem_size = local_num_quadrants() * sizeof(short);
+    // MPI_Win_create(neighbor_status_window_, status_mem_size, sizeof(short), info, mpicomm(), &neighbor_status_window_);
+    // neighbor_status_ = reinterpret_cast<short*>(m_calloc(status_mem_size));
 
-    MPI_Info_free(&info);
+    // MPI_Info_free(&info);
     //-------------------------------------------------------------------------
     m_end;
 }
 
 void Grid::DestroyAdapt() {
     m_begin;
-    //-------------------------------------------------------------------------
-    if (coarsen_status_ != nullptr) {
-        m_free(coarsen_status_);
-        coarsen_status_ = nullptr;
-    }
-    if (coarsen_status_window_ != MPI_WIN_NULL) {
-        MPI_Win_free(&coarsen_status_window_);
-        coarsen_status_window_ = MPI_WIN_NULL;
-    }
+    // //-------------------------------------------------------------------------
+    // if (coarsen_status_ != nullptr) {
+    //     m_free(coarsen_status_);
+    //     coarsen_status_ = nullptr;
+    // }
+    // if (coarsen_status_window_ != MPI_WIN_NULL) {
+    //     MPI_Win_free(&coarsen_status_window_);
+    //     coarsen_status_window_ = MPI_WIN_NULL;
+    // }
     //-------------------------------------------------------------------------
 }
 
@@ -679,12 +679,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     SetupAdapt();
 
     //................................................
-    // need to do the cleanup pass using the old ghosted values!
-    DoOpMesh(nullptr, &GridBlock::SetNewByCoarsening, this, m_ptr<bool>(coarsen_status_));
-
-    // sync the coarsen status to know if my neighbors have just been refined
-    ExchangeStatus_PostStart_();
-    ExchangeStatus_CompleteWait_();
+    ghost_->UpdateStatus();
 
     // solve resolution jump if needed
     m_verb("solve jump resolution");
@@ -741,38 +736,30 @@ void Grid::DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details) {
  * @param field 
  */
 void Grid::ExchangeStatus_PostStart_() const {
-    m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
-    m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
-    m_assert(ghost_ != nullptr, "the ghost must exist");
-    m_assert(ghost_->mirror_origin_group() != MPI_GROUP_NULL, "call the InitComm function first!");
-    m_assert(ghost_->mirror_target_group() != MPI_GROUP_NULL, "call the InitComm function first!");
-    // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
-    //-------------------------------------------------------------------------
+    // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
+    // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
+    // m_assert(ghost_ != nullptr, "the ghost must exist");
+    // m_assert(ghost_->mirror_origin_group() != MPI_GROUP_NULL, "call the InitComm function first!");
+    // m_assert(ghost_->mirror_target_group() != MPI_GROUP_NULL, "call the InitComm function first!");
+    // // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
+    // //-------------------------------------------------------------------------
 
-    // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
-    MPI_Win_post(ghost_->mirror_origin_group(), 0, coarsen_status_window_);
-    // start the access epochs if we are not empty (otherwise it fails on the beast)
-    if (ghost_->mirror_target_group() != MPI_GROUP_EMPTY) {
-        MPI_Win_start(ghost_->mirror_target_group(), 0, coarsen_status_window_);
-    }
-
-    // update neigbbor status, only use the already computed status on level il + 1
-    DoOpMesh(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, this, m_ptr<bool>(coarsen_status_), coarsen_status_window_);
+   
     //-------------------------------------------------------------------------
 }
 void Grid::ExchangeStatus_CompleteWait_() const {
-    m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
-    m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
-    m_assert(ghost_ != nullptr, "the ghost must exist");
+    // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
+    // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
+    // m_assert(ghost_ != nullptr, "the ghost must exist");
     // m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
     // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
     //-------------------------------------------------------------------------
-    // close the access epochs
-    if (ghost_->mirror_target_group() != MPI_GROUP_EMPTY) {
-        MPI_Win_complete(coarsen_status_window_);
-    }
-    // close the exposure epochs
-    MPI_Win_wait(coarsen_status_window_);
+    // // close the access epochs
+    // if (ghost_->mirror_target_group() != MPI_GROUP_EMPTY) {
+    //     MPI_Win_complete(coarsen_status_window_);
+    // }
+    // // close the exposure epochs
+    // MPI_Win_wait(coarsen_status_window_);
 
     //-------------------------------------------------------------------------
 }

@@ -33,10 +33,10 @@ typedef enum StatusAdapt {
  */
 class GridBlock : public CartBlock {
    protected:
-    StatusAdapt status_lvl_ = M_ADAPT_NONE;  //!< indicat the status of the level: +1 should refine, -1 should coarsen
-    bool*      status_ngh_new_coarsen_;   //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
-    short_t    n_dependency_active_ = 0;     //!< list of dependency = how to create my information after refinement/coarsening
-    GridBlock* dependency_[P8EST_CHILDREN];  //!< the pointer to the dependency block
+    StatusAdapt status_lvl_ = M_ADAPT_NONE;   //!< indicat the status of the level: +1 should refine, -1 should coarsen
+    short_t*    status_ngh_;                  //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
+    short_t     n_dependency_active_ = 0;     //!< list of dependency = how to create my information after refinement/coarsening
+    GridBlock*  dependency_[P8EST_CHILDREN];  //!< the pointer to the dependency block
 
     mem_ptr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
 
@@ -72,8 +72,8 @@ class GridBlock : public CartBlock {
     void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
 
     void FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
-    void SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<bool> coarsen_vec) const;
-    void GetNewByCoarseningFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window);
+    void SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const;
+    void GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> status_vec, MPI_Win status_window);
     void UpdateDetails();
     /** @} */
 

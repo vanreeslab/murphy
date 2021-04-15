@@ -50,6 +50,8 @@ class Ghost {
     real_t *  mirrors_             = nullptr;         //!< memory space for the mirror blocks, computed using n_mirror_to_send_
     MPI_Win   local2disp_window_   = MPI_WIN_NULL;    //!< MPI Window for the RMA communication (non null only during the initlist function)
     MPI_Aint *local2disp_          = nullptr;         //!< for each quadrant, indicate its corresponding displacement ID (non null !only! during the initlist function, reset afterwards)
+    MPI_Win   status_window_       = MPI_WIN_NULL;    //!< MPI Window for the RMA communication (non null only during the initlist function)
+    short_t * status_               = nullptr;         //!< for each quadrant, indicate its corresponding displacement ID (non null !only! during the initlist function, reset afterwards)
 
     m_ptr<ForestGrid>    grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
     m_ptr<Prof>          prof_;    //!< the profiler to time operations, not owned
@@ -60,8 +62,10 @@ class Ghost {
     Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_level, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler);
     ~Ghost();
 
-    MPI_Group mirror_origin_group() const { return mirror_origin_group_; };
-    MPI_Group mirror_target_group() const { return mirror_target_group_; };
+    // MPI_Group mirror_origin_group() const { return mirror_origin_group_; };
+    // MPI_Group mirror_target_group() const { return mirror_target_group_; };
+
+    void UpdateStatus();
 
     /**
      * @name RMA-based high-level ghosting - post and wait

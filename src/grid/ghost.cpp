@@ -122,22 +122,26 @@ void Ghost::InitList_() {
     m_assert(mpi_comm == MPI_COMM_WORLD, "the comm should be a comm world");
 
     //................................................
-    // allocate the array to link the local_id to the mirror displacement and init it
+    // allocate the local2disp and the status window
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
-    MPI_Aint win_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
-    // check the size
-    m_assert(win_mem_size >= 0, "the memory size should be >=0");
-    // allocate the array and the window with the offsets
-    local2disp_ = reinterpret_cast<MPI_Aint*>(m_calloc(win_mem_size));
-    MPI_Win_create(local2disp_, win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
-    // MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
+
+    // displacement
+    MPI_Aint win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
+    local2disp_                = reinterpret_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
+    MPI_Win_create(local2disp_, win_disp_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
+    m_assert(win_disp_mem_size >= 0, "the memory size should be >=0");
+    m_verb("allocating %ld bytes in the window for %d active quad", win_disp_mem_size, mesh->local_num_quadrants);
+
+    // status
+    MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
+    status_                      = reinterpret_cast<short_t*>(m_calloc(win_status_mem_size));
+    MPI_Win_create(status_, win_status_mem_size, sizeof(short_t), info, mpi_comm, &status_window_);
+    m_assert(win_status_mem_size >= 0, "the memory size should be >=0");
+
+    // free the info
     MPI_Info_free(&info);
-    m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, mesh->local_num_quadrants);
-    // make sure everything is done
-    // MPI_Win_fence(0, local2disp_window_);
-    // MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
@@ -153,10 +157,6 @@ void Ghost::InitList_() {
             local2disp_[local_id] = (active_mirror_count++) * CartBlockMemNum(1);
         }
     }
-    // make sure everybody did it
-    // MPI_Win_fence(0, local2disp_window_);
-    // MPI_Win_fence(0, local2disp_window_);
-    // MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // post the exposure epoch and start the access one for local2mirrors
@@ -194,6 +194,9 @@ void Ghost::InitList_() {
     local2disp_window_ = MPI_WIN_NULL;
     local2disp_        = nullptr;
 
+    //................................................
+    // allocate the status
+
     //-------------------------------------------------------------------------
     m_verb("Ghost lists initialization is done");
     m_end;
@@ -206,6 +209,13 @@ void Ghost::FreeList_() {
         // DoOpMeshLevel(this, &Ghost::FreeList4Block_, grid_, il);
         DoOpMeshLevel(nullptr, &GridBlock::GhostFreeLists, grid_, il);
     }
+    // DoOpMesh(nullptr, &GridBlock::GhostFreeLists, grid_);
+
+    // free the status
+    MPI_Win_free(&status_window_);
+    m_free(status_);
+    status_window_ = MPI_WIN_NULL;
+    status_        = nullptr;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -323,6 +333,37 @@ void Ghost::FreeComm_() {
     // free the window
     m_free(mirrors_);
     MPI_Win_free(&mirrors_window_);
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Ghost::UpdateStatus() {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // get the status to the array
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOpMeshLevel(nullptr, &GridBlock::SetNewByCoarsening, grid_, il, m_ptr<short_t>(status_));
+    }
+
+    // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
+    MPI_Win_post(mirror_origin_group_, 0, status_window_);
+    // start the access epochs if we are not empty (otherwise it fails on the beast)
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, status_window_);
+    }
+
+    // update neigbbor status, only use the already computed status on level il + 1
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOpMeshLevel(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, grid_, il, m_ptr<short_t>(status_), status_window_);
+    }
+
+    // close the access epochs
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(status_window_);
+    }
+    // close the exposure epochs
+    MPI_Win_wait(status_window_);
+
     //-------------------------------------------------------------------------
     m_end;
 }

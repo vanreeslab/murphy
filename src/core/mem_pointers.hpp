@@ -140,9 +140,9 @@ class const_data_ptr : public m_ptr<const real_t> {
  *
  */
 class mem_ptr : public m_ptr<real_t> {
-    bidx_t stride [2]; //!< array of stride, in the main direction and then in the two other directions
-        size_t size   = 0;  //!< store the size of the memory allocated
-    size_t     offset = 0;  //!< store the offset needed to return a (const_)data_ptr
+    bidx_t stride[2];   //!< array of stride, in the main direction and then in the two other directions
+    size_t size   = 0;  //!< store the size of the memory allocated
+    size_t offset = 0;  //!< store the offset needed to return a (const_)data_ptr
 
    public:
     using m_ptr<real_t>::m_ptr;       // inheritates the constructor:
@@ -182,7 +182,7 @@ class mem_ptr : public m_ptr<real_t> {
 // put the assert if we are not in non-debug mode
 // #ifdef NDEBUG
 constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0, const bidx_t stride = M_STRIDE) {
-    m_assert((stride*stride*stride) < std::numeric_limits<bidx_t>::max(),"The whole block indexing must be contained in bidx_t");
+    // m_assert((stride*stride*stride) < std::numeric_limits<bidx_t>::max(),"The whole block indexing must be contained in bidx_t");
     bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
     return offset;
 }

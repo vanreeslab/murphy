@@ -482,10 +482,10 @@ void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, 
  * @param qid 
  * @param coarsen_vec 
  */
-void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<bool> coarsen_vec) const {
+void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const {
     //-------------------------------------------------------------------------
-    coarsen_vec[qid->cid] = (status_lvl_ == M_ADAPT_NEW_COARSE);
-    m_log("block # %d is puting %d at location %d (status = %d)", qid->cid, coarsen_vec[qid->cid], qid->cid, status_lvl_);
+    coarsen_vec[qid->cid] = (short_t) status_lvl_;
+    // m_log("block # %d is puting %d at location %d", qid->cid, coarsen_vec[qid->cid], qid->cid);
     //-------------------------------------------------------------------------
 }
 
@@ -494,18 +494,18 @@ void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<bool> coa
  * 
  * allocate the @ref status_siblings_neighbors_ array, which will be destroyed in the @ref SolveNeighbor function.
  */
-void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const bool> status_vec, MPI_Win status_window) {
+void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> status_vec, MPI_Win status_window) {
     //-------------------------------------------------------------------------
     // get the number of status to obtain
-    iblock_t nblocks        = (local_parent_.size() + ghost_parent_.size());
-    status_ngh_new_coarsen_ = reinterpret_cast<bool*>(m_calloc(nblocks * sizeof(bool)));
+    iblock_t nblocks = (local_parent_.size() + ghost_parent_.size());
+    status_ngh_      = reinterpret_cast<short_t*>(m_calloc(nblocks * sizeof(short_t)));
 
     // loop over the same level neighbors and get the status
     iblock_t count = local_parent_.size();
     for (auto gblock : ghost_parent_) {
-        MPI_Aint displ = gblock->cum_block_id();
-        m_log("count = %d -> requestion block cum id = %ld at rank %d", count, displ, gblock->rank());
-        MPI_Get(status_ngh_new_coarsen_ + count, 1, MPI_C_BOOL, gblock->rank(), displ, 1, MPI_C_BOOL, status_window);
+        // m_log("count = %d -> requestion block cum id = %ld at rank %d", count, displ, gblock->rank());
+        m_assert(sizeof(short_t) == sizeof(short), "the two sizes must match to garantee mpi data types");
+        MPI_Get(status_ngh_ + count, 1, MPI_SHORT, gblock->rank(), gblock->cum_block_id(), 1, MPI_SHORT, status_window);
         ++count;
     }
     m_assert(count == nblocks, "the two numbers must match: %d vs %d", count, nblocks);
@@ -514,7 +514,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const bool> status_v
     count = 0;
     for (auto gblock : local_parent_) {
         // m_log("neighbor id %d gets value %d at id = %d", count, status_vec[gblock->cum_block_id()], gblock->cum_block_id());
-        status_ngh_new_coarsen_[count] = status_vec[gblock->cum_block_id()];
+        status_ngh_[count] = status_vec[gblock->cum_block_id()];
         ++count;
     }
     m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %d", count, local_parent_.size());
@@ -545,7 +545,7 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
     iblock_t block_count = 0;
     for (auto gblock : local_parent_) {
         // m_log("status of my neighbor (ibidule = %d,id = %d) = %d", gblock->ibidule(), gblock->cum_block_id(), status_ngh_new_coarsen_[block_count]);
-        if (status_ngh_new_coarsen_[block_count]) {
+        if (status_ngh_[block_count] == M_ADAPT_NEW_COARSE) {
             m_assert(status_lvl_ == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
             real_t sign[3];
             GhostGetSign(gblock->ibidule(), sign);
@@ -583,7 +583,7 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
     }
     m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %d", block_count, local_parent_.size());
     for (auto gblock : ghost_parent_) {
-        if (status_ngh_new_coarsen_[block_count]) {
+        if (status_ngh_[block_count] == M_ADAPT_NEW_COARSE) {
             real_t sign[3];
             GhostGetSign(gblock->ibidule(), sign);
 
@@ -631,6 +631,9 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
             interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
         }
     }
+
+    // free the status array
+    m_free(status_ngh_);
     //-------------------------------------------------------------------------
 }
 

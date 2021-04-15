@@ -61,7 +61,7 @@ TEST_F(valid_Ghost, valid_ghost_extrap) {
         list<Patch> patch_list;
         for (int itree = 0; itree < 8; ++itree) {
             real_t origin[3] = {1.0 * (itree % 2),
-                                1.0 * (itree % 4) / 2,
+                                1.0 * ((itree % 4) / 2),
                                 1.0 * (itree / 4)};
             real_t length[3] = {1.0, 1.0, 1.0};
 
@@ -108,7 +108,7 @@ TEST_F(valid_Ghost, valid_ghost_extrap) {
 
         m_log("errors: err2 = %e erri = %e", err2, erri);
 
-        ASSERT_DOUBLE_EQ(erri,0.0);
+        ASSERT_DOUBLE_EQ(erri, 0.0);
 
         // // print
         // IOH5 dump("data");

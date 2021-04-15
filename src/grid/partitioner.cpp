@@ -550,7 +550,7 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
 
             if (destructive_) {
                 StatusAdapt status = (StatusAdapt)recv_status_buf_[q_recv_cum_request[idx] + iq];
-                m_log("pulling status %d to block in %f %f %f", status, block->xyz(0), block->xyz(1), block->xyz(2));
+                // m_log("pulling status %d to block in %f %f %f", status, block->xyz(0), block->xyz(1), block->xyz(2));
                 block->status_level(status);
             }
         }
