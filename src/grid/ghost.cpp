@@ -66,6 +66,13 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     //     n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
     // }
     // m_verb("I will ghost %d local active quads", n_active_quad_);
+    m_log("wavelet info:");
+    m_log("\t#ghost for refinement: %d %d", interp_->nghost_front_refine(), interp_->nghost_back_refine());
+    m_log("\t#ghost for coarsening: %d %d", interp_->nghost_front_coarsen(), interp_->nghost_back_coarsen());
+    m_log("\t#ghost for citerion and smoothing: %d %d", interp_->nghost_front_criterion_smooth(), interp->nghost_back_criterion_smooth());
+    m_log("\t#detail for criterion: %d %d", interp_->ndetail_citerion_extend_front(), interp_->ndetail_citerion_extend_back());
+    m_log("\t#detail for smoothing: %d %d", interp_->ndetail_smooth_extend_front(), interp_->ndetail_smooth_extend_back());
+    m_log("\tghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
 
     // store the number of ghosts needed
     m_assert(interp_->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_front());
@@ -79,13 +86,6 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     m_profStop(prof_(), "ghost_init");
 
     //-------------------------------------------------------------------------
-    m_log("wavelet info:");
-    m_log("\t#ghost for refinement: %d %d", interp_->nghost_front_refine(), interp_->nghost_back_refine());
-    m_log("\t#ghost for coarsening: %d %d", interp_->nghost_front_coarsen(), interp_->nghost_back_coarsen());
-    m_log("\t#ghost for citerion and smoothing: %d %d", interp_->nghost_front_criterion_smooth(), interp->nghost_back_criterion_smooth());
-    m_log("\t#detail for criterion: %d %d", interp_->ndetail_citerion_extend_front(), interp_->ndetail_citerion_extend_back());
-    m_log("\t#detail for smoothing: %d %d", interp_->ndetail_smooth_extend_front(), interp_->ndetail_smooth_extend_back());
-    m_log("\tghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
     m_end;
 }
 

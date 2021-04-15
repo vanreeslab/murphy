@@ -152,7 +152,7 @@ TEST_F(valid_Moments, valid_moment_periodic) {
         moment(&grid, &scal, &smooth_moment0, smooth_moment1);
 
         real_t mom0_error = fabs(fine_moment0 - smooth_moment0);
-        real_t eps        = 100.0 * std::numeric_limits<real_t>::epsilon();
+        real_t eps        = 1000.0 * std::numeric_limits<real_t>::epsilon();
         m_log("[case %d] moment error = |%e - %e| = %e < %e", case_id, fine_moment0, smooth_moment0, mom0_error, eps);
 
         ASSERT_LT(mom0_error, eps);
