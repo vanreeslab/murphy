@@ -43,10 +43,9 @@ class Partitioner {
 
     int*   send_status_count_   = nullptr;  //<! count to send the status of the old blocks
     int*   send_status_cum_sum_ = nullptr;  //<! cummulative sum to send the status of the old blocks
-    int*   recv_status_count_   = nullptr;  //<! count to send the status of the old blocks
-    int*   recv_status_cum_sum_ = nullptr;  //<! cummulative sum to send the status of the old blocks
+    int*   recv_status_count_   = nullptr;  //<! count to recv the status of the new blocks
+    int*   recv_status_cum_sum_ = nullptr;  //<! cummulative sum to recv the status of the new blocks
     short* send_status_buf_     = nullptr;  //<! the send buffer for the status, since the memory is not continuous accross the blocks
-    // int    recv_status_count_    = 0;        //!< how many status will be received
     short* recv_status_buf_     = nullptr;  //<! the receive buffer for the status, sicne the memory is not continuous accross the blocks
 
     iblock_t*   q_send_cum_block_   = nullptr;  //!< remember at which local block we started for the request[i]

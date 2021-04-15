@@ -143,9 +143,9 @@ void ForestGrid::SetupP4estMeshAndGhost() {
     m_assert(p4est_ghost_ == nullptr && p4est_mesh_ == nullptr, "cannot initialize something that already exist");
     //-------------------------------------------------------------------------
     p4est_ghost_ = p8est_ghost_new(p4est_forest_, P8EST_CONNECT_FULL);
-    m_log("creating a new mesh");
+    m_verb("creating a new mesh");
     p4est_mesh_ = p8est_mesh_new_ext(p4est_forest_, p4est_ghost_, 1, 1, P8EST_CONNECT_FULL);
-    m_log("done with mesh");
+    m_verb("done with mesh");
     is_mesh_valid_ = true;
     //-------------------------------------------------------------------------
     m_end;

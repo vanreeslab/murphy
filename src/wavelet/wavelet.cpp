@@ -465,7 +465,6 @@ void Wavelet::SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
     ctx.tdata  = data;  // this is the block
 
     // smooth them
-    m_log("smoothing from %d %d %d to %d %d %d", ctx.trgstart[0], ctx.trgstart[1], ctx.trgstart[2], ctx.trgend[0], ctx.trgend[1], ctx.trgend[2]);
     Smooth_(&ctx);
     //-------------------------------------------------------------------------
 }

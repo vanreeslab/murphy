@@ -323,9 +323,9 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
     moment1_[1] += vol * lmoment1[1];
     moment1_[2] += vol * lmoment1[2];
 
-    if (block->xyz(0) == 0.5) {
-        m_log("block @ %f %f %f moments from %d to %d = %.12e -> cum = %e", block->xyz(0), block->xyz(1), block->xyz(2), start_, end_, vol * 4.0 * lmoment0, moment0_);
-    }
+    // if (block->xyz(0)  1.0) {
+        // m_log("block @ %f %f %f (level = %d) moments from %d to %d = %.12e -> cum = %e", block->xyz(0), block->xyz(1), block->xyz(2), block->level(), start_, end_, vol * 4.0 * lmoment0, moment0_);
+    // }
     //-------------------------------------------------------------------------
 }
 

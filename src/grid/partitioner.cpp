@@ -186,7 +186,7 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
                 if (destructive_) {
                     m_assert(sizeof(bidx_t) == sizeof(int), "if not, we are wrong in the datatypes for mpi");
                     send_status_count_[c_recver]   = n_q2send;
-                    send_status_cum_sum_[c_recver] = tqcount;  // send_status_cum_sum_[c_recver] + n_q2send;
+                    send_status_cum_sum_[c_recver] = qcount;  // send_status_cum_sum_[c_recver] + n_q2send;
                 }
                 // remember the begin and end point
                 m_assert(rcount < n_send_request_, "scount = %d is too big compared to the number of request = %d", rcount, n_send_request_);
@@ -252,7 +252,7 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
 
             // the receive buffer is used as a new data location for the blocks
             recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t)));
-            m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)", cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t), n_lda_);
+            // m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)", cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t), n_lda_);
 
             if (destructive_) {
                 // if destructive, send the status
@@ -308,7 +308,7 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
                 if (destructive_) {
                     m_assert(sizeof(bidx_t) == sizeof(int), "if not, we are wrong in the datatypes for mpi");
                     recv_status_count_[c_sender]   = n_q2recv;
-                    recv_status_cum_sum_[c_sender] = tqcount;
+                    recv_status_cum_sum_[c_sender] = qcount;
                 }
 
                 // store the memory accesses
@@ -442,20 +442,19 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
 
             // copy the status to the buffer
             if (destructive_) {
-                send_status_buf_[q_send_cum_block[is] + iq] = (short)block->status_level();
-                m_log("setting status %d to block in %f %f %f", block->status_level(), block->xyz(0), block->xyz(1), block->xyz(2));
+                send_status_buf_[q_send_cum_request[is] + iq] = (short)block->status_level();
+                // m_log("setting status %d to block in %f %f %f", block->status_level(), block->xyz(0), block->xyz(1), block->xyz(2));
             }
 
             // copy the field to the buffer
-            real_p     buf   = send_buf + (q_send_cum_request[is] + iq) * CartBlockMemNum(n_lda_);
-            lid_t idacount = 0;
+            real_p buf      = send_buf + (q_send_cum_request[is] + iq) * CartBlockMemNum(n_lda_);
+            lid_t  idacount = 0;
             for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
                 const Field *fid  = iter->second();
                 string       name = fid->name();
                 // security check
-                m_assert(fid->lda() <= n_lda_,"unable to transfert so much data with the allocated buffers");
+                m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
-                // m_log("doing field %s shift by %ld",m_zeroidx(0, block));
                 real_p data = block->data(fid)() - m_zeroidx(0, block);
                 real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
@@ -467,59 +466,9 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
         // start the send
         MPI_Start(send_request + is);
     }
-
     // do the scatterv on the status -> it's a blocking call, sorry I was lazy
     if (destructive_) {
-        int rank;
-        int size;
-        MPI_Barrier(MPI_COMM_WORLD);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
-        m_log("send counts");
-        for (int ir = 0; ir < size; ++ir) {
-            printf("%d ", send_status_count_[ir]);
-        }
-        printf("\n");
-        m_log("send displ");
-        for (int ir = 0; ir < size + 1; ++ir) {
-            printf("%d ", send_status_cum_sum_[ir]);
-        }
-        printf("\n");
-        m_log("send_buf");
-        for (int ir = 0; ir < send_status_cum_sum_[size]; ++ir) {
-            printf("%d ", send_status_buf_[ir]);
-        }
-        printf("\n");
-        m_log("recv counts");
-        for (int ir = 0; ir < size; ++ir) {
-            printf("%d ", recv_status_count_[ir]);
-        }
-        printf("\n");
-        m_log("recv displ");
-        for (int ir = 0; ir < size + 1; ++ir) {
-            printf("%d ", recv_status_cum_sum_[ir]);
-        }
-        printf("\n");
-        m_log("send_buf");
-        for (int ir = 0; ir < send_status_cum_sum_[size]; ++ir) {
-            printf("%d ", send_status_buf_[ir]);
-        }
-        printf("\n");
-
-        MPI_Barrier(MPI_COMM_WORLD);
-        // for (int ir = 0; ir < size; ++ir) {
-        // MPI_Scatterv(send_status_buf_, send_status_count_, send_status_cum_sum_, MPI_SHORT, recv_status_buf_, recv_status_count_, MPI_SHORT, 1, MPI_COMM_WORLD);
         MPI_Alltoallv(send_status_buf_, send_status_count_, send_status_cum_sum_, MPI_SHORT, recv_status_buf_, recv_status_count_, recv_status_cum_sum_, MPI_SHORT, MPI_COMM_WORLD);
-        // MPI_Barrier(MPI_COMM_WORLD);
-        // }
-        MPI_Barrier(MPI_COMM_WORLD);
-        // m_log("recv_buf (n=%d)", recv_status_count_);
-        m_log("recv_buf");
-        for (int ir = 0; ir < recv_status_cum_sum_[size]; ++ir) {
-            printf("%d ", recv_status_buf_[ir]);
-        }
-        printf("\n");
-        MPI_Barrier(MPI_COMM_WORLD);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -569,6 +518,10 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
         m_assert(!destructive_, "we cannot send backward and be destructive, otherwise the status are not sent");
     }
 
+    // if (destructive_) {
+    //     MPI_Wait(&status_request_, MPI_STATUS_IGNORE);
+    // }
+
     // handle the moving ones
     for (int ir = 0; ir < n_recv_request; ir++) {
         int idx;
@@ -596,7 +549,7 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
             }
 
             if (destructive_) {
-                StatusAdapt status = (StatusAdapt)recv_status_buf_[q_recv_cum_block[idx] + iq];
+                StatusAdapt status = (StatusAdapt)recv_status_buf_[q_recv_cum_request[idx] + iq];
                 m_log("pulling status %d to block in %f %f %f", status, block->xyz(0), block->xyz(1), block->xyz(2));
                 block->status_level(status);
             }

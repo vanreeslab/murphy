@@ -589,7 +589,7 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
             ltdata[0] -= corr;
 
-            // if (fabs(corr) > 1e-13) {
+            // if (fabs(corr) > 1e-3) {
             //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
             // }
         };

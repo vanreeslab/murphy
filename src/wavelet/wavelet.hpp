@@ -164,26 +164,31 @@ class Wavelet {
     /**
      * @brief number of details to compute in front of the block while doing the criterion
      * 
-     * To guarantee the consitency in the ghosting in case of jump in resolution,
-     * we need the coarse scalings to be = to the fine scaling.
-     * This is translated as the number of details outside the block that will influence the first scaling information (while doing a IWT)
+     * To guarantee the consitency in the ghosting and refinement in case of jump in resolution
+     * we need no influence of any detail on the current block
      * 
      */
     const bidx_t ndetail_citerion_extend_front() const {
         const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        return m_sign(Nt()) * m_max(n_scal, 0);
+        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
+        return m_sign(Nt()) * m_max(n_scal, n_det - 1);
     };
 
     /**
      * @brief number of details to compute at the back of the block while doing the criterion
      * 
-     * this is needed by the ghosting approach, cfr @ref criterion_shift_front()
+     * To guarantee the consitency in the ghosting and refinement in case of jump in resolution
+     * we need no influence of any detail on the current block
+     * 
      */
     const bidx_t ndetail_citerion_extend_back() const {
         const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        return m_sign(Nt()) * m_max(n_scal - 1, 0);
+        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
+        return m_sign(Nt()) * m_max(n_scal-1, n_det);
     };
 
     /**

@@ -326,7 +326,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     string      filename = folder_ + string("/") + filename_xdmf_;
     m_assert(stat(filename.c_str(), &st) != 0, "ERROR while opening  <%s>, the file already exists", filename.c_str());
     // fopen the xmf, every proc
-    m_log("opening file <%s>", filename.c_str());
+    m_verb("opening file <%s>", filename.c_str());
     int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_EXCL, MPI_INFO_NULL, &xmf_file_);
     // int err = MPI_File_open(MPI_COMM_WORLD, filename.c_str(), MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &xmf_file_);
     // if something went wrong, check if the file already exist of something else was baaad

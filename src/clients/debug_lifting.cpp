@@ -84,7 +84,7 @@ void DebugLifting::Run() {
     {
         std::list<Patch> plist;
 
-        real_t p1_o[3] = {1.0, 0.0, 0.0};
+        real_t p1_o[3] = {0.0, 0.0, 0.0};
         real_t p1_l[3] = {1.0, 1.0, 1.0};
         plist.push_back(Patch(p1_o, p1_l, 0));
         // real_t p2_o[3] = {0.0, 0.0, 0.0};
@@ -97,6 +97,8 @@ void DebugLifting::Run() {
         // dump again, the ghosts should be ok
         grid.GhostPull(&scal);
         dump(&grid, &scal, 1);
+        dump.dump_ghost(true);
+        dump(&grid, &scal, 1);
     }
     real_t coarse_moment0, coarse_moment1[3];
     moment(&grid, &scal, &coarse_moment0, coarse_moment1);
@@ -105,7 +107,7 @@ void DebugLifting::Run() {
     {
         std::list<Patch> plist;
 
-        real_t p1_o[3] = {1.0, 0.0, 0.0};
+        real_t p1_o[3] = {0.0, 0.0, 0.0};
         real_t p1_l[3] = {1.0, 1.0, 1.0};
         plist.push_back(Patch(p1_o, p1_l, 1));
         // real_t p2_o[3] = {0.0, 0.0, 0.0};
