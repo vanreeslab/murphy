@@ -37,7 +37,7 @@ class InitCondition : public SetValue {
             const real_t rhox = (pos[0] - center[0]) / sigma;
             const real_t rhoy = (pos[1] - center[1]) / sigma;
             const real_t rhoz = (pos[2] - center[2]) / sigma;
-            const real_t rho  = rhox * rhox; //+ rhoy * rhoy + rhoz * rhoz;
+            const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
             data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
 
@@ -69,6 +69,8 @@ using std::string;
  * 
  */
 TEST_F(valid_Moments, valid_moment_periodic) {
+    real_t eps        = 1000.0 * std::numeric_limits<real_t>::epsilon();
+
     m_assert(sizeof(int) >= 1, "the int must be of size > 8");
     for (int case_id = 0; case_id < 256; ++case_id) {
         m_log("--------------------------------------------------------------------------------");
@@ -122,8 +124,12 @@ TEST_F(valid_Moments, valid_moment_periodic) {
             grid.GhostPull(&scal);
         }
         // dump(&grid, &scal, 1);
+
         real_t coarse_moment0, coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+        real_t mom0_coarse_error = fabs(fine_moment0 - coarse_moment0);
+        m_log("[case %d] coarse moment error = |%e - %e| = %e", case_id, fine_moment0, coarse_moment0, mom0_coarse_error);
+        ASSERT_LT(mom0_coarse_error, eps);
         // go back up
         {
             // create the patch list
@@ -150,12 +156,9 @@ TEST_F(valid_Moments, valid_moment_periodic) {
         // BMoment moment;
         real_t smooth_moment0, smooth_moment1[3];
         moment(&grid, &scal, &smooth_moment0, smooth_moment1);
-
-        real_t mom0_error = fabs(fine_moment0 - smooth_moment0);
-        real_t eps        = 1000.0 * std::numeric_limits<real_t>::epsilon();
-        m_log("[case %d] moment error = |%e - %e| = %e < %e", case_id, fine_moment0, smooth_moment0, mom0_error, eps);
-
-        ASSERT_LT(mom0_error, eps);
+        real_t mom0_smooth_error = fabs(fine_moment0 - smooth_moment0);
+        m_log("[case %d] smoothed moment error = |%e - %e| = %e < %e", case_id, fine_moment0, smooth_moment0, mom0_smooth_error, eps);
+        ASSERT_LT(mom0_smooth_error, eps);
 
         // // print
         // IOH5 dump("data");
