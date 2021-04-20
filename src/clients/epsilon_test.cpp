@@ -38,12 +38,8 @@ class InitialCondition : public SetValue {
             const real_t rhoz = (pos[2] - center[2]) / sigma;
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
-            // data[m_idx(i0, i1, i2)] =   fact * std::exp(-rho);
-            data[m_idx(i0, i1, i2)] = fact * std::exp(-pow(rhox,2) -pow(rhoy,2) );//-pow(rhoz,2));
-
-            // const real_t rhox_1     = (pos[1] - center[1] - 0.25) / sigma;
-            // const real_t rhox_2     = (pos[1] - center[1] + 0.25) / sigma;
-            // data[m_idx(i0, i1, i2)] = std::exp(-pow(rhox_1, 2)) + std::exp(-pow(rhox_2, 2));
+            data[m_idx(i0, i1, i2)] =   fact * std::exp(-rho);
+            // data[m_idx(i0, i1, i2)] = fact * std::exp(-pow(rhox,2) -pow(rhoy,2) );//-pow(rhoz,2));
         };
 
         for_loop(&op, start_, end_);
@@ -172,9 +168,6 @@ void EpsilonTest::Run() {
         BMoment moment;
         real_t  sol_moment0, sol_moment1[3];
         moment(&grid, &scal, &sol_moment0, sol_moment1);
-        // BDiscreteMoment dmoment;
-        // real_t          sol_dmoment0, sol_dmoment1[3];
-        // dmoment(&grid, &scal, &sol_dmoment0, sol_dmoment1);
 
         // coarsen
         short_t count = 1;

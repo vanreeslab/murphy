@@ -518,7 +518,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> statu
         status_ngh_[count] = status_vec[gblock->cum_block_id()];
         ++count;
     }
-    m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %d", count, local_parent_.size());
+    m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %ld", count, local_parent_.size());
     //-------------------------------------------------------------------------
 }
 
@@ -582,13 +582,13 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
         // update the counter
         ++block_count;
     }
-    m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %d", block_count, local_parent_.size());
+    m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %ld", block_count, local_parent_.size());
     for (auto gblock : ghost_parent_) {
         mask_smooth(block_count, gblock->ibidule());
         // update the counter
         ++block_count;
     }
-    m_assert(block_count == (local_parent_.size() + ghost_parent_.size()), "the two numbers must match: %d vs %d", block_count, (local_parent_.size() + ghost_parent_.size()));
+    m_assert(block_count == (local_parent_.size() + ghost_parent_.size()), "the two numbers must match: %d vs %ld", block_count, (local_parent_.size() + ghost_parent_.size()));
 
     //................................................
     // smooth depending on the mask

@@ -127,8 +127,8 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
 
     // add them to the list
     for (iblock_t ib = 0; ib < ngh_quad->elem_count; ++ib) {
-        m_assert(ngh_qid->elem_count == ngh_quad->elem_count, "the counters = %d and %d must be =", ngh_qid->elem_count, ngh_quad->elem_count);
-        m_assert(ngh_enc->elem_count == ngh_quad->elem_count, "the counters = %d and %d must be =", ngh_enc->elem_count, ngh_quad->elem_count);
+        m_assert(ngh_qid->elem_count == ngh_quad->elem_count, "the counters = %ld and %ld must be =", ngh_qid->elem_count, ngh_quad->elem_count);
+        m_assert(ngh_enc->elem_count == ngh_quad->elem_count, "the counters = %ld and %ld must be =", ngh_enc->elem_count, ngh_quad->elem_count);
         m_verb("ngh_qid = %d, ngh_enc = %d, ngh_quad = %d", ngh_qid->elem_count, ngh_quad->elem_count, ngh_enc->elem_count);
         // p8est_quadrant_t* ngh = p8est_quadrant_array_index(ngh_quad, ib);
 

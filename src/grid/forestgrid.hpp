@@ -1,6 +1,8 @@
 #ifndef SRC_FORESTGRID_HPP_
 #define SRC_FORESTGRID_HPP_
 
+#include <string>
+
 #include <p8est.h>
 #include <p8est_extended.h>
 
