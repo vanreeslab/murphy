@@ -389,6 +389,9 @@ Partitioner::~Partitioner() {
 /**
  * @brief starts the send communication from the old paritioning to the new one: copy the GridBlock to the buffer and start the send and recv
  * 
+ * @warning the ghost region is sent with the data for two reasons: (1) it avoids weird buffer as they are not continuous or MPI_Datatypes and (2)
+ * we need the ghost values to solve the resolution jump, which is happening after the partitioning
+ * 
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
  */

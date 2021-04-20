@@ -147,6 +147,7 @@ void CartBlock::DeleteField(const m_ptr<const Field>& fid) {
 
     // if found, delete it
     if (it != mem_map_.end()) {
+        it->second.Free();
         m_verb("deleting field <%s> to the block", name.c_str());
         mem_map_.erase(name);
     } else {

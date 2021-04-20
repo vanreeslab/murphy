@@ -119,8 +119,8 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = 1e-10;
-    real_t epsilon  = 1e-2;  //epsilon_start_;
+    real_t depsilon = 1e-1;
+    real_t epsilon  = 1e-1;  //epsilon_start_;
     while (epsilon >= std::pow(2.0, -26)) {
         // create a grid, put a ring on it on the fixel level
         // bool period[3] = {false, false, false};
@@ -164,8 +164,8 @@ void EpsilonTest::Run() {
         grid.SetTol(epsilon * 1e+20, epsilon);
 
         grid.GhostPull(&scal);
-        IOH5 dump("data");
-        dump(&grid, &scal, 0);
+        // IOH5 dump("data");
+        // dump(&grid, &scal, 0);
 
         // compute the moment at the start
         grid.GhostPull(&scal);
@@ -251,7 +251,7 @@ void EpsilonTest::Run() {
 
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
 
-        dump(&grid,&scal,1);
+        // dump(&grid,&scal,1);
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();
@@ -284,12 +284,10 @@ void EpsilonTest::Run() {
             //     grid.DeleteField(&sol);
             // }
 
-
             min_level = grid.MinLevel();
             // force the field refinement using a patch
             grid.GhostPull(&scal);
-            m_log("need to adapt the call to Adapt Magic");
-            // grid.AdaptMagic(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), cback_UpdateDependency, nullptr);
+            grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();
@@ -373,7 +371,9 @@ void EpsilonTest::Run() {
         }
 
         // cleanup the fields
+        m_log("free fields");
         grid.DeleteField(&sol);
+        m_log("free fields");
         grid.DeleteField(&scal);
 
         // get the new epsilon

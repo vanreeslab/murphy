@@ -355,8 +355,9 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
     bool coarsen = true;
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
-        SubBlock     block_detail(this->gs(), this->stride(), interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back());
-        const real_t norm = interp->Criterion(this, this->data(field_citerion, ida), &block_detail);
+        SubBlock     block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+        SubBlock     block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
+        const real_t norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
         bool refine = norm > rtol;
@@ -521,36 +522,30 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> statu
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
     // the status level has to be 0, otherwise it means that one of the block is not coarsened
     m_assert(status_lvl_ != M_ADAPT_NONE, "here, all the blocks have been visited and the status level of everybody should be something else than M_ADAPT_NONE: here %d for block @ %f %f %f", status_lvl_, this->xyz(0), this->xyz(1), this->xyz(2));
     //-------------------------------------------------------------------------
-    // builld the mask
-    // m_log("-------------------");
-    // m_log("smoothing block at %f %f %f", this->xyz(0), this->xyz(1), this->xyz(2));
-    //................................................
     // reset the temp memory to 0.0
     memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
     data_ptr mask      = coarse_ptr_(0, this);
     real_t*  mask_data = mask.Write();
 
-    // create the lambda
-    auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
-    };
-
-    // m_log("solve the jumps for %d + %d neighbors", local_parent_.size(), ghost_parent_.size());
-
-    // for each ghost block, set the mask to 1.0 if needed
-    iblock_t block_count = 0;
-    for (auto gblock : local_parent_) {
-        // m_log("status of my neighbor (ibidule = %d,id = %d) = %d", gblock->ibidule(), gblock->cum_block_id(), status_ngh_new_coarsen_[block_count]);
-        if (status_ngh_[block_count] == M_ADAPT_NEW_COARSE) {
+    //................................................
+    // lambda to obtain the smoothing pattern
+    auto mask_smooth = [=](const iblock_t count, const iface_t ibidule) -> void {
+        
+        // create the lambda to put 1.0
+        auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
+        };
+        // if the neighbor is a newly created block -> smooth
+        if (status_ngh_[count] == M_ADAPT_NEW_COARSE) {
             m_assert(status_lvl_ == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
-            real_t sign[3];
-            GhostGetSign(gblock->ibidule(), sign);
 
-            // m_log("sign = %f %f %f", sign[0], sign[1], sign[2]);
+            // get the sign of the ibidule
+            real_t sign[3];
+            GhostGetSign(ibidule, sign);
 
             // create the start and end indexes
             bidx_t smooth_start[3], smooth_end[3];
@@ -560,7 +555,7 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
                     smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
                     // the number of my ngh details influencing my values
                     smooth_end[ida] = this->end(ida) + interp->ndetail_smooth_extend_back();
-                } else if (sign[ida] < -0.5) {
+                } else if (sign[ida] < (-0.5)) {
                     // my ngh assumed 0 details in my block
                     smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
                     // the number of my ngh details influencing my values
@@ -568,8 +563,8 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
                 } else {
                     // even in the directions orthogonal to ibidule, the details must be killed!
                     // as my neighbor, which might be fine will kill them as well
-                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();  // * (gblock->start(ida) < this->start(ida));
-                    smooth_end[ida]   = this->end(ida) + interp->ndetail_smooth_extend_back();     // * (gblock->end(ida) > this->end(ida));
+                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
+                    smooth_end[ida]   = this->end(ida) + interp->ndetail_smooth_extend_back();
                 }
             }
             // m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
@@ -578,51 +573,27 @@ void GridBlock::SolveResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
             // apply it
             for_loop(&set_mask_to_one, smooth_start, smooth_end);
         }
+    };
+
+    // for each ghost block, set the mask to 1.0 if needed
+    iblock_t block_count = 0;
+    for (auto gblock : local_parent_) {
+        mask_smooth(block_count, gblock->ibidule());
         // update the counter
         ++block_count;
     }
     m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %d", block_count, local_parent_.size());
     for (auto gblock : ghost_parent_) {
-        if (status_ngh_[block_count] == M_ADAPT_NEW_COARSE) {
-            real_t sign[3];
-            GhostGetSign(gblock->ibidule(), sign);
-
-            // create the start and end indexes
-            bidx_t smooth_start[3], smooth_end[3];
-            for (lda_t ida = 0; ida < 3; ++ida) {
-                if (sign[ida] > 0.5) {
-                    // my ngh assumed 0 details in my block
-                    smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
-                    // the number of my ngh details influencing my values
-                    smooth_end[ida] = this->end(ida) + interp->ndetail_smooth_extend_back();
-                } else if (sign[ida] < -0.5) {
-                    // my ngh assumed 0 details in my block
-                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();
-                    // the number of my ngh details influencing my values
-                    smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
-                } else {
-                    // even in the directions orthogonal to ibidule, the details must be killed!
-                    // as my neighbor, which might be fine will kill them as well
-                    smooth_start[ida] = this->start(ida) - interp->ndetail_smooth_extend_front();  // * (gblock->start(ida) < this->start(ida));
-                    smooth_end[ida]   = this->end(ida) + interp->ndetail_smooth_extend_back();     // * (gblock->end(ida) > this->end(ida));
-                }
-            }
-            // m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
-            //   smooth_start[0], smooth_start[1], smooth_start[2],
-            //   smooth_end[0], smooth_end[1], smooth_end[2]);
-            // apply it
-            for_loop(&set_mask_to_one, smooth_start, smooth_end);
-        }
+        mask_smooth(block_count, gblock->ibidule());
         // update the counter
         ++block_count;
     }
     m_assert(block_count == (local_parent_.size() + ghost_parent_.size()), "the two numbers must match: %d vs %d", block_count, (local_parent_.size() + ghost_parent_.size()));
+
     //................................................
     // smooth depending on the mask
-    // get the blocks
     SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
     SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + interp->ndetail_smooth_extend_back());
-    // m_log("not sure about the needed details");
 
     // do it for every field
     for (auto fid = field_start; fid != field_end; ++fid) {

@@ -397,11 +397,7 @@ void Grid::Refine(m_ptr<Field> field) {
         }
     }
 
-    // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_Interpolate);
-    // Adapt(reinterpret_cast<void*>(field), nullptr, nullptr, &cback_WaveDetail, &cback_UpdateDependency);
-    // Adapt(field, nullptr, &cback_StatusCheck, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
-    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
-
+    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -426,11 +422,7 @@ void Grid::Coarsen(m_ptr<Field> field) {
         }
     }
 
-    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_Interpolate);
-    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, nullptr, &cback_UpdateDependency);
-    // Adapt(field, &cback_StatusCheck, nullptr, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
-    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, reinterpret_cast<void*>(field()), cback_UpdateDependency, nullptr);
-
+    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -455,9 +447,7 @@ void Grid::Adapt(m_ptr<Field> field) {
         }
     }
 
-    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_Interpolate);
-    // Adapt(reinterpret_cast<void*>(field), nullptr, &cback_WaveDetail, &cback_WaveDetail, &cback_UpdateDependency);
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(field()), &cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
     //-------------------------------------------------------------------------
     m_end;
@@ -507,11 +497,8 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
     if (patches->size() == 0) {
         return;
     }
-    // set the recursive mode to true
-    // SetRecursiveAdapt(recursive_adapt);
-    // go to the magical adapt function
-    // Adapt(nullptr, &cback_Patch, &cback_Patch, reinterpret_cast<void*>(patches()), &cback_AllocateOnly, nullptr);
-    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(patches()), &cback_UpdateDependency, nullptr);
+
+    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -568,9 +555,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         global_n_quad_to_adapt = 0;
 
         //................................................
-
-        // if we consider a field, compute the criterion based on the field
-        // if not, just go ahead
+        // compute the criterion or use the patches to get the status
         if (!field_detail.IsEmpty()) {
             // compute the details
             m_log("using details");
@@ -584,21 +569,13 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
                      m_ptr<const Wavelet>(interp_), patches, m_ptr<Prof>(prof_));
         }
 
-        // // need to put the status in the array
-        // DoOpTree(nullptr, &GridBlock::SetNewByCoarsening, this, m_ptr<bool>(coarsen_status_));
-
-        // // need to know now otherwise I loose the access
-        // ExchangeStatus_PostStart_();
-        // ExchangeStatus_CompleteWait_();
-
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
         // we still save them as dependencies but all the rest is gone.
-        //................................................
-        // need to update on the neighbors before doing anything
         DestroyMeshGhost();
         DestroyAdapt();
 
+        //................................................
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
         if (coarsen_cback != nullptr) {
@@ -615,19 +592,44 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
             m_profStop(prof_, "p4est refine");
         }
 
-        // if we are recursive, we need to update the rank partitioning and check for new block to change
-        if (recursive_adapt()) {
-            // if we balance the grid, it enters a endless circle as the coarsening and refinement corrects the balanced parition
-            // no balancing on the grid but corrects the proc distribution to have everybody on the same cpu
-            m_profStart(prof_, "partition init");
-            Partitioner partition(&fields_, this, true);
-            m_profStop(prof_, "partition init");
-            m_profStart(prof_, "partition comm");
-            partition.Start(&fields_, M_FORWARD);
-            partition.End(&fields_, M_FORWARD);
-            m_profStop(prof_, "partition comm");
-        }
+        // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case
+        m_profStart(prof_, "p4est balance");
+        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
+        m_profStop(prof_, "p4est balance");
 
+        //................................................
+        // solve the dependencies on the grid
+        // warn the user that we do not interpolate a temporary field
+        for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
+            m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
+        }
+        m_verb("solve dependencies");
+        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
+
+        //................................................
+        // if we are recursive, we need to update the rank partitioning and check for new block to change
+        m_profStart(prof_, "partition init");
+        Partitioner partition(&fields_, this, true);
+        m_profStop(prof_, "partition init");
+        m_profStart(prof_, "partition comm");
+        partition.Start(&fields_, M_FORWARD);
+        partition.End(&fields_, M_FORWARD);
+        m_profStop(prof_, "partition comm");
+
+        
+        //................................................
+        // create a new ghost and mesh as the partioning is done
+        SetupMeshGhost();
+        SetupAdapt();
+
+        //................................................
+        // solve the jump in resolution
+        ghost_->UpdateStatus();
+        // solve resolution jump if needed
+        m_verb("solve jump resolution");
+        DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
+
+        //................................................
         // sum over the ranks and see if we keep going
         m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
         MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -638,52 +640,30 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     } while (global_n_quad_to_adapt > 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
 
     //................................................
-    // get the 2:1 constrain on the grid
-    m_profStart(prof_, "p4est balance");
-    p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
-    m_profStop(prof_, "p4est balance");
+    // // exchange the status
+    // // ExchangeStatus_PostStart_();
 
-    //................................................
-    // exchange the status
-    // ExchangeStatus_PostStart_();
+    // // Solve the dependencies if some have been created -> no dep created if we are recursive
+    // // this is check in the callback UpdateDependency function
+    // if (!recursive_adapt()) {
+        
 
-    // Solve the dependencies if some have been created -> no dep created if we are recursive
-    // this is check in the callback UpdateDependency function
-    if (!recursive_adapt()) {
-        // warn the user that we do not interpolate a temporary field
-        for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
-            m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
-        }
-        // do the solve dependency, level by level!
-        m_verb("solve dependencies");
-        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
+    //     // we need to process
+    // } else {
+    //     m_log("no depency solving as we were recursivelly refining");
+    // }
 
-        // we need to process
-    } else {
-        m_log("no depency solving as we were recursivelly refining");
-    }
+    // //................................................
+    // // finally fix the rank partition
+    // m_profStart(prof_, "partition init");
+    // Partitioner partition(&fields_, this, true);
+    // m_profStop(prof_, "partition init");
+    // m_profStart(prof_, "partition comm");
+    // partition.Start(&fields_, M_FORWARD);
+    // partition.End(&fields_, M_FORWARD);
+    // m_profStop(prof_, "partition comm");
 
-    //................................................
-    // finally fix the rank partition
-    m_profStart(prof_, "partition init");
-    Partitioner partition(&fields_, this, true);
-    m_profStop(prof_, "partition init");
-    m_profStart(prof_, "partition comm");
-    partition.Start(&fields_, M_FORWARD);
-    partition.End(&fields_, M_FORWARD);
-    m_profStop(prof_, "partition comm");
-
-    //................................................
-    // create a new ghost and mesh as the partioning is done
-    SetupMeshGhost();
-    SetupAdapt();
-
-    //................................................
-    ghost_->UpdateStatus();
-
-    // solve resolution jump if needed
-    m_verb("solve jump resolution");
-    DoOpTree(nullptr, &GridBlock::SolveResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
+    
 
     //................................................
     // set the ghosting fields as non-valid

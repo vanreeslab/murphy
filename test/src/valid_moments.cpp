@@ -69,7 +69,7 @@ using std::string;
  * 
  */
 TEST_F(valid_Moments, valid_moment_periodic) {
-    real_t eps        = 1000.0 * std::numeric_limits<real_t>::epsilon();
+    real_t eps = 100.0 * std::numeric_limits<real_t>::epsilon();
 
     m_assert(sizeof(int) >= 1, "the int must be of size > 8");
     for (int case_id = 0; case_id < 256; ++case_id) {
