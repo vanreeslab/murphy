@@ -45,13 +45,13 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 2
+#define M_WAVELET_N 4
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 2
+#define M_WAVELET_NT 0
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -146,15 +146,15 @@ class Wavelet {
      * it overestimates the actuall needed number, but it's not the actual contrain
      */
     const bidx_t nghost_front_refine() const {
-        const bidx_t n_js = len_js() / 2;
-        const bidx_t n_ks = len_ks() / 2;
-        // const bidx_t n_scal  = n_js - (n_js % 2);        // remove the last point if it's a detail
-        // const bidx_t n_det   = n_ks - (1 - (n_ks % 2));  // remove the last point if it's a detail
+        const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
+        const bidx_t n_scal = n_js - (n_js % 2);        // remove the last point if it's a detail
+        const bidx_t n_det  = n_ks - (1 - (n_ks % 2));  // remove the last point if it's a detail
         // const bidx_t last_pt = m_max(n_scal, n_det - 1);
-        const bidx_t last_pt   = m_max(n_js, n_ks - 1);
-        const bidx_t last_scal = last_pt - (last_pt % 2);  // remove the last point if it's a detail
+        const bidx_t last_pt = m_max(n_scal, n_det);
+        // const bidx_t last_scal = last_pt - (last_pt % 2);  // remove the last point if it's a detail
         // this is how the access is actually made as we skip every detail point
-        return m_max((last_scal + 1) / 2, 0);
+        return m_max((last_pt + 1) / 2, 0);
     };
     /**
      * @brief returns the number of gp needed for the refinement operation assuming detail = 0, in the back
@@ -162,15 +162,15 @@ class Wavelet {
      * it overestimates the actuall needed number, but it's not the actual contrain
      */
     const bidx_t nghost_back_refine() const {
-        const bidx_t n_js = len_js() / 2;
-        const bidx_t n_ks = len_ks() / 2;
-        // const bidx_t n_scal  = n_js - (n_js % 2);        // remove the last point if it's a detail
-        // const bidx_t n_det   = n_ks - (1 - (n_ks % 2));  // remove the last point if it's a detail
+        const bidx_t n_js   = len_js() / 2;
+        const bidx_t n_ks   = len_ks() / 2;
+        const bidx_t n_scal = n_js - (n_js % 2);        // remove the last point if it's a detail
+        const bidx_t n_det  = n_ks - (1 - (n_ks % 2));  // remove the last point if it's a detail
         // const bidx_t last_pt = m_max(n_scal - 1, n_det);
-        const bidx_t last_pt   = m_max(n_js - 1, n_ks);
-        const bidx_t last_scal = last_pt - (1 - (last_pt % 2));  // remove the last point if it's a detail
+        const bidx_t last_pt = m_max(n_scal, n_det);
+        // const bidx_t last_scal = last_pt - (1 - (last_pt % 2));  // remove the last point if it's a detail
         // this is how the access is actually made as we skip every detail point
-        return m_max((last_scal + 1) / 2, 0);
+        return m_max((last_pt + 1) / 2, 0);
     };
 
     /**
@@ -264,7 +264,7 @@ class Wavelet {
      * @{
      */
     inline lid_t CoarseNGhostFront() const {
-        // we need the max between the number of scaling in front
+        // we need the max between the number of scaling in front ()
         //      = (nghost_front() / 2)
         // and the number of details that need to be computed
         //      = (nghost_front() / 2) + nrefine_front()
@@ -277,7 +277,7 @@ class Wavelet {
         const lid_t gp_scaling = ((nghost_back() + 1) / 2);
         // and the number of details
         //      = (interp->nghost_back()) / 2 +  + interp->nrefine_back()
-        const lid_t gp_detail = ((nghost_back()) / 2) + nghost_front_refine();
+        const lid_t gp_detail = ((nghost_back()) / 2) + nghost_back_refine();
         return m_max(gp_scaling, gp_detail);
     };
     inline size_t CoarseStride() const {
