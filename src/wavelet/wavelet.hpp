@@ -45,18 +45,18 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 2
+#define M_WAVELET_NT 0
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
 
-#define M_GS_MIN 2
+#define M_GS_MIN 0
 
 /**
  * @brief defines a generic wavelet class
@@ -198,7 +198,7 @@ class Wavelet {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        const bidx_t n_det  = n_ks - (n_ks % 2);      // remove the last point if it's a scaling
+        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
         return m_sign(Nt()) * m_max(n_scal, n_det - 1);
     };
 
@@ -209,7 +209,7 @@ class Wavelet {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        const bidx_t n_det  = n_ks - (n_ks % 2);      // remove the last point if it's a scaling
+        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
         return m_sign(Nt()) * m_max(n_scal - 1, n_det);
     };
 
@@ -219,7 +219,7 @@ class Wavelet {
     const lid_t nghost_front_criterion_smooth() const {
         // this is the last detail I will ever need
         const bidx_t max_detail = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
-        return (max_detail + len_ga() / 2);
+        return m_sign(Nt()) * (max_detail + len_ga() / 2);
     };
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
@@ -227,7 +227,7 @@ class Wavelet {
     const lid_t nghost_back_criterion_smooth() const {
         // this is the last detail I will ever need
         const bidx_t max_detail = m_max(ndetail_citerion_extend_back(), ndetail_smooth_extend_back());
-        return (max_detail + len_ga() / 2);
+        return m_sign(Nt()) * (max_detail + len_ga() / 2);
     };
 
     // nghosts

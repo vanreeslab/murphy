@@ -329,9 +329,9 @@ class InterpolatingWavelet : public Wavelet {
                 (odd_y) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
                 (odd_z) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2))};
 
-            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->srcstart[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 / 2 - lim[0]), ctx->srcstart[0], (i0 / 2 + lim[0]), ctx->srcend[0]);
-            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->srcstart[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 / 2 - lim[1]), ctx->srcstart[1], (i1 / 2 + lim[1]), ctx->srcend[1]);
-            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx->srcstart[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 / 2 - lim[2]), ctx->srcstart[2], (i2 / 2 + lim[2]), ctx->srcend[2]);
+            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->srcstart[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx->srcstart[0], (i0_s + (lim[0] + 1) / 2), ctx->srcend[0]);
+            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->srcstart[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx->srcstart[1], (i1_s + (lim[1] + 1) / 2), ctx->srcend[1]);
+            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx->srcstart[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2_s + (-lim[2] + 1) / 2), ctx->srcstart[2], (i2_s + (lim[2] + 1) / 2), ctx->srcend[2]);
 
             // if we are a detail, we never pass by the index 0 as we start from an odd number
             // the source is taken as (i+1)/2 so that when i=-1, we access the position 0 and when i=1, we access the position 1
