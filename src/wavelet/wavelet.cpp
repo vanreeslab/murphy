@@ -207,16 +207,21 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
-#ifndef NDEBUG
-    int size_trg, size_src;
-    MPI_Type_size(dtype_src, &size_src);
-    MPI_Type_size(dtype_trg, &size_trg);
-    m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
-#endif
-    real_t* local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
+    real_t*  local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
     MPI_Aint disp      = disp_src + m_zeroidx(0, block_src()) + m_idx(src_start[0], src_start[1], src_start[2], 0, block_src->stride());
     // //#pragma omp critical
-    MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
+
+    int size_trg;
+    MPI_Type_size(dtype_trg, &size_trg);
+#ifndef NDEBUG
+    int size_src;
+    MPI_Type_size(dtype_src, &size_src);
+    m_assert(size_src == size_trg, "the two sizes must be the same: %d vs %d", size_src, size_trg);
+#endif
+    // only perform the call if we expect something
+    if (size_trg > 0) {
+        MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
+    }
 
     // free the types
     MPI_Type_free(&dtype_trg);
@@ -257,17 +262,20 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
-#ifndef NDEBUG
-    int size_trg, size_src;
-    MPI_Type_size(dtype_src, &size_src);
-    MPI_Type_size(dtype_trg, &size_trg);
-    // m_verb("src size = %d and the trg size = %d", size_src, size_trg);
-    m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
-#endif
     const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src);
     MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg()) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
     //#pragma omp critical
-    MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
+    int size_trg;
+    MPI_Type_size(dtype_trg, &size_trg);
+#ifndef NDEBUG
+    int size_src;
+    MPI_Type_size(dtype_src, &size_src);
+    m_assert(size_src == size_trg, "the two sizes must be the same: %d vs %d", size_src, size_trg);
+#endif
+    // only perform the call if we expect something
+    if (size_trg > 0) {
+        MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
+    }
 
     // free the types
     MPI_Type_free(&dtype_trg);
