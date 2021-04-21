@@ -231,7 +231,8 @@ class Wavelet {
     const lid_t nghost_front_criterion_smooth() const {
         // this is the last detail I will ever need, already takes into account that we are in the front
         const bidx_t max_detail = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
-        return m_max(max_detail + (len_ga() / 2), 0);
+        const bidx_t offset     = 1 * (max_detail == 0);  // we must remove 1 if max_detail ==0
+        return m_max(max_detail + (len_ga() / 2) - offset, 0);
     };
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
