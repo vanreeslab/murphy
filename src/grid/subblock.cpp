@@ -53,3 +53,31 @@ void SubBlock::Reset(const lid_t gs, const lid_t stride, const lid_t start, cons
         start_[id] = start;
     }
 }
+
+/**
+ * @brief extend the subblock and return the result in new_block
+ * 
+ * the extension is based on @ref sign: if <0 we extend the start index, if >0 we extend the end index
+ * 
+ * @param sign 
+ * @param n_front number of point for the extension in front
+ * @param n_back number of point for the extension at the back
+ * @param new_block 
+ */
+void SubBlock::Extend(/* param */ const real_t sign[3], const bidx_t n_front, const bidx_t n_back,
+                      /* output */ SubBlock* new_block) {
+    //-------------------------------------------------------------------------
+    bidx_t start[3] = {this->start(0), this->start(1), this->start(2)};
+    bidx_t end[3]   = {this->end(0), this->end(1), this->end(2)};
+
+    for (lda_t ida = 0; ida < 3; ++ida) {
+        if (sign[ida] > 0.5) {
+            end[ida] += n_back;  // extend outside the block
+        } else if (sign[ida] < (-0.5)) {
+            start[ida] -= n_front;  // extend outside the block
+        }
+    }
+    // set the new block to the computed start/end
+    new_block->Reset(this->gs(), this->stride(), start, end);
+    //-------------------------------------------------------------------------
+}

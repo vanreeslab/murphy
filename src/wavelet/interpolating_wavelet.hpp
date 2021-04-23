@@ -525,13 +525,12 @@ class InterpolatingWavelet : public Wavelet {
     };
 
     /**
-     * @brief Use the computed details to discard the values
+     * @brief Remove from the target the non-zero detail coefficients using the inverse wavelet transform
      * 
-     * 
+     * It first computes the correction as the inverse wavelet transform of the detail coefficients,
+     * and then remove the correction from the target
      * 
      * @param ctx the interpolation context
-     * @param details_max return the max of the detail on the current block
-     
      */
     void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const override {
         //-------------------------------------------------------------------------
@@ -597,6 +596,65 @@ class InterpolatingWavelet : public Wavelet {
         const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         for_loop(&op, start, end);
+    };
+
+    /**
+     * @brief Overwrites from the target all non-zero detail coefficients
+     * 
+     * The simply overwrite makes sure that no small un-wanted detail coefficients have been created
+     * 
+     * @param ctx the interpolation context
+     */
+    void Clear_(const m_ptr<const interp_ctx_t>& ctx) const override {
+        // //-------------------------------------------------------------------------
+        // // filters, need the forward ones
+        // constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
+        // constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
+        // const real_t* const ha     = ha_<TN, TNT> + ha_lim;
+        // const real_t* const ga     = ga_<TN, TNT> + ga_lim;
+
+        // // get the pointers
+        // real_t* const       tdata = ctx->tdata.Write();
+        // const real_t* const ddata = ctx->sdata.Read();
+
+        // // go, only tada is changed
+        // auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        //     // get 0 if odd, 1 if even (even if negative!!)
+        //     const bool odd_x = m_sign(i0) * (i0 % 2);
+        //     const bool odd_y = m_sign(i1) * (i1 % 2);
+        //     const bool odd_z = m_sign(i2) * (i2 % 2);
+        //     m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
+        //     m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
+        //     m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
+
+        //     // get the filters: ga for details, ha for scalings
+        //     const real_t* const f_x = (odd_x) ? (ga) : (ha);
+        //     const real_t* const f_y = (odd_y) ? (ga) : (ha);
+        //     const real_t* const f_z = (odd_z) ? (ga) : (ha);
+
+        //     const real_t fact = f_x[0] * f_y[0] * fz[0];
+
+        //     m_assert((i0 >= ctx->srcstart[0]) && (i0 < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0, ctx->srcstart[0], i0, ctx->srcend[0]);
+        //     m_assert((i1 >= ctx->srcstart[1]) && (i1 < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1, ctx->srcstart[1], i1, ctx->srcend[1]);
+        //     m_assert((i2 >= ctx->srcstart[2]) && (i2 < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2, ctx->srcstart[2], i2, ctx->srcend[2]);
+
+        //     // get the local datassss
+        //     real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
+        //     const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->srcstr);
+
+        //     // let's go tocard
+        //     real_t corr = fact * lddata[0];
+        //     ltdata[0] -= corr;
+        //     m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
+
+        //     // if (fabs(corr) > 1e-3) {
+        //     //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
+        //     // }
+        // };
+
+        // const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        // for_loop(&op, start, end);
     };
 };
 

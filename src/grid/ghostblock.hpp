@@ -6,6 +6,73 @@
 #include "grid/boundary.hpp"
 #include "grid/subblock.hpp"
 
+constexpr void face_sign(const iface_t iface, iface_t* face_dir, real_t sign[3]) {
+    //-------------------------------------------------------------------------
+    const iface_t dir   = iface / 2;
+    (*face_dir)         = dir;
+    sign[dir]           = ((iface % 2) == 1) ? 1.0 : -1.0;
+    sign[(dir + 1) % 3] = 0.0;
+    sign[(dir + 2) % 3] = 0.0;
+    //-------------------------------------------------------------------------
+}
+constexpr void edge_sign(const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
+    /*
+    the plane convention for the sign variable convention for the sign
+    2 +--------------+ 3
+      |              |
+      |              |
+      |dir2          |
+      |              |
+    0 +--------------+ 1
+        dir1
+    */
+    //-------------------------------------------------------------------------
+    iface_t dir  = iedge / 4;           // this is the direction of the edge
+    iface_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
+    iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
+    // store the info
+    (*edge_dir) = dir;
+    sign[dir]   = 0.0;
+    sign[dir1]  = ((iedge % 4) % 2) == 1 ? +1.0 : -1.0;
+    sign[dir2]  = ((iedge % 4) / 2) == 1 ? +1.0 : -1.0;
+    //-------------------------------------------------------------------------
+}
+constexpr void corner_sign(const iface_t icorner, real_t sign[3]) {
+    //-------------------------------------------------------------------------
+    sign[0] = (icorner % 2) == 1 ? +1.0 : -1.0;
+    sign[1] = ((icorner % 4) / 2) == 1 ? +1.0 : -1.0;
+    sign[2] = (icorner / 4) == 1 ? +1.0 : -1.0;
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief Given a face, edge or a corner returns the outgoing normal (sign)
+ * 
+ * @param ibidule for a face (`ibidule<6`), an edge (`6<= ibidule < 18`) or a corner (`18<= ibidule < 26`)
+ * @param sign the sign of the outgoing normal
+ */
+static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
+    //-------------------------------------------------------------------------
+    // check depending on the plane, the edge of the corner
+    if (ibidule < 6) {
+        iface_t dir;
+        face_sign(ibidule, &dir, sign);
+        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 1, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
+    } else if (ibidule < 18) {
+        iface_t dir;
+        edge_sign(ibidule - 6, &dir, sign);
+        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 2, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d, dir = %d)", sign[0], sign[1], sign[2], ibidule, dir);
+    } else {
+        corner_sign(ibidule - 18, sign);
+        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 3, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
+    }
+
+    m_assert(sign[0] == 0.0 || sign[0] == 1.0 || sign[0] == -1.0, "wrong sign value: %e", sign[0]);
+    m_assert(sign[1] == 0.0 || sign[1] == 1.0 || sign[1] == -1.0, "wrong sign value: %e", sign[1]);
+    m_assert(sign[2] == 0.0 || sign[2] == 1.0 || sign[2] == -1.0, "wrong sign value: %e", sign[2]);
+    //-------------------------------------------------------------------------
+};
+
 /**
  * @brief GhostBlock: a @ref SubBlock that will be used to compute ghost points.
  * 
@@ -19,7 +86,7 @@
 template <typename T>
 class GhostBlock : public SubBlock {
    protected:
-    iface_t  ibidule_;        //!< the id of the face, edge or corner that is responsible for this ghostblock
+    iface_t  ibidule_;       //!< the id of the face, edge or corner that is responsible for this ghostblock
     iblock_t cum_block_id_;  //!< cummulative id of the corresponding block or id to use to retrieve information on another rank
     level_t  dlvl_;          //!< delta level = source level - target level (see @ref Wavelet)
     bidx_t   shift_[3];      //!< target point (0,0,0) in the framework of the source  (see @ref Wavelet::interpolate_())
@@ -33,19 +100,15 @@ class GhostBlock : public SubBlock {
      * @param block_id the cummulative id corresponding to the local block, or the id to use to get the information on another rank
      * @param rank the rank to use in case of MPI call
      */
-    GhostBlock(const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) {
+    GhostBlock(const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : SubBlock(0, 0, 0, 0) {
         ibidule_      = ibidule;
         cum_block_id_ = block_id;
         rank_rma_     = rank;
 
         // init stupid stuffs
-        gs_     = 0;
-        stride_ = 0;
-        dlvl_   = 0;
+        dlvl_ = 0;
         for (lda_t ida = 0; ida < 3; ++ida) {
             start_[ida] = 0;
-            end_[ida]   = 0;
-            shift_[ida] = 0;
         }
     }
     /**
@@ -119,6 +182,24 @@ class GhostBlock : public SubBlock {
         m_assert(start_[2] <= end_[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
 
         // m_log("ghost created: from [%d %d %d] to [%d %d %d]", start_[0], start_[1], start_[2], end_[0], end_[1], end_[2]);
+        //-------------------------------------------------------------------------
+    }
+
+    /**
+     * @brief extend the ghost zone towards the inside of the block, given the ibidule
+     * 
+     * @param nfront 
+     * @param back 
+     */
+    void ExtendGhost(const bidx_t n_front, const bidx_t n_back, SubBlock* new_block) {
+        //-------------------------------------------------------------------------
+        real_t sign[3];
+        GhostGetSign(ibidule_, sign);
+        // we need to inverse the sign: if the ghost in at the back, the sign is +1, while we need -1 to extend correctly
+        for (lda_t i = 0; i < 3; ++i) {
+            sign[i] = -sign[i];
+        }
+        this->Extend(sign, n_front, n_back, new_block);
         //-------------------------------------------------------------------------
     }
 

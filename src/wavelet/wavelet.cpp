@@ -477,6 +477,38 @@ void Wavelet::SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
     //-------------------------------------------------------------------------
 }
 
+void Wavelet::ClearOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
+                           /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
+                           /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const {
+    //-------------------------------------------------------------------------
+    //.........................................................................
+    // get the details
+    real_t trash = 0.0;
+    Details(block_src, data, detail_block, detail_mask, -1.0, &trash);
+
+    //.........................................................................
+    // smooth them
+    // get memory details
+    interp_ctx_t ctx;
+    for (lda_t id = 0; id < 3; id++) {
+#ifndef NDEBUG
+        // detail block is too small as we need more points that are 0.0 so use the full block_src... bad, I knooow
+        ctx.srcstart[id] = block_src->start(id);
+        ctx.srcend[id]   = block_src->end(id);
+#endif
+        ctx.trgstart[id] = block_trg->start(id);
+        ctx.trgend[id]   = block_trg->end(id);
+    }
+    ctx.srcstr = detail_block->stride();
+    ctx.sdata  = detail_mask;  // this are the details
+    ctx.trgstr = block_trg->stride();
+    ctx.tdata  = data;  // this is the block
+
+    // smooth them
+    Smooth_(&ctx);
+    //-------------------------------------------------------------------------
+}
+
 /**
  * @brief Compute and store the details in the data_trg field
  * 

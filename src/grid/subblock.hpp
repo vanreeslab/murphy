@@ -26,6 +26,9 @@ class SubBlock : public MemLayout {
     void Reset(const lid_t gs, const lid_t stride, const lid_t start, const lid_t end);
     void Reset(const lid_t gs, const lid_t stride, const lid_t start[3], const lid_t end[3]);
 
+    void Extend(/* param */ const real_t sign[3], const bidx_t n_front, const bidx_t n_back,
+                /* output */ SubBlock* new_block);
+
     /**
      * @name Memory Layout Implementation
      * 

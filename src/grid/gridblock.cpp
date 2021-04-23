@@ -26,77 +26,12 @@ enum NghStatus { NS_NONE   = 0,
 
 static const lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
-constexpr void face_sign(const iface_t iface, iface_t* face_dir, real_t sign[3]) {
-    //-------------------------------------------------------------------------
-    const iface_t dir   = iface / 2;
-    (*face_dir)         = dir;
-    sign[dir]           = ((iface % 2) == 1) ? 1.0 : -1.0;
-    sign[(dir + 1) % 3] = 0.0;
-    sign[(dir + 2) % 3] = 0.0;
-    //-------------------------------------------------------------------------
-}
-constexpr void edge_sign(const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
-    /*
-    the plane convention for the sign variable convention for the sign
-    2 +--------------+ 3
-      |              |
-      |              |
-      |dir2          |
-      |              |
-    0 +--------------+ 1
-        dir1
-    */
-    //-------------------------------------------------------------------------
-    iface_t dir  = iedge / 4;           // this is the direction of the edge
-    iface_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
-    iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-    // store the info
-    (*edge_dir) = dir;
-    sign[dir]   = 0.0;
-    sign[dir1]  = ((iedge % 4) % 2) == 1 ? +1.0 : -1.0;
-    sign[dir2]  = ((iedge % 4) / 2) == 1 ? +1.0 : -1.0;
-    //-------------------------------------------------------------------------
-}
-constexpr void corner_sign(const iface_t icorner, real_t sign[3]) {
-    //-------------------------------------------------------------------------
-    sign[0] = (icorner % 2) == 1 ? +1.0 : -1.0;
-    sign[1] = ((icorner % 4) / 2) == 1 ? +1.0 : -1.0;
-    sign[2] = (icorner / 4) == 1 ? +1.0 : -1.0;
-    //-------------------------------------------------------------------------
-}
-
 constexpr real_t CoarseHGrid(const real_t len) {
     // return len/ (real_t) (M_NHALF-1);
     return len / (real_t)(M_NHALF);
 }
 
-/**
- * @brief Given a face, edge or a corner returns the outgoing normal (sign)
- * 
- * @param ibidule for a face (`ibidule<6`), an edge (`6<= ibidule < 18`) or a corner (`18<= ibidule < 26`)
- * @param sign the sign of the outgoing normal
- */
-static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
-    //-------------------------------------------------------------------------
-    // check depending on the plane, the edge of the corner
-    if (ibidule < 6) {
-        iface_t dir;
-        face_sign(ibidule, &dir, sign);
-        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 1, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
-    } else if (ibidule < 18) {
-        iface_t dir;
-        edge_sign(ibidule - 6, &dir, sign);
-        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 2, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d, dir = %d)", sign[0], sign[1], sign[2], ibidule, dir);
-    } else {
-        corner_sign(ibidule - 18, sign);
-        m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 3, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
-    }
 
-    m_assert(sign[0] == 0.0 || sign[0] == 1.0 || sign[0] == -1.0, "wrong sign value: %e", sign[0]);
-    m_assert(sign[1] == 0.0 || sign[1] == 1.0 || sign[1] == -1.0, "wrong sign value: %e", sign[1]);
-    m_assert(sign[2] == 0.0 || sign[2] == 1.0 || sign[2] == -1.0, "wrong sign value: %e", sign[2]);
-    //-------------------------------------------------------------------------
-};
 
 /**
  * @brief returns a boolean to determine if the first point must be discarded and the last point taken into account
@@ -609,6 +544,85 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
 }
 
 /**
+ * @brief clean the points affected by the resolution jump 
+ * 
+ * @param interp 
+ * @param field_start 
+ * @param field_end 
+ * @param profiler 
+ */
+void GridBlock::ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+    //-------------------------------------------------------------------------
+    // reset the temp memory to 0.0
+    memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+    data_ptr mask      = coarse_ptr_(0, this);
+    real_t*  mask_data = mask.Write();
+
+    //................................................
+    // lambda to obtain the cleaning pattern
+    auto mask_smooth = [=](const iface_t ibidule) -> void {
+        // create the lambda to put 1.0
+        auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
+        };
+
+        // get the sign of the ibidule
+        real_t sign[3];
+        GhostGetSign(ibidule, sign);
+
+        // create the start and send indexes
+        bidx_t smooth_start[3], smooth_end[3];
+        for (lda_t ida = 0; ida < 3; ++ida) {
+            if (sign[ida] > 0.5) {
+                // my ngh assumed 0 details in my block
+                smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
+                // the number of my ngh details influencing my values
+                smooth_end[ida] = this->end(ida);
+            } else if (sign[ida] < (-0.5)) {
+                // my ngh assumed 0 details in my block
+                smooth_start[ida] = this->start(ida);
+                // the number of my ngh details influencing my values
+                smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
+            } else {
+                // even in the directions orthogonal to ibidule, the details must be killed!
+                // as my neighbor, which might be fine will kill them as well
+                smooth_start[ida] = this->start(ida);
+                smooth_end[ida]   = this->end(ida);
+            }
+        }
+        // apply it
+        for_loop(&set_mask_to_one, smooth_start, smooth_end);
+    };
+
+    // for each ghost block, set the mask to 1.0 if needed
+    iblock_t block_count = 0;
+    for (auto gblock : local_parent_) {
+        mask_smooth(gblock->ibidule());
+    }
+    m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %ld", block_count, local_parent_.size());
+    for (auto gblock : ghost_parent_) {
+        mask_smooth(gblock->ibidule());
+    }
+
+    //................................................
+    // smooth depending on the mask
+    SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+    SubBlock block_det(this->gs(), this->stride(), 0, M_N);
+
+    // do it for every field
+    for (auto fid = field_start; fid != field_end; ++fid) {
+        auto current_field = fid->second;
+        for (lda_t ida = 0; ida < current_field->lda(); ida++) {
+            interp->ClearOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+        }
+    }
+
+    // free the status array
+    m_free(status_ngh_);
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief Compute the detail coefficient and store them in the field details
  * 
  * @param interp the wavelet object
@@ -1045,10 +1059,12 @@ void GridBlock::GhostFreeLists() {
 }
 
 /**
- * @brief Do the first part of GhostGet and start the RMA requests
+ * @brief Do the first part of GhostGet, everything which can be done without MPI
  * 
- * - get the siblings values (both local and RMA)
- * - get the coarser values to my temp array
+ * @warning we assume that GhostGet_Post has been called first
+ * 
+ * - get the siblings values
+ * - get the coarser values to my coarse temporary array
  * 
  * @param field the field to interpolate
  * @param ida the current dimension
@@ -1058,19 +1074,9 @@ void GridBlock::GhostFreeLists() {
 void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
     //-------------------------------------------------------------------------
     // get the siblings
-    // m_log("get the siblings for block @ %f %f %f", xyz(0), xyz(1), xyz(2));
     {
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
         const data_ptr data_trg = data(field, ida);
-
-        // // start the RMA for the sibling neighbors
-        // for (const auto gblock : ghost_sibling_) {
-        //     const MPI_Aint   disp_src  = gblock->data_src();
-        //     const rank_t     disp_rank = gblock->rank();
-        //     const MemLayout* block_trg = gblock;
-        //     // copy the information
-        //     interp->GetRma(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, disp_src, block_trg, data_trg, disp_rank, mirrors_window);
-        // }
 
         // get the copy of local siblings
         for (const auto gblock : (local_sibling_)) {
@@ -1085,36 +1091,9 @@ void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<c
     //................................................
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
-        // reset the coarse memory
-        // memset(coarse_ptr_(), 0, interp->CoarseSize() * sizeof(real_t));
         // we use the full neighbor span
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
-        //................................................
-        // // RMA the sibligns ghosts to the tmp
-        // for (const auto gblock : ghost_sibling_) {
-        //     MPI_Aint disp_src  = gblock->data_src();
-        //     rank_t   disp_rank = gblock->rank();
-        //     // get the associated coarse block
-        //     SubBlock block_trg;
-        //     interp->CoarseFromFine(gblock, &block_trg);
-        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);  // + m_zeroidx(0, &block_trg);
-        //     // interpolate, the level is 1 coarser and the shift is unchanged
-        //     m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1 or 0");
-        //     interp->GetRma((gblock->dlvl() + 1), gblock->shift(), &bsrc_neighbor, disp_src, &block_trg, data_trg, disp_rank, mirrors_window);
-        // }
-        // // RMA the parent ghosts to the tmp
-        // for (const auto gblock : ghost_parent_) {
-        //     MPI_Aint disp_src  = gblock->data_src();
-        //     rank_t   disp_rank = gblock->rank();
-        //     // get the associated coarse block
-        //     SubBlock block_trg;
-        //     interp->CoarseFromFine(gblock, &block_trg);
-        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);
-        //     // interpolate, the level is 1 coarser and the shift is unchanged
-        //     m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 or 0");
-        //     interp->GetRma((gblock->dlvl() + 1), gblock->shift(), &bsrc_neighbor, disp_src, &block_trg, data_trg, disp_rank, mirrors_window);
-        // }
-        //................................................
+
         // copy the siblings to coarse
         for (const auto gblock : local_sibling_) {
             GridBlock* ngh_block = gblock->data_src();
@@ -1141,6 +1120,14 @@ void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<c
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief Do the first part of GhostGet, everything that requires MPI
+ * 
+ * @param field 
+ * @param ida 
+ * @param interp 
+ * @param mirrors_window 
+ */
 void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     // get the siblings
@@ -1156,15 +1143,6 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             // copy the information
             interp->GetRma(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, disp_src, block_trg, data_trg, disp_rank, mirrors_window);
         }
-
-        // // get the copy of local siblings
-        // for (const auto gblock : (local_sibling_)) {
-        //     GridBlock*       ngh_block = gblock->data_src();
-        //     const data_ptr   data_src  = ngh_block->data(field, ida);
-        //     const MemLayout* block_trg = gblock;
-        //     // copy the information
-        //     interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
-        // }
     }
     //................................................
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
@@ -1198,29 +1176,6 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 or 0");
             interp->GetRma((gblock->dlvl() + 1), gblock->shift(), &bsrc_neighbor, disp_src, &block_trg, data_trg, disp_rank, mirrors_window);
         }
-        // //................................................
-        // // copy the siblings to coarse
-        // for (const auto gblock : local_sibling_) {
-        //     GridBlock* ngh_block = gblock->data_src();
-        //     SubBlock   block_trg;
-        //     interp->CoarseFromFine(gblock, &block_trg);
-        //     data_ptr data_src = ngh_block->data(field, ida);
-        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);
-        //     // interpolate, the level is 1 coarser and the shift is unchanged
-        //     m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
-        //     interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
-        // }
-        // // copy the parents to coarse
-        // for (const auto gblock : local_parent_) {
-        //     GridBlock* ngh_block = gblock->data_src();
-        //     SubBlock   block_trg;
-        //     interp->CoarseFromFine(gblock, &block_trg);
-        //     data_ptr data_src = ngh_block->data(field, ida);
-        //     data_ptr data_trg = coarse_ptr_(0, &block_trg);
-        //     // interpolate, the level is 1 coarser and the shift is unchanged
-        //     m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
-        //     interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
-        // }
     }
     //-------------------------------------------------------------------------
 }
@@ -1228,7 +1183,9 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
 /**
  * @brief Do the second part of the GhostGet
  * 
- * - wait for the com to be over
+ * @warning First call @ref GhostGet_Post() and @ref GhostGet_Cmpt()
+ * 
+ * - wait for the communications to be over
  * - add the physical BC to my coarse temp
  * - interpolate to my ghost points
  * 
@@ -1289,13 +1246,17 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             const data_ptr data_src = coarse_ptr_(0, &block_src);
             lid_t          shift[3] = {0, 0, 0};
 
+            SubBlock block_trg = SubBlock();
             // m_log("we have %d local parents", local_parent_.size());
             for (const auto gblock : local_parent_) {
-                // m_log("interpolating for parent");
-                interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
+                gblock->ExtendGhost(interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back(), &block_trg);
+                interp->Interpolate(-1, shift, &block_src, data_src, &block_trg, data(field, ida));
+                // interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
             }
             for (const auto gblock : ghost_parent_) {
-                interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
+                gblock->ExtendGhost(interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back(), &block_trg);
+                interp->Interpolate(-1, shift, &block_src, data_src, &block_trg, data(field, ida));
+                // interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
             }
         }
     }

@@ -45,13 +45,13 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -94,6 +94,9 @@ class Wavelet {
                  /* target */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail, const real_t tol,
                  /* output*/ m_ptr<real_t> details_max) const;
     void   SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
+                      /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
+                      /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const;
+    void   ClearOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
                       /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
                       /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const;
     void   WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const;
@@ -351,6 +354,7 @@ class Wavelet {
     virtual void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const                  = 0;
     virtual void ForwardWaveletTransform_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const = 0;
     virtual void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const                                                    = 0;
+    virtual void Clear_(const m_ptr<const interp_ctx_t>& ctx) const                                                     = 0;
     // virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                                     = 0;
     /** @} */
 
