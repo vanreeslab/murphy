@@ -185,23 +185,24 @@ class GhostBlock : public SubBlock {
         //-------------------------------------------------------------------------
     }
 
-    /**
-     * @brief extend the ghost zone towards the inside of the block, given the ibidule
-     * 
-     * @param nfront 
-     * @param back 
-     */
-    void ExtendGhost(const bidx_t n_front, const bidx_t n_back, SubBlock* new_block) {
-        //-------------------------------------------------------------------------
-        real_t sign[3];
-        GhostGetSign(ibidule_, sign);
-        // we need to inverse the sign: if the ghost in at the back, the sign is +1, while we need -1 to extend correctly
-        for (lda_t i = 0; i < 3; ++i) {
-            sign[i] = -sign[i];
-        }
-        this->Extend(sign, n_front, n_back, new_block);
-        //-------------------------------------------------------------------------
-    }
+    // /**
+    //  * @brief extend the ghost zone towards the inside of the block, given the ibidule
+    //  * 
+    //  * @param nfront given in the GhostBlock perspective (not the CartBlock!)
+    //  * @param back given in the GhostBlock perspective (not the CartBlock!)
+    //  */
+    // void ExtendGhost(const bidx_t n_front, const bidx_t n_back, SubBlock* new_block) {
+    //     //-------------------------------------------------------------------------
+    //     real_t sign[3];
+    //     GhostGetSign(ibidule_, sign);
+    //     // we need to inverse the
+    //     for (lda_t i = 0; i < 3; ++i) {
+    //         sign[i] = -sign[i];
+    //     }
+    //     // m_log("ibidule = %d, sign = %f %f %f", ibidule_, sign[0], sign[1], sign[2]);
+    //     this->Extend(sign, n_front, n_back, new_block);
+    //     //-------------------------------------------------------------------------
+    // }
 
     // return arguments
     sid_t        dlvl() const { return dlvl_; }

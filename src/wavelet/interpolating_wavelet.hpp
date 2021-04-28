@@ -282,11 +282,9 @@ class InterpolatingWavelet : public Wavelet {
      *
      * @param ctx the interpolation context
      */
-    void Refine_(const m_ptr<const interp_ctx_t>& ctx) const override {
+    void RefineZeroDetails_(const m_ptr<const interp_ctx_t>& ctx) const override {
         m_assert(ctx->alpha == 0.0, "the alpha = %e must be = 0.0", ctx->alpha);
         //-------------------------------------------------------------------------
-        const real_t one = 1.0;
-
         constexpr short_t   ks_lim = len_ks_<TN, TNT> / 2;
         const real_t* const ks     = ks_<TN, TNT> + ks_lim;
         constexpr short_t   js_lim = len_js_<TN, TNT> / 2;
@@ -350,13 +348,109 @@ class InterpolatingWavelet : public Wavelet {
                 }
             }
             m_assert(value == value, "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
-
-            // get the target location
             tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = value;
         };
 
         const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        for_loop(&op, start, end);
+        //-------------------------------------------------------------------------
+    };
+
+    /**
+     * @brief overwrites the data to ensure 0-detail coefficients (it uses the dual lifting only!)
+     * 
+     * @warning Due to the interdependence between the detail coefficients, we need to update dimension by dimension:
+     * first dx, dy, dz, then dxy, dyz and dxz and finally dxyz
+     * 
+     * @param ctx 
+     */
+    void OverwriteDetailsDualLifting_(const m_ptr<const interp_ctx_t>& ctx) const override {
+        m_assert(ctx->alpha == 0.0, "the alpha = %e must be = 0.0", ctx->alpha);
+        m_assert((len_ga_<TN, TNT> % 2) == 1, "the filter size must be odd");
+        //-------------------------------------------------------------------------
+
+        // get the filter of dual lifting = filter of lifting, the "-" is done in the loop
+        constexpr real_t    one    = 1.0;
+        constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
+        const real_t* const ga     = ga_<TN, TNT> + ga_lim;
+        const real_t* const iga    = ga;  // + ga_lim;
+
+        // get the pointers
+        real_t* const       tdata = ctx->tdata.Write();
+        const real_t* const sdata = ctx->sdata.Read();
+
+        // count tracks how many dimension is done at the same time.
+        // if count = 1, we do the dx, dy, dz
+        // if count = 2, we do the dxy, dyz and dxz
+        // if count = 3, we do the dxyz
+        short_t count = 0;
+
+        // define the lambda, only tdata is changed and count must be taken by ref (the copy always has count = 0)
+        auto op = [=, &tdata, &count](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            // get if we are odd or even in the current location
+            const short_t odd_x = m_sign(i0) * (i0 % 2);
+            const short_t odd_y = m_sign(i1) * (i1 % 2);
+            const short_t odd_z = m_sign(i2) * (i2 % 2);
+            m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
+            m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
+            m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
+
+            // if we do not process the current case, return
+            if ((odd_x + odd_y + odd_z) != count) {
+                return;
+            }
+
+            // get the filter, depending on if I am odd or even
+            const real_t* const iga_x = (odd_x) ? (iga) : (&one);
+            const real_t* const iga_y = (odd_y) ? (iga) : (&one);
+            const real_t* const iga_z = (odd_z) ? (iga) : (&one);
+
+            // get the limit for the different filters
+            // if even we use a lim of 0 as the bounds in the for loops are "="
+            const bidx_t lim[3] = {
+                (odd_x) ? m_max(0, ga_lim) : 0,
+                (odd_y) ? m_max(0, ga_lim) : 0,
+                (odd_z) ? m_max(0, ga_lim) : 0};
+
+            m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 - lim[0]), ctx->srcstart[0], (i0 + lim[0]), ctx->srcend[0]);
+            m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 - lim[1]), ctx->srcstart[1], (i1 + lim[1]), ctx->srcend[1]);
+            m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 - lim[2]), ctx->srcstart[2], (i2 + lim[2]), ctx->srcend[2]);
+
+            const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->srcstr);
+            real_t              value  = 0.0;
+
+            for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
+                for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
+                    for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
+                        // if I consider myself, don't take me into account
+                        const bool to_skip = (fabs(id0) + fabs(id1) + fabs(id2)) == 0.0;
+                        // minus to inverse the dual lifting
+                        const real_t fact   = -(iga_x[id0] * iga_y[id1] * iga_z[id2]) * (!to_skip);
+                        const real_t svalue = lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)];
+                        // sum-up
+                        value += fact * svalue;
+
+                        // check for nan's
+                        m_assert(svalue == svalue, "nan detected");
+                        m_assert(fact == fact, "nan detected");
+                    }
+                }
+            }
+            m_assert(value == value, "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
+            tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = value;
+        };
+
+        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        // count = 1: dx, dy and dz
+        count = 1;
+        for_loop(&op, start, end);
+        // count = 2: dxy, dxz and dyz
+        count = 2;
+        for_loop(&op, start, end);
+        // count = 3: dxyz
+        count = 3;
         for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
@@ -585,6 +679,10 @@ class InterpolatingWavelet : public Wavelet {
                     }
                 }
             }
+            // // get the target location
+            // if (0 <= i0 && i0 < M_N && 0 <= i1 && i1 < M_N && 0 <= i2 && i2 < M_N) {
+            //     m_log("@ %d %d %d : smoothed %e -> %e", i0, i1, i2, ltdata[0], ltdata[0] - corr);
+            // }
             m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
             ltdata[0] -= corr;
 

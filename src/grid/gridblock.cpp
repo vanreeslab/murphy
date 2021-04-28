@@ -469,8 +469,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     //................................................
     // lambda to obtain the smoothing pattern
     auto mask_smooth = [=](const iblock_t count, const iface_t ibidule) -> void {
-        
-        // create the lambda to put 1.0
+                // create the lambda to put 1.0
         auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
         };
@@ -502,7 +501,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
                     smooth_end[ida]   = this->end(ida) + interp->ndetail_smooth_extend_back();
                 }
             }
-            // m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", gblock->ibidule(),
+            // m_log("ibidule = %d -> maks = 1.0 from %d %d %d to %d %d %d", ibidule,
             //       smooth_start[0], smooth_start[1], smooth_start[2],
             //       smooth_end[0], smooth_end[1], smooth_end[2]);
             // apply it
@@ -552,74 +551,74 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
  * @param profiler 
  */
 void GridBlock::ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
-    //-------------------------------------------------------------------------
-    // reset the temp memory to 0.0
-    memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
-    data_ptr mask      = coarse_ptr_(0, this);
-    real_t*  mask_data = mask.Write();
+    // //-------------------------------------------------------------------------
+    // // reset the temp memory to 0.0
+    // memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+    // data_ptr mask      = coarse_ptr_(0, this);
+    // real_t*  mask_data = mask.Write();
 
-    //................................................
-    // lambda to obtain the cleaning pattern
-    auto mask_smooth = [=](const iface_t ibidule) -> void {
-        // create the lambda to put 1.0
-        auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
-        };
+    // //................................................
+    // // lambda to obtain the cleaning pattern
+    // auto mask_smooth = [=](const iface_t ibidule) -> void {
+    //     // create the lambda to put 1.0
+    //     auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //         mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
+    //     };
 
-        // get the sign of the ibidule
-        real_t sign[3];
-        GhostGetSign(ibidule, sign);
+    //     // get the sign of the ibidule
+    //     real_t sign[3];
+    //     GhostGetSign(ibidule, sign);
 
-        // create the start and send indexes
-        bidx_t smooth_start[3], smooth_end[3];
-        for (lda_t ida = 0; ida < 3; ++ida) {
-            if (sign[ida] > 0.5) {
-                // my ngh assumed 0 details in my block
-                smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
-                // the number of my ngh details influencing my values
-                smooth_end[ida] = this->end(ida);
-            } else if (sign[ida] < (-0.5)) {
-                // my ngh assumed 0 details in my block
-                smooth_start[ida] = this->start(ida);
-                // the number of my ngh details influencing my values
-                smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
-            } else {
-                // even in the directions orthogonal to ibidule, the details must be killed!
-                // as my neighbor, which might be fine will kill them as well
-                smooth_start[ida] = this->start(ida);
-                smooth_end[ida]   = this->end(ida);
-            }
-        }
-        // apply it
-        for_loop(&set_mask_to_one, smooth_start, smooth_end);
-    };
+    //     // create the start and send indexes
+    //     bidx_t smooth_start[3], smooth_end[3];
+    //     for (lda_t ida = 0; ida < 3; ++ida) {
+    //         if (sign[ida] > 0.5) {
+    //             // my ngh assumed 0 details in my block
+    //             smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
+    //             // the number of my ngh details influencing my values
+    //             smooth_end[ida] = this->end(ida);
+    //         } else if (sign[ida] < (-0.5)) {
+    //             // my ngh assumed 0 details in my block
+    //             smooth_start[ida] = this->start(ida);
+    //             // the number of my ngh details influencing my values
+    //             smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
+    //         } else {
+    //             // even in the directions orthogonal to ibidule, the details must be killed!
+    //             // as my neighbor, which might be fine will kill them as well
+    //             smooth_start[ida] = this->start(ida);
+    //             smooth_end[ida]   = this->end(ida);
+    //         }
+    //     }
+    //     // apply it
+    //     for_loop(&set_mask_to_one, smooth_start, smooth_end);
+    // };
 
-    // for each ghost block, set the mask to 1.0 if needed
-    iblock_t block_count = 0;
-    for (auto gblock : local_parent_) {
-        mask_smooth(gblock->ibidule());
-    }
-    m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %ld", block_count, local_parent_.size());
-    for (auto gblock : ghost_parent_) {
-        mask_smooth(gblock->ibidule());
-    }
+    // // for each ghost block, set the mask to 1.0 if needed
+    // iblock_t block_count = 0;
+    // for (auto gblock : local_parent_) {
+    //     mask_smooth(gblock->ibidule());
+    // }
+    // m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %ld", block_count, local_parent_.size());
+    // for (auto gblock : ghost_parent_) {
+    //     mask_smooth(gblock->ibidule());
+    // }
 
-    //................................................
-    // smooth depending on the mask
-    SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-    SubBlock block_det(this->gs(), this->stride(), 0, M_N);
+    // //................................................
+    // // smooth depending on the mask
+    // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+    // SubBlock block_det(this->gs(), this->stride(), 0, M_N);
 
-    // do it for every field
-    for (auto fid = field_start; fid != field_end; ++fid) {
-        auto current_field = fid->second;
-        for (lda_t ida = 0; ida < current_field->lda(); ida++) {
-            interp->ClearOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
-        }
-    }
+    // // do it for every field
+    // for (auto fid = field_start; fid != field_end; ++fid) {
+    //     auto current_field = fid->second;
+    //     for (lda_t ida = 0; ida < current_field->lda(); ida++) {
+    //         interp->ClearOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+    //     }
+    // }
 
-    // free the status array
-    m_free(status_ngh_);
-    //-------------------------------------------------------------------------
+    // // free the status array
+    // m_free(status_ngh_);
+    // //-------------------------------------------------------------------------
 }
 
 /**
@@ -1246,17 +1245,75 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             const data_ptr data_src = coarse_ptr_(0, &block_src);
             lid_t          shift[3] = {0, 0, 0};
 
-            SubBlock block_trg = SubBlock();
-            // m_log("we have %d local parents", local_parent_.size());
             for (const auto gblock : local_parent_) {
-                gblock->ExtendGhost(interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back(), &block_trg);
-                interp->Interpolate(-1, shift, &block_src, data_src, &block_trg, data(field, ida));
-                // interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
+                // extension from the ghost
+                // gblock->ExtendGhost(interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back(), &block_trg);
+                // interp->Interpolate(-1, shift, &block_src, data_src, &block_trg, data(field, ida));
+                // no extension
+                interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
             }
             for (const auto gblock : ghost_parent_) {
-                gblock->ExtendGhost(interp->ndetail_citerion_extend_front(), interp->ndetail_citerion_extend_back(), &block_trg);
-                interp->Interpolate(-1, shift, &block_src, data_src, &block_trg, data(field, ida));
-                // interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
+                interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
+            }
+
+            //................................................
+            // enforce the 0-detail policy in the needed region
+            {
+                // memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+                // data_ptr mask      = coarse_ptr_(0, this);
+                // real_t*  mask_data = mask.Write();
+
+                // lambda to obtain the detail checking pattern
+                auto overwrite = [=](const iface_t ibidule) -> void {
+                    // get the sign of the ibidule
+                    real_t sign[3];
+                    GhostGetSign(ibidule, sign);
+
+                    // create the start and end indexes
+                    bidx_t smooth_start[3], smooth_end[3];
+                    for (lda_t ida = 0; ida < 3; ++ida) {
+                        if (sign[ida] > 0.5) {
+                            // my ngh assumed 0 details in my block
+                            smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
+                            // the number of my ngh details influencing my values
+                            smooth_end[ida] = this->end(ida);
+                        } else if (sign[ida] < (-0.5)) {
+                            // my ngh assumed 0 details in my block
+                            smooth_start[ida] = this->start(ida);
+                            // the number of my ngh details influencing my values
+                            smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
+                        } else {
+                            // even in the directions orthogonal to ibidule, the details must be killed!
+                            // as my neighbor, which might be fine will kill them as well
+                            smooth_start[ida] = this->start(ida);
+                            smooth_end[ida]   = this->end(ida);
+                        }
+                    }
+                    // apply it
+                    // for_loop(&set_mask_to_one, smooth_start, smooth_end);
+                    // compute the detail, store them in the mask
+                    SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+                    SubBlock block_trg(this->gs(), this->stride(), smooth_start, smooth_end);
+                    interp->OverwriteDetails(&block_src, &block_trg, this->data(field, ida));
+                };
+                for (auto gblock : local_parent_) {
+                    overwrite(gblock->ibidule());
+                }
+                for (auto gblock : ghost_parent_) {
+                    overwrite(gblock->ibidule());
+                }
+
+                // // compute the detail, store them in the mask
+                // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+                // SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + interp->ndetail_smooth_extend_back());
+                // interp->SmoothOnMask(&block_src, this, this->data(field, ida), &block_det, mask);
+
+                // // check if we did a good job
+
+                // auto check_details = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+                //     real_t value = mask_data[m_idx(i0, i1, i2, 0, this->stride())];
+                //     m_assert(fabs(value) < 1e-15, "the detail in %d %d %d is too big: %d", i0, i1, i2, value);
+                // };
             }
         }
     }

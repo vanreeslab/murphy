@@ -116,7 +116,8 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
     real_t depsilon = 1e-10;
-    real_t epsilon  = 1e-1;  //epsilon_start_;
+    real_t epsilon  = eps_start_;
+    m_log("starting with epsilon = %e", epsilon);
     while (epsilon >= std::pow(2.0, -26)) {
         // create a grid, put a ring on it on the fixel level
         // bool period[3] = {false, false, false};

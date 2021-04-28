@@ -119,7 +119,7 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
         m_assert(dlvl >= 0, "the copy cannot be called with a negative dlvl argument, dlvl = %d, force copy = %d", dlvl, force_copy);
         Copy_(dlvl, &ctx);
     } else if (dlvl == -1) {
-        Refine_(&ctx);
+        RefineZeroDetails_(&ctx);
     } else if (dlvl > 0) {
         Coarsen_(&ctx);
     }
@@ -445,6 +445,18 @@ void Wavelet::Details(/* source */ const m_ptr<const MemLayout>& block_src, cons
 //     //-------------------------------------------------------------------------
 // }
 
+/**
+ * @brief Remove the details from the information if the mask is != 0.0
+ * 
+ * We use first compute the detail coefficients using the wavelet transform, then
+ * we compute the inverse wavelet transform on the details to remove and correct the field
+ * 
+ * @param block_src the region used a source term for the detail computation
+ * @param block_trg the region which need to be smoothed
+ * @param data the data on which we operate
+ * @param detail_block the region of details that need to be computed
+ * @param detail_mask the mask on the details to compute (1.0 means we remove the detail)
+ */
 void Wavelet::SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
                            /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
                            /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const {
@@ -477,35 +489,36 @@ void Wavelet::SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
     //-------------------------------------------------------------------------
 }
 
-void Wavelet::ClearOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
-                           /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
-                           /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const {
+/**
+ * @brief overwrites the data located at details coefficient's place to enforce a 0 detail computation
+ * 
+ * @warning this operation is quite brutal and should be use carefully as it doesn't conserve any moment property
+ * 
+ * @param block_src the region used as a source
+ * @param block_trg the region where the details must be overwritten
+ * @param data the modified data
+ */
+void Wavelet::OverwriteDetails(/* source */ const m_ptr<const MemLayout>& block_src,
+                               /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data) const {
     //-------------------------------------------------------------------------
     //.........................................................................
-    // get the details
-    real_t trash = 0.0;
-    Details(block_src, data, detail_block, detail_mask, -1.0, &trash);
-
-    //.........................................................................
-    // smooth them
-    // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        // detail block is too small as we need more points that are 0.0 so use the full block_src... bad, I knooow
         ctx.srcstart[id] = block_src->start(id);
         ctx.srcend[id]   = block_src->end(id);
 #endif
         ctx.trgstart[id] = block_trg->start(id);
         ctx.trgend[id]   = block_trg->end(id);
     }
-    ctx.srcstr = detail_block->stride();
-    ctx.sdata  = detail_mask;  // this are the details
+    // source and target data are the same!!
+    ctx.srcstr = block_trg->stride();
+    ctx.sdata  = data;
     ctx.trgstr = block_trg->stride();
-    ctx.tdata  = data;  // this is the block
+    ctx.tdata  = data;
 
-    // smooth them
-    Smooth_(&ctx);
+    // let's go
+    OverwriteDetailsDualLifting_(&ctx);
     //-------------------------------------------------------------------------
 }
 

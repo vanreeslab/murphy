@@ -60,8 +60,8 @@ void SubBlock::Reset(const lid_t gs, const lid_t stride, const lid_t start, cons
  * the extension is based on @ref sign: if <0 we extend the start index, if >0 we extend the end index
  * 
  * @param sign 
- * @param n_front number of point for the extension in front
- * @param n_back number of point for the extension at the back
+ * @param n_front number of point for the extension in front, used if sign < 0
+ * @param n_back number of point for the extension at the back, used if sign > 0
  * @param new_block 
  */
 void SubBlock::Extend(/* param */ const real_t sign[3], const bidx_t n_front, const bidx_t n_back,
@@ -75,8 +75,13 @@ void SubBlock::Extend(/* param */ const real_t sign[3], const bidx_t n_front, co
             end[ida] += n_back;  // extend outside the block
         } else if (sign[ida] < (-0.5)) {
             start[ida] -= n_front;  // extend outside the block
-        }
+        } 
+        // else {
+        //     start[ida] -= n_front;
+        //     end[ida] += n_back;
+        // }
     }
+    m_log("extension from %d %d %d -> %d %d %d to %d %d %d -> %d %d %d", this->start(0), this->start(1), this->start(2), this->end(0), this->end(1), this->end(2), start[0], start[1], start[2], end[0], end[1], end[2]);
     // set the new block to the computed start/end
     new_block->Reset(this->gs(), this->stride(), start, end);
     //-------------------------------------------------------------------------

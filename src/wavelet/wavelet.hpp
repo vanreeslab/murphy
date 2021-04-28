@@ -45,7 +45,7 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 2
+#define M_WAVELET_N 4
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
@@ -96,15 +96,10 @@ class Wavelet {
     void   SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
                       /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
                       /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const;
-    void   ClearOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
-                      /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
-                      /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const;
+    void   OverwriteDetails(/* source */ const m_ptr<const MemLayout>& block_src,
+                          /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data) const;
     void   WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const;
     /** @} */
-
-    // real_t CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const;
-    // void Scalings(const m_ptr<const MemLayout>& scaling_block, const const_data_ptr& data, const data_ptr& scaling) const;
-    // real_t FWT(const m_ptr<const MemLayout>& block_src, const m_ptr<const MemLayout>& block_trg, const data_ptr& data, const data_ptr& data_tmp) const;
 
     //................................................
    public:
@@ -132,9 +127,6 @@ class Wavelet {
     virtual const short_t len_js() const = 0;  //!< length of filter Js
     virtual const short_t len_ks() const = 0;  //!< length of filter Ks
 
-    // const bidx_t buffer_front() const{
-
-    // };
     /**
      * @brief returns the number of gp needed for the coarsening operation = get the scaling, in front
      */
@@ -349,7 +341,8 @@ class Wavelet {
     virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
     virtual void Coarsen_(const m_ptr<const interp_ctx_t>& ctx) const = 0;
-    virtual void Refine_(const m_ptr<const interp_ctx_t>& ctx) const  = 0;
+    virtual void RefineZeroDetails_(const m_ptr<const interp_ctx_t>& ctx) const  = 0;
+    virtual void OverwriteDetailsDualLifting_(const m_ptr<const interp_ctx_t>& ctx) const  = 0;
     // virtual void Scaling_(const m_ptr<const interp_ctx_t>& ctx) const                                                   = 0;
     virtual void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const                  = 0;
     virtual void ForwardWaveletTransform_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const = 0;
