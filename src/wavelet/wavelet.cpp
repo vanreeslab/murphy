@@ -59,7 +59,7 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const 
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const{
+void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
     //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
@@ -136,7 +136,7 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     //-------------------------------------------------------------------------
-    const lid_t  scaling = pow(2, dlvl);
+    const lid_t scaling = pow(2, dlvl);
     // const real_t alpha   = ctx->alpha;
 
     const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
@@ -163,14 +163,14 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
 
         // do the simple copy
         ltdata[0] = lsdata[0];
-        
+
         // non-nan checks
         m_assert(lsdata[0] == lsdata[0], "cannot be nan");
         // m_assert(lcdata[0] == lcdata[0], "cannot be nan");
         m_assert(ltdata[0] == ltdata[0], "cannot be nan");
     };
 
-    for_loop(&op,start,end);
+    for_loop(&op, start, end);
     //-------------------------------------------------------------------------
 }
 
@@ -296,7 +296,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
  * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
 real_t Wavelet::Criterion(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
-                      /* target */ const m_ptr<const MemLayout>& detail_block) const {
+                          /* target */ const m_ptr<const MemLayout>& detail_block) const {
     //-------------------------------------------------------------------------
     // get the detail coefficients
     real_t details_max = 0.0;
@@ -360,22 +360,22 @@ real_t Wavelet::Criterion(/* source */ const m_ptr<const MemLayout>& block_src, 
 
 // real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
 //     //-------------------------------------------------------------------------
-    // // get the extended memory layout
-    // lid_t start[3];
-    // lid_t end[3];
-    // for (lda_t id = 0; id < 3; id++) {
-    //     start[id] = block->start(id) - criterion_shift_front();
-    //     end[id]   = block->end(id) + criterion_shift_back();
-    // }
-    // const SubBlock detail_block(block->gs(), block->stride(), start, end);
+// // get the extended memory layout
+// lid_t start[3];
+// lid_t end[3];
+// for (lda_t id = 0; id < 3; id++) {
+//     start[id] = block->start(id) - criterion_shift_front();
+//     end[id]   = block->end(id) + criterion_shift_back();
+// }
+// const SubBlock detail_block(block->gs(), block->stride(), start, end);
 
-    // // reset the detail array
-    // // memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
-    // data_ptr detail_data = detail(0,block);
+// // reset the detail array
+// // memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
+// data_ptr detail_data = detail(0,block);
 
-    // // get the detail coefficients
-    // real_t details_max = 0.0;
-    // Details(&detail_block, data, detail_data, tol, &details_max);
+// // get the detail coefficients
+// real_t details_max = 0.0;
+// Details(&detail_block, data, detail_data, tol, &details_max);
 
 // // smooth them
 // // Smooth(&detail_block,detail_data,block,data);
@@ -524,33 +524,29 @@ void Wavelet::OverwriteDetails(/* source */ const m_ptr<const MemLayout>& block_
 
 /**
  * @brief Compute and store the details in the data_trg field
- * 
- * @param block 
- * @param data_trg 
- * @param data_src 
  */
-void Wavelet::WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const {
+void Wavelet::StoreDetails(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
+                           /* target */ const m_ptr<const MemLayout>& block_detail, const data_ptr& detail) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = block->start(id);
-        ctx.srcend[id]   = block->end(id);
+        ctx.srcstart[id] = block_src->start(id);
+        ctx.srcend[id]   = block_src->end(id);
 #endif
-        ctx.trgstart[id] = block->start(id);
-        ctx.trgend[id]   = block->end(id);
+        ctx.trgstart[id] = block_detail->start(id);
+        ctx.trgend[id]   = block_detail->end(id);
     }
-    ctx.srcstr = block->stride();
+    ctx.srcstr = block_src->stride();
+    ctx.trgstr = block_detail->stride();
+    ctx.sdata  = data;
+    ctx.tdata  = detail;
+    // set alpha to a huuge value, will store everything beneath it
+    ctx.alpha = std::numeric_limits<real_t>::max();
 
-    ctx.trgstr = block->stride();
-    ctx.sdata  = data_src;
-    ctx.tdata  = data_trg;
-    // set alpha to a huuge value
-    ctx.alpha  = std::numeric_limits<real_t>::max();
-    
     // compute
-    real_t detail_max; // -> will be discarded
-    Detail_(&ctx,&detail_max);
+    real_t detail_max = 0.0;  // -> will be discarded
+    Detail_(&ctx, &detail_max);
     //-------------------------------------------------------------------------
 }

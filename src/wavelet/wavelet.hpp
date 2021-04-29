@@ -98,7 +98,8 @@ class Wavelet {
                       /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const;
     void   OverwriteDetails(/* source */ const m_ptr<const MemLayout>& block_src,
                           /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data) const;
-    void   WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const;
+    void   StoreDetails(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
+                           /* target */ const m_ptr<const MemLayout>& block_detail, const data_ptr& detail) const;
     /** @} */
 
     //................................................

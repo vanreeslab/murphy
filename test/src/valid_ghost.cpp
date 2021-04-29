@@ -47,13 +47,13 @@ using std::list;
 using std::string;
 
 /**
- * @brief validate every possible intersection between blocks
+ * @brief validate every possible intersection between blocks: check the accuracy of ghosting for a linear function
  * 
  * for one intersection, there is max 8 blocks sharing the same corner.
  * Every block might be coarse or fine, so in total 2^8 possibilities
  * 
  */
-TEST_F(valid_Ghost, valid_ghost_extrap) {
+TEST_F(valid_Ghost, extrap) {
     m_assert(sizeof(int) >= 1, "the int must be of size > 8");
     for (int case_id = 0; case_id < 256; ++case_id) {
         m_log("case id: %d", case_id);
@@ -109,15 +109,5 @@ TEST_F(valid_Ghost, valid_ghost_extrap) {
         m_log("errors: err2 = %e erri = %e", err2, erri);
 
         ASSERT_DOUBLE_EQ(erri, 0.0);
-
-        // // print
-        // IOH5 dump("data");
-        // dump(&grid, &scal);
-        // dump.dump_ghost(true);
-        // dump(&grid, &scal);
-        // dump.dump_ghost(true);
-        // dump(&grid, &sol);
-        // dump.dump_ghost(true);
-        // dump(&grid, &err);
     }
 }

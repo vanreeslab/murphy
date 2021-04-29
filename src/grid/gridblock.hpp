@@ -68,7 +68,7 @@ class GridBlock : public CartBlock {
     void UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
                                  /* prof */ m_ptr<Prof> profiler);
 
-    void ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
+    void StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
     void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
 
     void FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);

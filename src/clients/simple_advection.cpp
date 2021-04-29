@@ -263,7 +263,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
             Field details("detail", scal_->lda());
             details.bctype(M_BC_EXTRAP);
             grid_->AddField(&details);
-            grid_->DumpDetails(scal_, &details);
+            grid_->StoreDetails(scal_, &details);
 
             grid_->GhostPull(&details);
             // IOH5 dump("data");

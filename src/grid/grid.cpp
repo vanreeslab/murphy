@@ -107,8 +107,8 @@ Grid::~Grid() {
  */
 void Grid::level_limit(const level_t min, const level_t max) {
     m_assert(min <= max, "the levels must be %d <= %d", min, max);
-    m_assert(this->MinLevel() >= min, "trying to impose a min level = %d while blocks exist on a lower one = %d",min,this->MinLevel());
-    m_assert(this->MaxLevel() <= max, "trying to impose a max level = %d while blocks exist on a higher one = %d",max,this->MaxLevel());
+    m_assert(this->MinLevel() >= min, "trying to impose a min level = %d while blocks exist on a lower one = %d", min, this->MinLevel());
+    m_assert(this->MaxLevel() <= max, "trying to impose a max level = %d while blocks exist on a higher one = %d", max, this->MaxLevel());
     //-------------------------------------------------------------------------
     level_limit_min_ = min;
     level_limit_max_ = max;
@@ -279,7 +279,7 @@ void Grid::DeleteField(m_ptr<const Field> field) {
  * 
  * @param fields 
  */
-void Grid::ResetFields(m_ptr<const std::map<string, m_ptr<Field> > > fields){
+void Grid::ResetFields(m_ptr<const std::map<string, m_ptr<Field> > > fields) {
     m_begin;
     //-------------------------------------------------------------------------
     // clear the current map
@@ -515,6 +515,7 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
  * @param coarseref_cback_ptr pointer to data used in these refine/coarsen p4est callback functions
  * @param interpolate_fct p4est callback function for interpolation: do the actual refinement/coarsening
  * @param interpolate_ptr pointer to data used in the interpolate callback function
+ * @param max_detail stores the value of the max_detail per dimension of the field, if not nullptr
  */
 void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patch> > patches,
                       /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
@@ -616,7 +617,6 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         partition.End(&fields_, M_FORWARD);
         m_profStop(prof_, "partition comm");
 
-        
         //................................................
         // create a new ghost and mesh as the partioning is done
         SetupMeshGhost();
@@ -646,7 +646,6 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     // // Solve the dependencies if some have been created -> no dep created if we are recursive
     // // this is check in the callback UpdateDependency function
     // if (!recursive_adapt()) {
-        
 
     //     // we need to process
     // } else {
@@ -662,8 +661,6 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     // partition.Start(&fields_, M_FORWARD);
     // partition.End(&fields_, M_FORWARD);
     // m_profStop(prof_, "partition comm");
-
-    
 
     //................................................
     // set the ghosting fields as non-valid
@@ -692,54 +689,56 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     m_end;
 }
 
-void Grid::DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details) {
+/**
+ * @brief Compute and store the details from the criterion field
+ * 
+ * @param criterion the field on which we compute details
+ * @param details the field containing the details
+ */
+void Grid::StoreDetails(m_ptr<Field> criterion, m_ptr<Field> details) {
     m_begin;
     m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
     //-------------------------------------------------------------------------
     this->GhostPull(criterion);
 
-    // const Wavelet* const_interp    = interp_;
-    // const Field*   const_criterion = criterion;
-    // const Field*   const_details   = details;
-    DoOpMesh(nullptr, &GridBlock::ComputeDetails, this, interp(), criterion, details);
+    DoOpMesh(nullptr, &GridBlock::StoreDetails, this, interp(), criterion, details);
     details->ghost_status(false);
     //-------------------------------------------------------------------------
     m_end;
 }
 
-/**
- * @brief Compute the wavelet transform of a current block and it's refinement/coarsening status
- * 
- * a block is refined if needed
- * a block is coarsened if possible and if none of its finer neighbors are coarsened
- * 
- * @param field 
- */
-void Grid::ExchangeStatus_PostStart_() const {
-    // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
-    // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
-    // m_assert(ghost_ != nullptr, "the ghost must exist");
-    // m_assert(ghost_->mirror_origin_group() != MPI_GROUP_NULL, "call the InitComm function first!");
-    // m_assert(ghost_->mirror_target_group() != MPI_GROUP_NULL, "call the InitComm function first!");
-    // // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
-    // //-------------------------------------------------------------------------
+// /**
+//  * @brief Compute the wavelet transform of a current block and it's refinement/coarsening status
+//  *
+//  * a block is refined if needed
+//  * a block is coarsened if possible and if none of its finer neighbors are coarsened
+//  *
+//  * @param field
+//  */
+// void Grid::ExchangeStatus_PostStart_() const {
+//     // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
+//     // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
+//     // m_assert(ghost_ != nullptr, "the ghost must exist");
+//     // m_assert(ghost_->mirror_origin_group() != MPI_GROUP_NULL, "call the InitComm function first!");
+//     // m_assert(ghost_->mirror_target_group() != MPI_GROUP_NULL, "call the InitComm function first!");
+//     // // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
+//     // //-------------------------------------------------------------------------
 
-   
-    //-------------------------------------------------------------------------
-}
-void Grid::ExchangeStatus_CompleteWait_() const {
-    // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
-    // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
-    // m_assert(ghost_ != nullptr, "the ghost must exist");
-    // m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
-    // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
-    //-------------------------------------------------------------------------
-    // // close the access epochs
-    // if (ghost_->mirror_target_group() != MPI_GROUP_EMPTY) {
-    //     MPI_Win_complete(coarsen_status_window_);
-    // }
-    // // close the exposure epochs
-    // MPI_Win_wait(coarsen_status_window_);
+//     //-------------------------------------------------------------------------
+// }
+// void Grid::ExchangeStatus_CompleteWait_() const {
+//     // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
+//     // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
+//     // m_assert(ghost_ != nullptr, "the ghost must exist");
+//     // m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
+//     // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
+//     //-------------------------------------------------------------------------
+//     // // close the access epochs
+//     // if (ghost_->mirror_target_group() != MPI_GROUP_EMPTY) {
+//     //     MPI_Win_complete(coarsen_status_window_);
+//     // }
+//     // // close the exposure epochs
+//     // MPI_Win_wait(coarsen_status_window_);
 
-    //-------------------------------------------------------------------------
-}
+//     //-------------------------------------------------------------------------
+// }

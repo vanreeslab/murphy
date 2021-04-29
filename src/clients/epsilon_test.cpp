@@ -47,7 +47,7 @@ class InitialCondition : public SetValue {
     };
 
    public:
-    InitialCondition() : SetValue(nullptr){};
+    explicit InitialCondition() : SetValue(nullptr){};
 };
 
 // class CompactInitialCondition : public SetValue {

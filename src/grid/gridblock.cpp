@@ -628,11 +628,13 @@ void GridBlock::ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
  * @param criterion the criterion field
  * @param details the detail field with the compute detail values
  */
-void GridBlock::ComputeDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details) {
+void GridBlock::StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details) {
+    m_assert(criterion->ghost_status(), "the field <%s> must have up-to-date ghosts", criterion->name().c_str());
     m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
     //-------------------------------------------------------------------------
     for (lda_t ida = 0; ida < criterion->lda(); ida++) {
-        interp->WriteDetails(this, this->data(criterion, ida), this->data(details, ida));
+        SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+        interp->StoreDetails(&block_src, this->data(criterion, ida), this, this->data(details, ida));
     }
     //-------------------------------------------------------------------------
 }

@@ -130,7 +130,7 @@ class Grid : public ForestGrid {
 
     void Refine(m_ptr<Field> field);
     void Coarsen(m_ptr<Field> field);
-    void DumpDetails(m_ptr<Field> criterion, m_ptr<Field> details);
+    void StoreDetails(m_ptr<Field> criterion, m_ptr<Field> details);
 
     void Adapt(m_ptr<Field> field);
     void Adapt(m_ptr<Field> field, m_ptr<SetValue> expression);
@@ -141,9 +141,9 @@ class Grid : public ForestGrid {
                     /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
                     /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr);
 
-   private:
-    void ExchangeStatus_PostStart_() const;
-    void ExchangeStatus_CompleteWait_() const;
+//    private:
+    // void ExchangeStatus_PostStart_() const;
+    // void ExchangeStatus_CompleteWait_() const;
     /**@}*/
 };
 

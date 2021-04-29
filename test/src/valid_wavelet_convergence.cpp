@@ -20,14 +20,14 @@
 using std::list;
 using std::string;
 
-class valid_Wavelet_Convergence : public ::testing::Test {
+class ValidWaveletInterpolation : public ::testing::Test {
    protected:
     void SetUp() override{};
     void TearDown() override{};
 };
 
 //==============================================================================================================================
-TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
+TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
     // init the errors
     real_t erri[2];
     real_t err2[2];
@@ -74,10 +74,10 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
             // pull the ghosts
             grid.GhostPull(&test);
 
-            IOH5 io("data_test");
-            io(&grid, &test);
-            io.dump_ghost(true);
-            io(&grid, &test);
+            // IOH5 io("data_test");
+            // io(&grid, &test);
+            // io.dump_ghost(true);
+            // io(&grid, &test);
 
             // create the solution field
             Field sol("sol", 1);
@@ -115,7 +115,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_sin) {
     }
 }
 //==============================================================================================================================
-TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_cos) {
+TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
     // init the errors
     real_t erri[2];
     real_t err2[2];
@@ -191,7 +191,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_periodic_cos) {
 }
 
 //==============================================================================================================================
-TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_extrap_cos) {
+TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
     // init the errors
     real_t erri[2];
     real_t err2[2];
@@ -258,7 +258,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_extrap_cos) {
 }
 
 //==============================================================================================================================
-TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_dirichlet0_polynom) {
+TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom) {
     real_t erri[2];
     real_t err2[2];
     for (lda_t id = 0; id < 3; id++) {
@@ -334,7 +334,7 @@ TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_dirichlet0_polynom
 }
 
 //==============================================================================================================================
-TEST_F(valid_Wavelet_Convergence, ghost_reconstruction_perper_neuman0_cos) {
+TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
     real_t erri[2];
     real_t err2[2];
     for (lda_t id = 0; id < 3; id++) {
