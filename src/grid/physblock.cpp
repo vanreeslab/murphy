@@ -29,6 +29,6 @@ PhysBlock::PhysBlock(const iface_t iface, const MemLayout* block, const lid_t ng
 
     // update the needed coordinates in the dir direction (we overwrite the first info if we go minus)
     start_[dir] = (sign == 0) ? start_[dir] : (M_N);
-    end_[dir]   = (sign == 0) ? 1 : end_[dir];
+    end_[dir]   = (sign == 0) ? 1 : end_[dir];  // 1 to ensure that we visit the 0th point
     //-------------------------------------------------------------------------
 }
