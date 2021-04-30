@@ -150,7 +150,7 @@ class Wavelet {
         const bidx_t last_pt = m_max(n_scal, n_det);
         // const bidx_t last_scal = last_pt - (last_pt % 2);  // remove the last point if it's a detail
         // this is how the access is actually made as we skip every detail point
-        return m_max((last_pt + 1) / 2, 0);
+        return m_max((last_pt) / 2, 0);
     };
     /**
      * @brief returns the number of gp needed for the refinement operation assuming detail = 0, in the back
