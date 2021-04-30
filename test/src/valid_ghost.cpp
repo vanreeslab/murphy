@@ -12,7 +12,7 @@
 
 #define DOUBLE_TOL 1e-13
 
-class InitialCondition : public SetValue {
+class InitCond_Ghost : public SetValue {
    protected:
     void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
         //-------------------------------------------------------------------------
@@ -34,8 +34,8 @@ class InitialCondition : public SetValue {
     };
 
    public:
-    explicit InitialCondition() : SetValue(nullptr){};
-    explicit InitialCondition(m_ptr<const Wavelet> interp) : SetValue(interp){};
+    explicit InitCond_Ghost() : SetValue(nullptr){};
+    explicit InitCond_Ghost(m_ptr<const Wavelet> interp) : SetValue(interp){};
 };
 
 class valid_Ghost : public ::testing::Test {
@@ -85,7 +85,7 @@ TEST_F(valid_Ghost, extrap) {
         // create a field an put it on it
         Field scal("scal", 1);
         grid.AddField(&scal);
-        InitialCondition init;
+        InitCond_Ghost init;
         init(&grid, &scal);
 
         // get the Ghosts:
@@ -95,7 +95,7 @@ TEST_F(valid_Ghost, extrap) {
         // analytical solution
         Field sol("sol", 1);
         grid.AddField(&sol);
-        InitialCondition initsol(grid.interp());
+        InitCond_Ghost initsol(grid.interp());
         initsol(&grid, &sol);
 
         Field err("error", 1);

@@ -12,7 +12,7 @@
 #include "tools/ioh5.hpp"
 #include "valid_toolbox.hpp"
 
-class InitConditionExponential : public SetValue {
+class InitCond_Epsilon : public SetValue {
    protected:
     void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
         //-------------------------------------------------------------------------
@@ -20,8 +20,8 @@ class InitConditionExponential : public SetValue {
         const real_t* xyz   = block->xyz();
         const real_t* hgrid = block->hgrid();
 
-        real_t sigma     = 0.1;
-        real_t center[3] = {1.0, 1.0, 1.0};
+        real_t sigma     = 0.05;
+        real_t center[3] = {0.5, 0.5, 0.5};
 
         // const real_t oo_sigma2 = 1.0 / (sigma * sigma);
         const real_t fact = 1.0;
@@ -48,7 +48,7 @@ class InitConditionExponential : public SetValue {
     };
 
    public:
-    explicit InitConditionExponential() : SetValue(nullptr){};
+    explicit InitCond_Epsilon() : SetValue(nullptr){};
 };
 
 class Epsilon : public ::testing::TestWithParam<double> {
@@ -65,7 +65,7 @@ static const real_t zero_tol = 100.0 * std::numeric_limits<real_t>::epsilon();
 TEST_P(Epsilon, periodic) {
     //-------------------------------------------------------------------------
     // get the parameters
-    real_t epsilon = GetParam();
+    real_t  epsilon     = GetParam();
     level_t level_start = 4;
 
     // let's go
@@ -74,12 +74,11 @@ TEST_P(Epsilon, periodic) {
     Grid  grid(level_start, period, grid_len, MPI_COMM_WORLD, nullptr);
     grid.level_limit(0, level_start);
 
-
     Field scal("scalar", 1);
     grid.AddField(&scal);
     scal.bctype(M_BC_EXTRAP);
 
-    InitConditionExponential init;
+    InitCond_Epsilon init;
     init(&grid, &scal);
     grid.SetTol(epsilon * 1e+20, epsilon);
 
@@ -157,11 +156,15 @@ TEST_P(Epsilon, periodic) {
         mom_smooth_error[ida + 1] = fabs(fine_moment1[ida] - moment1[ida]);
     }
 
-    ASSERT_LT(normi, 3.0*epsilon);
+    ASSERT_LT(normi, 3.0 * epsilon);
     if (grid.interp()->Nt() > 0) {
-        for (lda_t ida = 0; ida < 4; ++ida) {
-            ASSERT_LT(mom_smooth_error[ida], zero_tol);
-        }
+        // for (lda_t ida = 0; ida < 4; ++ida) {
+        //     ASSERT_LT(mom_smooth_error[ida], zero_tol);
+        // }
+        ASSERT_LT(mom_smooth_error[0], zero_tol);
+        ASSERT_LT(mom_smooth_error[1], zero_tol);
+        ASSERT_LT(mom_smooth_error[2], zero_tol);
+        ASSERT_LT(mom_smooth_error[3], zero_tol);
     }
 
     // cleanup the fields
@@ -192,7 +195,7 @@ TEST_P(Epsilon, extrap) {
     grid.AddField(&scal);
     scal.bctype(M_BC_EXTRAP);
 
-    InitConditionExponential init;
+    InitCond_Epsilon init;
     init(&grid, &scal);
     grid.SetTol(epsilon * 1e+20, epsilon);
 
