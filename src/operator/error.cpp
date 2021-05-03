@@ -170,7 +170,7 @@ void ErrorCalculator::ErrorOnGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> 
                     e2 += error * error;
                     ei = m_max(std::fabs(error), ei);
 
-                    // if (fabs(error) > 1.961654e-02) {
+                    // if (fabs(error) > 7.8) {
                     //     m_log("block %d @ %f %f %f (ida=%d) , @ %d %d %d field = %e, sol = %e, error = %e", qid->cid, block->xyz(0), block->xyz(1), block->xyz(2), ida, i0, i1, i2, data_field[m_idx(i0, i1, i2)], data_sol[m_idx(i0, i1, i2)], error);
                     // }
                 }

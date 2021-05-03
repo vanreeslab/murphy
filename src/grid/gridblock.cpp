@@ -1257,66 +1257,6 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
             for (const auto gblock : ghost_parent_) {
                 interp->Interpolate(-1, shift, &block_src, data_src, gblock, data(field, ida));
             }
-
-            //................................................
-            // enforce the 0-detail policy in the needed region
-            {
-                // memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
-                // data_ptr mask      = coarse_ptr_(0, this);
-                // real_t*  mask_data = mask.Write();
-
-                // lambda to obtain the detail checking pattern
-                auto overwrite = [=](const iface_t ibidule) -> void {
-                    // get the sign of the ibidule
-                    real_t sign[3];
-                    GhostGetSign(ibidule, sign);
-
-                    // create the start and end indexes
-                    bidx_t smooth_start[3], smooth_end[3];
-                    for (lda_t ida = 0; ida < 3; ++ida) {
-                        if (sign[ida] > 0.5) {
-                            // my ngh assumed 0 details in my block
-                            smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
-                            // the number of my ngh details influencing my values
-                            smooth_end[ida] = this->end(ida);
-                        } else if (sign[ida] < (-0.5)) {
-                            // my ngh assumed 0 details in my block
-                            smooth_start[ida] = this->start(ida);
-                            // the number of my ngh details influencing my values
-                            smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
-                        } else {
-                            // even in the directions orthogonal to ibidule, the details must be killed!
-                            // as my neighbor, which might be fine will kill them as well
-                            smooth_start[ida] = this->start(ida);
-                            smooth_end[ida]   = this->end(ida);
-                        }
-                    }
-                    // apply it
-                    // for_loop(&set_mask_to_one, smooth_start, smooth_end);
-                    // compute the detail, store them in the mask
-                    SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-                    SubBlock block_trg(this->gs(), this->stride(), smooth_start, smooth_end);
-                    interp->OverwriteDetails(&block_src, &block_trg, this->data(field, ida));
-                };
-                for (auto gblock : local_parent_) {
-                    overwrite(gblock->ibidule());
-                }
-                for (auto gblock : ghost_parent_) {
-                    overwrite(gblock->ibidule());
-                }
-
-                // // compute the detail, store them in the mask
-                // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-                // SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + interp->ndetail_smooth_extend_back());
-                // interp->SmoothOnMask(&block_src, this, this->data(field, ida), &block_det, mask);
-
-                // // check if we did a good job
-
-                // auto check_details = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-                //     real_t value = mask_data[m_idx(i0, i1, i2, 0, this->stride())];
-                //     m_assert(fabs(value) < 1e-15, "the detail in %d %d %d is too big: %d", i0, i1, i2, value);
-                // };
-            }
         }
     }
     //-------------------------------------------------------------------------
@@ -1366,8 +1306,58 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
                 m_assert(false, "this type of BC is not implemented yet or not valid %d", bctype);
             }
         }
+
+        //................................................
+        // enforce the 0-detail policy in the needed region
         {
-            // //................................................
+            // memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+            // data_ptr mask      = coarse_ptr_(0, this);
+            // real_t*  mask_data = mask.Write();
+
+            // lambda to obtain the detail checking pattern
+            auto overwrite = [=](const iface_t ibidule) -> void {
+                // get the sign of the ibidule
+                real_t sign[3];
+                GhostGetSign(ibidule, sign);
+
+                // create the start and end indexes
+                bidx_t smooth_start[3], smooth_end[3];
+                for (lda_t ida = 0; ida < 3; ++ida) {
+                    if (sign[ida] > 0.5) {
+                        // my ngh assumed 0 details in my block
+                        smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
+                        // the number of my ngh details influencing my values
+                        smooth_end[ida] = this->end(ida);
+                    } else if (sign[ida] < (-0.5)) {
+                        // my ngh assumed 0 details in my block
+                        smooth_start[ida] = this->start(ida);
+                        // the number of my ngh details influencing my values
+                        smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
+                    } else {
+                        // even in the directions orthogonal to ibidule, the details must be killed!
+                        // as my neighbor, which might be fine will kill them as well
+                        smooth_start[ida] = this->start(ida);
+                        smooth_end[ida]   = this->end(ida);
+                    }
+                }
+                // apply it
+                // for_loop(&set_mask_to_one, smooth_start, smooth_end);
+                // compute the detail, store them in the mask
+                SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+                SubBlock block_trg(this->gs(), this->stride(), smooth_start, smooth_end);
+                interp->OverwriteDetails(&block_src, &block_trg, this->data(field, ida));
+            };
+            for (auto gblock : local_parent_) {
+                overwrite(gblock->ibidule());
+            }
+            for (auto gblock : ghost_parent_) {
+                overwrite(gblock->ibidule());
+            }
+        }
+        //................................................
+        // coarsen to my finer neighbors
+        {
+            //
             // // I am now complete (except children GP), get my coarse representation
             const SubBlock coarse_block(interp->CoarseNGhostFront(), interp->CoarseStride(), 0, M_NHALF);
             data_ptr       data_coarse = coarse_ptr_(0, &coarse_block);

@@ -21,8 +21,8 @@ class InitialCondition : public SetValue {
         real_t sigma     = 0.05;
         real_t center[3] = {0.5, 0.5, 0.5};
 
-        const real_t oo_sigma2 = 1.0 / (sigma * sigma);
-        const real_t fact      = 1.0/ sqrt(M_PI * sigma * sigma); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
+        // const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+        const real_t fact      = 1.0 ; /// sqrt(M_PI * sigma * sigma); //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
 
         // get the pointers correct
         real_t* data = block->data(fid, 0).Write();
@@ -134,11 +134,11 @@ void EpsilonTest::Run() {
         real_t center[3] = {0.5 + offset, 0.5 + offset, 0.5 + offset};
 
         // ring
-        lda_t         normal      = 2;
-        real_t        sigma       = 0.05;
-        real_t        radius      = 0.25;
-        real_t        velocity[3] = {0.0, 0.0, 0.0};
-        SetScalarRing ring(normal, center, sigma, radius, velocity);
+        // lda_t         normal      = 2;
+        // real_t        sigma       = 0.05;
+        // real_t        radius      = 0.25;
+        // real_t        velocity[3] = {0.0, 0.0, 0.0};
+        // SetScalarRing ring(normal, center, sigma, radius, velocity);
 
         // exponential
         // real_t sigma     = 0.05;
@@ -153,7 +153,7 @@ void EpsilonTest::Run() {
         // SetPolynom   ring(deg, dir, shift);
 
         // custon stuffs
-        // InitialCondition ring;
+        InitialCondition ring;
         // CompactInitialCondition ring;
 
         // apply it
@@ -318,6 +318,9 @@ void EpsilonTest::Run() {
         real_t dmoment0, dmoment1[3];
         // dmoment(&grid, &scal, &dmoment0, dmoment1);
         m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment0, moment0, abs(sol_moment0 - moment0));
+        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[0], moment1[0], abs(sol_moment1[0] - moment1[0]));
+        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[1], moment1[1], abs(sol_moment1[1] - moment1[1]));
+        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[2], moment1[2], abs(sol_moment1[2] - moment1[2]));
         // m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_dmoment0, dmoment0, abs(sol_dmoment0 - dmoment0));
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));

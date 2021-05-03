@@ -287,7 +287,10 @@ TEST_P(Epsilon, extrap) {
     grid.DeleteField(&scal);
 }
 
-
 INSTANTIATE_TEST_SUITE_P(ValidWavelet,
                          Epsilon,
                          testing::Values(1e-2, 1e-4, 1e-6));
+
+// INSTANTIATE_TEST_SUITE_P(ValidWaveletExtrap,
+//                          EpsilonExtrap,
+//                          testing::Values(1e-2, 1e-4, 1e-6));

@@ -133,19 +133,15 @@ class Boundary {
                                             (idx2)*hgrid[2]};
 
                 xf[ip] = data_pos[dir];
-            }
-            // get the position of the ghost
-            // real_t pos[3] = {0.0, 0.0, 0.0};
-            // m_pos_relative(pos, i0, i1, i2, hgrid);
 
+                // if (i0 == 18 && i1 == 0 && i2 == 14) {
+                //     m_log("storing: %f at %d from %d %d %d", f[ip], ip, i0 + idx0, i1 + idx1, i2 + idx2);
+                // }
+            }
             // get the ghost value
             // ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
             real_t xb = -dis0 * (dir == 0) - dis1 * (dir == 1) - dis2 * (dir == 2);
-            ldata[0] = Stencil_(xf, f, xb, boundary_condition, 0.0);
-            // m_assert(-1.0 <= ldata[0] && ldata[0] <= 3.0, "the value we put = %f must be 0 <= data <= 2.5", ldata[0]);
-            // if(!(-1.0 <= ldata[0] && ldata[0] <= 3.0)){
-            //     m_log("FAILURE : the value we put = %f must be 0 <= data <= 2.5", ldata[0]);
-            // }
+            ldata[0]  = Stencil_(xf, f, xb, boundary_condition, 0.0);
         };
 
         // m_log("doing boundary from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
