@@ -253,7 +253,7 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
                     block->level() <= grid->level_limit_min());
     }
     // if I can coarsen the whole group, register them
-    if(coarsen){
+    if (coarsen) {
         grid->AddQuadToAdapt(P8EST_CHILDREN);
     } else {
         // if not, make sure that the block that wanted to get coarsened have their tag changed

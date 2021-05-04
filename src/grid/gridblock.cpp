@@ -1279,9 +1279,6 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
         //................................................
-        // reset the tmp to use for the put operations
-        memset(coarse_ptr_(), 0, interp->CoarseSize() * sizeof(real_t));
-        //................................................
         // apply the physics to the best of my knowledge
         // some ghosts are missing but this is okay
         data_ptr data_trg = data(field, ida);
@@ -1310,9 +1307,9 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
         //................................................
         // enforce the 0-detail policy in the needed region
         {
-            // memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
-            // data_ptr mask      = coarse_ptr_(0, this);
-            // real_t*  mask_data = mask.Write();
+            memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+            data_ptr mask      = coarse_ptr_(0, this);
+            real_t*  mask_data = mask.Write();
 
             // lambda to obtain the detail checking pattern
             auto overwrite = [=](const iface_t ibidule) -> void {
@@ -1357,7 +1354,10 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
         //................................................
         // coarsen to my finer neighbors
         {
-            //
+            //................................................
+            // reset the tmp to use for the put operations
+            memset(coarse_ptr_(), 0, interp->CoarseSize() * sizeof(real_t));
+            
             // // I am now complete (except children GP), get my coarse representation
             const SubBlock coarse_block(interp->CoarseNGhostFront(), interp->CoarseStride(), 0, M_NHALF);
             data_ptr       data_coarse = coarse_ptr_(0, &coarse_block);

@@ -44,10 +44,10 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
         ASSERT_EQ(interp.nghost_back_criterion_smooth(), 1);
         // details
         ASSERT_EQ(interp.ndetail_citerion_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 1);
         // details
         ASSERT_EQ(interp.ndetail_smooth_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 1);
     } else if (interp.N() == 2 && interp.Nt() == 2) {
         // refine
         ASSERT_EQ(interp.nghost_front_refine(), 0);
@@ -72,14 +72,14 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
         ASSERT_EQ(interp.nghost_front_coarsen(), 0);
         ASSERT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 2);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 3);
+        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 4);
+        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 5);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 2);
+        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 3);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 2);
+        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 3);
     } else if (interp.N() == 4 && interp.Nt() == 2) {
         // refine
         ASSERT_EQ(interp.nghost_front_refine(), 1);
@@ -104,14 +104,14 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
         ASSERT_EQ(interp.nghost_front_coarsen(), 0);
         ASSERT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 4);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 5);
+        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 8);
+        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 9);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 3);
+        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 4);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 3);
+        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 4);
     } else if (interp.N() == 6 && interp.Nt() == 2) {
         // refine
         ASSERT_EQ(interp.nghost_front_refine(), 2);

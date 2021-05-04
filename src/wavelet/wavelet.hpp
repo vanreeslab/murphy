@@ -45,13 +45,13 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 2
+#define M_WAVELET_N 4
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 2
+#define M_WAVELET_NT 0
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -181,7 +181,8 @@ class Wavelet {
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
-        return m_sign(Nt()) * m_max(n_scal, n_det - 1);
+        // return m_sign(Nt()) * m_max(n_scal, n_det - 1);
+        return m_max(n_scal, n_det - 1);
     };
 
     /**
@@ -196,7 +197,8 @@ class Wavelet {
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
-        return m_sign(Nt()) * m_max(n_scal-1, n_det);
+        // return m_sign(Nt()) * m_max(n_scal-1, n_det);
+        return m_max(n_scal - 1, n_det);
     };
 
     /**
@@ -207,7 +209,8 @@ class Wavelet {
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
-        return m_sign(Nt()) * m_max(n_scal, n_det - 1);
+        // return m_sign(Nt()) * m_max(n_scal, n_det - 1);
+        return m_max(n_scal, n_det - 1);
     };
 
     /**
@@ -218,7 +221,8 @@ class Wavelet {
         const bidx_t n_ks   = len_ks() / 2;
         const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
         const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
-        return m_sign(Nt()) * m_max(n_scal - 1, n_det);
+        // return m_sign(Nt()) * m_max(n_scal - 1, n_det);
+        return m_max(n_scal - 1, n_det);
     };
 
     /**
