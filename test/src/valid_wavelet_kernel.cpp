@@ -31,7 +31,7 @@ class valid_Wavelet_Kernel : public ::testing::Test {
 TEST_F(valid_Wavelet_Kernel, filter_length) {
     InterpolatingWavelet interp;
     m_log("testing wavelet %d.%d",interp.N(),interp.Nt());
-    
+
     if (interp.N() == 2 && interp.Nt() == 0) {
         // refine
         ASSERT_EQ(interp.nghost_front_refine(), 0);
@@ -41,10 +41,10 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
         ASSERT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
         ASSERT_EQ(interp.nghost_front_criterion_smooth(), 0);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 0);
+        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 1);
         // details
         ASSERT_EQ(interp.ndetail_citerion_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 0);
+        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 1);
         // details
         ASSERT_EQ(interp.ndetail_smooth_extend_front(), 0);
         ASSERT_EQ(interp.ndetail_smooth_extend_back(), 1);
