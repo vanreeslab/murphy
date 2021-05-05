@@ -41,10 +41,10 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
         ASSERT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
         ASSERT_EQ(interp.nghost_front_criterion_smooth(), 0);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 1);
+        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 0);
         // details
         ASSERT_EQ(interp.ndetail_citerion_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 1);
+        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 0);
         // details
         ASSERT_EQ(interp.ndetail_smooth_extend_front(), 0);
         ASSERT_EQ(interp.ndetail_smooth_extend_back(), 1);

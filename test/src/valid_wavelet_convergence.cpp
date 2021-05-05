@@ -15,7 +15,7 @@
 #define DOUBLE_TOL 1e-14
 #define ORDER2_TOL 1.0
 #define ORDERI_TOL 1.2
-#define BLVL 0
+#define BLVL 1
 
 using std::list;
 using std::string;
@@ -367,7 +367,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
             real_t freq[3]   = {0.0, 0.0, 0.0};
             real_t coslen[3] = {L[0], L[1], L[2]};
             real_t alpha[3]  = {0.0, 0.0, 0.0};
-            freq[id]         = 2.0;
+            freq[id]         = 1.0;
             alpha[id]        = 1.0;
 
             SetCosinus field_init(coslen, freq, alpha);
