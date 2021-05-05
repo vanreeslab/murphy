@@ -175,14 +175,16 @@ class Wavelet {
      * To guarantee the consitency in the ghosting and refinement in case of jump in resolution
      * we need no influence of any detail on the current block
      * 
+     * This is the number of detail OUTSIDE the block that will influence my last point!
+     * 
      */
     const bidx_t ndetail_citerion_extend_front() const {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
-        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
+        const bidx_t n_scal = m_max(n_js, 0);      //- (1 - (n_js % 2));  // remove the last point if it's a scaling
+        const bidx_t n_det  = m_max(n_ks - 1, 0);  //- (n_ks % 2);        // remove the last point if it's a scaling
         // return m_sign(Nt()) * m_max(n_scal, n_det - 1);
-        return m_max(0, m_max(n_scal, n_det - 1));
+        return m_max(n_scal, n_det);
     };
 
     /**
@@ -191,56 +193,72 @@ class Wavelet {
      * To guarantee the consitency in the ghosting and refinement in case of jump in resolution
      * we need no influence of any detail on the current block
      * 
+     * This is the number of detail OUTSIDE the block that will influence my last point!
+     * 
      */
     const bidx_t ndetail_citerion_extend_back() const {
         const bidx_t n_js   = len_js() / 2;
         const bidx_t n_ks   = len_ks() / 2;
-        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
+        const bidx_t n_scal = m_max(n_js - 1, 0);  //- (1 - (n_js % 2));  // remove the last point if it's a scaling
+        const bidx_t n_det  = m_max(n_ks, 0);      //- (n_ks % 2);        // remove the last point if it's a scaling
         // return m_sign(Nt()) * m_max(n_scal-1, n_det);
-        return m_max(0, m_max(n_scal - 1, n_det));
+        // return m_max(0, m_max(n_scal - 1, n_det));
+        return m_max(n_scal, n_det);
     };
 
     /**
      * @brief number of details to take into account in front of the block while smoothing over a jump of resolution
      */
     const bidx_t ndetail_smooth_extend_front() const {
-        const bidx_t n_js   = len_js() / 2;
-        const bidx_t n_ks   = len_ks() / 2;
-        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
-        // return m_sign(Nt()) * m_max(n_scal, n_det - 1);
-        return m_max(0, m_max(n_scal, n_det - 1));
+        // const bidx_t n_js   = len_js() / 2;
+        // const bidx_t n_ks   = len_ks() / 2;
+        // const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
+        // const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
+        // // return m_sign(Nt()) * m_max(n_scal, n_det - 1);
+        // return m_max(0, m_max(n_scal, n_det - 1));
+        // this is the same number as for the criterion!
+        return ndetail_citerion_extend_front();
     };
 
     /**
      * @brief number of details to take into account at the back of the block while smoothing over a jump of resolution
      */
     const bidx_t ndetail_smooth_extend_back() const {
-        const bidx_t n_js   = len_js() / 2;
-        const bidx_t n_ks   = len_ks() / 2;
-        const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
-        const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
-        // return m_sign(Nt()) * m_max(n_scal - 1, n_det);
-        return m_max(0, m_max(n_scal - 1, n_det));
+        // const bidx_t n_js   = len_js() / 2;
+        // const bidx_t n_ks   = len_ks() / 2;
+        // const bidx_t n_scal = n_js - (1 - (n_js % 2));  // remove the last point if it's a scaling
+        // const bidx_t n_det  = n_ks - (n_ks % 2);        // remove the last point if it's a scaling
+        // // return m_sign(Nt()) * m_max(n_scal - 1, n_det);
+        // return m_max(0, m_max(n_scal - 1, n_det));
+        // this is the same number as for the criterion!
+        return ndetail_citerion_extend_back();
     };
 
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
      */
     const lid_t nghost_front_criterion_smooth() const {
-        // this is the last detail I will ever need, already takes into account that we are in the front
-        const bidx_t max_detail = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
-        const bidx_t offset     = 1 * (max_detail == 0);  // we must remove 1 if max_detail ==0
-        return m_max(max_detail + (len_ga() / 2) - offset, 0);
+        // // this is the last detail I will ever need, already takes into account that we are in the front
+        // const bidx_t max_detail = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
+        // const bidx_t offset     = 1 * (max_detail == 0);  // we must remove 1 if max_detail ==0
+        // return m_max(max_detail + (len_ga() / 2) - offset, 0);
+        // get the last point, might be a detail or a scaling
+        const bidx_t last_pt     = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
+        const bidx_t lim_scaling = m_max(last_pt + (len_ha() / 2), last_pt - 1 + (len_ga() / 2));
+        const bidx_t lim_detail  = m_max(last_pt + (len_ga() / 2), last_pt - 1 + (len_ha() / 2));
+        const bool   is_detail   = (last_pt % 2) == 1;
+        return (is_detail)*lim_detail + (!is_detail) * lim_scaling;
     };
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
      */
     const lid_t nghost_back_criterion_smooth() const {
-        // this is the last detail I will ever need, already takes into account that we are at the back
-        const bidx_t max_detail = m_max(ndetail_citerion_extend_back(), ndetail_smooth_extend_back());
-        return m_max(max_detail + (len_ga() / 2), 0);
+        const bidx_t last_pt = m_max(ndetail_citerion_extend_back(), ndetail_smooth_extend_back());
+        // compute the max between computing the last point and the point just before
+        const bidx_t lim_scaling = m_max(last_pt + (len_ha() / 2), last_pt - 1 + (len_ga() / 2));
+        const bidx_t lim_detail  = m_max(last_pt + (len_ga() / 2), last_pt - 1 + (len_ha() / 2));
+        const bool   is_detail   = (last_pt % 2) == 0;
+        return (is_detail)*lim_detail + (!is_detail) * lim_scaling;
     };
 
     // nghosts
