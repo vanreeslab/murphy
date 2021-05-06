@@ -462,7 +462,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     m_assert(status_lvl_ != M_ADAPT_NONE, "here, all the blocks have been visited and the status level of everybody should be something else than M_ADAPT_NONE: here %d for block @ %f %f %f", status_lvl_, this->xyz(0), this->xyz(1), this->xyz(2));
     //-------------------------------------------------------------------------
     // do not even start if we don't need to
-    if (interp->Nt() > 0) {
+    if (interp->Nt() == 0) {
         return;
     }
     // reset the temp memory to 0.0
