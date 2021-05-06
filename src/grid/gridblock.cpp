@@ -461,6 +461,10 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     // the status level has to be 0, otherwise it means that one of the block is not coarsened
     m_assert(status_lvl_ != M_ADAPT_NONE, "here, all the blocks have been visited and the status level of everybody should be something else than M_ADAPT_NONE: here %d for block @ %f %f %f", status_lvl_, this->xyz(0), this->xyz(1), this->xyz(2));
     //-------------------------------------------------------------------------
+    // do not even start if we don't need to
+    if (interp->Nt() > 0) {
+        return;
+    }
     // reset the temp memory to 0.0
     memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
     data_ptr mask      = coarse_ptr_(0, this);
@@ -469,7 +473,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     //................................................
     // lambda to obtain the smoothing pattern
     auto mask_smooth = [=](const iblock_t count, const iface_t ibidule) -> void {
-                // create the lambda to put 1.0
+        // create the lambda to put 1.0
         auto set_mask_to_one = [=, &mask_data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             mask_data[m_idx(i0, i1, i2, 0, this->stride())] = 1.0;
         };
@@ -1306,7 +1310,7 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
 
         //................................................
         // enforce the 0-detail policy in the needed region
-        {
+        if (interp->Nt() > 0) {
             memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
             data_ptr mask      = coarse_ptr_(0, this);
             real_t*  mask_data = mask.Write();
@@ -1344,6 +1348,7 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
                 SubBlock block_trg(this->gs(), this->stride(), smooth_start, smooth_end);
                 interp->OverwriteDetails(&block_src, &block_trg, this->data(field, ida));
             };
+            // let's god
             for (auto gblock : local_parent_) {
                 overwrite(gblock->ibidule());
             }
