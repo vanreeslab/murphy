@@ -75,8 +75,8 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     m_log("\tghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
 
     // store the number of ghosts needed
-    m_assert(interp_->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_front());
-    m_assert(interp_->nghost_back() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_back());
+    m_assert(interp_->nghost_front() <= M_NHALF, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_front());
+    m_assert(interp_->nghost_back() <= M_NHALF, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_back());
 
     //................................................
     // initialize the communications and the ghost's lists

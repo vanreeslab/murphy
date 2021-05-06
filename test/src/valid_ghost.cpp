@@ -94,6 +94,12 @@ TEST_P(GhostGrid, extrap) {
     scal.bctype(M_BC_EXTRAP);
     grid.GhostPull(&scal);
 
+    // IOH5 dump("data");
+    // dump(&grid, &scal);
+
+    // dump.dump_ghost(true);
+    // dump(&grid, &scal);
+
     // analytical solution
     Field sol("sol", 1);
     grid.AddField(&sol);

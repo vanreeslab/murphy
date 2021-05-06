@@ -15,7 +15,7 @@
  * @name user-defined parameters 
  * @{
  */
-#define M_N 16           //!< size of one block (M_N x M_N x M_N), must be EVEN
+#define M_N 32           //!< size of one block (M_N x M_N x M_N), must be EVEN
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
