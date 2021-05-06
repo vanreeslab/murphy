@@ -34,99 +34,99 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
 
     if (interp.N() == 2 && interp.Nt() == 0) {
         // refine
-        ASSERT_EQ(interp.nghost_front_refine(), 0);
-        ASSERT_EQ(interp.nghost_back_refine(), 1);
+        EXPECT_EQ(interp.nghost_front_refine(), 0);
+        EXPECT_EQ(interp.nghost_back_refine(), 1);
         // coarsen
-        ASSERT_EQ(interp.nghost_front_coarsen(), 0);
-        ASSERT_EQ(interp.nghost_back_coarsen(), 0);
+        EXPECT_EQ(interp.nghost_front_coarsen(), 0);
+        EXPECT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 0);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 1);
+        EXPECT_EQ(interp.nghost_front_criterion_smooth(), 0);
+        EXPECT_EQ(interp.nghost_back_criterion_smooth(), 1);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 1);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 0);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 1);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 0);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 1);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 0);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 1);
     } else if (interp.N() == 2 && interp.Nt() == 2) {
         // refine
-        ASSERT_EQ(interp.nghost_front_refine(), 0);
-        ASSERT_EQ(interp.nghost_back_refine(), 1);
+        EXPECT_EQ(interp.nghost_front_refine(), 0);
+        EXPECT_EQ(interp.nghost_back_refine(), 1);
         // coarsen
-        ASSERT_EQ(interp.nghost_front_coarsen(), 2);
-        ASSERT_EQ(interp.nghost_back_coarsen(), 1);
+        EXPECT_EQ(interp.nghost_front_coarsen(), 2);
+        EXPECT_EQ(interp.nghost_back_coarsen(), 1);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 2);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 3);
+        EXPECT_EQ(interp.nghost_front_criterion_smooth(), 2);
+        EXPECT_EQ(interp.nghost_back_criterion_smooth(), 3);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 1);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 2);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 1);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 2);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 1);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 2);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 1);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 2);
     } else if (interp.N() == 4 && interp.Nt() == 0) {
         // refine
-        ASSERT_EQ(interp.nghost_front_refine(), 1);
-        ASSERT_EQ(interp.nghost_back_refine(), 2);
+        EXPECT_EQ(interp.nghost_front_refine(), 1);
+        EXPECT_EQ(interp.nghost_back_refine(), 2);
         // coarsen
-        ASSERT_EQ(interp.nghost_front_coarsen(), 0);
-        ASSERT_EQ(interp.nghost_back_coarsen(), 0);
+        EXPECT_EQ(interp.nghost_front_coarsen(), 0);
+        EXPECT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 4);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 5);
+        EXPECT_EQ(interp.nghost_front_criterion_smooth(), 4);
+        EXPECT_EQ(interp.nghost_back_criterion_smooth(), 5);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 2);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 3);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 2);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 3);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 2);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 3);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 2);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 3);
     } else if (interp.N() == 4 && interp.Nt() == 2) {
         // refine
-        ASSERT_EQ(interp.nghost_front_refine(), 1);
-        ASSERT_EQ(interp.nghost_back_refine(), 2);
+        EXPECT_EQ(interp.nghost_front_refine(), 1);
+        EXPECT_EQ(interp.nghost_back_refine(), 2);
         // coarsen
-        ASSERT_EQ(interp.nghost_front_coarsen(), 4);
-        ASSERT_EQ(interp.nghost_back_coarsen(), 3);
+        EXPECT_EQ(interp.nghost_front_coarsen(), 4);
+        EXPECT_EQ(interp.nghost_back_coarsen(), 3);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 6);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 7);
+        EXPECT_EQ(interp.nghost_front_criterion_smooth(), 6);
+        EXPECT_EQ(interp.nghost_back_criterion_smooth(), 7);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 3);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 4);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 3);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 4);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 3);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 4);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 3);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 4);
     } else if (interp.N() == 6 && interp.Nt() == 0) {
         // refine
-        ASSERT_EQ(interp.nghost_front_refine(), 2);
-        ASSERT_EQ(interp.nghost_back_refine(), 3);
+        EXPECT_EQ(interp.nghost_front_refine(), 2);
+        EXPECT_EQ(interp.nghost_back_refine(), 3);
         // coarsen
-        ASSERT_EQ(interp.nghost_front_coarsen(), 0);
-        ASSERT_EQ(interp.nghost_back_coarsen(), 0);
+        EXPECT_EQ(interp.nghost_front_coarsen(), 0);
+        EXPECT_EQ(interp.nghost_back_coarsen(), 0);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 8);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 9);
+        EXPECT_EQ(interp.nghost_front_criterion_smooth(), 8);
+        EXPECT_EQ(interp.nghost_back_criterion_smooth(), 9);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 3);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 4);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 4);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 5);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 3);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 4);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 4);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 5);
     } else if (interp.N() == 6 && interp.Nt() == 2) {
         // refine
-        ASSERT_EQ(interp.nghost_front_refine(), 2);
-        ASSERT_EQ(interp.nghost_back_refine(), 3);
+        EXPECT_EQ(interp.nghost_front_refine(), 2);
+        EXPECT_EQ(interp.nghost_back_refine(), 3);
         // coarsen
-        ASSERT_EQ(interp.nghost_front_coarsen(), 6);
-        ASSERT_EQ(interp.nghost_back_coarsen(), 5);
+        EXPECT_EQ(interp.nghost_front_coarsen(), 6);
+        EXPECT_EQ(interp.nghost_back_coarsen(), 5);
         // criterion
-        ASSERT_EQ(interp.nghost_front_criterion_smooth(), 10);
-        ASSERT_EQ(interp.nghost_back_criterion_smooth(), 11);
+        EXPECT_EQ(interp.nghost_front_criterion_smooth(), 10);
+        EXPECT_EQ(interp.nghost_back_criterion_smooth(), 11);
         // details
-        ASSERT_EQ(interp.ndetail_citerion_extend_front(), 5);
-        ASSERT_EQ(interp.ndetail_citerion_extend_back(), 6);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 6);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 7);
         // details
-        ASSERT_EQ(interp.ndetail_smooth_extend_front(), 5);
-        ASSERT_EQ(interp.ndetail_smooth_extend_back(), 6);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 6);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 7);
     }
 }
