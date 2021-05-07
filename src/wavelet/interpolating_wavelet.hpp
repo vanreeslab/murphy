@@ -44,6 +44,12 @@ static constexpr real_t js_[1] = {0.0};
 template <lda_t N, lda_t NT>
 static constexpr real_t ks_[1] = {0.0};
 
+/**
+ * @brief constant in front of the epsilon 
+ */
+template <lda_t N, lda_t NT>
+static constexpr real_t eps_c = 1.0;
+
 //-----------------------------------------------------------------------------
 // Wavelet 2.0
 template <>
@@ -62,6 +68,8 @@ template <>
 constexpr real_t js_<2, 0>[1] = {1.0};
 template <>
 constexpr real_t ks_<2, 0>[3] = {0.5, 1.0, 0.5};
+template<>
+constexpr real_t eps_c<2,0> = 7.0;
 
 //-----------------------------------------------------------------------------
 // Wavelet 2.2
@@ -81,6 +89,8 @@ template <>
 constexpr real_t js_<2, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
 template <>
 constexpr real_t ks_<2, 2>[5] = {-1.0 / 8.0, 1.0 / 2.0, 3.0 / 4.0, 1.0 / 2.0, -1.0 / 8.0};
+template<>
+constexpr real_t eps_c<2,2> = 7.0;
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.0
@@ -100,6 +110,8 @@ template <>
 constexpr real_t js_<4, 0>[1] = {1.0};
 template <>
 constexpr real_t ks_<4, 0>[7] = {-1.0 / 16.0, 0.0, 9.0 / 16.0, 1.0, 9.0 / 16.0, 0.0, -1.0 / 16.0};
+template <>
+constexpr real_t eps_c<4, 0> = 9.4375;
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.2
@@ -119,6 +131,8 @@ template <>
 constexpr real_t js_<4, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
 template <>
 constexpr real_t ks_<4, 2>[9] = {1.0 / 64.0, -1.0 / 16.0, -1.0 / 8.0, 9.0 / 16.0, 23.0 / 32.0, 9.0 / 16.0, -1.0 / 8.0, -1.0 / 16.0, 1.0 / 64.0};
+template <>
+constexpr real_t eps_c<4, 2> = 9.4375;
 
 // //-----------------------------------------------------------------------------
 // // Wavelet 4.4
@@ -157,6 +171,8 @@ template <>
 constexpr real_t js_<6, 0>[1] = {1.0};
 template <>
 constexpr real_t ks_<6, 0>[11] = {3.0 / 256.0, 0.0, -25.0 / 256.0, 0.0, 75.0 / 128.0, 1.0, 75.0 / 128.0, 0.0, -25.0 / 256.0, 0.0, 3.0 / 256.0};
+template <>
+constexpr real_t eps_c<6, 0> = 10.973388671875;
 
 //-----------------------------------------------------------------------------
 // Wavelet 6.2
@@ -176,6 +192,8 @@ template <>
 constexpr real_t js_<6, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
 template <>
 constexpr real_t ks_<6, 2>[13] = {-3.0 / 1024.0, 3.0 / 256.0, 11.0 / 512.0, -25.0 / 256.0, -125.0 / 1024.0, 75.0 / 128.0, 181.0 / 256.0, 75.0 / 128.0, -125.0 / 1024.0, -25.0 / 256.0, 11.0 / 512.0, 3.0 / 256.0, -3.0 / 1024.0};
+template <>
+constexpr real_t eps_c<6, 2> = 10.973388671875;
 
 // //-----------------------------------------------------------------------------
 // // Wavelet 6.4
@@ -215,6 +233,7 @@ class InterpolatingWavelet : public Wavelet {
     const short_t len_ga() const override { return len_ga_<TN, TNT>; };
     const short_t len_js() const override { return len_js_<TN, TNT>; };
     const short_t len_ks() const override { return len_ks_<TN, TNT>; };
+    const real_t  eps_const() const override { return eps_c<TN, TNT>; };
 
    protected:
     /**
@@ -481,8 +500,10 @@ class InterpolatingWavelet : public Wavelet {
         real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
 
         // m_log("store? %d, store on mask? %d", store, store_on_mask);
-        // m_log("computing details from %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2],
+        // m_log("computing details using %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2],
         //       ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
+        // m_log("and computing details from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2],
+        //       ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
 
         // get the source pointer
         const real_t* const sdata = ctx->sdata.Read();
@@ -703,7 +724,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Clear_(const m_ptr<const interp_ctx_t>& ctx) const override {
+    void Clear_(const m_ptr<const interp_ctx_t>& ctx) const override{
         // //-------------------------------------------------------------------------
         // // filters, need the forward ones
         // constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;

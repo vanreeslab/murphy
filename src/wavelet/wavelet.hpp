@@ -45,13 +45,13 @@ typedef struct interp_ctx_t {
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 6
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -112,6 +112,7 @@ class Wavelet {
 
     virtual const short_t N() const  = 0;  // return the interpolation order
     virtual const short_t Nt() const = 0;  // return the moments order
+    virtual const real_t eps_const() const = 0; //return the theoretical factor in front of the epsilon
 
     const bool smoothed() const { return (Nt() != 0); };  // return if the wavelet details will smooth or not.
 
