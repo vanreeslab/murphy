@@ -12,7 +12,7 @@
 #include "subblock.hpp"
 #include "wavelet.hpp"
 
-#define DOUBLE_TOL 1e-14
+#define DOUBLE_TOL 1e-13
 #define ORDER2_TOL 1.0
 #define ORDERI_TOL 1.2
 #define BLVL 1
