@@ -42,7 +42,7 @@ class GhostGrid : public ::testing::TestWithParam<int> {
     void TearDown() override{};
 };
 
-static const real_t zero_tol = 100.0 * std::numeric_limits<real_t>::epsilon();
+static const real_t zero_tol = 1000.0 * std::numeric_limits<real_t>::epsilon();
 
 using std::list;
 using std::string;

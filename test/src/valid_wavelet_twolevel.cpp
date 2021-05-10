@@ -128,7 +128,7 @@ class TwoLevel : public ::testing::TestWithParam<int> {
 using std::list;
 using std::string;
 
-static const real_t zero_tol = 100.0 * std::numeric_limits<real_t>::epsilon();
+static const real_t zero_tol = 1000.0 * std::numeric_limits<real_t>::epsilon();
 
 /**
  * @brief validate every possible intersection between blocks on two levels (both moment and epsilon)

@@ -56,7 +56,7 @@ class Epsilon : public ::testing::TestWithParam<double> {
     void TearDown() override{};
 };
 
-static const real_t zero_tol = 100.0 * std::numeric_limits<real_t>::epsilon();
+static const real_t zero_tol = 1000.0 * std::numeric_limits<real_t>::epsilon();
 
 /**
  * @brief Check the epsilon + the moment condition on a "real-case" grid (periodic)
