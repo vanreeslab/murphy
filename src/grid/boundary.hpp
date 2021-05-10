@@ -128,15 +128,12 @@ class Boundary {
                 f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];
 
                 // get the data position, relative to me, i.e. using the idx indexes
-                const real_t data_pos[3] = {(idx0)*hgrid[0],
-                                            (idx1)*hgrid[1],
-                                            (idx2)*hgrid[2]};
+                // const real_t data_pos[3] = {(idx0)*hgrid[0],
+                //                             (idx1)*hgrid[1],
+                //                             (idx2)*hgrid[2]};
+                // xf[ip] = data_pos[dir];
 
-                xf[ip] = data_pos[dir];
-
-                // if (i0 == 18 && i1 == 0 && i2 == 14) {
-                //     m_log("storing: %f at %d from %d %d %d", f[ip], ip, i0 + idx0, i1 + idx1, i2 + idx2);
-                // }
+                xf[ip] = idx0 * (dir == 0) + idx1 * (dir == 1) + idx2 * (dir == 2);
             }
             // get the ghost value
             // ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
