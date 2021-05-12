@@ -115,7 +115,7 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = 1e-10;
+    real_t depsilon = delta_eps_;
     real_t epsilon  = eps_start_;
     m_log("starting with epsilon = %e", epsilon);
     while (epsilon >= std::pow(2.0, -26)) {
