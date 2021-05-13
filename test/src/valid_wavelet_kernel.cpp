@@ -123,10 +123,10 @@ TEST_F(valid_Wavelet_Kernel, filter_length) {
         EXPECT_EQ(interp.nghost_front_criterion_smooth(), 10);
         EXPECT_EQ(interp.nghost_back_criterion_smooth(), 11);
         // details
-        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 6);
-        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 7);
+        EXPECT_EQ(interp.ndetail_citerion_extend_front(), 5);
+        EXPECT_EQ(interp.ndetail_citerion_extend_back(), 6);
         // details
-        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 6);
-        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 7);
+        EXPECT_EQ(interp.ndetail_smooth_extend_front(), 5);
+        EXPECT_EQ(interp.ndetail_smooth_extend_back(), 6);
     }
 }
