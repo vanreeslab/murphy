@@ -2,8 +2,9 @@
 #define SRC_CORE_POINTERS_HPP_
 
 #include "core/macros.hpp"
-#include "core/memlayout.hpp"
+#include "core/pointers.hpp"
 #include "core/types.hpp"
+#include "core/memlayout.hpp"
 
 /**
  * @brief A class of pointers, might be owned or not
@@ -94,9 +95,6 @@ class m_ptr {
 
     /** @brief operator ->, return the contained pointer */
     T* operator->() const { return data_; }
-
-    /** @brief operator *, return the associated object */
-    T& operator[](const size_t idx) const { return data_[idx]; }
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
@@ -111,7 +109,7 @@ class data_ptr : public m_ptr<real_t> {
     real_t* Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
     real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
     real_t* Write(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    // real_t* Write(const m_ptr<const MemLayout>& layout, const lda_t ida = 0) const;
+    real_t* Write(const m_ptr<const MemLayout>& layout, const lda_t ida = 0) const;
 
     const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
     const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
@@ -142,6 +140,10 @@ class const_data_ptr : public m_ptr<const real_t> {
  *
  */
 class mem_ptr : public m_ptr<real_t> {
+    bidx_t stride[2];   //!< array of stride, in the main direction and then in the two other directions
+    size_t size   = 0;  //!< store the size of the memory allocated
+    size_t offset = 0;  //!< store the offset needed to return a (const_)data_ptr
+
    public:
     using m_ptr<real_t>::m_ptr;       // inheritates the constructor:
     using m_ptr<real_t>::operator();  // inheritates the operators:
@@ -171,7 +173,7 @@ class mem_ptr : public m_ptr<real_t> {
         is_owned_ = false;
     }
 
-    data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
+    data_ptr operator()(const lda_t ida, const bidx_t gs, const bidx_t stride) const;
     data_ptr operator()(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
     mem_ptr  shift_dim(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
 };
@@ -180,6 +182,7 @@ class mem_ptr : public m_ptr<real_t> {
 // put the assert if we are not in non-debug mode
 // #ifdef NDEBUG
 constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0, const bidx_t stride = M_STRIDE) {
+    // m_assert((stride*stride*stride) < std::numeric_limits<bidx_t>::max(),"The whole block indexing must be contained in bidx_t");
     bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
     return offset;
 }

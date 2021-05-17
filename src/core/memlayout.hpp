@@ -5,19 +5,22 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 
+#include <cstring>
+
 /**
- * @brief descibes the most fundamental 3D memory layout and a region of interest (start-end)
+ * @brief descibe a fundamental 3D memory layout and a region of interest (start-end)
  * 
- * WARNING: we consider a cell-decentered information
+ * WARNING: we consider a cell-decentered information,
  * 
- * In 2D, a memory layout can be represented as (with "x" meaning a ghost point and "o" a block point)
+ * In 2D, a memory layout can be represented as:
+ *  (with "x" meaning a ghost point and "o" a block point)
  * ```
- *                              stride
- *          <------------------------------------------------>
- *          +-------+----------------------------------+---------+ (stride-gs,stride-gs)
+ *                                 stride
+ *          <--------------------------------------------------->
+ *          +-------+----------------------------------+---------+
  *          |  gs   |                                  |    gs   |
  *          |<----->|                                  |<------->|
- *          +-------+----------------------------------+---------+
+ *          +-------x----------------------------------+---------+
  *          |       |                                  |         |
  *          |       |                      end         |         |
  *          |       o    +------------------+          |         |
@@ -42,12 +45,12 @@
  */
 class MemLayout {
    public:
-    virtual lid_t gs() const                = 0;  //!< the ghost point size
-    virtual lid_t stride() const            = 0;  //!< the stride in memory
-    virtual lid_t start(const int id) const = 0;  //!< the starting point for the region of interest
-    virtual lid_t end(const int id) const   = 0;  //!< the end point of the region of interest
+    virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
+    virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
+    virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
+    virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
 
-    virtual ~MemLayout(){};
+    virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
 };
 
 /**
@@ -78,7 +81,7 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     //................................................
     // do x type as a simple vector
     bidx_t count_x = (end[0] - start[0]);
-    m_assert(count_x > 0, "we at least need to take 1 element");
+    m_assert(count_x >= 0, "we at least need to take 1 element");
     m_assert(count_x <= stride, "we cannot take more element than the stride");
     // MPI_Aint stride_x = sizeof(real_t);
     // MPI_Type_create_hvector(count_x / scale, 1, stride_x * scale, M_MPI_REAL, &x_type);
@@ -87,7 +90,7 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     // do y type
     bidx_t   count_y  = (end[1] - start[1]);
     MPI_Aint stride_y = stride_x * stride;
-    m_assert(count_y > 0, "we at least need to take 1 element");
+    m_assert(count_y >= 0, "we at least need to take 1 element");
     m_assert(count_y <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_y / scale, 1, (MPI_Aint)(stride_y * scale), x_type, &xy_type);
     MPI_Type_free(&x_type);
@@ -95,7 +98,7 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     // do z type
     bidx_t   count_z  = (end[2] - start[2]);
     MPI_Aint stride_z = stride_y * stride;
-    m_assert(count_z > 0, "we at least need to take 1 element");
+    m_assert(count_z >= 0, "we at least need to take 1 element");
     m_assert(count_z <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_z / scale, 1, (MPI_Aint)(stride_z * scale), xy_type, xyz_type);
     MPI_Type_free(&xy_type);

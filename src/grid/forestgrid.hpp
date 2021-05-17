@@ -1,6 +1,8 @@
 #ifndef SRC_FORESTGRID_HPP_
 #define SRC_FORESTGRID_HPP_
 
+#include <string>
+
 #include <p8est.h>
 #include <p8est_extended.h>
 
@@ -69,8 +71,8 @@ class ForestGrid {
      * @name Mesh and Ghost structure management
      * @{
      */
-    void ResetP4estGhostMesh();
-    void SetupP4estGhostMesh();
+    void DestroyP4estMeshAndGhost();
+    void SetupP4estMeshAndGhost();
     /** @} */
 };
 

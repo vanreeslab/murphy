@@ -17,7 +17,7 @@
 /**
  * @brief the localization of the interface
  */
-static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
+// static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
 /**
  * @brief Construct a new Ghost object 
@@ -66,10 +66,20 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     //     n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
     // }
     // m_verb("I will ghost %d local active quads", n_active_quad_);
+    m_log("wavelet info:");
+    m_log("\t#ghost for refinement: %d %d", interp_->nghost_front_refine(), interp_->nghost_back_refine());
+    m_log("\t#ghost for coarsening: %d %d", interp_->nghost_front_coarsen(), interp_->nghost_back_coarsen());
+    m_log("\t#ghost for citerion and smoothing: %d %d", interp_->nghost_front_criterion_smooth(), interp->nghost_back_criterion_smooth());
+    m_log("\t#detail for criterion: %d %d", interp_->ndetail_citerion_extend_front(), interp_->ndetail_citerion_extend_back());
+    m_log("\t#detail for smoothing: %d %d", interp_->ndetail_smooth_extend_front(), interp_->ndetail_smooth_extend_back());
+    m_log("\tghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
 
-    // store the number of ghosts needed
-    m_assert(interp_->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_front());
-    m_assert(interp_->nghost_back() <= M_GS, "The memory for the ghost points is too small: M_GS = %d vs nghost = %d", M_GS, interp_->nghost_back());
+    // check that a fine block can provide enough ghosts to a coarse one
+    m_assert(interp_->nghost_front() <= M_NHALF, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_front());
+    m_assert(interp_->nghost_back() <= M_NHALF, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_back());
+    // check that the N_GS is big enough
+    m_assert(interp_->nghost_front() <= M_GS, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_front());
+    m_assert(interp_->nghost_back() <= M_GS, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_back());
 
     //................................................
     // initialize the communications and the ghost's lists
@@ -79,11 +89,6 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
     m_profStop(prof_(), "ghost_init");
 
     //-------------------------------------------------------------------------
-    m_log("ghost for refinement: %d %d", interp_->nrefine_front(), interp_->nrefine_back());
-    m_log("ghost for coarsening: %d %d", interp_->ncoarsen_front(), interp_->ncoarsen_back());
-    m_log("ghost for criterion: %d %d ",interp_->ncriterion_front(), interp_->ncriterion_back());
-    m_log("criterion shift : %d %d",  interp_->criterion_shift_front(), interp_->criterion_shift_back());
-    m_log("ghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
     m_end;
 }
 
@@ -120,22 +125,26 @@ void Ghost::InitList_() {
     m_assert(mpi_comm == MPI_COMM_WORLD, "the comm should be a comm world");
 
     //................................................
-    // allocate the array to link the local_id to the mirror displacement and init it
+    // allocate the local2disp and the status window
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
-    MPI_Aint win_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
-    // check the size
-    m_assert(win_mem_size >= 0, "the memory size should be >=0");
-    // allocate the array and the window with the offsets
-    local2disp_ = reinterpret_cast<MPI_Aint*>(m_calloc(win_mem_size));
-    MPI_Win_create(local2disp_, win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
-    // MPI_Win_allocate(win_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_, &local2disp_window_);
+
+    // displacement
+    MPI_Aint win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
+    local2disp_                = reinterpret_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
+    MPI_Win_create(local2disp_, win_disp_mem_size, sizeof(MPI_Aint), info, mpi_comm, &local2disp_window_);
+    m_assert(win_disp_mem_size >= 0, "the memory size should be >=0");
+    m_verb("allocating %ld bytes in the window for %d active quad", win_disp_mem_size, mesh->local_num_quadrants);
+
+    // status
+    MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
+    status_                      = reinterpret_cast<short_t*>(m_calloc(win_status_mem_size));
+    MPI_Win_create(status_, win_status_mem_size, sizeof(short_t), info, mpi_comm, &status_window_);
+    m_assert(win_status_mem_size >= 0, "the memory size should be >=0");
+
+    // free the info
     MPI_Info_free(&info);
-    m_verb("allocating %ld bytes in the window for %d active quad", win_mem_size, mesh->local_num_quadrants);
-    // make sure everything is done
-    // MPI_Win_fence(0, local2disp_window_);
-    // MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
@@ -148,13 +157,9 @@ void Ghost::InitList_() {
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             // store the displacement in the local2disp_ array
             iblock_t local_id     = mirror->p.piggy3.local_num;
-            local2disp_[local_id] = (active_mirror_count++) * m_blockmemsize(1);
+            local2disp_[local_id] = (active_mirror_count++) * CartBlockMemNum(1);
         }
     }
-    // make sure everybody did it
-    // MPI_Win_fence(0, local2disp_window_);
-    // MPI_Win_fence(0, local2disp_window_);
-    // MPI_Barrier(MPI_COMM_WORLD);
 
     //................................................
     // post the exposure epoch and start the access one for local2mirrors
@@ -192,6 +197,9 @@ void Ghost::InitList_() {
     local2disp_window_ = MPI_WIN_NULL;
     local2disp_        = nullptr;
 
+    //................................................
+    // allocate the status
+
     //-------------------------------------------------------------------------
     m_verb("Ghost lists initialization is done");
     m_end;
@@ -204,6 +212,13 @@ void Ghost::FreeList_() {
         // DoOpMeshLevel(this, &Ghost::FreeList4Block_, grid_, il);
         DoOpMeshLevel(nullptr, &GridBlock::GhostFreeLists, grid_, il);
     }
+    // DoOpMesh(nullptr, &GridBlock::GhostFreeLists, grid_);
+
+    // free the status
+    MPI_Win_free(&status_window_);
+    m_free(status_);
+    status_window_ = MPI_WIN_NULL;
+    status_        = nullptr;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -241,7 +256,7 @@ void Ghost::InitComm_() {
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
-    MPI_Aint win_mem_size = n_mirror_to_send_ * m_blockmemsize(1) * sizeof(real_t);
+    MPI_Aint win_mem_size = n_mirror_to_send_ * CartBlockMemNum(1) * sizeof(real_t);
     mirrors_              = reinterpret_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_window_);
     MPI_Info_free(&info);
@@ -325,6 +340,37 @@ void Ghost::FreeComm_() {
     m_end;
 }
 
+void Ghost::UpdateStatus() {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // get the status to the array
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOpMeshLevel(nullptr, &GridBlock::SetNewByCoarsening, grid_, il, m_ptr<short_t>(status_));
+    }
+
+    // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
+    MPI_Win_post(mirror_origin_group_, 0, status_window_);
+    // start the access epochs if we are not empty (otherwise it fails on the beast)
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, status_window_);
+    }
+
+    // update neigbbor status, only use the already computed status on level il + 1
+    for (level_t il = min_level_; il <= max_level_; il++) {
+        DoOpMeshLevel(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, grid_, il, m_ptr<short_t>(status_), status_window_);
+    }
+
+    // close the access epochs
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(status_window_);
+    }
+    // close the exposure epochs
+    MPI_Win_wait(status_window_);
+
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
 /**
  * @brief Post the RMA call: get the values of siblings and coarse neighbors to my local memory
  * 
@@ -357,11 +403,13 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
     }
+    // m_log("get post");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
     m_profStop(prof_(), "RMA post get");
 
+    // m_log("get compute");
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
     m_profStart(prof_(), "computation");
@@ -711,11 +759,11 @@ void Ghost::PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
     // recover the mirro spot using the mirror id
-    real_p  mirror = mirrors_ + qid->mid * m_blockmemsize(1);
+    real_p  mirror = mirrors_ + qid->mid * CartBlockMemNum(1);
     mem_ptr data   = block->pointer(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
-    memcpy(mirror, data(), m_blockmemsize(1) * sizeof(real_t));
+    memcpy(mirror, data(), CartBlockMemNum(1) * sizeof(real_t));
     //-------------------------------------------------------------------------
 }
 
@@ -730,7 +778,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p   mirror = mirrors_ + qid->mid * m_blockmemsize(1) + m_zeroidx(0, block());
+    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, block());
     data_ptr data   = block->data(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);

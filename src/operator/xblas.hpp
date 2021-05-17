@@ -8,8 +8,6 @@
 /**
  * @brief perform the max(fabs()) operation on a block, i.e. return the infinite norm of a field
  *
- * when the values are asked back, do a AllReduce MPI call
- *
  */
 class BMax : public BlockOperator {
    protected:

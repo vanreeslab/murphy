@@ -7,6 +7,7 @@
 #include "clients/navier_stokes.hpp"
 #include "clients/simple_advection.hpp"
 #include "clients/epsilon_test.hpp"
+#include "clients/debug_lifting.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -28,10 +29,10 @@ TestCase* MurphyInit(int argc, char** argv) {
     // p4est_init(NULL, SC_LP_INFO);
 
     // so dome checks for the aligment, the constants etc
+    m_assert((M_N % 2) == 0, "the number of points must be odd");
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
     m_assert(M_N >= M_GS, "we cannot have ghost points that span more than 1 block");
-    m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
-    m_assert((M_STRIDE*M_STRIDE*M_STRIDE) < std::numeric_limits<bidx_t>::max(),"The whole block indexing must be contained in bidx_t");
+    // m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
 
     // parse arguments, just simply display the help, nothing more at that stage
     ParserArguments argument;
@@ -43,23 +44,23 @@ TestCase* MurphyInit(int argc, char** argv) {
         testcase = new NavierStokes();
         testcase->InitParam(&argument);
         return testcase;
-    } 
-    else if (argument.do_abc_flow){
+    } else if (argument.do_abc_flow) {
         testcase = new FlowABC();
         testcase->InitParam(&argument);
         return testcase;
-    }
-    else if (argument.do_simple_adv){
+    } else if (argument.do_simple_adv) {
         testcase = new SimpleAdvection();
         testcase->InitParam(&argument);
         return testcase;
-    }
-    else if (argument.do_epsilon_test){
+    } else if (argument.do_epsilon_test) {
         testcase = new EpsilonTest();
         testcase->InitParam(&argument);
         return testcase;
-    }
-    else {
+    } else if (argument.do_debug_lifting) {
+        testcase = new DebugLifting();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else {
         // m_assert(false, "no testcase has been choosen");
         m_log("no test case chosen");
     }

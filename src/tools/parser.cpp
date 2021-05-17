@@ -41,6 +41,22 @@ static error_t atoc_list(const int length, char* arg, char* list) {
     return 0;
 } 
 
+static error_t atos_list(const int length, char* arg, short* list) {
+    const int count = count_list(arg);
+    if (count != length) {
+        return ARGP_ERR_UNKNOWN;
+    } else {
+        char* num = strtok(arg, ",");
+        for (int id = 0; id < length; id++) {
+            int temp = atoi(num);
+            m_assert(std::numeric_limits<short>::max() > temp, "the number read is too big to be cast in a char");
+            list[id] = (short)(temp);
+            num      = strtok(NULL, ",");
+        }
+    }
+    return 0;
+} 
+
 static error_t atoi_list(const int length, char* arg, int* list) {
     const int count = count_list(arg);
     if (count != length) {
@@ -127,7 +143,7 @@ static struct argp_option options[] = {
     {"delta-eps", 3017, "value", 0, "factor from one epsilon to another"},
 
     /* client choice parameters */
-    {0, 0, 0, OPTION_DOC, "Available clients:", 4},
+    {0, 0, 0, OPTION_DOC, "Available clients/testcases:", 4},
     // navier-stokes
     {"navier-stokes", 4000, 0, OPTION_ARG_OPTIONAL, "Navier-Stokes testcase"},
     {"ns", 0, 0, OPTION_ALIAS, 0},
@@ -139,11 +155,13 @@ static struct argp_option options[] = {
     // simple advection
     {"epsilon-test", 4003, 0, OPTION_ARG_OPTIONAL, "Epsilon test"},
     {"eps", 0, 0, OPTION_ALIAS, 0},
+    // simple advection
+    {"dbg-lifting", 4004, 0, OPTION_ARG_OPTIONAL, "Debug lifting"},
+    {"eps", 0, 0, OPTION_ALIAS, 0},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
-    {0}
-    };
+    {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     ParserArguments* arguments = reinterpret_cast<ParserArguments*>(state->input);
@@ -163,8 +181,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             return err;
         }
         case 2002: { /* level */
-            char*    lvl = &arguments->init_lvl;
-            error_t err = atoc_list(1, arg, lvl);
+            level_t*    lvl = &arguments->init_lvl;
+            error_t err = atos_list(1, arg, lvl);
             m_log("init level: %d", lvl[0]);
             return err;
         }
@@ -201,13 +219,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
         case 2008: { /* level_min */
             level_t* lvl = &arguments->level_min;
-            error_t  err = atoc_list(1, arg, lvl);
+            error_t  err = atos_list(1, arg, lvl);
             m_log("level min: %d", lvl[0]);
             return err;
         }
         case 2009: { /* level_max */
             level_t* lvl = &arguments->level_max;
-            error_t  err = atoc_list(1, arg, lvl);
+            error_t  err = atos_list(1, arg, lvl);
             m_log("level max: %d", lvl[0]);
             return err;
         }
@@ -330,6 +348,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4003: { /* simple advection */
             m_log("Epsilon testcase selected");
             arguments->do_epsilon_test = true;
+            return 0;
+        }
+        case 4004: { /* simple advection */
+            m_log("Debug Lifting selected");
+            arguments->do_debug_lifting = true;
             return 0;
         }
         

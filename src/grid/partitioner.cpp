@@ -2,7 +2,7 @@
 
 #include <cstring>
 #include <map>
-
+#include <unordered_map>
 
 using std::unordered_map;
 using std::string;
@@ -100,11 +100,20 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
     m_verb("current status: %d quads locally", forest->local_num_quadrants);
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, true, NULL);
-    m_assert(nqshipped >= 0,"the number of quads to send must be >= 0");
+    m_assert(nqshipped >= 0, "the number of quads to send must be >= 0");
     // p4est_gloidx_t nqshipped = p8est_partition_for_coarsening(forest, 0, NULL);
     m_verb("we decided to move %ld blocks", nqshipped);
     m_verb("new status: %d quads locally", forest->local_num_quadrants);
 
+    if (destructive_) {
+        // the status are only send if the partitioner is destructive
+        send_status_count_   = reinterpret_cast<int *>(m_calloc((commsize) * sizeof(int)));
+        send_status_cum_sum_ = reinterpret_cast<int *>(m_calloc((commsize + 1) * sizeof(int)));
+        recv_status_count_   = reinterpret_cast<int *>(m_calloc((commsize) * sizeof(int)));
+        recv_status_cum_sum_ = reinterpret_cast<int *>(m_calloc((commsize + 1) * sizeof(int)));
+    }
+
+    //................................................
     if (nqshipped > 0) {
         // get the NEW number of quads
         const lid_t nqlocal = forest->local_num_quadrants;
@@ -125,8 +134,12 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
         // init the send
         if (opart_n > 0) {
             // the send buffer is used to copy the current blocks as they are not continuous to memory
-            send_buf_ = reinterpret_cast<real_t *>(m_calloc(opart_n * m_blockmemsize(n_lda_) * sizeof(real_t)));
-            m_verb("sending buffer initialize of size %ld bytes",opart_n * m_blockmemsize(n_lda_) * sizeof(real_t));
+            send_buf_ = reinterpret_cast<real_t *>(m_calloc(opart_n * CartBlockMemNum(n_lda_) * sizeof(real_t)));
+            if (destructive_) {
+                // the status are only send if the partitioner is destructive
+                send_status_buf_     = reinterpret_cast<short *>(m_calloc(opart_n * sizeof(short)));
+            }
+            m_verb("sending buffer initialize of size %ld bytes", opart_n * CartBlockMemNum(n_lda_) * sizeof(real_t));
 
             // receivers = from opart_begin to opart_end-1 in the new partition
             const rank_t first_recver = bsearch_comm(forest->global_first_quadrant, opart_begin, commsize, 0);
@@ -169,15 +182,21 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
                     tqcount += n_q2send;
                     continue;
                 }
+                // if we send the status, store the cumsum as well
+                if (destructive_) {
+                    m_assert(sizeof(bidx_t) == sizeof(int), "if not, we are wrong in the datatypes for mpi");
+                    send_status_count_[c_recver]   = n_q2send;
+                    send_status_cum_sum_[c_recver] = qcount;  // send_status_cum_sum_[c_recver] + n_q2send;
+                }
                 // remember the begin and end point
                 m_assert(rcount < n_send_request_, "scount = %d is too big compared to the number of request = %d", rcount, n_send_request_);
                 q_send_cum_block_[rcount]   = tqcount;
                 q_send_cum_request_[rcount] = qcount;
 
                 // create the send request
-                real_t *buf = send_buf_() + qcount * m_blockmemsize(n_lda_);
-                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(for_send_request_[rcount]));
-                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(back_recv_request_[rcount]));
+                real_t *buf = send_buf_() + qcount * CartBlockMemNum(n_lda_);
+                MPI_Send_init(buf, CartBlockMemNum(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(for_send_request_[rcount]));
+                MPI_Recv_init(buf, CartBlockMemNum(n_lda_) * n_q2send, M_MPI_REAL, c_recver, c_recver, forest->mpicomm, &(back_recv_request_[rcount]));
 
                 // update the counters
                 qcount += n_q2send;
@@ -232,8 +251,13 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
             m_assert(bcount == cpart_n, "the counters should match");
 
             // the receive buffer is used as a new data location for the blocks
-            recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * m_blockmemsize(n_lda_) * sizeof(real_t)));
-            m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)",cpart_n * m_blockmemsize(n_lda_) * sizeof(real_t),n_lda_);
+            recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t)));
+            // m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)", cpart_n * CartBlockMemNum(n_lda_) * sizeof(real_t), n_lda_);
+
+            if (destructive_) {
+                // if destructive, send the status
+                recv_status_buf_  = reinterpret_cast<short *>(m_calloc(cpart_n * sizeof(short)));
+            }
 
             // senders = from cpart_begin to cpart_end-1 in the new partition
             m_verb("looking for the senders of my new block: %ld -> %ld", cpart_begin, cpart_end);
@@ -280,14 +304,21 @@ Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool des
                     tqcount += n_q2recv;
                     continue;
                 }
+                // if we send the status, store the cumsum as well
+                if (destructive_) {
+                    m_assert(sizeof(bidx_t) == sizeof(int), "if not, we are wrong in the datatypes for mpi");
+                    recv_status_count_[c_sender]   = n_q2recv;
+                    recv_status_cum_sum_[c_sender] = qcount;
+                }
+
                 // store the memory accesses
                 m_assert(scount < n_recv_request_, "scount = %d is too big compared to the number of request = %d", scount, n_recv_request_);
                 q_recv_cum_block_[scount]   = tqcount;
                 q_recv_cum_request_[scount] = qcount;
                 // create the send request
-                real_p buf = recv_buf_() + qcount * m_blockmemsize(n_lda_);
-                MPI_Recv_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(for_recv_request_[scount]));
-                MPI_Send_init(buf, m_blockmemsize(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(back_send_request_[scount]));
+                real_p buf = recv_buf_() + qcount * CartBlockMemNum(n_lda_);
+                MPI_Recv_init(buf, CartBlockMemNum(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(for_recv_request_[scount]));
+                MPI_Send_init(buf, CartBlockMemNum(n_lda_) * n_q2recv, M_MPI_REAL, c_sender, rank, forest->mpicomm, &(back_send_request_[scount]));
                 // update the counters
                 qcount += n_q2recv;
                 tqcount += n_q2recv;
@@ -325,6 +356,15 @@ Partitioner::~Partitioner() {
         m_free(new_blocks_);
     }
 
+    if (destructive_) {
+        m_free(send_status_count_);
+        m_free(send_status_cum_sum_);
+        m_free(recv_status_count_);
+        m_free(recv_status_cum_sum_);
+        m_free(send_status_buf_);
+        m_free(recv_status_buf_);
+    }
+
     for (int i = 0; i < n_send_request_; i++) {
         MPI_Request_free(for_send_request_ + i);
         MPI_Request_free(back_recv_request_ + i);
@@ -348,6 +388,9 @@ Partitioner::~Partitioner() {
 
 /**
  * @brief starts the send communication from the old paritioning to the new one: copy the GridBlock to the buffer and start the send and recv
+ * 
+ * @warning the ghost region is sent with the data for two reasons: (1) it avoids weird buffer as they are not continuous or MPI_Datatypes and (2)
+ * we need the ghost values to solve the resolution jump, which is happening after the partitioning
  * 
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
@@ -386,6 +429,8 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
         old_blocks         = new_blocks_;
         q_send_cum_block   = q_recv_cum_block_;
         q_send_cum_request = q_recv_cum_request_;
+
+        m_assert(!destructive_,"we cannot send backward and be destructive, otherwise the status are not sent");
     }
 
     // start the reception of the memory
@@ -397,25 +442,36 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
         lid_t n_q2send = q_send_cum_request[is + 1] - q_send_cum_request[is];
         for (lid_t iq = 0; iq < n_q2send; iq++) {
             GridBlock *block = old_blocks[q_send_cum_block[is] + iq];
-            real_p     buf   = send_buf + (q_send_cum_request[is] + iq) * m_blockmemsize(n_lda_);
-            lid_t idacount = 0;
+
+            // copy the status to the buffer
+            if (destructive_) {
+                send_status_buf_[q_send_cum_request[is] + iq] = (short)block->status_level();
+                // m_log("setting status %d to block in %f %f %f", block->status_level(), block->xyz(0), block->xyz(1), block->xyz(2));
+            }
+
+            // copy the field to the buffer
+            real_p buf      = send_buf + (q_send_cum_request[is] + iq) * CartBlockMemNum(n_lda_);
+            lid_t  idacount = 0;
             for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
                 const Field *fid  = iter->second();
                 string       name = fid->name();
                 // security check
-                m_assert(fid->lda() <= n_lda_,"unable to transfert so much data with the allocated buffers");
+                m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
-                // m_log("doing field %s shift by %ld",m_zeroidx(0, block));
                 real_p data = block->data(fid)() - m_zeroidx(0, block);
-                real_p lbuf = buf + m_blockmemsize(idacount);
+                real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
-                memcpy(lbuf, data, m_blockmemsize(fid->lda()) * sizeof(real_t));
+                memcpy(lbuf, data, CartBlockMemNum(fid->lda()) * sizeof(real_t));
                 // update the counters
                 idacount += fid->lda();
             }
         }
         // start the send
         MPI_Start(send_request + is);
+    }
+    // do the scatterv on the status -> it's a blocking call, sorry I was lazy
+    if (destructive_) {
+        MPI_Alltoallv(send_status_buf_, send_status_count_, send_status_cum_sum_, MPI_SHORT, recv_status_buf_, recv_status_count_, recv_status_cum_sum_, MPI_SHORT, MPI_COMM_WORLD);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -462,7 +518,12 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
         recv_request       = back_recv_request_;
         send_request       = back_send_request_;
         new_blocks         = old_blocks_;
+        m_assert(!destructive_, "we cannot send backward and be destructive, otherwise the status are not sent");
     }
+
+    // if (destructive_) {
+    //     MPI_Wait(&status_request_, MPI_STATUS_IGNORE);
+    // }
 
     // handle the moving ones
     for (int ir = 0; ir < n_recv_request; ir++) {
@@ -472,7 +533,7 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
 
         for (lid_t iq = 0; iq < n_q2recv; iq++) {
             GridBlock *block = new_blocks[q_recv_cum_block[idx] + iq];
-            real_p     buf   = recv_buf + (q_recv_cum_request[idx] + iq) * m_blockmemsize(n_lda_);
+            real_p     buf   = recv_buf + (q_recv_cum_request[idx] + iq) * CartBlockMemNum(n_lda_);
             m_assert(block != nullptr, "this block shouldn't be accessed here");
 
             lid_t idacount = 0;
@@ -483,16 +544,22 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
                 real_p data = block->data(fid)() - m_zeroidx(0, block);
-                real_p lbuf = buf + m_blockmemsize(idacount);
+                real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
-                memcpy(data, lbuf, m_blockmemsize(fid->lda()) * sizeof(real_t));
+                memcpy(data, lbuf, CartBlockMemNum(fid->lda()) * sizeof(real_t));
                 // update the counters
                 idacount += fid->lda();
+            }
+
+            if (destructive_) {
+                StatusAdapt status = (StatusAdapt)recv_status_buf_[q_recv_cum_request[idx] + iq];
+                // m_log("pulling status %d to block in %f %f %f", status, block->xyz(0), block->xyz(1), block->xyz(2));
+                block->status_level(status);
             }
         }
     }
     // receive the new memory in the new blocks
-    if (n_send_request_ > 0) {
+    if (n_send_request > 0) {
         MPI_Waitall(n_send_request, send_request, MPI_STATUS_IGNORE);
     }
     //-------------------------------------------------------------------------

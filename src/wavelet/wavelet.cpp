@@ -59,7 +59,7 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const 
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const{
+void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
     //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
@@ -119,7 +119,7 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
         m_assert(dlvl >= 0, "the copy cannot be called with a negative dlvl argument, dlvl = %d, force copy = %d", dlvl, force_copy);
         Copy_(dlvl, &ctx);
     } else if (dlvl == -1) {
-        Refine_(&ctx);
+        RefineZeroDetails_(&ctx);
     } else if (dlvl > 0) {
         Coarsen_(&ctx);
     }
@@ -136,7 +136,7 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     //-------------------------------------------------------------------------
-    const lid_t  scaling = pow(2, dlvl);
+    const lid_t scaling = pow(2, dlvl);
     // const real_t alpha   = ctx->alpha;
 
     const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
@@ -163,14 +163,14 @@ void Wavelet::Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const {
 
         // do the simple copy
         ltdata[0] = lsdata[0];
-        
+
         // non-nan checks
         m_assert(lsdata[0] == lsdata[0], "cannot be nan");
         // m_assert(lcdata[0] == lcdata[0], "cannot be nan");
         m_assert(ltdata[0] == ltdata[0], "cannot be nan");
     };
 
-    for_loop(&op,start,end);
+    for_loop(&op, start, end);
     //-------------------------------------------------------------------------
 }
 
@@ -207,16 +207,21 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
-#ifndef NDEBUG
-    int size_trg, size_src;
-    MPI_Type_size(dtype_src, &size_src);
-    MPI_Type_size(dtype_trg, &size_trg);
-    m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
-#endif
-    real_t* local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
+    real_t*  local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
     MPI_Aint disp      = disp_src + m_zeroidx(0, block_src()) + m_idx(src_start[0], src_start[1], src_start[2], 0, block_src->stride());
     // //#pragma omp critical
-    MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
+
+    int size_trg;
+    MPI_Type_size(dtype_trg, &size_trg);
+#ifndef NDEBUG
+    int size_src;
+    MPI_Type_size(dtype_src, &size_src);
+    m_assert(size_src == size_trg, "the two sizes must be the same: %d vs %d", size_src, size_trg);
+#endif
+    // only perform the call if we expect something
+    if (size_trg > 0) {
+        MPI_Get(local_trg, 1, dtype_trg, src_rank, disp, 1, dtype_src, win);
+    }
 
     // free the types
     MPI_Type_free(&dtype_trg);
@@ -257,17 +262,20 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
     ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
-#ifndef NDEBUG
-    int size_trg, size_src;
-    MPI_Type_size(dtype_src, &size_src);
-    MPI_Type_size(dtype_trg, &size_trg);
-    // m_verb("src size = %d and the trg size = %d", size_src, size_trg);
-    m_assert(size_trg == size_src, "the two sizes must match: src = %d vs trg = %d", size_src, size_trg);
-#endif
     const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src);
     MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg()) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
     //#pragma omp critical
-    MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
+    int size_trg;
+    MPI_Type_size(dtype_trg, &size_trg);
+#ifndef NDEBUG
+    int size_src;
+    MPI_Type_size(dtype_src, &size_src);
+    m_assert(size_src == size_trg, "the two sizes must be the same: %d vs %d", size_src, size_trg);
+#endif
+    // only perform the call if we expect something
+    if (size_trg > 0) {
+        MPI_Put(local_src, 1, dtype_src, trg_rank, disp, 1, dtype_trg, win);
+    }
 
     // free the types
     MPI_Type_free(&dtype_trg);
@@ -287,145 +295,258 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLa
  * @param smooth 
  * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
-real_t Wavelet::Criterion(const m_ptr<const MemLayout>& block, const const_data_ptr& data) const {
+real_t Wavelet::Criterion(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
+                          /* target */ const m_ptr<const MemLayout>& detail_block) const {
     //-------------------------------------------------------------------------
-    // get the extended memory layout
-    lid_t start[3];
-    lid_t end[3];
-    for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - criterion_shift_front();
-        end[id]   = block->end(id) + criterion_shift_back();
-    }
-    SubBlock extended_block(block->gs(), block->stride(), start, end);
-
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(&extended_block, data, nullptr, 0.0, &details_max);
+    Details(block_src, data, detail_block, nullptr, 0.0, &details_max);
 
     return details_max;
     //-------------------------------------------------------------------------
 }
 
+// /**
+//  * @brief compute the Forward wavelet transform on a given block (scaling + detail) and return the max detail
+//  *
+//  * The details are computed on an extended domain as we need their values to drive the coarsening/refinement
+//  *
+//  * @param block_src the block for the data to be transformed (including ghosting points)
+//  * @param block_trg the block for data to be computed
+//  * @param data the data that will be transformed (in place)
+//  * @param data_tmp the memory used as a copy (size @ref m_blockmemsize(1) )
+//  * @return real_t
+//  */
+// real_t  Wavelet::FWT(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& tmp) const {
+//     //-------------------------------------------------------------------------
+//     data_ptr data_tmp = tmp(0,block);
 
-real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
-    //-------------------------------------------------------------------------
-    // get the extended memory layout
-    lid_t start[3];
-    lid_t end[3];
-    for (lda_t id = 0; id < 3; id++) {
-        start[id] = block->start(id) - criterion_shift_front();
-        end[id]   = block->end(id) + criterion_shift_back();
-    }
-    const SubBlock detail_block(block->gs(), block->stride(), start, end);
+//     // copy the block
+//     ToTempMemory(block, data, data_tmp);
 
-    // reset the detail array
-    // memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
-    data_ptr detail_data = detail(0,block);
+//     // get the extended memory layout
+//     lid_t start[3];
+//     lid_t end[3];
+//     for (lda_t id = 0; id < 3; id++) {
+//         start[id] = block->start(id) - criterion_shift_front();
+//         end[id]   = block->end(id) + criterion_shift_back();
+//     }
+//     const SubBlock detail_block(block->gs(), block->stride(), start, end);
 
-    // get the detail coefficients
-    real_t details_max = 0.0;
-    Details(&detail_block, data, detail_data, tol, &details_max);
-    
-    // smooth them
-    // Smooth(&detail_block,detail_data,block,data);
+//     // get the detail coefficients
+//     real_t details_max = 0.0;
+//     Details(&detail_block, data, data_tmp, std::numeric_limits<real_t>::max(), &details_max);
 
-    return details_max;
-    //-------------------------------------------------------------------------
-}
+//     // get now the scaling coefficients in the normal block
+//     interp_ctx_t ctx;
+//     for (sid_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = block->start(id) - nghost_front();
+//         ctx.srcend[id]   = block->end(id) + nghost_back();
+// #endif
+//         ctx.trgstart[id] = block->start(id);
+//         ctx.trgend[id]   = block->end(id);
+//     }
+//     ctx.srcstr = block->stride();
+//     ctx.trgstr = block->stride();
+//     ctx.sdata = data_tmp; // we use data_tmp to get the scaling
+//     ctx.tdata = data;
+
+//     Coarsen_(&ctx)
+
+//     return details_max;
+//     //-------------------------------------------------------------------------
+// }
+
+// real_t Wavelet::CriterionAndSmooth(const m_ptr<const MemLayout>& block, const data_ptr& data, const mem_ptr& detail, const real_t tol) const {
+//     //-------------------------------------------------------------------------
+// // get the extended memory layout
+// lid_t start[3];
+// lid_t end[3];
+// for (lda_t id = 0; id < 3; id++) {
+//     start[id] = block->start(id) - criterion_shift_front();
+//     end[id]   = block->end(id) + criterion_shift_back();
+// }
+// const SubBlock detail_block(block->gs(), block->stride(), start, end);
+
+// // reset the detail array
+// // memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
+// data_ptr detail_data = detail(0,block);
+
+// // get the detail coefficients
+// real_t details_max = 0.0;
+// Details(&detail_block, data, detail_data, tol, &details_max);
+
+// // smooth them
+// // Smooth(&detail_block,detail_data,block,data);
+
+// return details_max;
+//     //-------------------------------------------------------------------------
+// }
 
 /**
- * @brief compute the max detail coefficients on a given MemLayout.
+ * @brief Compute the detail coefficients are return the max infinite norm
  * 
- * @param block the memory layout on which we compute the max detail
- * @param data the data to use to compute the detail, assumed valid on the whole [-nghost_front(), M_N + nghost_back()]^3 range
- * @param details_max the ptr to a value to put the max detail coefficient
+ * @param block_src describes the source data layout
+ * @param data the source data
+ * @param detail_block describes the detail data layout
+ * @param detail the detail data, if non-null the details are stored, cfr @ref Detail_ for storing policy
+ * @param tol if > 0, used to decide wether a detail must be stored cfr @ref Detail_ for storing policy
+ * @param details_max the max of the infinite norm on the details
  */
-void Wavelet::Details(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const {
+void Wavelet::Details(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
+                      /* target */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail, const real_t tol,
+                      /* output*/ m_ptr<real_t> details_max) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = 0 - nghost_front();
-        ctx.srcend[id]   = M_N + nghost_back();
+        ctx.srcstart[id] = block_src->start(id);
+        ctx.srcend[id]   = block_src->end(id);
 #endif
         ctx.trgstart[id] = detail_block->start(id);
         ctx.trgend[id]   = detail_block->end(id);
     }
-    ctx.srcstr = detail_block->stride();
+    ctx.srcstr = block_src->stride();
     ctx.sdata  = data;
     ctx.trgstr = detail_block->stride();
     ctx.tdata  = detail;
     // we do not neeed to store
     ctx.alpha = tol;
 
-    // m_log("tol = %e", tol);
     // we go for the two norm over the block
     Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
 }
 
+// void Wavelet::Scalings(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& data, const data_ptr& detail, const real_t tol, m_ptr<real_t> details_max) const {
+//     //-------------------------------------------------------------------------
+//     // get memory details
+//     interp_ctx_t ctx;
+//     for (lda_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = 0 - nghost_front();
+//         ctx.srcend[id]   = M_N + nghost_back();
+// #endif
+//         ctx.trgstart[id] = detail_block->start(id);
+//         ctx.trgend[id]   = detail_block->end(id);
+//     }
+//     ctx.srcstr = detail_block->stride();
+//     ctx.sdata  = data;
+//     ctx.trgstr = detail_block->stride();
+//     ctx.tdata  = detail;
+//     // we do not neeed to store
+//     ctx.alpha = tol;
+
+//     // m_log("tol = %e", tol);
+//     // we go for the two norm over the block
+//     Detail_(&ctx, details_max);
+//     //-------------------------------------------------------------------------
+// }
+
 /**
- * @brief Smooth the values given already computed details (cfr Details() )
+ * @brief Remove the details from the information if the mask is != 0.0
  * 
- * Remove from the current field all the negligible details
+ * We use first compute the detail coefficients using the wavelet transform, then
+ * we compute the inverse wavelet transform on the details to remove and correct the field
  * 
- * @param detail_block 
- * @param detail 
- * @param data 
- * @param tol 
+ * @param block_src the region used a source term for the detail computation
+ * @param block_trg the region which need to be smoothed
+ * @param data the data on which we operate
+ * @param detail_block the region of details that need to be computed
+ * @param detail_mask the mask on the details to compute (1.0 means we remove the detail)
  */
-void Wavelet::Smooth(const m_ptr<const MemLayout>& detail_block, const const_data_ptr& detail, const m_ptr<const MemLayout>& block, const data_ptr& data) const {
+void Wavelet::SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
+                           /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
+                           /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const {
     //-------------------------------------------------------------------------
+    //.........................................................................
+    // get the details
+    real_t trash = 0.0;
+    Details(block_src, data, detail_block, detail_mask, -1.0, &trash);
+
+    //.........................................................................
+    // smooth them
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = detail_block->start(id);  // 0 - nghost_front();
-        ctx.srcend[id]   = detail_block->end(id);    // M_N + nghost_back();
+        // detail block is too small as we need more points that are 0.0 so use the full block_src... bad, I knooow
+        ctx.srcstart[id] = block_src->start(id);
+        ctx.srcend[id]   = block_src->end(id);
 #endif
-        ctx.trgstart[id] = block->start(id);
-        ctx.trgend[id]   = block->end(id);
+        ctx.trgstart[id] = block_trg->start(id);
+        ctx.trgend[id]   = block_trg->end(id);
     }
     ctx.srcstr = detail_block->stride();
-    ctx.sdata  = detail;
-    ctx.trgstr = block->stride();
-    ctx.tdata  = data;
+    ctx.sdata  = detail_mask;  // this are the details
+    ctx.trgstr = block_trg->stride();
+    ctx.tdata  = data;  // this is the block
 
-    // we go for the two norm over the block
+    // smooth them
     Smooth_(&ctx);
     //-------------------------------------------------------------------------
 }
 
 /**
- * @brief Compute and store the details in the data_trg field
+ * @brief overwrites the data located at details coefficient's place to enforce a 0 detail computation
  * 
- * @param block 
- * @param data_trg 
- * @param data_src 
+ * @warning this operation is quite brutal and should be use carefully as it doesn't conserve any moment property
+ * 
+ * @param block_src the region used as a source
+ * @param block_trg the region where the details must be overwritten
+ * @param data the modified data
  */
-void Wavelet::WriteDetails(const m_ptr<const MemLayout>& block, const_data_ptr data_src, data_ptr data_trg) const {
+void Wavelet::OverwriteDetails(/* source */ const m_ptr<const MemLayout>& block_src,
+                               /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data) const {
+    //-------------------------------------------------------------------------
+    //.........................................................................
+    interp_ctx_t ctx;
+    for (lda_t id = 0; id < 3; id++) {
+#ifndef NDEBUG
+        ctx.srcstart[id] = block_src->start(id);
+        ctx.srcend[id]   = block_src->end(id);
+#endif
+        ctx.trgstart[id] = block_trg->start(id);
+        ctx.trgend[id]   = block_trg->end(id);
+    }
+    // source and target data are the same!!
+    ctx.srcstr = block_trg->stride();
+    ctx.sdata  = data;
+    ctx.trgstr = block_trg->stride();
+    ctx.tdata  = data;
+
+    // let's go
+    OverwriteDetailsDualLifting_(&ctx);
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief Compute and store the details in the data_trg field
+ */
+void Wavelet::StoreDetails(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
+                           /* target */ const m_ptr<const MemLayout>& block_detail, const data_ptr& detail) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
     for (lda_t id = 0; id < 3; id++) {
 #ifndef NDEBUG
-        ctx.srcstart[id] = block->start(id);
-        ctx.srcend[id]   = block->end(id);
+        ctx.srcstart[id] = block_src->start(id);
+        ctx.srcend[id]   = block_src->end(id);
 #endif
-        ctx.trgstart[id] = block->start(id);
-        ctx.trgend[id]   = block->end(id);
+        ctx.trgstart[id] = block_detail->start(id);
+        ctx.trgend[id]   = block_detail->end(id);
     }
-    ctx.srcstr = block->stride();
+    ctx.srcstr = block_src->stride();
+    ctx.trgstr = block_detail->stride();
+    ctx.sdata  = data;
+    ctx.tdata  = detail;
+    // set alpha to a huuge value, will store everything beneath it
+    ctx.alpha = std::numeric_limits<real_t>::max();
 
-    ctx.trgstr = block->stride();
-    ctx.sdata  = data_src;
-    ctx.tdata  = data_trg;
-    // set alpha to a huuge value
-    ctx.alpha  = std::numeric_limits<real_t>::max();
-    
     // compute
-    real_t detail_max; // -> will be discarded
-    Detail_(&ctx,&detail_max);
+    real_t detail_max = 0.0;  // -> will be discarded
+    Detail_(&ctx, &detail_max);
     //-------------------------------------------------------------------------
 }

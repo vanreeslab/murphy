@@ -1,364 +1,296 @@
-#include <mpi.h>
+#include <cmath>
+#include <limits>
+#include <list>
 
-#include "operator/blas.hpp"
-#include "core/doop.hpp"
-#include "operator/error.hpp"
-#include "grid/grid.hpp"
-#include "gridcallback.hpp"
-#include "gtest/gtest.h"
-#include "tools/ioh5.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "core/pointers.hpp"
-#include "operator/setvalues.hpp"
-#include "grid/subblock.hpp"
-#include "wavelet/interpolating_wavelet.hpp"
+#include "grid/field.hpp"
+#include "grid/grid.hpp"
+#include "gtest/gtest.h"
+#include "operator/error.hpp"
+#include "operator/xblas.hpp"
+#include "tools/ioh5.hpp"
+#include "valid_toolbox.hpp"
 
-#define DOUBLE_TOL 1e-13
-#define BLVL 1
-
-using std::list;
-
-class valid_Wavelet_Epsilon : public ::testing::Test {
+class InitCond_Epsilon : public SetValue {
    protected:
+    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+        //-------------------------------------------------------------------------
+        real_t        pos[3];
+        const real_t* xyz   = block->xyz();
+        const real_t* hgrid = block->hgrid();
+
+        real_t sigma     = 0.05;
+        real_t center[3] = {0.5, 0.5, 0.5};
+
+        // const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+        const real_t fact = 1.0;
+
+        // get the pointers correct
+        real_t* data = block->data(fid, 0).Write();
+
+        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+
+            // compute the gaussian
+            const real_t rhox = (pos[0] - center[0]) / sigma;
+            const real_t rhoy = (pos[1] - center[1]) / sigma;
+            const real_t rhoz = (pos[2] - center[2]) / sigma;
+            const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
+
+            data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
+        };
+
+        for_loop(&op, start_, end_);
+        //-------------------------------------------------------------------------
+    };
+
+   public:
+    explicit InitCond_Epsilon() : SetValue(nullptr){};
+};
+
+class Epsilon : public ::testing::TestWithParam<double> {
     void SetUp() override{};
     void TearDown() override{};
 };
 
-static constexpr lid_t m_gs     = 8;
-static constexpr lid_t m_n      = M_N;
-static constexpr lid_t m_hn     = M_HN;
-static constexpr lid_t m_stride = m_n + 6 * m_gs;
+static const real_t zero_tol = 1000.0 * std::numeric_limits<real_t>::epsilon();
 
-static Wavelet* GetWavelet(const sid_t n, const sid_t nt) {
-    if (n == 2 && nt == 2) {
-        return (new InterpolatingWavelet<2, 2>);
-    } else if (n == 4 && nt == 0) {
-        return (new InterpolatingWavelet<4, 0>);
-    } else if (n == 4 && nt == 2) {
-        return (new InterpolatingWavelet<4, 2>);
-    } else if (n == 4 && nt == 4) {
-        return (new InterpolatingWavelet<4, 4>);
-    } else if (n == 6 && nt == 0) {
-        return (new InterpolatingWavelet<6, 0>);
-    } else if (n == 6 && nt == 2) {
-        return (new InterpolatingWavelet<6, 2>);
-    } else if (n == 6 && nt == 4) {
-        return (new InterpolatingWavelet<6, 4>);
+/**
+ * @brief Check the epsilon + the moment condition on a "real-case" grid (periodic)
+ * 
+ */
+TEST_P(Epsilon, periodic) {
+    //-------------------------------------------------------------------------
+    // get the parameters
+    real_t  epsilon     = GetParam();
+    level_t level_start = 4;
+
+    // let's go
+    bool  period[3]   = {true, true, true};
+    lid_t grid_len[3] = {1, 1, 1};
+    Grid  grid(level_start, period, grid_len, MPI_COMM_WORLD, nullptr);
+    grid.level_limit(0, level_start);
+
+    Field scal("scalar", 1);
+    grid.AddField(&scal);
+    scal.bctype(M_BC_EXTRAP);
+
+    InitCond_Epsilon init;
+    init(&grid, &scal);
+    grid.SetTol(epsilon * 1e+20, epsilon);
+
+    // get the ghosting
+    grid.GhostPull(&scal);
+
+    // register the moments
+    BMoment moment;
+    real_t  fine_moment0, fine_moment1[3];
+    moment(&grid, &scal, &fine_moment0, fine_moment1);
+
+    // coarsen
+    short_t count     = 1;
+    level_t min_level = level_start;
+    do {
+        min_level = grid.MinLevel();
+        grid.Coarsen(&scal);
+
+        level_t tmp_min_lvl = grid.MinLevel();
+        level_t tmp_max_lvl = grid.MaxLevel();
+        m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
+
+        grid.GhostPull(&scal);
+        real_t coarse_moment0, coarse_moment1[3];
+        moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+        m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
+
+    } while (grid.MinLevel() < min_level && grid.MinLevel() > 0);
+
+    // measure the moments
+    grid.GhostPull(&scal);
+    real_t coarse_moment0, coarse_moment1[3];
+    moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+    m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
+
+    // and go back up
+    std::list<Patch> patch;
+    real_t           origin[3] = {0.0, 0.0, 0.0};
+    real_t           length[3] = {(real_t)grid_len[0], (real_t)grid_len[1], (real_t)grid_len[2]};
+    patch.push_back(Patch(origin, length, level_start));
+    do {
+        min_level = grid.MinLevel();
+        // force the field refinement using a patch
+        grid.GhostPull(&scal);
+        grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+
+        level_t tmp_min_lvl = grid.MinLevel();
+        level_t tmp_max_lvl = grid.MaxLevel();
+        m_log("Refinement: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
+
+    } while (grid.MinLevel() < level_start);
+
+    // set the solution field
+    Field sol("solution", 1);
+    grid.AddField(&sol);
+    init(&grid, &sol);
+    sol.bctype(M_BC_EXTRAP);
+
+    grid.GhostPull(&sol);
+    grid.GhostPull(&scal);
+
+    // measure the error
+    real_t          normi;
+    ErrorCalculator error;
+    error.Normi(&grid, &scal, &sol, &normi);
+    m_log("epsilon = %e, error = %.12e", epsilon, normi);
+
+    // measure the moments
+    real_t moment0, moment1[3];
+    moment(&grid, &scal, &moment0, moment1);
+    m_log("analytical moments after refinement: %e vs %e -> error = %.12e", fine_moment0, moment0, abs(fine_moment0 - moment0));
+    real_t mom_smooth_error[4];
+    mom_smooth_error[0] = fabs(fine_moment0 - moment0);
+    for (lda_t ida = 0; ida < 3; ++ida) {
+        mom_smooth_error[ida + 1] = fabs(fine_moment1[ida] - moment1[ida]);
     }
-    return nullptr;
+
+    ASSERT_LT(normi, 3.0 * epsilon);
+    if (grid.interp()->Nt() > 0) {
+        // for (lda_t ida = 0; ida < 4; ++ida) {
+        //     ASSERT_LT(mom_smooth_error[ida], zero_tol);
+        // }
+        ASSERT_LT(mom_smooth_error[0], zero_tol);
+        ASSERT_LT(mom_smooth_error[1], zero_tol);
+        ASSERT_LT(mom_smooth_error[2], zero_tol);
+        ASSERT_LT(mom_smooth_error[3], zero_tol);
+    }
+
+    // cleanup the fields
+    m_log("free fields");
+    grid.DeleteField(&sol);
+    m_log("free fields");
+    grid.DeleteField(&scal);
 };
 
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_forced) {
-    constexpr real_t hcoarse = 1.0 / (m_hn);
-    constexpr real_t hfine   = 1.0 / (m_n);
+/**
+ * @brief tests the epsilon condition, including at the boundary conditions (no moment check here!)
+ * 
+ */
+TEST_P(Epsilon, extrap) {
+    //-------------------------------------------------------------------------
+    // get the parameters
+    real_t epsilon = GetParam();
+    level_t level_start = 4;
 
-    Wavelet* interp = GetWavelet(M_WAVELET_N, M_WAVELET_NT);
+    // let's go
+    bool  period[3]   = {false, false, false};
+    lid_t grid_len[3] = {1, 1, 1};
+    Grid  grid(level_start, period, grid_len, MPI_COMM_WORLD, nullptr);
+    grid.level_limit(0, level_start);
 
-    real_p ptr_fine   = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    real_p ptr_coarse = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
-    real_p ptr_tmp    = (real_t*)m_calloc(m_stride * m_stride * m_stride * sizeof(real_t));
 
-    lid_t n[7][2] = {{2, 2}, {4, 0}, {4, 2}, {4, 4}, {6, 0}, {6, 2}, {6, 4}};
+    Field scal("scalar", 1);
+    grid.AddField(&scal);
+    scal.bctype(M_BC_EXTRAP);
 
-    // for (sid_t id = 0; id < 7; ++id) {
-    // create the memory, start in full configuration
-    SubBlock block_coarse(m_gs, m_hn + 2 * m_gs, -m_gs, m_hn + m_gs);
-    SubBlock block_fine(3 * m_gs, m_n + 6 * m_gs, -3 * m_gs, m_n + 3 * m_gs);
+    InitCond_Epsilon init;
+    init(&grid, &scal);
+    grid.SetTol(epsilon * 1e+20, epsilon);
 
-    real_t* data_fine   = ptr_fine + m_zeroidx(0, &block_fine);
-    real_t* data_coarse = ptr_coarse + m_zeroidx(0, &block_coarse);
+    // get the ghosting
+    grid.GhostPull(&scal);
 
-    // fill the fine block!
-    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
-        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
-            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
-                real_t x      = i0 * hfine;
-                real_t y      = i1 * hfine;
-                real_t z      = i2 * hfine;
-                real_t pos[3] = {x, y, z};
+    // // register the moments
+    // BMoment moment;
+    // real_t  fine_moment0, fine_moment1[3];
+    // moment(&grid, &scal, &fine_moment0, fine_moment1);
 
-                data_fine[m_idx(i0, i1, i2, 0, block_fine.stride())] = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
-            }
-        }
-    }
-    //................................................
-    // compute the max detail
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-    // get the coarse version of life
-    const lid_t m_hgs = m_gs / 2;
-    SubBlock    tmp_block(3 * m_hgs, m_hn + 6 * m_hgs, -3 * m_hgs, m_hn + 3 * m_hgs);
-    real_t*     data_tmp = ptr_tmp + m_zeroidx(0, &tmp_block);
-    for (lid_t i2 = tmp_block.start(2); i2 < tmp_block.end(2); i2++) {
-        for (lid_t i1 = tmp_block.start(1); i1 < tmp_block.end(1); i1++) {
-            for (lid_t i0 = tmp_block.start(0); i0 < tmp_block.end(0); i0++) {
-                data_tmp[m_idx(i0, i1, i2, 0, tmp_block.stride())] = data_fine[m_idx(i0 * 2, i1 * 2, i2 * 2, 0, block_fine.stride())];
-            }
-        }
-    }
+    // coarsen
+    short_t count     = 1;
+    level_t min_level = level_start;
+    do {
+        min_level = grid.MinLevel();
+        grid.Coarsen(&scal);
 
-    // Wavelet* interp = GetWavelet(n[id][0], n[id][1]);
-    real_t detail_max = 0.0;
-    interp->Details(&block_fine, data_fine, &detail_max);
+        level_t tmp_min_lvl = grid.MinLevel();
+        level_t tmp_max_lvl = grid.MaxLevel();
+        m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
-    //................................................
-    // set the index for coarsening computation
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), -3 * m_gs, m_n + 3 * m_gs);
-    // do the coarsening
-    lid_t shift[3] = {0};
-    interp->Interpolate(1, shift, &block_fine, data_fine, &block_coarse, data_coarse);
+        grid.GhostPull(&scal);
+        // real_t coarse_moment0, coarse_moment1[3];
+        // moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+        // m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
 
-    // set the index for refinement computation
-    block_fine.Reset(block_fine.gs(), block_fine.stride(), 0, m_n);
-    interp->Interpolate(-1, shift, &block_coarse, data_coarse, &block_fine, data_fine);
+    } while (grid.MinLevel() < min_level && grid.MinLevel() > 0);
 
-    // now compute the error
-    real_t erri = 0.0;
-    for (lid_t i2 = block_fine.start(2); i2 < block_fine.end(2); i2++) {
-        for (lid_t i1 = block_fine.start(1); i1 < block_fine.end(1); i1++) {
-            for (lid_t i0 = block_fine.start(0); i0 < block_fine.end(0); i0++) {
-                real_t x      = i0 * hfine;
-                real_t y      = i1 * hfine;
-                real_t z      = i2 * hfine;
-                real_t pos[3] = {x, y, z};
+    // measure the moments
+    grid.GhostPull(&scal);
+    // real_t coarse_moment0, coarse_moment1[3];
+    // moment(&grid, &scal, &coarse_moment0, coarse_moment1);
+    // m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
 
-                real_t exact = cos(2 * M_PI * (x)) + cos(2 * M_PI * (y)) + cos(2 * M_PI * (z));
-                real_t value = data_fine[m_idx(i0, i1, i2, 0, block_fine.stride())];
+    // and go back up
+    std::list<Patch> patch;
+    real_t           origin[3] = {0.0, 0.0, 0.0};
+    real_t           length[3] = {(real_t)grid_len[0], (real_t)grid_len[1], (real_t)grid_len[2]};
+    patch.push_back(Patch(origin, length, level_start));
+    do {
+        min_level = grid.MinLevel();
+        // force the field refinement using a patch
+        grid.GhostPull(&scal);
+        grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
-                real_t err = fabs(exact - value);
+        level_t tmp_min_lvl = grid.MinLevel();
+        level_t tmp_max_lvl = grid.MaxLevel();
+        m_log("Refinement: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
-                // if (err > erri) {
-                //     m_log("update the value, I have %e instead of %e @ %d %d %d", value, exact, i0, i1, i2);
-                // }
-                erri = m_max(erri, err);
-            }
-        }
-    }
-    ASSERT_LE(erri, detail_max);
-    m_log("[%s] erri = %e vs detail = %e", interp->Identity().c_str(), erri, detail_max);
-    delete (interp);
+    } while (grid.MinLevel() < level_start);
+
+    // set the solution field
+    Field sol("solution", 1);
+    grid.AddField(&sol);
+    init(&grid, &sol);
+    sol.bctype(M_BC_EXTRAP);
+
+    grid.GhostPull(&sol);
+    grid.GhostPull(&scal);
+
+    // measure the error
+    real_t          normi;
+    ErrorCalculator error;
+    error.Normi(&grid, &scal, &sol, &normi);
+    m_log("epsilon = %e, error = %.12e", epsilon, normi);
+
+    // measure the moments
+    // real_t moment0, moment1[3];
+    // moment(&grid, &scal, &moment0, moment1);
+    // m_log("analytical moments after refinement: %e vs %e -> error = %.12e", fine_moment0, moment0, abs(fine_moment0 - moment0));
+    // real_t mom_smooth_error[4];
+    // mom_smooth_error[0] = fabs(fine_moment0 - moment0);
+    // for (lda_t ida = 0; ida < 3; ++ida) {
+    //     mom_smooth_error[ida + 1] = fabs(fine_moment1[ida] - moment1[ida]);
     // }
 
-    // ciao
-    m_free(ptr_fine);
-    m_free(ptr_coarse);
+    ASSERT_LT(normi, 3.0 * epsilon);
+    // if (grid.interp()->Nt() > 0) {
+    //     for (lda_t ida = 0; ida < 4; ++ida) {
+    //         ASSERT_LT(mom_smooth_error[ida], zero_tol);
+    //     }
+    // }
 
-    ASSERT_NEAR(0.0, 0.0, DOUBLE_TOL);
+    // cleanup the fields
+    m_log("free fields");
+    grid.DeleteField(&sol);
+    m_log("free fields");
+    grid.DeleteField(&scal);
 }
 
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_periodic_test) {
-    // adapt the mesh
-    real_t epsilon[2] = {1e-2, 1e-3};
-    // real_t epsilon[1] = {1.0e-1};
-    // lda_t  ieps       = 0;
-    for (lda_t ieps = 0; ieps < 1; ++ieps) {
-        level_t max_level   = 4;
-        bool    periodic[3] = {true, true, true};
-        lid_t   L[3]        = {1, 1, 1};
-        Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
+INSTANTIATE_TEST_SUITE_P(ValidWavelet,
+                         Epsilon,
+                         testing::Values(1e-2, 1e-4, 1e-6));
 
-        // create the field + the solution
-        Field vort("vort", 3);
-        grid.AddField(&vort);
-
-        // create a patch of the current domain
-        list<Patch> patch;
-        real_t      origin[3] = {0.0, 0.0, 0.0};
-        real_t      length[3] = {L[0], L[1], L[2]};
-        patch.push_back(Patch(origin, length, max_level));
-
-        const real_t         center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
-        const lda_t          normal    = 2;
-        const real_t         sigma     = 0.1;
-        const real_t         radius    = 0.3;
-        const real_t         cutoff    = (center[0] - radius) * 0.9;
-        SetCompactVortexRing vr_init(normal, center, sigma, radius, cutoff);
-        SetCompactVortexRing vr_init_full(normal, center, sigma, radius, cutoff, grid.interp());
-
-        vr_init(&grid, &vort);
-
-        grid.SetTol(1e+5, epsilon[ieps]);
-
-        // do the coarsening, go the the min level if needed
-        for (level_t il = max_level; il > 2; --il) {
-            grid.Coarsen(&vort);
-        }
-
-        // go up again by forcing the refinement based on the patch
-        for (level_t sil = 2; sil < max_level; ++sil) {
-            grid.GhostPull(&vort);
-            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_UpdateDependency, nullptr);
-        }
-        level_t current_min_level = grid.MinLevel();
-        level_t current_max_level = grid.MaxLevel();
-        m_log("\t re-adaptation done! we have block between %d and %d", current_min_level, current_max_level);
-
-        // recreate the solution
-        Field sol("sol", 3);
-        grid.AddField(&sol);
-        vr_init(&grid, &sol);
-        // compute the error
-        real_t          err2, erri;
-        ErrorCalculator error;
-        error.Norms(&grid, &vort, &sol, &err2, &erri);
-        m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
-
-        grid.DeleteField(&sol);
-
-        ASSERT_LE(err2, epsilon[ieps]);
-        ASSERT_LE(erri, epsilon[ieps]);
-    }
-}
-
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_extrap_test) {
-    // adapt the mesh
-    real_t epsilon[3] = {1e-2, 1e-3};
-    // real_t epsilon[1] = {1.0e-1};
-    // lda_t  ieps       = 0;
-    for (lda_t ieps = 0; ieps < 2; ++ieps) {
-        level_t max_level   = 4;
-        bool    periodic[3] = {false, false, false};
-        lid_t   L[3]        = {1, 1, 1};
-        Grid    grid(max_level, periodic, L, MPI_COMM_WORLD, nullptr);
-
-        // create the field + the solution
-        Field vort("vort", 3);
-        grid.AddField(&vort);
-
-        vort.bctype(M_BC_EXTRAP);
-
-        // create a patch of the current domain
-        list<Patch> patch;
-        real_t      origin[3] = {0.0, 0.0, 0.0};
-        real_t      length[3] = {L[0], L[1], L[2]};
-        patch.push_back(Patch(origin, length, max_level));
-
-        const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
-        const lda_t  normal    = 2;
-        const real_t sigma     = 0.05;
-        const real_t radius    = 0.3;
-        // const real_t  cutoff    = (center[0] - radius) * 0.9;
-        SetVortexRing vr_init(normal, center, sigma, radius);
-        SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
-
-        vr_init(&grid, &vort);
-
-        grid.SetTol(1e+5, epsilon[ieps]);
-
-        // do the coarsening, go the the min level if needed
-        for (level_t il = max_level; il > 2; --il) {
-            grid.Coarsen(&vort);
-        }
-
-        // grid.GhostPull(&vort);
-        // IOH5        io("data_test");
-        // std::string name = "vort_coarse" + std::to_string(epsilon[ieps]);
-        // io(&grid, &vort, name);
-
-        // go up again by forcing the refinement based on the patch
-        for (level_t sil = 2; sil < max_level; ++sil) {
-            grid.GhostPull(&vort);
-            grid.Adapt(nullptr, nullptr, &cback_Patch, reinterpret_cast<void*>(&patch), &cback_UpdateDependency, nullptr);
-
-            // recreate the solution
-            Field sol("sol", 3);
-            grid.AddField(&sol);
-            vr_init(&grid, &sol);
-            // compute the error
-            real_t          err2, erri;
-            ErrorCalculator error;
-            error.Norms(&grid, &vort, &sol, &err2, &erri);
-            m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
-
-            ASSERT_LE(err2, epsilon[ieps]);
-            ASSERT_LE(erri, epsilon[ieps]);
-
-            grid.DeleteField(&sol);
-        }
-        level_t current_min_level = grid.MinLevel();
-        level_t current_max_level = grid.MaxLevel();
-        m_log("\t re-adaptation done! we have block between %d and %d", current_min_level, current_max_level);
-
-        // recreate the solution
-        Field sol("sol", 3);
-        grid.AddField(&sol);
-        vr_init(&grid, &sol);
-        // compute the error
-        real_t          err2, erri;
-        ErrorCalculator error;
-        error.Norms(&grid, &vort, &sol, &err2, &erri);
-        m_log("==> error after reconstruction: epsilon %e: err2 = %e, erri = %e", epsilon[ieps], err2, erri);
-
-        // grid.GhostPull(&vort);
-        // IOH5 io("data_test");
-        // io(&grid, &vort, "vort_fine");
-
-        ASSERT_LE(err2, epsilon[ieps]);
-        ASSERT_LE(erri, epsilon[ieps]);
-
-        grid.DeleteField(&sol);
-    }
-}
-
-
-//==============================================================================================================================
-TEST_F(valid_Wavelet_Epsilon, epsilon_detail_IO) {
-    // adapt the mesh
-    real_t epsilon[3] = {1e-2, 1e-4};
-    
-        bool    periodic[3] = {false, false, false};
-        lid_t   L[3]        = {1, 1, 1};
-        Grid    grid(1, periodic, L, MPI_COMM_WORLD, nullptr);
-
-        // create a patch of the current domain
-        list<Patch> patch;
-        real_t      origin[3] = {0.0, 0.0, 0.0};
-        real_t      length[3] = {L[0], L[1], L[2]};
-        patch.push_back(Patch(origin, length, 2));
-        real_t origin2[3] = {0.25, 0.25, 0.0};
-        real_t length2[3] = {0.375 * L[0], L[1], L[2]};
-        patch.push_back(Patch(origin2, length2, 3));
-        real_t origin3[3] = {0.25, 0.25, 0.0};
-        real_t length3[3] = {L[0], 1.0 * L[1] / 2.0, L[2]};
-        patch.push_back(Patch(origin3, length3, 3));
-
-        grid.SetTol(1e-2, 1e-4);
-        grid.SetRecursiveAdapt(true);
-        grid.Adapt(&patch);
-
-        // create the field + the solution
-        Field vort("vort", 3);
-        grid.AddField(&vort);
-
-        vort.bctype(M_BC_EXTRAP);
-
-        const real_t center[3] = {L[0] / 2.0, L[1] / 2.0, L[2] / 2.0};
-        const lda_t  normal    = 2;
-        const real_t sigma     = 0.025;
-        const real_t radius    = 0.25;
-        // const real_t  cutoff    = (center[0] - radius) * 0.9;
-        SetVortexRing vr_init(normal, center, sigma, radius);
-        SetVortexRing vr_init_full(normal, center, sigma, radius, grid.interp());
-
-        // vr_init(&grid, &vort);
-        vr_init_full(&grid, &vort);
-
-        IOH5 dump("data");
-        // grid.GhostPull(&vort);
-        dump(&grid, &vort);
-
-        Field details("details", 3);
-        grid.AddField(&details);
-        grid.DumpDetails(&vort, &details);
-        details.bctype(M_BC_EXTRAP);
-        grid.GhostPull(&details);
-
-        dump(&grid, &details);
-
-        grid.DeleteField(&vort);
-        grid.DeleteField(&details);
-
-}
+// INSTANTIATE_TEST_SUITE_P(ValidWaveletExtrap,
+//                          EpsilonExtrap,
+//                          testing::Values(1e-2, 1e-4, 1e-6));

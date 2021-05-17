@@ -176,7 +176,7 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
         Field details("detail", 3);
         details.bctype(M_BC_EXTRAP);
         grid_->AddField(&details);
-        grid_->DumpDetails(vort_, &details);
+        grid_->StoreDetails(vort_, &details);
 
         grid_->GhostPull(&details);
         // IOH5 dump("data");

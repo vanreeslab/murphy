@@ -8,7 +8,7 @@ BMax::BMax(m_ptr<const Wavelet> interp)noexcept : BlockOperator(interp){};
 real_t BMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
-    max_ = std::numeric_limits<real_t>::min();
+    max_ = 0.0;  //std::numeric_limits<real_t>::min();
     // go on the blocks
     DoOpMesh(this, &BMax::ComputeBMaxGridBlock, grid, fid_x);
     // update the ghost - not needed
@@ -21,37 +21,28 @@ real_t BMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) 
 }
 
 void BMax::ComputeBMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
-    m_assert(fid_x->lda() <= 3, "the array for the address has a size of 3, increase the size if %d dims are needed", fid_x->lda());
+    // m_assert(fid_x->lda() <= 3, "the array for the address has a size of 3, increase the size if %d dims are needed", fid_x->lda());
     //-------------------------------------------------------------------------
-    const sid_t lda = fid_x->lda();
+    // get the data for each direction
+    for (sid_t ida = 0; ida < fid_x->lda(); ida++) {
+        // for the current ida
+        real_t        local_max = 0.0;
+        const real_t* data      = block->data(fid_x, ida).Read();
 
-    const real_t* data[3];
+        auto op = [=, &local_max](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            const size_t idx = m_idx(i0, i1, i2);
+            local_max        = m_max(fabs(data[idx]), local_max);
+        };
+        for_loop(&op, start_, end_);
 
-    for (sid_t ida = 0; ida < lda; ida++) {
-        data[ida] = block->data(fid_x, ida).Read();
-    }
-
-    // get the correct place given the current thread and the dimension
-    for (bidx_t i2 = start_; i2 < end_; i2++) {
-        for (bidx_t i1 = start_; i1 < end_; i1++) {
-            for (bidx_t i0 = start_; i0 < end_; i0++) {
-                const size_t idx = m_idx(i0, i1, i2);
-
-                real_t value = 0.0;
-                for (sid_t ida = 0; ida < lda; ida++) {
-                    value += fabs(data[ida][idx]);
-                }
-
-                max_ = m_max(fabs(value), max_);
-            }
-        }
+        max_ = m_max(local_max, max_);
     }
     //-------------------------------------------------------------------------
 }
 
 //-----------------------------------------------------------------------------
-BMinMax::BMinMax()noexcept : BlockOperator(nullptr){};
-BMinMax::BMinMax(m_ptr<const Wavelet> interp)noexcept : BlockOperator(interp){};
+BMinMax::BMinMax() noexcept : BlockOperator(nullptr){};
+BMinMax::BMinMax(m_ptr<const Wavelet> interp) noexcept : BlockOperator(interp){};
 
 /**
  * @brief compute the min and the max of fid_x dimension per dimension and store them in min and max (must have the dimension size)
@@ -141,6 +132,7 @@ void BMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x,
  */
 void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);
+    m_assert(fid_x->ghost_status(),"the field <%s> must have uptodate ghosts",fid_x->name());
     //-------------------------------------------------------------------------
     // get the starting pointer:
     const real_t* h    = block->hgrid();
@@ -235,7 +227,7 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
         real_t origin[3];
         m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
 
-        constexpr real_t coef = 1.0 / 8.0;
+        constexpr real_t coef = 0.125;  //1.0 / 8.0;
         const real_t*    f    = data + m_idx(i0, i1, i2);
 
         // 0,0,0
@@ -303,14 +295,19 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
             lmoment1[2] += coef * value * (origin[2] + h[2]);
         }
     };
-    
-    for_loop(&op,start_,end_);
+    // we need to visit one more point than usual:
+
+    for_loop(&op, start_, end_);
 
     const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
-    moment0_    += vol * lmoment0;
+    moment0_ += vol * lmoment0;
     moment1_[0] += vol * lmoment1[0];
     moment1_[1] += vol * lmoment1[1];
     moment1_[2] += vol * lmoment1[2];
+
+    // if (block->xyz(0)  1.0) {
+        // m_log("block @ %f %f %f (level = %d) moments from %d to %d = %.12e -> cum = %e", block->xyz(0), block->xyz(1), block->xyz(2), block->level(), start_, end_, vol * 4.0 * lmoment0, moment0_);
+    // }
     //-------------------------------------------------------------------------
 }
 
