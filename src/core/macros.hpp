@@ -11,6 +11,26 @@
 #include "core/types.hpp"
 #include "hdf5.h"
 
+// register the current git commit for tracking purpose
+#ifdef GIT_COMMIT
+#define M_GIT_COMMIT GIT_COMMIT
+#else
+#define M_GIT_COMMIT "?"
+#endif
+
+// check if the compilation defines the order of the wavelet. if not, we do it
+#ifndef WAVELET_N
+#define M_WAVELET_N 2
+#else
+#define M_WAVELET_N WAVELET_N
+#endif
+
+#ifndef WAVELET_NT
+#define M_WAVELET_NT 2
+#else
+#define M_WAVELET_NT WAVELET_NT
+#endif
+
 /**
  * @name user-defined parameters 
  * @{

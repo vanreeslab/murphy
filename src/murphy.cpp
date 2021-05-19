@@ -3,17 +3,40 @@
 
 #include <string>
 
+#include "clients/debug_lifting.hpp"
+#include "clients/epsilon_test.hpp"
 #include "clients/flow_abc.hpp"
 #include "clients/navier_stokes.hpp"
 #include "clients/simple_advection.hpp"
-#include "clients/epsilon_test.hpp"
-#include "clients/debug_lifting.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
 #include "parser.hpp"
 
 using std::string;
+
+/**
+ * @brief writes the file murphy.info used for tracking of the results, bookkeeping etc
+ */
+void WriteInfo(int argc, char** argv) {
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        FILE* file = fopen("murphy.info", "w+");
+        fprintf(file, "MURPHY - (c) MIT\n");
+        fprintf(file, "- commit: %s\n", M_GIT_COMMIT);
+        fprintf(file, "- defines:\n");
+        fprintf(file, "\tM_N = %d\n", M_N);
+        fprintf(file, "\tM_GS = %d\n", M_GS);
+        fprintf(file, "\tM_WAVELET_N = %d\n", M_WAVELET_N);
+        fprintf(file, "\tM_WAVELET_NT = %d\n", M_WAVELET_NT);
+        fprintf(file, "- argument list:\n");
+        for (int i = 0; i < argc; ++i) {
+            fprintf(file, "\t%s\n", argv[i]);
+        }
+        fclose(file);
+    }
+}
 
 TestCase* MurphyInit(int argc, char** argv) {
     //-------------------------------------------------------------------------
@@ -33,6 +56,9 @@ TestCase* MurphyInit(int argc, char** argv) {
     m_assert(M_GS >= 1, "1 is the min ghost point needed, because of the IO");
     m_assert(M_N >= M_GS, "we cannot have ghost points that span more than 1 block");
     // m_assert((M_STRIDE * M_GS + M_GS) % (M_ALIGNMENT / sizeof(real_t)) == 0, "the first point has to be aligned");
+
+    // write the info file
+    WriteInfo(argc, argv);
 
     // parse arguments, just simply display the help, nothing more at that stage
     ParserArguments argument;

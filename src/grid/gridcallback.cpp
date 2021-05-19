@@ -100,113 +100,113 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
     m_end;
 }
 
-/**
- * @brief replies yes if we do not match one of the patch criterion
- */
-int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
-    m_assert(false,"should go to trash");
-    // //-------------------------------------------------------------------------
-    // // retreive the patch list and the current block
-    // Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    // list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
-    // GridBlock*   block   = p4est_GetGridBlock(quadrant);
-    // m_assert(block->level() == quadrant->level, "the two levels must match");
-    // m_assert(block->level() >= 0, "the level=%d must be >=0", block->level());
+// /**
+//  * @brief replies yes if we do not match one of the patch criterion
+//  */
+// int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
+//     m_assert(false,"should go to trash");
+//     // //-------------------------------------------------------------------------
+//     // // retreive the patch list and the current block
+//     // Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
+//     // list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
+//     // GridBlock*   block   = p4est_GetGridBlock(quadrant);
+//     // m_assert(block->level() == quadrant->level, "the two levels must match");
+//     // m_assert(block->level() >= 0, "the level=%d must be >=0", block->level());
 
-    // // get the origin, the length and check if we are inside the patch
-    // const real_t* xyz = block->xyz();
-    // real_t        len = p4est_QuadLen(block->level());
+//     // // get the origin, the length and check if we are inside the patch
+//     // const real_t* xyz = block->xyz();
+//     // real_t        len = p4est_QuadLen(block->level());
 
-    // for (auto iter = patches->begin(); iter != patches->end(); iter++) {
-    //     Patch* patch = &(*iter);
+//     // for (auto iter = patches->begin(); iter != patches->end(); iter++) {
+//     //     Patch* patch = &(*iter);
 
-    //     // check that the patch's level is within the possible bounds
-    //     m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
-    //     m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
+//     //     // check that the patch's level is within the possible bounds
+//     //     m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
+//     //     m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
 
-    //     // if we already have the correct level or a higher one, we skip the patch
-    //     if (block->level() >= patch->level()) {
-    //         continue;
-    //     }
-    //     // if not, we have a coarser block and we might want to refine if the location matches
-    //     bool refine = true;
-    //     for (lda_t id = 0; id < 3; id++) {
-    //         // we have to satisfy both the our max > min and the min < our max
-    //         refine = refine &&
-    //                  (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
-    //                  (patch->origin(id) < (block->xyz(id) + len));
-    //     }
-    //     if (refine) {
-    //         grid->AddOneQuadToAdapt();
-    //         //m_log("adapt please!");
-    //         block->status_level(M_ADAPT_FINER);
-    //         return true;
-    //     }
-    // }
+//     //     // if we already have the correct level or a higher one, we skip the patch
+//     //     if (block->level() >= patch->level()) {
+//     //         continue;
+//     //     }
+//     //     // if not, we have a coarser block and we might want to refine if the location matches
+//     //     bool refine = true;
+//     //     for (lda_t id = 0; id < 3; id++) {
+//     //         // we have to satisfy both the our max > min and the min < our max
+//     //         refine = refine &&
+//     //                  (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+//     //                  (patch->origin(id) < (block->xyz(id) + len));
+//     //     }
+//     //     if (refine) {
+//     //         grid->AddOneQuadToAdapt();
+//     //         //m_log("adapt please!");
+//     //         block->status_level(M_ADAPT_FINER);
+//     //         return true;
+//     //     }
+//     // }
 
-    // // m_log("never mind");
-    // return false;
-    // //-------------------------------------------------------------------------
-}
+//     // // m_log("never mind");
+//     // return false;
+//     // //-------------------------------------------------------------------------
+// }
 
-/**
- * @brief replies yes if we do not match one of the patch criterion
- */
-int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
-    m_assert(false,"should go to trash");
-    // //-------------------------------------------------------------------------
-    // // retreive the patch list and the current block
-    // Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
-    // list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
+// /**
+//  * @brief replies yes if we do not match one of the patch criterion
+//  */
+// int cback_Patch(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
+//     m_assert(false,"should go to trash");
+//     // //-------------------------------------------------------------------------
+//     // // retreive the patch list and the current block
+//     // Grid*        grid    = reinterpret_cast<Grid*>(forest->user_pointer);
+//     // list<Patch>* patches = reinterpret_cast<list<Patch>*>(grid->cback_criterion_ptr());
 
-    // // check every block, if one child needs to be coarsen, we return true for everybody
-    // bool coarsen_all = false;
-    // for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
-    //     GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
-    //     m_assert(block->level() == quadrant[ib]->level, "the two levels must match");
-    //     m_assert(block->level() >= 0, "the level=%d must be >=0", block->level());
+//     // // check every block, if one child needs to be coarsen, we return true for everybody
+//     // bool coarsen_all = false;
+//     // for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
+//     //     GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
+//     //     m_assert(block->level() == quadrant[ib]->level, "the two levels must match");
+//     //     m_assert(block->level() >= 0, "the level=%d must be >=0", block->level());
 
-    //     // get the origin, the length and check if we are inside the patch
-    //     const real_t* xyz = block->xyz();
-    //     real_t        len = p4est_QuadLen(block->level());
+//     //     // get the origin, the length and check if we are inside the patch
+//     //     const real_t* xyz = block->xyz();
+//     //     real_t        len = p4est_QuadLen(block->level());
 
-    //     for (auto iter = patches->begin(); iter != patches->end(); iter++) {
-    //         Patch* patch = &(*iter);
+//     //     for (auto iter = patches->begin(); iter != patches->end(); iter++) {
+//     //         Patch* patch = &(*iter);
 
-    //         // check that the patch's level is within the possible bounds
-    //         m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
-    //         m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
+//     //         // check that the patch's level is within the possible bounds
+//     //         m_assert(grid->level_limit_min() <= patch->level(), "The patch level = %d must be >= min level = %d", patch->level(), grid->level_limit_min());
+//     //         m_assert(patch->level() <= grid->level_limit_max(), "The patch level = %d must be <= max level = %d", patch->level(), grid->level_limit_max());
 
-    //         m_log("comparing level: %d vs %d", block->level(), patch->level());
-    //         // if we already have the correct level or a lower one, we skip the patch
-    //         if (block->level() <= patch->level()) {
-    //             continue;
-    //         }
-    //         // if not, we have a finer block and we might want to coarsen if the location matches
-    //         bool coarsen = true;
-    //         for (lda_t id = 0; id < 3; id++) {
-    //             // we have to satisfy both the our max > min and the min < our max
-    //             coarsen = coarsen &&
-    //                       (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
-    //                       (patch->origin(id) < (block->xyz(id) + len));
-    //         }
-    //         // if only one needs to be coarsen, we coarsen all of them
-    //         if (coarsen) {
-    //             grid->AddOneQuadToAdapt();
-    //             coarsen_all = true;
-    //             break;
-    //         }
-    //     }
-    // }
-    // if (coarsen_all) {
-    //     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
-    //         GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
-    //         block->status_level(M_ADAPT_COARSER);
-    //     }
-    // }
-    // return coarsen_all;
-    // //-------------------------------------------------------------------------
-}
+//     //         m_log("comparing level: %d vs %d", block->level(), patch->level());
+//     //         // if we already have the correct level or a lower one, we skip the patch
+//     //         if (block->level() <= patch->level()) {
+//     //             continue;
+//     //         }
+//     //         // if not, we have a finer block and we might want to coarsen if the location matches
+//     //         bool coarsen = true;
+//     //         for (lda_t id = 0; id < 3; id++) {
+//     //             // we have to satisfy both the our max > min and the min < our max
+//     //             coarsen = coarsen &&
+//     //                       (block->xyz(id) < (patch->origin(id) + patch->length(id))) &&
+//     //                       (patch->origin(id) < (block->xyz(id) + len));
+//     //         }
+//     //         // if only one needs to be coarsen, we coarsen all of them
+//     //         if (coarsen) {
+//     //             grid->AddOneQuadToAdapt();
+//     //             coarsen_all = true;
+//     //             break;
+//     //         }
+//     //     }
+//     // }
+//     // if (coarsen_all) {
+//     //     for (sid_t ib = 0; ib < P8EST_CHILDREN; ib++) {
+//     //         GridBlock* block = p4est_GetGridBlock(quadrant[ib]);
+//     //         block->status_level(M_ADAPT_COARSER);
+//     //     }
+//     // }
+//     // return coarsen_all;
+//     // //-------------------------------------------------------------------------
+// }
 
 /**
  * @brief refine if the GridBlock::status_lvl_ of the associated block is +1

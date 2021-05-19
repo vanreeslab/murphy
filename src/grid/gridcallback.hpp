@@ -29,8 +29,8 @@ void cback_DestroyBlock(p8est_iter_volume_info_t *info, void *user_data);
 int cback_Yes(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
 int cback_Yes(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
 // yes if in the patch
-int cback_Patch(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
-int cback_Patch(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
+// int cback_Patch(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
+// int cback_Patch(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);
 // check the status form the block
 int cback_StatusCheck(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant);
 int cback_StatusCheck(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadrant[]);

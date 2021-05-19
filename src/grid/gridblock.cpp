@@ -18,209 +18,20 @@ using ListGBLocal  = std::list<GBLocal*>;
 using ListGBMirror = std::list<GBMirror*>;
 using listGBPhysic = std::list<GBPhysic*>;
 
-enum NghStatus { NS_NONE   = 0,
-                 NS_PHYS   = 1,
-                 NS_COARSE = 2,
-                 NS_EVEN   = 3,
-                 NS_FINE   = 4 };
-
 static const lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
+/**
+ * @brief return the grid spacing of a coarser block
+ * 
+ * @param len the physical length of the coarser block
+ * @return constexpr real_t the grid spacing in the coarser block
+ */
 constexpr real_t CoarseHGrid(const real_t len) {
-    // return len/ (real_t) (M_NHALF-1);
     return len / (real_t)(M_NHALF);
 }
 
-
-
 /**
- * @brief returns a boolean to determine if the first point must be discarded and the last point taken into account
- * 
- * In the direction of the ghosting, we decide based on the level.
- * For the other directions, we decide based on the "level of information", stored in the status vector:
- *      - if we have a higher level, we extend the end
- *      - if we have a coarser level, we restrict the start.
- * 
- * @param ibidule the id of the face [0,6[, edge [6,18[, and corner [18,26[
- * @param status the status of the already completed ghost: if it's an face/edge we will give a look at the edge/corner
- * @param src_level the level of the source information (not necessarily the block level)
- * @param trg_level the level of the target information
- * @param restrict_start boolean to neglect the first point (per dimension)
- * @param extend_end boolean to take the last point (per dimension)
- */
-static void GhostGetExtend(/* input */ const iface_t ibidule, const NghStatus status[M_NNEIGHBORS], const level_t src_level, const level_t trg_level,
-                           /* output */ bool restrict_start[3], bool extend_end[3]) {
-    m_assert(ibidule < M_NNEIGHBORS, "the ibidule = %d must be < %d", ibidule, M_NNEIGHBORS);
-    //-------------------------------------------------------------------------
-    restrict_start[0] = false;
-    restrict_start[1] = false;
-    restrict_start[2] = false;
-    extend_end[0]     = false;
-    extend_end[1]     = false;
-    extend_end[2]     = false;
-    // //from burstedde2011
-    // static iface_t face_2_edges[6][4] = {
-    //     /*face 0*/ {4, 6, 8, 10},
-    //     /*face 1*/ {5, 7, 9, 11},
-    //     /*face 2*/ {0, 2, 8, 9},
-    //     /*face 3*/ {1, 3, 10, 11},
-    //     /*face 4*/ {0, 1, 4, 5},
-    //     /*face 5*/ {2, 3, 6, 7}};
-
-    // static iface_t edge_2_corners[12][2]{
-    //     /*edge 0 */ {0, 1},
-    //     /*edge 1 */ {2, 3},
-    //     /*edge 2 */ {4, 5},
-    //     /*edge 3 */ {6, 7},
-    //     /*edge 4 */ {0, 2},
-    //     /*edge 5 */ {1, 3},
-    //     /*edge 6 */ {4, 6},
-    //     /*edge 7 */ {5, 7},
-    //     /*edge 8 */ {0, 4},
-    //     /*edge 9 */ {1, 5},
-    //     /*edge 10 */ {2, 6},
-    //     /*edge 11 */ {3, 7}};
-
-    // if (ibidule < 6) {
-    //     iface_t iface = ibidule;
-    //     // get the dir and the sign
-    //     iface_t dir;
-    //     real_t  sign[3];
-    //     face_sign(iface, &dir, sign);
-    //     restrict_start[dir] = (src_level < trg_level) && (sign[dir] > 0.5);
-    //     extend_end[dir]     = (src_level > trg_level) && (sign[dir] < -0.5);
-    //     m_log("FACE: in dir %d (sign = %f %f %f): level: %d vs %d", dir, sign[0], sign[1], sign[2], src_level, trg_level);
-
-    //     // loop over the edge and extend to cover the edge if needed
-    //     // we extend in the direction which is not the face, nor the edge:
-    //     // the sum of the dir is 3, so we substract the two dimension and obtain the extention one
-    //     for (lda_t ida = 0; ida < 4; ++ida) {
-    //         //..........................
-    //         // start point, first edge
-    //         iface_t iedge      = face_2_edges[iface][ida];
-    //         lda_t   dir_extend = 3 - dir - (iedge / 4);
-    //         m_assert((dir_extend != dir) && (dir_extend != (iedge / 4)), "the direction of extension = %d cannot be the current dir = %d, nor the direction of the edge = %d", dir_extend, dir, iedge / 4);
-
-    //         // update the start
-    //         restrict_start[dir_extend] = (status[iface] < status[6 + iedge]);  // I cannot take the full face
-    //         m_log("in dir %d: status: %d vs %d", dir_extend, status[iface], status[6 + iedge]);
-
-    //         //..........................
-    //         // end
-    //         ++ida;
-
-    //         //..........................
-    //         // get new edge and chedk the dir
-    //         iedge = face_2_edges[iface][ida];
-    //         // check
-    //         m_assert(face_2_edges[iface][ida - 1] < face_2_edges[iface][ida], "the two edges must be ordered");
-    //         m_assert(dir_extend == (3 - dir - (iedge / 4)), "the dir extend of two successive edges must match");
-    //         m_assert((dir_extend != dir) && (dir_extend != (iedge / 4)), "the direction of extension = %d cannot be the current dir = %d, nor the direction of the edge = %d", dir_extend, dir, iedge / 4);
-    //         // update the extend info
-    //         extend_end[dir_extend] = (status[iface] > status[6 + iedge]) || (status[iface] == status[6 + iedge] && status[iface] == NS_COARSE);
-    //         m_log("in dir %d: status: %d vs %d", dir_extend, status[iface], status[6 + iedge]);
-    //     }
-    // } else if (ibidule < 18) {
-    //     iface_t iedge = ibidule - 6;
-
-    //     iface_t dir;
-    //     real_t  sign[3];
-    //     edge_sign(iedge, &dir, sign);
-
-    //     // update the direction
-    //     iface_t dir1         = (dir + 1) % 3;
-    //     iface_t dir2         = (dir + 2) % 3;
-    //     restrict_start[dir1] = (src_level < trg_level) && (sign[dir1] > 0.5);
-    //     extend_end[dir1]     = (src_level > trg_level) && (sign[dir1] < -0.5);
-    //     restrict_start[dir2] = (src_level < trg_level) && (sign[dir2] > 0.5);
-    //     extend_end[dir2]     = (src_level > trg_level) && (sign[dir2] < -0.5);
-
-    //     m_log("EDGE: in dir %d (sign = %f %f %f): level: %d vs %d", dir, sign[0], sign[1], sign[2], src_level, trg_level);
-
-    //     // look for the corners
-    //     for (lda_t ida = 0; ida < 2; ++ida) {
-    //         // start
-    //         iface_t icorner     = edge_2_corners[iedge][ida];
-    //         restrict_start[dir] = (status[6 + iedge] < status[18 + icorner]);  // I cannot take the full edge
-
-    //         // end
-    //         ++ida;
-    //         icorner         = edge_2_corners[iedge][ida];
-    //         extend_end[dir] = (status[6 + iedge] > status[18 + icorner]) || (status[6 + iedge] == status[18 + icorner] && status[6 + iedge] == NS_COARSE);
-
-    //         // check
-    //         m_assert(edge_2_corners[iedge][ida - 1] < edge_2_corners[iedge][ida], "the corners must be ordered");
-    //     }
-    // } else {
-    //     real_t sign[3];
-    //     corner_sign(ibidule - 18, sign);
-    //     // we use the sign associated to the corner to modify correctly the restrict/extend
-    //     for (lda_t id = 0; id < 3; ++id) {
-    //         restrict_start[id] = (src_level < trg_level) && (sign[id] > 0.5);
-    //         extend_end[id]     = (src_level > trg_level) && (sign[id] < -0.5);
-    //     }
-    // }
-    //-------------------------------------------------------------------------
-};
-
-/**
- * @brief reverse the perspective of the extend from the fine block point of view to the coarse one
- * 
- * if the fine decides to do nothing, we are all good,
- * if the fine decides to restrict its start, we need to extend the end
- * if the fine decides to extend its end, we need to restrict our start
- * 
- */
-static void GhostReverseExtend(const iface_t ibidule, /* in */ const bool fine_restrict_start[3], const bool fine_extend_end[3],
-                               /* out */ bool coarse_restrict_start[3], bool coarse_extend_end[3]) {
-    //-------------------------------------------------------------------------
-    if (ibidule < 6) {
-        iface_t dir;
-        real_t  sign[3];
-        face_sign(ibidule, &dir, sign);
-
-        // inverse in the direction of the face
-        coarse_restrict_start[dir] = fine_extend_end[dir];
-        coarse_extend_end[dir]     = fine_restrict_start[dir];
-
-        // preserve in the other directions
-        iface_t dir1                = (dir + 1) % 3;
-        iface_t dir2                = (dir + 2) % 3;
-        coarse_restrict_start[dir1] = fine_restrict_start[dir1];
-        coarse_extend_end[dir1]     = fine_extend_end[dir1];
-        coarse_restrict_start[dir2] = fine_restrict_start[dir2];
-        coarse_extend_end[dir2]     = fine_extend_end[dir2];
-
-    } else if (ibidule < 18) {
-        iface_t dir;
-        real_t  sign[3];
-        edge_sign(ibidule - 6, &dir, sign);
-
-        // inverse in the two directions
-        iface_t dir1                = (dir + 1) % 3;
-        iface_t dir2                = (dir + 2) % 3;
-        coarse_restrict_start[dir1] = fine_extend_end[dir1];
-        coarse_extend_end[dir1]     = fine_restrict_start[dir1];
-        coarse_restrict_start[dir2] = fine_extend_end[dir2];
-        coarse_extend_end[dir2]     = fine_restrict_start[dir2];
-
-        // preserve along the edge
-        coarse_restrict_start[dir] = fine_restrict_start[dir];
-        coarse_extend_end[dir]     = fine_extend_end[dir];
-
-    } else {
-        // we have a corner, inverse the three directions
-        for (lda_t ida = 0; ida < 3; ++ida) {
-            coarse_restrict_start[ida] = fine_extend_end[ida];
-            coarse_extend_end[ida]     = fine_restrict_start[ida];
-        }
-    }
-
-    //-------------------------------------------------------------------------
-};
-
-/**
- * @brief constructs a new Block given a 3D length and a position
+ * @brief constructs a new GridBlock given a 3D length and a position
  * 
  * @param length the length of the current block
  * @param xyz the position of the origin, i.e. the left,bottom corner, (x,y,z)
@@ -818,9 +629,6 @@ void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> g
 
     rank_t my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-
-    // init the level list:
-    // NghStatus ngh_status[M_NNEIGHBORS];
 
     // we do the loop in the opposite way, starting with the corners, edges and finally the
     for (iface_t ibidule = (M_NNEIGHBORS - 1); ibidule >= 0; ibidule--) {

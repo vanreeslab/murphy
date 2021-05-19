@@ -132,7 +132,7 @@ void BMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x,
  */
 void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);
-    m_assert(fid_x->ghost_status(),"the field <%s> must have uptodate ghosts",fid_x->name());
+    m_assert(fid_x->ghost_status(),"the field <%s> must have uptodate ghosts",fid_x->name().c_str());
     //-------------------------------------------------------------------------
     // get the starting pointer:
     const real_t* h    = block->hgrid();

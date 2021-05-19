@@ -15,6 +15,8 @@ PREFIX ?= ./
 NAME := murphy
 # library naming
 TARGET := $(NAME)
+# git commit
+GIT_COMMIT := -DGIT_COMMIT=\"$(shell git describe --always --dirty)\"
 
 #-----------------------------------------------------------------------------
 # get a list of all the source directories + the main one
@@ -93,22 +95,29 @@ GTEST_LIBNAME ?= -lgtest
 MPI_INC := $(shell mpic++ --showme:compile)
 
 ################################################################################
+# standard compilation
 $(OBJ_DIR)/%.o : %.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD $(GIT_COMMIT) -c $< -o $@
 
+# compilation of the tests
 $(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) -std=c++17 -fPIC -MMD -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) -std=c++17 -fPIC -MMD $(GIT_COMMIT) -c $< -o $@
 
+# include link
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -E $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD $(GIT_COMMIT) -E $< -o $@
 
+# clang-tidy files
 $(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
-	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) -std=c++17 -fPIC -MMD
+	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) -std=c++17 -fPIC -MMD $(GIT_COMMIT)
 
 ################################################################################
 default: $(TARGET)
 
 all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CXX) $(LDFLAGS) $^ $(LIB) -o $@
 
 .PHONY: tidy
 tidy: $(TIDY)
@@ -116,13 +125,9 @@ tidy: $(TIDY)
 .PHONY: preproc 
 preproc: $(IN)
 
-$(TARGET): $(OBJ)
-	$(CXX) $(LDFLAGS) $^ -o $@ $(LIB)
-
 .PHONY: test 
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
-
 
 .PHONY: clean 
 clean:
@@ -134,11 +139,9 @@ clean:
 
 .PHONY: destroy
 destroy:
-	@rm -rf $(OBJ_DIR)/*.o
-	@rm -rf $(OBJ_DIR)/*.d
+	@rm -rf $(OBJ_DIR)/*
+	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*
 	@rm -rf $(TARGET)
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.d
 	@rm -rf $(TARGET)_test
 
 .PHONY: logo info
