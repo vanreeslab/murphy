@@ -26,8 +26,8 @@ struct ParserArguments {
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
-    real_t eps_start = 1.0;
-    real_t delta_eps = 0.5;
+    real_t eps_start = 0.1;
+    real_t delta_eps = 0.1;
 
     level_t level_min = 0;
     level_t level_max = P8EST_QMAXLEVEL;

@@ -118,7 +118,7 @@ void EpsilonTest::Run() {
     real_t depsilon = delta_eps_;
     real_t epsilon  = eps_start_;
     m_log("starting with epsilon = %e", epsilon);
-    while (epsilon >= std::pow(2.0, -26)) {
+    while (epsilon >= std::pow(2.0, -34)) {
         // create a grid, put a ring on it on the fixel level
         // bool period[3] = {false, false, false};
         bool  period[3]   = {true, true, true};
