@@ -226,10 +226,10 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
 
     // compute the error
     real_t          err2, erri;
-    ErrorCalculator error;
+    Error  error;
     ring_->SetTime(time);
     (*ring_)(grid_, sol_);
-    error.Norms(grid_, scal_, sol_, &err2, &erri);
+    error.Norms(grid_, scal_, m_ptr<const Field>(sol_), &err2, &erri);
 
     // open the file
     FILE*   file_error;

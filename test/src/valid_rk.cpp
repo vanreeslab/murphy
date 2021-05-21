@@ -190,7 +190,7 @@ TEST_F(valid_RK, rk3_tvd) {
         sol_init(&grid, &sol);
 
         // compute the error
-        ErrorCalculator error;
+        Error  error;
         error.Normi(&grid, &phi, &sol, erri_tvd + id);
         m_log("RK3 - TVD: checking iter_max = %d, ei = %e", iter_max, erri_tvd[id]);
 

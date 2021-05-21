@@ -16,7 +16,7 @@ NAME := murphy
 # library naming
 TARGET := $(NAME)
 # git commit
-GIT_COMMIT := -DGIT_COMMIT=\"$(shell git describe --always --dirty)\"
+GIT_COMMIT ?= $(shell git describe --always --dirty)
 
 #-----------------------------------------------------------------------------
 # get a list of all the source directories + the main one
@@ -95,21 +95,24 @@ GTEST_LIBNAME ?= -lgtest
 MPI_INC := $(shell mpic++ --showme:compile)
 
 ################################################################################
+# mandatory flags
+M_FLAGS := -std=c++17 -fPIC -MMD -DGIT_COMMIT=\"$(GIT_COMMIT)\"
+
 # standard compilation
 $(OBJ_DIR)/%.o : %.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD $(GIT_COMMIT) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS)  -c $< -o $@
 
 # compilation of the tests
 $(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) -std=c++17 -fPIC -MMD $(GIT_COMMIT) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -c $< -o $@
 
 # include link
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD $(GIT_COMMIT) -E $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -E $< -o $@
 
 # clang-tidy files
 $(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
-	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) -std=c++17 -fPIC -MMD $(GIT_COMMIT)
+	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) $(M_FLAGS)
 
 ################################################################################
 default: $(TARGET)

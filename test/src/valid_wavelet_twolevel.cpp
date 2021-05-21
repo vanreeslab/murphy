@@ -205,7 +205,7 @@ TEST_P(TwoLevel, periodic) {
 
         // get the error
         real_t          err2, erri;
-        ErrorCalculator error;
+        Error  error;
         error.Norms(grid_, scal_, &sol, &err2, &erri);
         real_t interp_pred = fabs(grid_->interp()->eps_const() * max_detail);
         m_log("[case %d] interp error = %e <? %e -> factor = %e vs %e", case_id_, erri, interp_pred, erri / max_detail, grid_->interp()->eps_const());
@@ -300,7 +300,7 @@ TEST_P(TwoLevel, flipfop) {
 
         // get the error
         real_t          err2, erri;
-        ErrorCalculator error;
+        Error  error;
         error.Norms(grid_, scal_, &sol, &err2, &erri);
         real_t interp_pred = fabs(grid_->interp()->eps_const() * max_detail);
         m_log("[case %d] interp error = %e <? %e -> factor = %e vs %e", case_id_, erri, interp_pred, erri / max_detail, grid_->interp()->eps_const());

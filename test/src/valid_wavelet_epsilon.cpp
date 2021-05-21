@@ -142,7 +142,7 @@ TEST_P(Epsilon, periodic) {
 
     // measure the error
     real_t          normi;
-    ErrorCalculator error;
+    Error  error;
     error.Normi(&grid, &scal, &sol, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
@@ -259,7 +259,7 @@ TEST_P(Epsilon, extrap) {
 
     // measure the error
     real_t          normi;
-    ErrorCalculator error;
+    Error  error;
     error.Normi(&grid, &scal, &sol, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 

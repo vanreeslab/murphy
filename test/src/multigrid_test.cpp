@@ -76,7 +76,7 @@
 //     //     dump(grid_, analytic_);
 
 //     //     real_t          norm2, normi;
-//     //     ErrorCalculator myerr;
+//     //     Error myerr;
 //     //     myerr.Norms(grid_, psi_, analytic_, &norm2, &normi);
 
 //     //     delete (poisson);
@@ -122,7 +122,7 @@
 // //     dump(grid_, analytic_);
 
 // //     real_t          norm2, normi;
-// //     ErrorCalculator myerr;
+// //     Error myerr;
 // //     myerr.Norms(grid_, psi_, analytic_, &norm2, &normi);
 
 // //     delete (poisson);

@@ -85,7 +85,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
             field_sol(&grid, &sol);
 
             // now, we need to check
-            ErrorCalculator error(grid.interp());
+            Error  error(grid.interp());
 
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
@@ -164,7 +164,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
             field_sol(&grid, &sol);
 
             // now, we need to check
-            ErrorCalculator error(grid.interp());
+            Error  error(grid.interp());
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -242,7 +242,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
 
 //             // now, we need to check
 //             real_t          norm2, normi;
-//             ErrorCalculator error(grid.interp());
+//             Error  error(grid.interp());
 //             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
 //             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -318,7 +318,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
 
             // now, we need to check
             real_t          norm2, normi;
-            ErrorCalculator error(grid.interp());
+            Error  error(grid.interp());
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -393,7 +393,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
 
             // now, we need to check
             real_t          norm2, normi;
-            ErrorCalculator error(grid.interp());
+            Error  error(grid.interp());
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);

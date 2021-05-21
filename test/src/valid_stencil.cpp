@@ -103,7 +103,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
             //     Advection<M_ADV_CENTER, 2> adv(&vel);
             //     adv(&grid, &test, &dtest);
             //     // now, we need to check
-            //     ErrorCalculator error;
+            //     Error  error;
             //     error.Normi(&grid, &dtest, &sol, erri_adv_center_2 + il);
             //     m_log("M_ADV_CENTER - 2: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_2[il]);
             // }
@@ -111,7 +111,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
             //     Advection<M_ADV_CENTER, 4> adv(&vel);
             //     adv(&grid, &test, &dtest);
             //     // now, we need to check
-            //     ErrorCalculator error;
+            //     Error  error;
             //     error.Normi(&grid, &dtest, &sol, erri_adv_center_4 + il);
             //     m_log("M_ADV_CENTER - 4: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_4[il]);
             // }
@@ -119,7 +119,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
             //     Advection<M_ADV_CENTER, 6> adv(&vel);
             //     adv(&grid, &test, &dtest);
             //     // now, we need to check
-            //     ErrorCalculator error;
+            //     Error  error;
             //     error.Normi(&grid, &dtest, &sol, erri_adv_center_6 + il);
             //     m_log("M_ADV_CENTER - 6: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_6[il]);
             // }
@@ -127,7 +127,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
                 Advection<M_ADV_CONS_VEL, 3> adv(&vel);
                 adv(&grid, &test, &dtest);
                 // now, we need to check
-                ErrorCalculator error;
+                Error  error;
                 error.Normi(&grid, &dtest, &sol, erri_adv_cons_3 + il);
                 m_log("M_ADV_CONS_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
             }
@@ -135,7 +135,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
                 Advection<M_ADV_WENO_VEL, 3> adv(&vel);
                 adv(&grid, &test, &dtest);
                 // now, we need to check
-                ErrorCalculator error;
+                Error  error;
                 error.Normi(&grid, &dtest, &sol, erri_adv_weno_3 + il);
                 m_log("M_ADV_WENO_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
             }
@@ -143,7 +143,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
                 Advection<M_ADV_WENO_VEL, 5> adv(&vel);
                 adv(&grid, &test, &dtest);
                 // now, we need to check
-                ErrorCalculator error;
+                Error  error;
                 error.Normi(&grid, &dtest, &sol, erri_adv_weno_5 + il);
                 m_log("M_ADV_WENO_VEL - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
             }
@@ -239,7 +239,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 //             // io(&grid,&sol);
 
 //             // now, we need to check
-//             ErrorCalculator error;
+//             Error  error;
 //             error.Norms(&grid, &diff, &sol, err2 + il, erri + il);
 
 //             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
@@ -274,7 +274,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 // //     lapla(grid_, vort_, diff_);
 
 // //     real_t          norm2, normi;
-// //     ErrorCalculator myerr;
+// //     Error myerr;
 // //     myerr.Norms(grid_, diff_, sol_, &norm2, &normi);
 
 // //     // ASSERT_LE(norm2, normi);
@@ -301,7 +301,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 // //     lapla(grid_, vort_, diff_);
 
 // //     real_t          norm2, normi;
-// //     ErrorCalculator myerr;
+// //     Error myerr;
 // //     myerr.Norms(grid_, diff_, sol_, &norm2, &normi);
 
 // //     // ASSERT_LE(norm2, normi);
@@ -344,7 +344,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 // //         lapla(grid_, vort_, diff_);
 
 // //         real_t          norm2;
-// //         ErrorCalculator myerr;
+// //         Error myerr;
 // //         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
 // //         if (grid_->mpirank() == 0) {
 // //             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
@@ -389,7 +389,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 // //         lapla(grid_, vort_, diff_);
 
 // //         real_t          norm2;
-// //         ErrorCalculator myerr;
+// //         Error myerr;
 // //         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
 // //         if (grid_->mpirank() == 0) {
 // //             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
@@ -434,7 +434,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 // //         lapla(grid_, vort_, diff_);
 
 // //         real_t          norm2;
-// //         ErrorCalculator myerr;
+// //         Error myerr;
 // //         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
 // //         if (grid_->mpirank() == 0) {
 // //             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
@@ -479,7 +479,7 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
 // //         lapla(grid_, vort_, diff_);
 
 // //         real_t          norm2;
-// //         ErrorCalculator myerr;
+// //         Error myerr;
 // //         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
 // //         if (grid_->mpirank() == 0) {
 // //             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);

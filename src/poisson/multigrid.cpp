@@ -133,7 +133,7 @@
 // #ifndef NDEBUG
 //     // needed to track the error
 //     real_t          norm2;
-//     ErrorCalculator error2 = ErrorCalculator();
+//     Error  error2 = Error();
 // #endif
 
 //     // string fname;
