@@ -85,12 +85,12 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
             field_sol(&grid, &sol);
 
             // now, we need to check
-            Error  error(grid.interp());
+            Error error(grid.interp());
 
             // sanity check
-            error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, il + 1 + BLVL, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL + 1), erri[il], err2[il]);
-            error.Norms(&grid, il + BLVL, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, il + BLVL, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
             m_log("checking in dim %d on LOW: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
 // if NT==0, the lowest level has NO error
 #if (M_WAVELET_NT == 0)
@@ -99,7 +99,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
 #endif
 
             // and now check for the every level
-            error.Norms(&grid, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
 
             grid.DeleteField(&test);
@@ -164,19 +164,19 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
             field_sol(&grid, &sol);
 
             // now, we need to check
-            Error  error(grid.interp());
+            Error error(grid.interp());
             // sanity check
-            error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, il + 1 + BLVL, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
 #if (M_WAVELET_NT == 0)
-            error.Norms(&grid, il + BLVL, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, il + BLVL, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
             m_log("checking in dim %d on LOW: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
             // if NT==0, the lowest level has NO error
             ASSERT_NEAR(erri[il], 0.0, DOUBLE_TOL);
             ASSERT_NEAR(err2[il], 0.0, DOUBLE_TOL);
 #endif
 
-            error.Norms(&grid, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
         }
@@ -317,9 +317,9 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
             // mask(&grid, &sol);
 
             // now, we need to check
-            real_t          norm2, normi;
+            real_t norm2, normi;
             Error  error(grid.interp());
-            error.Norms(&grid, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
         }
@@ -392,9 +392,9 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
             // mask(&grid, &sol);
 
             // now, we need to check
-            real_t          norm2, normi;
+            real_t norm2, normi;
             Error  error(grid.interp());
-            error.Norms(&grid, &test, &sol, err2 + il, erri + il);
+            error.Norms(&grid, &test, m_ptr<const Field>(&sol), err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
         }

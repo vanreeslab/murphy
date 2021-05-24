@@ -141,9 +141,9 @@ TEST_P(Epsilon, periodic) {
     grid.GhostPull(&scal);
 
     // measure the error
-    real_t          normi;
+    real_t normi;
     Error  error;
-    error.Normi(&grid, &scal, &sol, &normi);
+    error.Normi(&grid, &scal, m_ptr<const Field>(&sol), &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
     // measure the moments
@@ -258,9 +258,9 @@ TEST_P(Epsilon, extrap) {
     grid.GhostPull(&scal);
 
     // measure the error
-    real_t          normi;
+    real_t normi;
     Error  error;
-    error.Normi(&grid, &scal, &sol, &normi);
+    error.Normi(&grid, &scal, m_ptr<const Field>(&sol), &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
     // measure the moments
