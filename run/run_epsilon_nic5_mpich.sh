@@ -27,7 +27,7 @@ mkdir -p $SCRATCH/$RUN_DIR/make_arch
 # copy what is needed
 cp -r $HOME_MURPHY/Makefile $SCRATCH/$RUN_DIR
 cp -r $HOME_MURPHY/src $SCRATCH/$RUN_DIR/src
-cp -r $HOME_MURPHY/make_arch/make.nic5 $SCRATCH/$RUN_DIR/make_arch
+cp -r $HOME_MURPHY/make_arch/make.nic5_mpich $SCRATCH/$RUN_DIR/make_arch
 
 # get the commit id
 cd $HOME_MURPHY
@@ -48,14 +48,14 @@ do
         echo "================================================================="
         echo "      WAVELET ${N}.${NT} -> COUNT = ${COUNT_GS}"
         #compilation 
-        GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5 make -j OPTS="-DWAVELET_N=${N} -DWAVELET_NT=${NT} -DBLOCK_GS=${COUNT_GS}"
+        GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5_mpich make -j OPTS="-DWAVELET_N=${N} -DWAVELET_NT=${NT} -DBLOCK_GS=${COUNT_GS}"
         # move to the full name
         MURPHY_NAME=murphy_${N}_${NT}
         mv murphy ${MURPHY_NAME}
         # run that shit
-        mpirun ./${MURPHY_NAME} --eps --ilevel=6 > log_${N}${NT}_$SLURM_JOB_ID.log
+        /home/ucl/tfl/tgillis/lib-mpich/mpich-3.4.1/bin/mpirun -f ${MACHINEFILE} ./${MURPHY_NAME} --eps --ilevel=6 > log_${N}${NT}_$SLURM_JOB_ID.log
         # destroy the compilation infos
-        GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5 make destroy
+        GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5_mpich make destroy
 
         #increment the GP
         let "COUNT_GS+=2"

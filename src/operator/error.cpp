@@ -93,7 +93,6 @@ void Error::ErrorOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<Gr
             ei = m_max(std::fabs(error), ei);
         };
         for_loop(&op, start_, end_);
-        m_log("error = %e and %e", e2, ei);
     }
 
     // add the result
