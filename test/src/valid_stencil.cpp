@@ -124,28 +124,28 @@ TEST_F(valid_Stencil, advection_periodic_cosinus) {
             //     m_log("M_ADV_CENTER - 6: checking res = %f, ei = %e", std::pow(2, il), erri_adv_center_6[il]);
             // }
             if (do_cons_3) {
-                Advection<M_ADV_CONS_VEL, 3> adv(&vel);
-                adv(&grid, &test, &dtest);
-                // now, we need to check
-                Error error;
-                error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_cons_3 + il);
-                m_log("M_ADV_CONS_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
+                // Advection<M_ADV_CONS_VEL, 3> adv(&vel);
+                // adv(&grid, &test, &dtest);
+                // // now, we need to check
+                // Error error;
+                // error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_cons_3 + il);
+                // m_log("M_ADV_CONS_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
             }
             if (do_weno_3) {
-                Advection<M_ADV_WENO_VEL, 3> adv(&vel);
+                Advection<M_WENO_Z, 3> adv(&vel);
                 adv(&grid, &test, &dtest);
                 // now, we need to check
                 Error error;
                 error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_3 + il);
-                m_log("M_ADV_WENO_VEL - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
+                m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
             }
             if (do_weno_5) {
-                Advection<M_ADV_WENO_VEL, 5> adv(&vel);
-                adv(&grid, &test, &dtest);
-                // now, we need to check
-                Error error;
-                error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_5 + il);
-                m_log("M_ADV_WENO_VEL - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
+                // Advection<M_WENO_Z, 5> adv(&vel);
+                // adv(&grid, &test, &dtest);
+                // // now, we need to check
+                // Error error;
+                // error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_5 + il);
+                // m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
             }
         }
         m_log("in dir = %d did tests %d %d %d %d %d", id, do_center_2, do_center_4, do_center_6, do_weno_3, do_weno_5);

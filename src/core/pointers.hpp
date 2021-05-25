@@ -179,8 +179,39 @@ class mem_ptr : public m_ptr<real_t> {
 
 // put the assert if we are not in non-debug mode
 // #ifdef NDEBUG
+
+/**
+ * @brief return the shift in memory while using data_ptr
+ * 
+ * @param i0 the index in the X direction (fastest rotating index)
+ * @param i1 the index in the Y direction
+ * @param i2 the index in the Z direction
+ * @param ida the index of the dimension (default: 0)
+ * @param stride the stride (default: M_STRIDE)
+ * @return constexpr bidx_t 
+ */
 constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0, const bidx_t stride = M_STRIDE) {
     bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
+    return offset;
+}
+
+/**
+ * @brief returns an increment of index in one direction
+ * 
+ * This function has been designed to easily handle the stencil computations (for cross shapes)
+ * 
+ * @warning it is not possible to change the dimension with this function
+ * 
+ * @param id the increment of index 
+ * @param ida_de the direction in which the increment happens
+ * @param stride the custom stride (default: M_STRIDE)
+ * @return constexpr bidx_t 
+ */
+constexpr bidx_t m_idx_delta(const bidx_t id_delta, const lda_t ida_delta, const bidx_t stride = M_STRIDE) {
+    bidx_t i0     = id_delta * (ida_delta == 0);
+    bidx_t i1     = id_delta * (ida_delta == 1);
+    bidx_t i2     = id_delta * (ida_delta == 2);
+    bidx_t offset = i0 + stride * (i1 + stride * i2);
     return offset;
 }
 // constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, const MemLayout* block) {

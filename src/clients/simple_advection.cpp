@@ -113,19 +113,19 @@ void SimpleAdvection::Run() {
     real_t t       = 0.0;
 
     RKFunctor* advection;
-    if (no_weno_) {
-        advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
-        m_log("conservative advection chosen, cfl = %f", advection->cfl_rk3());
-    } else if (weno_5_) {
-        advection = new Advection<M_ADV_WENO_VEL, 5>(vel_);
-        m_log("WENO 5 advection chosen, cfl = %f", advection->cfl_rk3());
-    } else {
-        advection = new Advection<M_ADV_WENO_VEL, 3>(vel_);
-        m_log("WENO 3 advection chosen, cfl = %f", advection->cfl_rk3());
-    }
+    // if (no_weno_) {
+    //     advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
+    //     m_log("conservative advection chosen, cfl = %f", advection->cfl_rk3());
+    // } else if (weno_5_) {
+    //     advection = new Advection<M_WENO_Z, 5>(vel_);
+    //     m_log("WENO 5 advection chosen, cfl = %f", advection->cfl_rk3());
+    // } else {
+    advection = new Advection<M_WENO_Z, 3>(vel_);
+    m_log("WENO 3 advection chosen, cfl = %f", advection->cfl_rk3());
+    // }
     RK3_TVD rk3(grid_, scal_, advection, prof_);
 
-    m_log("advection cfl is %e",advection->cfl_rk3());
+    m_log("advection cfl is %e", advection->cfl_rk3());
 
     real_t time_start = MPI_Wtime();
 
