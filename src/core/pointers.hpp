@@ -207,10 +207,10 @@ constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const 
  * @param stride the custom stride (default: M_STRIDE)
  * @return constexpr bidx_t 
  */
-constexpr bidx_t m_idx_delta(const bidx_t id_delta, const lda_t ida_delta, const bidx_t stride = M_STRIDE) {
-    bidx_t i0     = id_delta * (ida_delta == 0);
-    bidx_t i1     = id_delta * (ida_delta == 1);
-    bidx_t i2     = id_delta * (ida_delta == 2);
+constexpr bidx_t m_idx_delta(const bidx_t delta, const lda_t ida_delta, const bidx_t stride = M_STRIDE) {
+    bidx_t i0     = delta * (ida_delta == 0);
+    bidx_t i1     = delta * (ida_delta == 1);
+    bidx_t i2     = delta * (ida_delta == 2);
     bidx_t offset = i0 + stride * (i1 + stride * i2);
     return offset;
 }

@@ -49,6 +49,7 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
 
         // case 1: face velocity is > 0, we use stencil 0 and stencil 1
         real_t flux = 0.0;
+        // m_log("case 1? %d or case 2? %d (fvel = %e, sign = %d)",(m_sign(fvel) > 0.0),(m_sign(fvel) < 0.0),fvel,m_sign(fvel));
         {
             const real_t tau     = fabs(beta_0 - beta_1);
             const real_t alpha_0 = gamma_0 * (1.0 + pow(tau / (beta_0 + pow(h[ida], 4)), 2));
@@ -56,7 +57,8 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
             const real_t denom   = 1.0 / (alpha_0 + alpha_1);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
-            flux                 = flux + (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1);
+            // m_log("w0 = %e, w1 = %e, flux = %e %e", w0, w1, s0, s1);
+            flux = flux + (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1);
         }
         // case 2: face velocity is < 0, we use stencil 1 and 2
         {
@@ -90,34 +92,46 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
                                 data_v + m_idx(i0, i1, i2),
                                 data_w + m_idx(i0, i1, i2)};
 
-        // reset the value if needed
-        trg[0] *= alpha;
-
         // loop on the faces
         for (lda_t ida = 0; ida < 3; ++ida) {
             // as we are on the face +1/2, apply the flux on the:
             // -> left only if we are >=0
             // -> right only if we are < (M_N-1)
-            const real_t flux_apply_left  = idx[ida] >= 0;
-            const real_t flux_apply_right = idx[ida] < (M_N - 1);
-            const real_t flux             = flux_weno_3(ida, src, vel[ida]);
+            const bool flux_apply_left  = idx[ida] >= 0;
+            const bool flux_apply_right = idx[ida] < (M_N - 1);
+            // if (ida == 0) {
+            //     m_log("--------------");
+            // }
+            const real_t flux = flux_weno_3(ida, src, vel[ida]);
 
-            trg[m_idx_delta(0, ida)] -= oneoh[0] * flux * flux_apply_left;
-            trg[m_idx_delta(+1, ida)] += oneoh[0] * flux * flux_apply_right;
+            // update
+            trg[m_idx_delta(0, ida)] -= oneoh[ida] * flux * flux_apply_left;
+            trg[m_idx_delta(+1, ida)] += oneoh[ida] * flux * flux_apply_right;
+
+            // if (ida == 0) {
+            //     m_log("in %d %d %d we put the flux = %e to left? %d to right? %d -> left -= %e now %e , right += %e now %e", i0, i1, i2, flux, flux_apply_left, flux_apply_right, oneoh[ida] * flux * flux_apply_left, trg[m_idx_delta(0, ida)], oneoh[ida] * flux * flux_apply_right, trg[m_idx_delta(+1, ida)]);
+            // }
         }
     };
 
+    auto reset = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        data_trg[m_idx(i0, i1, i2)] *= alpha;
+    };
+
     if (!is_outer) {
+        // reset the whole block, we don't need the ghost points to do that
+        for_loop<0, M_N>(&reset);
         for_loop<M_GS, M_N - M_GS>(&op);
     } else {
         // do the most on the X side to use vectorization
-        for_loop<0, M_N, 0, M_N, 0, M_GS>(&op);          // Z-
-        for_loop<0, M_N, 0, M_N, M_N - M_GS, M_N>(&op);  // Z+
+        // need to start in -1 to put a flux in the point 0!
+        for_loop<-1, M_N, -1, M_N, -1, M_GS>(&op);         // Z-
+        for_loop<-1, M_N, -1, M_N, M_N - M_GS, M_N>(&op);  // Z+
 
-        for_loop<0, M_N, 0, M_GS, M_GS, M_N - M_GS>(&op);          // Y-
-        for_loop<0, M_N, M_N - M_GS, M_N, M_GS, M_N - M_GS>(&op);  // Y+
+        for_loop<-1, M_N, -1, M_GS, M_GS, M_N - M_GS>(&op);         // Y-
+        for_loop<-1, M_N, M_N - M_GS, M_N, M_GS, M_N - M_GS>(&op);  // Y+
 
-        for_loop<0, M_GS, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);          // X-
+        for_loop<-1, M_GS, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);         // X-
         for_loop<M_N - M_GS, M_N, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);  // X+
     }
     // -------------------------------------------------------------------------
