@@ -29,7 +29,7 @@ class Advection : public Stencil, public RKFunctor {
 
     // return the stability conditions
     real_t cfl_rk3() const override { return 1.0; };
-    real_t rdiff() const override { std::numeric_limits<real_t>::max(); };  // no limit, return +inf
+    real_t rdiff() const override { return std::numeric_limits<real_t>::max(); };  // no limit, return +inf
 
     // return the number of ghost points, needed, depend on the stencil etc
     lid_t NGhost() const override { return 0; };

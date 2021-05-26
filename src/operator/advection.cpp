@@ -68,6 +68,7 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
             const real_t w2      = alpha_2 * denom;
             flux                 = flux + (m_sign(fvel) < 0.0) * (w1 * s1 + w2 * s2);
         }
+        return flux;
     };
     //-------------------------------------------------------------------------
     // get the data

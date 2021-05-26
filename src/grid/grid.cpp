@@ -497,7 +497,6 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
     if (patches->size() == 0) {
         return;
     }
-
     AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
@@ -538,9 +537,6 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     m_log("--> grid adaptation started... (recursive = %d)", recursive_adapt());
 
     //................................................
-    DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
-
-    //................................................
     // store the ptrs and the grid
     cback_criterion_ptr_        = coarseref_cback_ptr;
     cback_interpolate_ptr_      = interpolate_ptr;
@@ -551,6 +547,10 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     iter_t   iteration              = 0;
     iblock_t global_n_quad_to_adapt = 0;
     do {
+        //................................................
+        DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
+
+        //................................................
         // reset the adapt counter
         n_quad_to_adapt_       = 0;
         global_n_quad_to_adapt = 0;
@@ -604,7 +604,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
             m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
         }
-        m_verb("solve dependencies");
+        m_log("solve dependencies");
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
 
         //................................................
