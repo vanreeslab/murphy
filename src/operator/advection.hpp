@@ -61,8 +61,15 @@ template <>
 inline real_t Advection<M_WENO_Z, 3>::cfl_rk3() const { return 1.5; };
 template <>
 inline lid_t Advection<M_WENO_Z, 3>::NGhost() const { return 2; };
-template <>
+template<>
 void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const;
+
+// // List the specializations
+// inline real_t Advection<M_WENO_Z, order>::cfl_rk3() const { return 1.5; };
+// template <>
+// inline lid_t Advection<M_WENO_Z, 5>::NGhost() const { return 2; };
+// template <>
+// void Advection<M_WENO_Z, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const;
 
 // //==============================================================================
 // template <>
