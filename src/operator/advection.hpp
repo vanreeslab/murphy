@@ -58,11 +58,24 @@ class Advection : public Stencil, public RKFunctor {
 // //==============================================================================
 // List the specializations
 template <>
-inline real_t Advection<M_WENO_Z, 3>::cfl_rk3() const { return 1.5; };
+inline real_t Advection<M_WENO_Z, 3>::cfl_rk3() const { return 1.6; };
 template <>
-inline lid_t Advection<M_WENO_Z, 3>::NGhost() const { return 2; };
-template<>
+inline lid_t Advection<M_WENO_Z, 3>::NGhost() const {
+    // we need one point outside the domain that need 1 ghost point
+    return 2;
+};
+template <>
 void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const;
+
+template <>
+inline real_t Advection<M_WENO_Z, 5>::cfl_rk3() const { return 1.4; };
+template <>
+inline lid_t Advection<M_WENO_Z, 5>::NGhost() const {
+    // we need one point outside the domain that need 2 ghost point
+    return 3;
+};
+template <>
+void Advection<M_WENO_Z, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const;
 
 // // List the specializations
 // inline real_t Advection<M_WENO_Z, order>::cfl_rk3() const { return 1.5; };

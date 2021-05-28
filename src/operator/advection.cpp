@@ -2,6 +2,10 @@
 
 #include <functional>
 
+constexpr real_t alpha_z(const real_t gamma, const real_t beta, const real_t tau, const real_t h) {
+    return gamma * (1.0 + pow(tau / (beta + pow(h, 4)), 2));
+}
+
 /**
  * @brief defines a lambda that returns two fluxes: f- = flux[0] at (i-1/2, right biased) and f+ = flux[1] in (i+1/2, left biased)
  * 
@@ -104,8 +108,8 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
             const real_t gamma_1 = 1.0 / 3.0;
             const real_t s1      = (1.5 * f[0] - 0.5 * f[1]);
 
-            const real_t alpha_0 = gamma_0 * (1.0 + pow(tau_3 / (beta_0 + pow(h[ida], 4)), 2));
-            const real_t alpha_1 = gamma_1 * (1.0 + pow(tau_3 / (beta_1 + pow(h[ida], 4)), 2));
+            const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_3, h[ida]);
+            const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_3, h[ida]);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
@@ -120,8 +124,8 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
             const real_t gamma_1 = 2.0 / 3.0;
             const real_t s1      = (0.5 * f[0] + 0.5 * f[1]);
 
-            const real_t alpha_0 = gamma_0 * (1.0 + pow(tau_3 / (beta_0 + pow(h[ida], 4)), 2));
-            const real_t alpha_1 = gamma_1 * (1.0 + pow(tau_3 / (beta_1 + pow(h[ida], 4)), 2));
+            const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_3, h[ida]);
+            const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_3, h[ida]);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
@@ -173,9 +177,9 @@ void Advection<M_WENO_Z, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
             const real_t gamma_2 = 1.0 / 10.0;
             const real_t s2      = (11.0 / 6.0 * f[0] - 7.0 / 6.0 * f[1] + 1.0 / 3.0 * f[2]);
 
-            const real_t alpha_0 = gamma_0 * (1.0 + pow(tau_5 / (beta_0 + pow(h[ida], 4)), 2));
-            const real_t alpha_1 = gamma_1 * (1.0 + pow(tau_5 / (beta_1 + pow(h[ida], 4)), 2));
-            const real_t alpha_2 = gamma_2 * (1.0 + pow(tau_5 / (beta_2 + pow(h[ida], 4)), 2));
+            const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_5, h[ida]);
+            const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_5, h[ida]);
+            const real_t alpha_2 = alpha_z(gamma_2, beta_2, tau_5, h[ida]);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1 + alpha_2);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
@@ -193,9 +197,9 @@ void Advection<M_WENO_Z, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
             const real_t gamma_2 = 3.0 / 10.0;
             const real_t s2      = (1.0 / 3.0 * f[0] + 5.0 / 6.0 * f[1] - 1.0 / 6.0 * f[2]);
 
-            const real_t alpha_0 = gamma_0 * (1.0 + pow(tau_5 / (beta_0 + pow(h[ida], 4)), 2));
-            const real_t alpha_1 = gamma_1 * (1.0 + pow(tau_5 / (beta_1 + pow(h[ida], 4)), 2));
-            const real_t alpha_2 = gamma_2 * (1.0 + pow(tau_5 / (beta_2 + pow(h[ida], 4)), 2));
+            const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_5, h[ida]);
+            const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_5, h[ida]);
+            const real_t alpha_2 = alpha_z(gamma_2, beta_2, tau_5, h[ida]);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1 + alpha_2);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;

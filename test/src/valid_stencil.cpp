@@ -45,11 +45,12 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
-        Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+        level_t clevel = il+1;
+        Grid    grid(clevel, period, L, MPI_COMM_WORLD, nullptr);
         // adapt
         {
             list<Patch> patch_list;
-            TreeCaseIdToPatch(il, case_id, &patch_list);
+            TreeCaseIdToPatch(clevel, case_id, &patch_list);
             grid.Adapt(&patch_list);
         }
 
@@ -128,7 +129,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     }
     if (do_weno_5) {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
-        m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 1, ideal = 5", convi);
+        m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 3, ideal = 5", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
     }
 }
