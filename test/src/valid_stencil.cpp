@@ -124,12 +124,12 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     if (do_weno_3) {
         real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> min = 1, ideal = 3", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.1);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.15);
     }
     if (do_weno_5) {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 1, ideal = 5", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.1);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.15);
     }
 }
 
