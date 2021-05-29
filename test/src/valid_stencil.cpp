@@ -45,7 +45,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
-        level_t clevel = il+1;
+        level_t clevel = il;
         Grid    grid(clevel, period, L, MPI_COMM_WORLD, nullptr);
         // adapt
         {
