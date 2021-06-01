@@ -10,6 +10,43 @@
 using std::string;
 using std::to_string;
 
+
+// static lambda_funcval_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
+//     // get the position
+//     real_t pos[3];
+//     m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+
+//     const real_t sigma     = 0.05;
+//     const real_t center[3] = {0.5, 0.5, 0.5};
+
+//     // compute the gaussian
+//     const real_t rhox = (pos[0] - center[0]) / sigma;
+//     const real_t rhoy = (pos[1] - center[1]) / sigma;
+//     const real_t rhoz = (pos[2] - center[2]) / sigma;
+//     const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
+
+//     return std::exp(-rho);
+// };
+
+// class InitialCondition : public SetValue {
+//    protected:
+//     void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+//         //-------------------------------------------------------------------------
+//         // get the pointers correct
+//         real_t* data = block->data(fid, 0).Write();
+
+//         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//             data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block);
+//         };
+
+//         for_loop(&op, start_, end_);
+//         //-------------------------------------------------------------------------
+//     };
+
+//    public:
+//     explicit InitialCondition() : SetValue(nullptr){};
+// };
+
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
     if (!prof_.IsEmpty()) {
@@ -68,9 +105,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->AddField(scal_);
 
     // add the solution as temp
-    sol_.Alloc("sol", 1);
-    sol_->is_temp(true);
-    grid_->AddField(sol_);
+    // sol_.Alloc("sol", 1);
+    // sol_->is_temp(true);
+    // grid_->AddField(sol_);
 
     // setup the scalar ring
     real_t velocity[3] = {0.0, 0.0, 1.0};
@@ -113,19 +150,19 @@ void SimpleAdvection::Run() {
     real_t t       = 0.0;
 
     RKFunctor* advection;
-    if (no_weno_) {
-        advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
-        m_log("conservative advection chosen, cfl = %f", advection->cfl_rk3());
-    } else if (weno_5_) {
-        advection = new Advection<M_ADV_WENO_VEL, 5>(vel_);
-        m_log("WENO 5 advection chosen, cfl = %f", advection->cfl_rk3());
-    } else {
-        advection = new Advection<M_ADV_WENO_VEL, 3>(vel_);
-        m_log("WENO 3 advection chosen, cfl = %f", advection->cfl_rk3());
-    }
+    // if (no_weno_) {
+    //     advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
+    //     m_log("conservative advection chosen, cfl = %f", advection->cfl_rk3());
+    // } else if (weno_5_) {
+    //     advection = new Advection<M_WENO_Z, 5>(vel_);
+    //     m_log("WENO 5 advection chosen, cfl = %f", advection->cfl_rk3());
+    // } else {
+    advection = new Advection<M_WENO_Z, 3>(vel_);
+    m_log("WENO 3 advection chosen, cfl = %f", advection->cfl_rk3());
+    // }
     RK3_TVD rk3(grid_, scal_, advection, prof_);
 
-    m_log("advection cfl is %e",advection->cfl_rk3());
+    m_log("advection cfl is %e", advection->cfl_rk3());
 
     real_t time_start = MPI_Wtime();
 

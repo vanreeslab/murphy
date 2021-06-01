@@ -271,7 +271,7 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
 /**
  * @brief Update the depedency list of the incoming block(s) by storing the ID of the outgoing one(s).
  * 
- * The depedency list will be resolved once the grid structure is fixed.
+ * The depedency list will be interpolated once the grid structure is fixed, here we just register the link
  * 
  * @param forest 
  * @param which_tree 
@@ -294,7 +294,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     // get needed grid info
     p8est_connectivity_t* connect = forest->connectivity;
 
-    // count the number of blocks that have already been registered as depencies
+    // count the number of blocks that have already been registered as dependencies
     iblock_t n_active_total = 0;
     for (iblock_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
@@ -302,7 +302,8 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     }
     m_assert(n_active_total == 0 || n_active_total == P8EST_CHILDREN, "the number of existing dependences (=%d) must be 0 or P8EST_CHILDREN", n_active_total);
 
-    // create the incoming block if we have not existing blocks
+    // create the incoming block if we have no existing blocks
+    // if we already have registered depts, the GridBlocks already exist, so noo need to do it
     for (sid_t iin = 0; iin < num_incoming * (n_active_total == 0); ++iin) {
         qdrt_t* quad = incoming[iin];
 
@@ -312,40 +313,38 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len      = p4est_QuadLen(quad->level);
         GridBlock* block_in = new GridBlock(len, xyz, quad->level);
-
-        // assign the status
-        StatusAdapt status = (num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE;
-        block_in->status_level(status);
-
-        // store the block
+ 
+        // store the block in the quad
         p4est_SetGridBlock(quad, block_in);
     }
 
-    // need to count the number of already active dependencies on the leaving block
+    // for each outgoing block
     for (sid_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
         // check the status of the outgoing block
         m_assert(!(num_incoming == 1 && block_out->status_level() != M_ADAPT_COARSER), "the tag must be coarser instead of %d", block_out->status_level());
         m_assert(!(num_incoming == P8EST_CHILDREN && block_out->status_level() != M_ADAPT_FINER), "the tag must be finer instead of %d", block_out->status_level());
 
-        // count the number of active dependency blocks
+        // count the number of active dependency blocks that are already there
         sid_t n_active = block_out->n_dependency_active();
         m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
 
-        if (n_active == 0) {
+        if (n_active == 0) { /* most common: if we had no active dependencies, allocate new blocks, lock them and add them */
+            // globaly we created the block ourselves
             m_assert(n_active_total == 0, "we must have created the associated block");
-            // if we had no active dependencies, allocate new blocks, lock them and add them
             for (sid_t iin = 0; iin < num_incoming; ++iin) {
                 GridBlock* block_in = p4est_GetGridBlock(incoming[iin]);
                 m_assert(block_in != nullptr, "block is null, ohoh");
 
+                // assign the status
+                StatusAdapt status = (num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE;
+                block_in->status_level(status);
+
                 // register the leaving block in the new one, using it's child id
-                // m_assert(p4est_GetChildID(block_out->xyz(), block_out->level()) == p8est_quadrant_child_id(outgoing[iout]), "oups: %d vs %d", p4est_GetChildID(block_out->xyz(), block_out->level()), p8est_quadrant_child_id(outgoing[iout]));
                 int childid_out = (num_outgoing == 1) ? 0 : p4est_GetChildID(block_out->xyz(), block_out->level());
                 block_in->PushDependency(childid_out, block_out);
 
                 // register the new block in the leaving one, using it's child id
-                // m_assert(p4est_GetChildID(block_in->xyz(), block_in->level()) == p8est_quadrant_child_id(incoming[iin]), "oups: %d vs %d. pos = %f %f %f and level %d, length = %e", p4est_GetChildID(block_in->xyz(), block_in->level()), p8est_quadrant_child_id(incoming[iin]), block_in->xyz(0), block_in->xyz(1), block_in->xyz(2), block_in->level(),p4est_QuadLen(block_in->level() - 1));
                 int childid_in = (num_incoming == 1) ? 0 : p4est_GetChildID(block_in->xyz(), block_in->level());
                 block_out->PushDependency(childid_in, block_in);
             }
@@ -362,6 +361,9 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
             int childid = p4est_GetChildID(block_out->xyz(), block_out->level());
             parent->PopDependency(childid);
 
+            // check the status
+            m_assert(parent->status_level() == M_ADAPT_SAME,"the parent must not change its status (now %d)",parent->status_level());
+
             // delete the created block
             delete (block_out);
 
@@ -370,10 +372,13 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
             m_assert(num_incoming == P8EST_CHILDREN && num_outgoing == 1, "we cannot refine a block that has already been targeted for refinement!");
 
             for (sid_t iin = 0; iin < num_incoming; iin++) {
-                // get the correct child id
-                int childid = p8est_quadrant_child_id(incoming[iin]);
-                // pop the child id out
-                GridBlock* child = block_out->PopDependency(childid);
+                // get the correct child id and pop the existing block out
+                int        childid = p8est_quadrant_child_id(incoming[iin]);
+                GridBlock* child   = block_out->PopDependency(childid);
+
+                // check the status
+                m_assert(child->status_level() == M_ADAPT_SAME, "the parent must not change its status (now %d)", child->status_level());
+
                 // store the child adress as the new block
                 p4est_SetGridBlock(incoming[iin], child);
                 // clear y name from the child list
@@ -413,6 +418,15 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
 
+    // we need to know if we are re-assigning block that have already been flaged for refinement/coarsening
+    iblock_t n_reassign = 0;
+    for (iblock_t iout = 0; iout < num_outgoing; iout++) {
+        GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
+        m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
+        n_reassign += (block_out->status_level() == M_ADAPT_NEW_COARSE) || (block_out->status_level() == M_ADAPT_NEW_FINE);
+    }
+    m_assert(n_reassign == 0 || n_reassign == num_outgoing, "the number of reassigning (=%d) must be 0 or %d", n_reassign, num_outgoing);
+
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
         qdrt_t* quad = incoming[id];
@@ -431,7 +445,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         }
 
         // assign the status
-        StatusAdapt status = (num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE;
+        StatusAdapt status = (n_reassign == num_outgoing) ? (M_ADAPT_SAME) : ((num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE);
         block->status_level(status);
     }
     // deallocate the leaving blocks
@@ -456,7 +470,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     Grid*     grid  = reinterpret_cast<Grid*>(forest->user_pointer);
     Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
     SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
-    
+
     m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
     m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
     m_assert(field != nullptr, "the field to fill shouldn't be nullptr");
@@ -466,6 +480,15 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     auto                  f_start = grid->FieldBegin();
     auto                  f_end   = grid->FieldEnd();
     p8est_connectivity_t* connect = forest->connectivity;
+
+    // we need to know if we are re-assigning block that have already been flaged for refinement/coarsening
+    iblock_t n_reassign = 0;
+    for (iblock_t iout = 0; iout < num_outgoing; iout++) {
+        GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
+        m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
+        n_reassign += (block_out->status_level() == M_ADAPT_NEW_COARSE) || (block_out->status_level() == M_ADAPT_NEW_FINE);
+    }
+    m_assert(n_reassign == 0 || n_reassign == num_outgoing, "the number of reassigning (=%d) must be 0 or %d", n_reassign, num_outgoing);
 
     // allocate the incomming blocks
     for (int id = 0; id < num_incoming; id++) {
@@ -487,14 +510,13 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         expr->FillGridBlock(nullptr, block, field);
 
         // assign the status
-        StatusAdapt status = (num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE;
+        StatusAdapt status = (n_reassign == num_outgoing) ? (M_ADAPT_SAME) : ((num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE);
         block->status_level(status);
     }
 
     // deallocate the leaving blocks
     for (int id = 0; id < num_outgoing; id++) {
-        qdrt_t* quad = outgoing[id];
-        // GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        qdrt_t*    quad  = outgoing[id];
         GridBlock* block = p4est_GetGridBlock(quad);
         // delete the block, the fields are destroyed in the destructor
         delete (block);
@@ -528,7 +550,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
 //     for(sid_t ic=0; ic<P8EST_CHILDREN; ic++){
 //         children[ic] = *(reinterpret_cast<GridBlock**>(outgoing[ic]->p.user_data));
 //     }
-    
+
 //     // bind the family together
 //     MGFamily* family = grid->curr_family();
 //     family->AddMembers(parent,children);

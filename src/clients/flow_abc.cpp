@@ -77,8 +77,8 @@ void FlowABC::Run() {
 
     SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
 
-    Advection<M_ADV_WENO_VEL,3> adv(vel_);
-    RK3_TVD          rk3(grid_, scal_, &adv, prof_);
+    Advection<M_WENO_Z, 3> adv(vel_);
+    RK3_TVD                rk3(grid_, scal_, &adv, prof_);
     adv.Profile(prof_);
 
     // let's gooo

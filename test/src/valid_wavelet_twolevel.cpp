@@ -116,7 +116,6 @@ class TwoLevel : public ::testing::TestWithParam<int> {
         // create a field an put it on it
         scal_ = new Field("scal", 1);
         grid_->AddField(scal_);
-
     };
     void TearDown() override {
         grid_->DeleteField(scal_);
@@ -165,7 +164,7 @@ TEST_P(TwoLevel, periodic) {
     // adapt the tree
     {
         list<Patch> patch_list;
-        TreeCaseIdToPatch(case_id_, &patch_list);
+        TreeCaseIdToPatch(0, case_id_, &patch_list);
 
         grid_->Adapt(&patch_list);
         grid_->GhostPull(scal_);
@@ -260,7 +259,7 @@ TEST_P(TwoLevel, flipfop) {
     // adapt the tree
     {
         list<Patch> patch_list;
-        TreeCaseIdToPatch(case_id_, &patch_list);
+        TreeCaseIdToPatch(0, case_id_, &patch_list);
 
         grid_->Adapt(&patch_list);
         grid_->GhostPull(scal_);
