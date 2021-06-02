@@ -1,7 +1,7 @@
 #ifndef SRC_ERROR_HPP_
 #define SRC_ERROR_HPP_
 
-#include <functional>
+
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
@@ -61,7 +61,6 @@ class Error : public BlockOperator {
 
         // call the operator
         if (no_error && no_level) {
-            m_log("no error, no level");
             DoOpMesh(this, &Error::ErrorOnGridBlock<Sol>, grid, field, sol);
         } else if (!no_error && no_level) {
             m_ptr<const Field> error_cst = error;
@@ -108,9 +107,6 @@ class Error : public BlockOperator {
     };
 };
 
-// type of a lambda taking 3 ids and the block and returns a value
-using lambda_funcval_t = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block)>;
-
 // declare the specialization, implement them in the cpp
 template <>
 void Error::ErrorOnGridBlock<m_ptr<const Field> >(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, m_ptr<const Field> sol);
@@ -118,8 +114,8 @@ template <>
 void Error::ErrorFieldOnGridBlock<m_ptr<const Field> >(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, m_ptr<const Field> sol, m_ptr<const Field> error);
 
 template <>
-void Error::ErrorOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_funcval_t* sol);
+void Error::ErrorOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_i3block_t* sol);
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_funcval_t* sol, m_ptr<const Field> error);
+void Error::ErrorFieldOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_i3block_t* sol, m_ptr<const Field> error);
 
 #endif  // SRC_ERROR_HPP

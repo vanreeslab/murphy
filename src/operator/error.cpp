@@ -74,7 +74,7 @@ void Error::ErrorFieldOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_
 };
 
 template <>
-void Error::ErrorOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_funcval_t* sol) {
+void Error::ErrorOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_i3block_t* sol) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
 
@@ -86,7 +86,7 @@ void Error::ErrorOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<Gr
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // we need to discard the physical BC for the edges
-            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block);
+            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block());
             m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
             // update the block errors
             e2 += error * error;
@@ -107,7 +107,7 @@ void Error::ErrorOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<Gr
 };
 
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_funcval_t* sol, m_ptr<const Field> error) {
+void Error::ErrorFieldOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_i3block_t* sol, m_ptr<const Field> error) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     data_ptr       ptr_error = block->data(error);
@@ -121,7 +121,7 @@ void Error::ErrorFieldOnGridBlock<lambda_funcval_t*>(m_ptr<const qid_t> qid, m_p
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get the local error
-            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block);
+            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block());
             m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
             // store it
             data_error[m_idx(i0, i1, i2)] = error;

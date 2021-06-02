@@ -88,6 +88,14 @@ Grid::~Grid() {
         m_verb("dealloc the interp");
         delete (interp_);
     }
+    // // make sure to destroy any remaning fields
+    // m_log("destroying the %d remaining fields", fields_.size());
+    // for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
+    //     m_ptr<Field> field = fid->second;
+    //     m_assert(field() != nullptr, "the field cannot be null here");
+    //     m_log("destroying field <%s>", field->name().c_str());
+    //     this->DeleteField(field);
+    // }
     // destroy the ghosts, they are mine as well
     DestroyMeshGhost();
     DestroyAdapt();

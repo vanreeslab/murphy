@@ -121,6 +121,8 @@ static struct argp_option options[] = {
     {"no-adapt", 2007, 0, OPTION_ARG_OPTIONAL, "disable the mesh adaptation"},
     {"level-min", 2008, "level", 0, "the minimum level on the grid (integer: num)"},
     {"level-max", 2009, "level", 0, "the maximum level on the grid (integer: num)"},
+    {"tstart", 2010, "value", 0, "the start time of the simulation"},
+    {"tfinal", 2011, "value", 0, "the final time of the simulation"},
 
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
@@ -136,11 +138,12 @@ static struct argp_option options[] = {
     {"iter-diag", 3010, "int", 0, "run the diagnostics every x iterations"},
     {"iter-adapt", 3011, "int", 0, "adapt the grid every x iterations"},
     {"iter-dump", 3012, "int", 0, "dump the field every x iterations"},
-    {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil"},
+    // {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil"},
     {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution"},
-    {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil"},
-    {"eps-start", 3016, "value", 0, "start epsilon"},
-    {"delta-eps", 3017, "value", 0, "factor from one epsilon to another"},
+    // {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil"},
+    {"weno", 3015, "value", 0, "order of the weno scheme for the advection, can be 3 or 5"},
+    {"eps-start", 3016, "value", 0, "start epsilon (epsilon test)"},
+    {"delta-eps", 3017, "value", 0, "factor from one epsilon to another (epsilon test)"},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients/testcases:", 4},
@@ -229,6 +232,18 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("level max: %d", lvl[0]);
             return err;
         }
+        case 2010: { /* time start */
+            real_t* time = &arguments->time_start;
+            error_t err  = atof_list(1, arg, time);
+            m_log("starting time: %f", time[0]);
+            return err;
+        }
+        case 2011: { /* time final */
+            real_t* time = &arguments->time_final;
+            error_t err  = atof_list(1, arg, time);
+            m_log("final time: %f", time[0]);
+            return err;
+        }
         //................................................
         case 3001: { /* Reynolds */
             double* reynolds = &arguments->reynolds;
@@ -302,19 +317,20 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("iter dump: %d", myint[0]);
             return err;
         }
-        case 3013: { /* no-weno */
-            arguments->no_weno = true;
-            m_log("no-weno");
-            return 0;
-        }
+        // case 3013: { /* no-weno */
+        //     arguments->no_weno = true;
+        //     m_log("no-weno");
+        //     return 0;
+        // }
         case 3014: { /* grid-on-sol */
             arguments->grid_on_sol = true;
-            m_log("grid based on the solution");
+            m_log("grid adaptation based on the solution");
             return 0;
         }
-        case 3015: { /* weno_5 */
-            arguments->weno_5 = true;
-            m_log("weno");
+        case 3015: { /* weno */
+            int* order = &arguments->weno;
+            error_t err = atoi_list(1, arg, order);
+            m_log("weno order: %d", order[0]);
             return 0;
         }
         case 3016: { /* rtol */

@@ -10,7 +10,7 @@
 using std::string;
 using std::to_string;
 
-lambda_funcval_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
+lambda_i3block_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     // get the position
     real_t pos[3];
     m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
@@ -35,7 +35,7 @@ class InitialCondition : public SetValue {
         real_t* data = block->data(fid, 0).Write();
 
         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block);
+            data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block());
         };
 
         for_loop(&op, start_, end_);

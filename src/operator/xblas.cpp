@@ -149,7 +149,7 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
         const real_t*    f    = data + m_idx(i0, i1, i2);
 
         for (lda_t id = 0; id < 8; ++id) {
-            const real_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
+            const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
             const real_t value     = f[m_idx(is_dim[0], is_dim[1], is_dim[2])];
 
             lmoment0 += coef * value;

@@ -4,6 +4,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <functional>
 
 #include "core/memlayout.hpp"
 #include "core/pointers.hpp"
@@ -75,17 +76,6 @@ class CartBlock : public MemLayout {
         m_pos[2] = i2 * hgrid_[2] + xyz_[2];
     }
 
-    // /**
-    //  * @brief return the half length of a block
-    //  */
-    // // inline bidx_t half_len() const { return M_N / 2 + 1; }
-    // // inline bidx_t half_len() const { return M_N / 2; }
-
-    // /**
-    //  * @brief returns the id of the center point
-    //  */
-    // // inline bidx_t center_len() const { return M_N / 2; }
-
     /**
      * @name CartBlock utility functions
      * 
@@ -144,5 +134,10 @@ inline void ToTempMemory(const m_ptr<MemLayout>& layout, const const_data_ptr& d
     //-------------------------------------------------------------------------
     m_end;
 }
+
+//-------------------------------------------------------------------------
+// defines code-wide usefull lambda functions
+using lambda_i3_t      = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2)>;
+using lambda_i3block_t = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block)>;
 
 #endif  //  SRC_GRID_CARTBLOCK_HPP_

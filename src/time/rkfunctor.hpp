@@ -11,9 +11,11 @@
  */
 class RKFunctor {
    public:
+    explicit RKFunctor() = default;
+    virtual ~RKFunctor() = default;
     // return stability info
-    virtual real_t cfl_rk3() const   = 0;  //!< the CFL constrain
-    virtual real_t rdiff() const = 0;  //!< the diffusion constrain
+    virtual real_t cfl_rk3() const = 0;  //!< the CFL constrain
+    virtual real_t rdiff() const   = 0;  //!< the diffusion constrain
 
     // do the rhs
     virtual void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) = 0;

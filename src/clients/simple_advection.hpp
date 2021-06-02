@@ -9,10 +9,12 @@
 #include "tools/prof.hpp"
 
 class SimpleAdvection : public TestCase {
-    bool no_adapt_    = false;
-    bool no_weno_     = false;
-    bool grid_on_sol_ = false;
-    bool weno_5_      = false;
+    bool no_adapt_;
+    bool grid_on_sol_;
+    int  weno_;
+
+    real_t tstart_ = 0.0;
+    real_t tfinal_ = 0.0;
 
     level_t level_min_ = 0;
     level_t level_max_ = P8EST_QMAXLEVEL;

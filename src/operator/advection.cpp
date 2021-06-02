@@ -2,8 +2,19 @@
 
 #include <functional>
 
+/**
+ * @brief WENO-Z smoothing coefficient computation
+ */
 constexpr real_t alpha_z(const real_t gamma, const real_t beta, const real_t tau, const real_t h) {
     return gamma * (1.0 + pow(tau / (beta + pow(h, 4)), 2));
+}
+
+/**
+ * @brief WENO-JS smoothing coefficient computation
+ */
+constexpr real_t alpha_js(const real_t gamma, const real_t beta) {
+    constexpr real_t eps = 1e-8;
+    return gamma * pow(1.0 / (eps + beta), 2);
 }
 
 /**

@@ -11,7 +11,7 @@ using std::string;
 using std::to_string;
 
 
-// static lambda_funcval_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
+// static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
 //     // get the position
 //     real_t pos[3];
 //     m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
@@ -53,13 +53,21 @@ SimpleAdvection::~SimpleAdvection() {
         prof_->Disp();
         prof_.Free();
     }
-
+    // free the set values
     ring_.Free();
     vel_field_.Free();
+
+    // free the grid
+    // grid_.Free();
+    // delete the field
+    grid_->DeleteField(vel_);
+    grid_->DeleteField(scal_);
+    grid_->DeleteField(sol_);
 
     vel_.Free();
     scal_.Free();
     sol_.Free();
+    // delete the grid
     grid_.Free();
 
     m_log("Navier Stokes is dead");
@@ -73,9 +81,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // take the no adaptation
     no_adapt_    = param->no_adapt;
-    no_weno_     = param->no_weno;
     grid_on_sol_ = param->grid_on_sol;
-    weno_5_      = param->weno_5;
+    weno_        = param->weno;
+    m_assert(weno_ == 3 || weno_ == 5, "the weno order must be 3 or 5");
 
     // the the standard stuffs
     if (param->profile) {
@@ -86,9 +94,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the grid
-    bool   period[3] = {false, false, false};
-    const lid_t L[3]      = {1, 1, 1};
-    grid_.Alloc(param->init_lvl, period, L, MPI_COMM_WORLD, prof_);
+    // bool        period[3] = {false, false, false};
+    // const lid_t L[3]      = {1, 1, 1};
+    grid_.Alloc(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
 
     m_assert(grid_.IsOwned(), "the grid must be owned");
 
@@ -105,9 +113,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->AddField(scal_);
 
     // add the solution as temp
-    // sol_.Alloc("sol", 1);
-    // sol_->is_temp(true);
-    // grid_->AddField(sol_);
+    sol_.Alloc("sol", 1);
+    sol_->is_temp(true);
+    grid_->AddField(sol_);
 
     // setup the scalar ring
     real_t velocity[3] = {0.0, 0.0, 1.0};
@@ -137,6 +145,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     // dump(grid_(), vel_(),0);
     // dump(grid_(), scal_(),0);
 
+    tstart_ = param->time_start;
+    tfinal_ = param->time_final;
+
     //-------------------------------------------------------------------------
 }
 
@@ -145,30 +156,28 @@ void SimpleAdvection::Run() {
     //-------------------------------------------------------------------------
     // time
     lid_t  iter    = 0;
-    real_t t_start = 0.0;
-    real_t t_final = 0.1;  //2.0/8.0;
-    real_t t       = 0.0;
+    real_t t       = tstart_;
 
+    // advection
     RKFunctor* advection;
-    // if (no_weno_) {
-    //     advection = new Advection<M_ADV_CONS_VEL, 3>(vel_);
-    //     m_log("conservative advection chosen, cfl = %f", advection->cfl_rk3());
-    // } else if (weno_5_) {
-    //     advection = new Advection<M_WENO_Z, 5>(vel_);
-    //     m_log("WENO 5 advection chosen, cfl = %f", advection->cfl_rk3());
-    // } else {
-    advection = new Advection<M_WENO_Z, 3>(vel_);
-    m_log("WENO 3 advection chosen, cfl = %f", advection->cfl_rk3());
-    // }
+    if (weno_ == 3) {
+        advection = new Advection<M_WENO_Z, 3>(vel_);
+        m_log("WENO-Z order 3 (cfl = %f)", advection->cfl_rk3());
+    } else if (weno_ == 5) {
+        advection = new Advection<M_WENO_Z, 5>(vel_);
+        m_log("WENO-Z order 5 (cfl = %f)", advection->cfl_rk3());
+    } else {
+        advection = nullptr;
+        m_assert(false, "weno order = %d not valid", weno_);
+    }
+
+    // time integration
     RK3_TVD rk3(grid_, scal_, advection, prof_);
 
-    m_log("advection cfl is %e", advection->cfl_rk3());
-
-    real_t time_start = MPI_Wtime();
-
+    real_t wtime_start = MPI_Wtime();
     // let's gooo
     m_profStart(prof_(), "run");
-    while (t < t_final && iter < iter_max()) {
+    while (t < tfinal_ && iter < iter_max()) {
         m_log("--------------------");
         //................................................
         // adapt the mesh
@@ -197,8 +206,8 @@ void SimpleAdvection::Run() {
         if (iter == 0) {
             m_profStart(prof_(), "diagnostics");
             m_log("---- run diag");
-            real_t time_now = MPI_Wtime();
-            Diagnostics(t, 0, iter, time_now - time_start);
+            real_t wtime_now = MPI_Wtime();
+            Diagnostics(t, 0, iter, wtime_now - wtime_start);
             m_profStop(prof_(), "diagnostics");
         }
 
@@ -207,7 +216,7 @@ void SimpleAdvection::Run() {
         real_t dt = rk3.ComputeDt(advection, vel_);
 
         // dump some info
-        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, t_final, iter, iter_max(), dt);
+        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, tfinal_, iter, iter_max(), dt);
 
         //................................................
         // advance in time
@@ -233,6 +242,10 @@ void SimpleAdvection::Run() {
         real_t time_now = MPI_Wtime();
         Diagnostics(t, 0.0, iter, time_now);
     }
+
+    // free the advection
+    delete advection;
+
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -256,13 +269,16 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     BMoment moments;
     grid_->GhostPull(scal_);
     moments(grid_, scal_, &moment0, moment1);
-    real_t          dmoment0;
-    real_t          dmoment1[3];
-    BDiscreteMoment dmoments;
-    dmoments(grid_, scal_, &dmoment0, dmoment1);
+    // real_t          dmoment0;
+    // real_t          dmoment1[3];
+    // BDiscreteMoment dmoments;
+    // dmoments(grid_, scal_, &dmoment0, dmoment1);
+    real_t mean_val;
+    BMean  mean;
+    mean(grid_, scal_, &mean_val);
 
     // compute the error
-    real_t          err2, erri;
+    real_t err2, erri;
     Error  error;
     ring_->SetTime(time);
     (*ring_)(grid_, sol_);
@@ -280,8 +296,9 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());
         fprintf(file_diag, ";%e;%e", err2, erri);
+        fprintf(file_diag, ";%e", mean_val);
         fprintf(file_diag, ";%e;%e;%e;%e", moment0, moment1[0], moment1[1], moment1[2]);
-        fprintf(file_diag, ";%e;%e;%e;%e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
+        // fprintf(file_diag, ";%e;%e;%e;%e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
         fprintf(file_diag, "\n");
         fclose(file_diag);
     }

@@ -26,6 +26,9 @@ struct ParserArguments {
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
+    real_t time_start = 0.0;
+    real_t time_final = 0.1;
+
     real_t eps_start = 0.1;
     real_t delta_eps = 0.1;
 
@@ -46,9 +49,10 @@ struct ParserArguments {
     iter_t iter_diag     = 1;
     iter_t iter_adapt    = 1;
     iter_t iter_dump     = 1;
-    bool   no_weno       = false;
-    bool   weno_5        = false;
-    bool   grid_on_sol   = false;
+    // bool   no_weno       = false;
+    // bool   weno_5        = false;
+    int  weno        = 3;
+    bool grid_on_sol = false;
 };
 
 void ParseArgument(int argc, char** argv, ParserArguments* arguments);

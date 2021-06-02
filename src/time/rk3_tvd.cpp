@@ -86,7 +86,7 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
 
     //................................................
     // step 2
-    // y2 = y2 + f(y1)
+    // y2 = f(y1)
     m_profStart(prof_(), "rhs");
     f_->RhsSet(grid_, *time + dt, field_y1_, field_y2_);
     m_profStop(prof_(), "rhs");
