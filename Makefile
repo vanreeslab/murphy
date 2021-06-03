@@ -6,7 +6,10 @@
 # ARCH DEPENDENT VARIABLES
 ARCH_FILE ?= make_arch/make.docker_gcc
 
+#only include the ARCH_FILE when we do not clean or destroy
+ifneq ($(MAKECMDGOALS),clean)
 include $(ARCH_FILE)
+endif
 
 ################################################################################
 # FROM HERE, DO NOT CHANGE
@@ -91,8 +94,10 @@ GTEST_INC ?= /usr/include
 GTEST_LIB ?= /usr/lib
 GTEST_LIBNAME ?= -lgtest
 
+
+
 #---- MPI - get flags
-MPI_INC := $(shell mpic++ --showme:compile)
+
 
 ################################################################################
 # mandatory flags
@@ -110,13 +115,16 @@ $(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -E $< -o $@
 
-# clang-tidy files
+# clang-tidy files, define the MPI_INC which is only for this target
+$(OBJ_DIR)/%.tidy : MPI_INC = $(shell $(CXX) --showme:compile)
 $(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
 	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) $(M_FLAGS)
 
 ################################################################################
+.PHONY: default
 default: $(TARGET)
 
+.PHONY: all
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
@@ -132,6 +140,7 @@ preproc: $(IN)
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
+#clean
 .PHONY: clean 
 clean:
 	@rm -rf $(OBJ_DIR)/*.o
@@ -140,6 +149,7 @@ clean:
 	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
 	@rm -rf $(TARGET)_test
 
+# destroy = clean but even more aggressive
 .PHONY: destroy
 destroy:
 	@rm -rf $(OBJ_DIR)/*
