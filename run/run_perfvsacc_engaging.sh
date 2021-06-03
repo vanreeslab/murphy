@@ -5,25 +5,29 @@ SCRATCH=/nobackup1/tgillis/perf_vs_acc
 rm -rf ${SCRATCH}
 
 # produce the different exec
+# 2.0
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=2 -DWAVELET_NT=0 -DBLOCK_GS=2"
+mv murphy murphy20
+# 2.2
+make destroy
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=4"
+mv murphy murphy22
 # 4.0
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=4"
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
 mv murphy murphy40
 # 4.2
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4"
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
 mv murphy murphy42
 #
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=4 -DBLOCK_GS=6"
-mv murphy murphy44
-#
-make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=6"
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
 mv murphy murphy60
 #
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=6"
+ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
 mv murphy murphy62
 
 
@@ -37,8 +41,6 @@ do
 	# get the tolerances
 	export RTOL=$(echo "1e-$i")
 	export CTOL=$(echo "1e-$(($i+2))")
-	#export RTOL=$(echo "10^(-($i+0))" | bc -l | sed 's!\.0*$!!')
-	#export CTOL=$(echo "10^(-($i+2))" | bc -l | sed 's!\.0*$!!')
 	
 	# get the folder
 	export RUN_DIR=$SCRATCH/level$i
