@@ -22,7 +22,12 @@ void WriteInfo(int argc, char** argv) {
     rank_t rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0) {
-        FILE* file = fopen("murphy.info", "w+");
+        string filename(argv[0]);
+        // remove the "./" that might be in it
+        filename.erase(std::remove(filename.begin(), filename.end(), '.'), filename.end());
+        filename.erase(std::remove(filename.begin(), filename.end(), '/'), filename.end());
+        filename += ".info";
+        FILE* file = fopen(filename.c_str(), "w+");
         fprintf(file, "MURPHY - (c) MIT\n");
         fprintf(file, "- commit: %s\n", M_GIT_COMMIT);
         fprintf(file, "- defines:\n");

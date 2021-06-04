@@ -321,9 +321,12 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     // for each outgoing block
     for (sid_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
-        // check the status of the outgoing block
-        m_assert(!(num_incoming == 1 && block_out->status_level() != M_ADAPT_COARSER), "the tag must be coarser instead of %d", block_out->status_level());
-        m_assert(!(num_incoming == P8EST_CHILDREN && block_out->status_level() != M_ADAPT_FINER), "the tag must be finer instead of %d", block_out->status_level());
+        // // check the status of the outgoing block, if from the balacing the status can be "do nothing"!
+        // m_assert(!(num_incoming == 1 && (block_out->status_level() != M_ADAPT_COARSER || block_out->status_level() != M_ADAPT_SAME)), "the tag must be coarser instead of %d", block_out->status_level());
+        // m_assert(!(num_incoming == P8EST_CHILDREN && (block_out->status_level() != M_ADAPT_FINER || block_out->status_level() != M_ADAPT_SAME)), "(num in = %d) an dthe tag must be finer instead of %d", num_incoming, block_out->status_level());
+        // if called via the balancing it can be that the status doesn't match (of the outgoing block)
+        StatusAdapt new_out_status = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
+        block_out->status_level(new_out_status);
 
         // count the number of active dependency blocks that are already there
         sid_t n_active = block_out->n_dependency_active();

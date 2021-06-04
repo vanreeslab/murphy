@@ -542,7 +542,15 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     m_profInitLeave(prof_, "solve dependency");
 
     // inform we start the mess
-    m_log("--> grid adaptation started... (recursive = %d)", recursive_adapt());
+    string msg = "--> grid adaptation started... (recursive = %d, ";
+    if (!field_detail.IsEmpty()) {
+        msg += "using details";
+    }
+    if (!patches.IsEmpty()) {
+        msg += "using patches";
+    }
+    msg += ")";
+    m_log(msg.c_str(), recursive_adapt());
 
     //................................................
     // store the ptrs and the grid
@@ -567,13 +575,11 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         // compute the criterion or use the patches to get the status
         if (!field_detail.IsEmpty()) {
             // compute the details
-            m_log("using details");
             DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this,
                      m_ptr<const Wavelet>(interp_), rtol_, ctol_, m_ptr<const Field>(field_detail), m_ptr<Prof>(prof_));
         }
         if (!patches.IsEmpty()) {
             // get the patches processed
-            m_log("using patches");
             DoOpTree(nullptr, &GridBlock::UpdateStatusFromPatches, this,
                      m_ptr<const Wavelet>(interp_), patches, m_ptr<Prof>(prof_));
         }
@@ -591,6 +597,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
             m_profStart(prof_, "p4est coarsen");
             p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est coarsen");
+            m_log("coarsen is done");
         }
 
         // refinement -> only one level
@@ -599,12 +606,14 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
             m_profStart(prof_, "p4est refine");
             p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est refine");
+            m_log("refine is done");
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case
         m_profStart(prof_, "p4est balance");
         p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
         m_profStop(prof_, "p4est balance");
+        m_log("balance is done");
 
         //................................................
         // solve the dependencies on the grid
