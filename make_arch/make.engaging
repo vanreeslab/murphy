@@ -1,0 +1,32 @@
+CXX = /home/tgillis/lib-mpich/mpich-3.4.1/bin/mpic++
+CC = /home/tgillis/lib-mpich/mpich-3.4.1/bin/mpicc
+
+# override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
+# OPTS += -DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=4
+
+#CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
+#CXXFLAGS := -g -O3 -march=haswell -fopenmp -DLOG_ALLRANKS
+CXXFLAGS := -g -O3  -fopenmp -march=skylake
+
+# -DNDEBUG
+# -DLOG_ALLRANKS
+# -DVERBOSE 
+LDFLAGS := -fopenmp -lstdc++ -lm
+
+#FFTW_DIR := /home/software/gcc/6.2.0/pkg/fftw/3.3.8
+FFTW_DIR := /home/tgillis/lib-mpich/fftw-3.3.8
+FFTW_INC := ${FFTW_DIR}/include
+FFTW_LIB := ${FFTW_DIR}/lib
+
+#HDF5_DIR := /home/software/hdf5/1.10.5-parallel
+HDF5_DIR := /home/tgillis/lib-mpich/hdf5-1.10.6
+HDF5_INC := ${HDF5_DIR}/include
+HDF5_LIB := ${HDF5_DIR}/lib
+
+
+P4EST_INC := /home/tgillis/lib-mpich/p4est/include
+P4EST_LIB := /home/tgillis/lib-mpich/p4est/lib
+#P4EST_LIBNAME := -lsc -lp4est -L/home/tgillis/lib-mpich/openblas-0.3.13/lib -lopenblas -Wl,-rpath,/home/tgillis/lib-mpich/openblas-0.3.13/lib
+
+FLUPS_INC := /home/tgillis/flups/include
+FLUPS_LIB := /home/tgillis/flups/lib

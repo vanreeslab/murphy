@@ -10,7 +10,8 @@
 // #include "gtest/gtest.h"
 // #include "ioh5.hpp"
 // #include "laplacian.hpp"
-// #include "murphy.hpp"
+// #include "core/macros.hpp"
+#include "core/types.hpp"
 // #include "setvalues.hpp"
 
 // #define DOUBLE_TOL 1e-9
@@ -75,7 +76,7 @@
 //     //     dump(grid_, analytic_);
 
 //     //     real_t          norm2, normi;
-//     //     ErrorCalculator myerr;
+//     //     Error myerr;
 //     //     myerr.Norms(grid_, psi_, analytic_, &norm2, &normi);
 
 //     //     delete (poisson);
@@ -121,7 +122,7 @@
 // //     dump(grid_, analytic_);
 
 // //     real_t          norm2, normi;
-// //     ErrorCalculator myerr;
+// //     Error myerr;
 // //     myerr.Norms(grid_, psi_, analytic_, &norm2, &normi);
 
 // //     delete (poisson);

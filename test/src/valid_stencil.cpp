@@ -1,411 +1,261 @@
 #include <cmath>
+#include <list>
 
-#include "doop.hpp"
-#include "error.hpp"
-#include "grid.hpp"
+#include "core/macros.hpp"
+#include "core/types.hpp"
+#include "grid/field.hpp"
+#include "grid/grid.hpp"
 #include "gtest/gtest.h"
-#include "ioh5.hpp"
-#include "murphy.hpp"
-#include "setvalues.hpp"
-#include "subblock.hpp"
-#include "wavelet.hpp"
-#include "laplacian.hpp"
-#include "gradient.hpp"
+#include "operator/advection.hpp"
+#include "operator/error.hpp"
+#include "operator/xblas.hpp"
+#include "tools/ioh5.hpp"
+#include "valid_toolbox.hpp"
 
-#define DOUBLE_TOL 1e-11
+#define DOUBLE_TOL 1e-12
 
-class valid_Stencil : public ::testing::Test {
-    void SetUp() override {};
-    void TearDown() override {};
+class Adapt : public ::testing::TestWithParam<int> {
+    void SetUp() override{};
+    void TearDown() override{};
 };
 
 using std::list;
 using std::string;
 
-TEST_F(valid_Stencil, gradient_periodic_cosinus) {
-    for (lda_t id = 0; id < 3; ++id) {
-        // init the errors
-        real_t erri[3] = {0.0, 0.0, 0.0};
-        real_t err2[3] = {0.0, 0.0, 0.0};
+TEST_P(Adapt, weno_periodic_cosinus) {
+    int case_id = GetParam();
+    m_log("--------------------------------------------------------------------------------");
+    m_log("case id: %d", case_id);
 
-        // setup the mesh
-        bool  period[3] = {true, true, true};
-        lid_t L[3]      = {3, 3, 3};
+    // init the errors
+    real_t erri_adv_weno_3[3] = {0.0, 0.0, 0.0};
+    real_t erri_adv_weno_5[3] = {0.0, 0.0, 0.0};
 
-        for (level_t il = 1; il < 3; ++il) {
-            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+    // setup the mesh
+    bool  period[3] = {true, true, true};
+    lid_t L[3]      = {2, 2, 2};
 
-            // create the patch refinement to refine the middle tree
-            real_t      origin1[3] = {1.0, 1.0, 1.0};
-            real_t      length1[3] = {1.0, 1.0, 1.0};
-            Patch       p1(origin1, length1, il + 1);
-            real_t      origin2[3] = {0.0, 0.0, 0.0};
-            real_t      length2[3] = {L[0], L[1], L[2]};
-            Patch       p2(origin2, length2, il);
-            list<Patch> patch{p1, p2};
-            grid.Adapt(&patch);
+    // see if we run the tests
+    bool do_weno_3 = false;
+    bool do_weno_5 = false;
 
-            // create the test file
-            string fieldName = "field" + std::to_string(id) + "__" + std::to_string(il);
-            string solName   = "sol" + std::to_string(id) + "__" + std::to_string(il);
-            string diffName  = "deriv" + std::to_string(id) + "__" + std::to_string(il);
-            Field  test(fieldName, 1);
-            Field  sol(solName, 3);
-            Field  dtest(diffName, 3);
-            grid.AddField(&test);
-            grid.AddField(&sol);
-            grid.AddField(&dtest);
+    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
+                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
+                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
-            // put a sinus -> the field
+    for (level_t il = 0; il < 2; ++il) {
+        level_t clevel = il;
+        Grid    grid(clevel, period, L, MPI_COMM_WORLD, nullptr);
+        // adapt
+        {
+            list<Patch> patch_list;
+            TreeCaseIdToPatch(clevel, case_id, &patch_list);
+            grid.Adapt(&patch_list);
+        }
+
+        do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+
+        // create the needed fields
+        string fieldName = "field" + std::to_string(il);
+        string solName   = "sol" + std::to_string(il);
+        string velName   = "vel" + std::to_string(il);
+        string diffName  = "deriv" + std::to_string(il);
+        Field  test(fieldName, 1);
+        Field  sol(solName, 1);
+        Field  vel(velName, 3);
+        Field  dtest(diffName, 1);
+        grid.AddField(&test);
+        grid.AddField(&sol);
+        grid.AddField(&vel);
+        grid.AddField(&dtest);
+
+        // set a constant velocity
+        {
+            const lid_t  deg[3]   = {0, 0, 0};
+            const real_t shift[3] = {0.0, 0.0, 0.0};
+            for (lda_t ida = 0; ida < 3; ++ida) {
+                const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
+                SetPolynom   vel_init(deg, dir, shift, grid.interp());
+                vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
+            }
+            grid.GhostPull(&vel);
+        }
+
+        // set the test field
+        {
+            // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
             const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {3.0, 2.0, 2.0};
+            const real_t freq[3]    = {2.0, 2.0, 2.0};
             const real_t alpha[3]   = {1.0, 1.0, 1.0};
             SetCosinus   field_init(sin_len, freq, alpha);
             field_init(&grid, &test);
-
-            // -> the solution
-            const real_t alpha_sol_0[3] = {-(2 * M_PI * freq[0]) / L[0], 0.0, 0.0};
-            SetSinus     sol_init0(sin_len, freq, alpha_sol_0, grid.interp());
-            sol_init0(&grid, &sol, 0);
-
-            const real_t alpha_sol_1[3] = {0.0, -(2 * M_PI * freq[1]) / L[1], 0.0};
-            SetSinus     sol_init1(sin_len, freq, alpha_sol_1, grid.interp());
-            sol_init1(&grid, &sol, 1);
-
-            const real_t alpha_sol_2[3] = {0.0, 0.0, -(2 * M_PI * freq[2]) / L[2]};
-            SetSinus     sol_init2(sin_len, freq, alpha_sol_2, grid.interp());
-            sol_init2(&grid, &sol, 2);
-
-            // compue the grad
-            Gradient<3> grad;
-            grad(&grid, &test, &dtest);
-
-            // grid.GhostPull(&dtest);
-            // IOH5 io("data_test");
-            // io(&grid, &test);
-            // io(&grid, &dtest);
-            // io(&grid, &sol);
-
-            // now, we need to check
-            ErrorCalculator error;
-            error.Norms(&grid, &dtest, &sol, err2 + il, erri + il);
-
-            m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
         }
-        real_t conv2 = -log(err2[2] / err2[1]) / log(2);
-        real_t convi = -log(erri[2] / erri[1]) / log(2);
 
-        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, m_min(M_WAVELET_N - 1, 2) - 0.1);
-        ASSERT_GE(convi, m_min(M_WAVELET_N-1,2) - 0.1);
-    }
-}
-
-TEST_F(valid_Stencil,laplacian_periodic_cosinus){
-    for (lda_t id = 0; id < 3; ++id) {
-        
-        // init the errors
-        real_t erri[3] = {0.0, 0.0, 0.0};
-        real_t err2[3] = {0.0, 0.0, 0.0};
-
-        // setup the mesh
-        bool  period[3] = {true, true, true};
-        lid_t L[3]      = {3, 3, 3};
-
-        for (level_t il = 1; il < 3; ++il) {
-            Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
-
-            // create the patch refinement to refine the middle tree
-            real_t      origin1[3] = {1.0, 1.0, 1.0};
-            real_t      length1[3] = {1.0, 1.0, 1.0};
-            Patch       p1(origin1, length1, il + 1);
-            real_t      origin2[3] = {0.0, 0.0, 0.0};
-            real_t      length2[3] = {L[0], L[1], L[2]};
-            Patch       p2(origin2, length2, il);
-            list<Patch> patch{p1, p2};
-            grid.Adapt(&patch);
-
-            // create the test file
-            string fieldName = "field" + std::to_string(id) + "__" + std::to_string(il);
-            string solName   = "sol" + std::to_string(id) + "__" + std::to_string(il);
-            string diffName  = "diff" + std::to_string(id) + "__" + std::to_string(il);
-            Field  test(fieldName, 3);
-            Field  sol(solName, 3);
-            Field  diff(diffName, 3);
-            grid.AddField(&test);
-            grid.AddField(&sol);
-            grid.AddField(&diff);
-
-            // put a sinus -> the field
-            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {3.0, 1.0, 1.0};
-            const real_t alpha[3]    = {1.0, 1.0, 1.0};
-            SetCosinus     field_init(sin_len, freq,alpha);
-            field_init(&grid, &test);
-
-            // -> the solution
-            const real_t alpha_sol[3] = {-pow((2 * M_PI * freq[0]) / L[0], 2), -pow((2 * M_PI * freq[1]) / L[1], 2), -pow((2 * M_PI * freq[2]) / L[2], 2)};
-            SetCosinus     sol_init(sin_len, freq,alpha_sol,grid.interp());
+        // set the solution
+        {
+            // -> the solution: u* df/dx + v * df/dy + w*df/dz
+            const real_t freq[3]        = {2.0, 2.0, 2.0};
+            const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
+                                           rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
+                                           rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
+            SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
             sol_init(&grid, &sol);
-
-            // compue the laplacian
-            LaplacianCross<3> diffusion;
-            diffusion(&grid,&test,&diff);
-
-            // grid.GhostPull(&diff);
-            // IOH5 io("data_test");
-            // io(&grid,&diff);
-            // io(&grid,&sol);
-
-            // now, we need to check
-            ErrorCalculator error;
-            error.Norms(&grid, &diff, &sol, err2 + il, erri + il);
-
-            m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il), erri[il], err2[il]);
         }
-        real_t conv2 = -log(err2[2] / err2[1]) / log(2);
-        real_t convi = -log(erri[2] / erri[1]) / log(2);
 
-        m_log("the convergence orders are: norm_2:%e norm_i:%e", conv2, convi);
-        ASSERT_GE(conv2, m_min(M_WAVELET_N-2,2) - 0.1);
-        ASSERT_GE(convi, m_min(M_WAVELET_N-2,2) - 0.1);
+        if (do_weno_3) {
+            Advection<M_WENO_Z, 3> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_3 + il);
+            m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
+        }
+        if (do_weno_5) {
+            Advection<M_WENO_Z, 5> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_5 + il);
+            m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
+        }
+    }
+    if (do_weno_3) {
+        real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
+        m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> min = 1, ideal = 3", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
+    }
+    if (do_weno_5) {
+        real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
+        m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 3, ideal = 5", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
     }
 }
 
-// #endif
+INSTANTIATE_TEST_SUITE_P(ValidStencil,
+                         Adapt,
+                         testing::Range(0, 256));
 
-// TEST_F(valid_Stencil, laplacian_o2) {
-//     vort_->bctype(M_BC_EXTRAP_3);
+class ValidStencilUniform : public ::testing::Test {
+    void SetUp() override{};
+    void TearDown() override{};
+};
 
-//     // x^2 + y^2 + z^2
-//     real_t     dir[3]  = {1.0, 1.0, 1.0};
-//     lid_t      deg[3]  = {2, 2, 2};
-//     SetPolynom polynom = SetPolynom(deg, dir);
-//     polynom(grid_, vort_);
+TEST_F(ValidStencilUniform, weno_periodic_cosinus) {
+    // init the errors
+    real_t erri_adv_weno_3[3] = {0.0, 0.0, 0.0};
+    real_t erri_adv_weno_5[3] = {0.0, 0.0, 0.0};
 
-//     // 2 + 2 + 2
-//     real_t     dir2[3]  = {2.0, 2.0, 2.0};
-//     lid_t      deg2[3]  = {0, 0, 0};
-//     SetPolynom polynom2 = SetPolynom(deg2, dir2);
-//     polynom2(grid_, sol_);
+    // setup the mesh
+    bool  period[3] = {true, true, true};
+    lid_t L[3]      = {2, 2, 2};
 
-//     LaplacianCross<3> lapla = LaplacianCross<3>();
-//     lapla(grid_, vort_, diff_);
+    // see if we run the tests
+    bool do_weno_3 = false;
+    bool do_weno_5 = false;
 
-//     real_t          norm2, normi;
-//     ErrorCalculator myerr;
-//     myerr.Norms(grid_, diff_, sol_, &norm2, &normi);
+    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
+                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
+                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
-//     // ASSERT_LE(norm2, normi);
-//     ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL);
-//     ASSERT_NEAR(normi, 0.0, DOUBLE_TOL);
-// }
+    for (level_t il = 0; il < 2; ++il) {
+        Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
-// TEST_F(valid_Stencil, laplacian_o4) {
-//     vort_->bctype(M_BC_EXTRAP_5);
+        do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
-//     // x^4 + y^4 + z^4
-//     real_t     dir[3]  = {1.0, 1.0, 1.0};
-//     lid_t      deg[3]  = {4, 4, 4};
-//     SetPolynom polynom = SetPolynom(deg, dir);
-//     polynom(grid_, vort_);
+        // create the test file
+        string fieldName = "field" + std::to_string(il);
+        string solName   = "sol" + std::to_string(il);
+        string velName   = "vel" + std::to_string(il);
+        string diffName  = "deriv" + std::to_string(il);
+        Field  test(fieldName, 1);
+        Field  sol(solName, 1);
+        Field  vel(velName, 3);
+        Field  dtest(diffName, 1);
+        grid.AddField(&test);
+        grid.AddField(&sol);
+        grid.AddField(&vel);
+        grid.AddField(&dtest);
 
-//     // 12 x^2 + 12 y^2 + 12 z^2
-//     real_t     dir2[3]  = {12.0, 12.0, 12.0};
-//     lid_t      deg2[3]  = {2, 2, 2};
-//     SetPolynom polynom2 = SetPolynom(deg2, dir2);
-//     polynom2(grid_, sol_);
+        // set a constant velocity
+        {
+            const lid_t  deg[3]   = {0, 0, 0};
+            const real_t shift[3] = {0.0, 0.0, 0.0};
+            for (lda_t ida = 0; ida < 3; ++ida) {
+                const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
+                SetPolynom   vel_init(deg, dir, shift, grid.interp());
+                vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
+            }
+            grid.GhostPull(&vel);
+        }
 
-//     LaplacianCross<5> lapla = LaplacianCross<5>();
-//     lapla(grid_, vort_, diff_);
+        // set the test field
+        {
+            // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
+            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t freq[3]    = {2.0, 2.0, 2.0};
+            const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            SetCosinus   field_init(sin_len, freq, alpha);
+            field_init(&grid, &test);
+        }
 
-//     real_t          norm2, normi;
-//     ErrorCalculator myerr;
-//     myerr.Norms(grid_, diff_, sol_, &norm2, &normi);
+        // set the solution
+        {
+            // -> the solution: u* df/dx + v * df/dy + w*df/dz
+            const real_t freq[3]        = {2.0, 2.0, 2.0};
+            const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
+                                           rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
+                                           rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
+            SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
+            sol_init(&grid, &sol);
+        }
 
-//     // ASSERT_LE(norm2, normi);
-//     ASSERT_NEAR(norm2, 0.0, DOUBLE_TOL);
-//     ASSERT_NEAR(normi, 0.0, DOUBLE_TOL);
-// }
+        if (do_weno_3) {
+            Advection<M_WENO_Z, 3> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_3 + il);
+            m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
 
-// #define N_CONV 2
+            // check the moment
+            real_t sum;
+            BMean  sum_grid;
+            sum_grid(&grid, &dtest, &sum);
+            m_log("sum of dtest = %e", sum);
 
-// TEST_F(valid_Stencil, convergence_laplacian_o2_boundary3) {
-//     vort_->bctype(M_BC_EXTRAP_3);
+            ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
+        }
+        if (do_weno_5) {
+            Advection<M_WENO_Z, 5> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_5 + il);
+            m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
 
-//     real_t erri[N_CONV] = {0.0};
-//     real_t origin1[3]   = {0.0, 0.0, 0.0};
-//     real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-//     real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
-//     real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
+            // check the moment
+            real_t sum;
+            BMean  sum_grid;
+            sum_grid(&grid, &dtest, &sum);
+            m_log("sum of dtest = %e", sum);
 
-//     real_t normi[N_CONV];
-
-//     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
-//         list<Patch> patches;
-//         patches.push_back(Patch(origin1, length1, il));
-//         patches.push_back(Patch(origin2, length2, il + 1));
-//         grid_->Adapt(&patches);
-
-//         // x^3 + y^4 + z^3
-//         real_t     dir[3]  = {1.0, 1.0, 1.0};
-//         lid_t      deg[3]  = {3, 4, 3};
-//         SetPolynom polynom = SetPolynom(deg, dir);
-//         polynom(grid_, vort_);
-
-//         // 2 + 2 + 2
-//         real_t     dir2[3]  = {6.0, 12.0, 6.0};
-//         lid_t      deg2[3]  = {1, 2, 1};
-//         SetPolynom polynom2 = SetPolynom(deg2, dir2);
-//         polynom2(grid_, sol_);
-
-//         LaplacianCross<3> lapla = LaplacianCross<3>();
-//         lapla(grid_, vort_, diff_);
-
-//         real_t          norm2;
-//         ErrorCalculator myerr;
-//         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
-//         if (grid_->mpirank() == 0) {
-//             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
-//         }
-//     }
-//     if (grid_->mpirank() == 0) {
-//         printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 1.95);
-//     }
-//     ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 1.95);
-// }
-
-// TEST_F(valid_Stencil, convergence_laplacian_o2_boundary4) {
-//     vort_->bctype(M_BC_EXTRAP_4);
-
-//     real_t erri[N_CONV] = {0.0};
-//     real_t origin1[3]   = {0.0, 0.0, 0.0};
-//     real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-//     real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
-//     real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-
-//     real_t normi[N_CONV];
-
-//     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
-//         list<Patch> patches;
-//         patches.push_back(Patch(origin1, length1, il));
-//         patches.push_back(Patch(origin2, length2, il + 1));
-//         grid_->Adapt(&patches);
-
-//         // x^3 + y^4 + z^3
-//         real_t     dir[3]  = {1.0, 1.0, 1.0};
-//         lid_t      deg[3]  = {3, 4, 3};
-//         SetPolynom polynom = SetPolynom(deg, dir);
-//         polynom(grid_, vort_);
-
-//         // 2 + 2 + 2
-//         real_t     dir2[3]  = {6.0, 12.0, 6.0};
-//         lid_t      deg2[3]  = {1, 2, 1};
-//         SetPolynom polynom2 = SetPolynom(deg2, dir2);
-//         polynom2(grid_, sol_);
-
-//         LaplacianCross<3> lapla = LaplacianCross<3>();
-//         lapla(grid_, vort_, diff_);
-
-//         real_t          norm2;
-//         ErrorCalculator myerr;
-//         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
-//         if (grid_->mpirank() == 0) {
-//             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
-//         }
-//     }
-//     if (grid_->mpirank() == 0) {
-//         printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.99);
-//     }
-//     ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.99);
-// }
-
-// TEST_F(valid_Stencil, convergence_laplacian_o4_boundary4) {
-//     vort_->bctype(M_BC_EXTRAP_4);
-
-//     real_t erri[N_CONV] = {0.0};
-//     real_t origin1[3]   = {0.0, 0.0, 0.0};
-//     real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-//     real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
-//     real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-
-//     real_t normi[N_CONV];
-
-//     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
-//         list<Patch> patches;
-//         patches.push_back(Patch(origin1, length1, il));
-//         patches.push_back(Patch(origin2, length2, il + 1));
-//         grid_->Adapt(&patches);
-
-//         // x^6 + y^5 + z^7
-//         real_t     dir[3]  = {1.0, 1.0, 1.0};
-//         lid_t      deg[3]  = {6, 5, 7};
-//         SetPolynom polynom = SetPolynom(deg, dir);
-//         polynom(grid_, vort_);
-
-//         // solution
-//         real_t     dir2[3]  = {30.0, 20.0, 42.0};
-//         lid_t      deg2[3]  = {4, 3, 5};
-//         SetPolynom polynom2 = SetPolynom(deg2, dir2);
-//         polynom2(grid_, sol_);
-
-//         LaplacianCross<5> lapla = LaplacianCross<5>();
-//         lapla(grid_, vort_, diff_);
-
-//         real_t          norm2;
-//         ErrorCalculator myerr;
-//         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
-//         if (grid_->mpirank() == 0) {
-//             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
-//         }
-//     }
-//     if (grid_->mpirank() == 0) {
-//         printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 3.82);
-//     }
-//     ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 3.82);
-// }
-
-// TEST_F(valid_Stencil, convergence_laplacian_o4_boundary5) {
-//     vort_->bctype(M_BC_EXTRAP_5);
-
-//     real_t erri[N_CONV] = {0.0};
-//     real_t origin1[3]   = {0.0, 0.0, 0.0};
-//     real_t length1[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-//     real_t origin2[3]   = {0.0, 0.0, 0.5 * l_[2]};
-//     real_t length2[3]   = {1.0 * l_[0], 1.0 * l_[1], 0.5 * l_[2]};
-
-//     real_t normi[N_CONV];
-
-//     for (int il = lvl_; il < lvl_ + N_CONV; il++) {
-//         list<Patch> patches;
-//         patches.push_back(Patch(origin1, length1, il));
-//         patches.push_back(Patch(origin2, length2, il + 1));
-//         grid_->Adapt(&patches);
-
-//         // x^6 + y^5 + z^7
-//         real_t     dir[3]  = {1.0, 1.0, 1.0};
-//         lid_t      deg[3]  = {6, 5, 7};
-//         SetPolynom polynom = SetPolynom(deg, dir);
-//         polynom(grid_, vort_);
-
-//         // solution
-//         real_t     dir2[3]  = {30.0, 20.0, 42.0};
-//         lid_t      deg2[3]  = {4, 3, 5};
-//         SetPolynom polynom2 = SetPolynom(deg2, dir2);
-//         polynom2(grid_, sol_);
-
-//         LaplacianCross<5> lapla = LaplacianCross<5>();
-//         lapla(grid_, vort_, diff_);
-
-//         real_t          norm2;
-//         ErrorCalculator myerr;
-//         myerr.Norms(grid_, diff_, sol_, &norm2, normi + (il - lvl_));
-//         if (grid_->mpirank() == 0) {
-//             printf("lvl = %d error = %e %e\n", il, norm2, normi[il - lvl_]);
-//         }
-//     }
-//     if (grid_->mpirank() == 0) {
-//         printf("tested convergence order: %e vs %e\n", normi[N_CONV - 2] / normi[N_CONV - 1], 7.77);
-//     }
-//     ASSERT_GT(normi[N_CONV - 2] / normi[N_CONV - 1], 7.77);
-// }
+            ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
+        }
+    }
+    if (do_weno_3) {
+        real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
+        m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> target: min = 1, ideal = 3", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
+    }
+    if (do_weno_5) {
+        real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
+        m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
+    }
+}

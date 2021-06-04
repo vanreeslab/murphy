@@ -1,27 +1,66 @@
+# based on 
+# file names: https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html
+#
 
 ################################################################################
 # ARCH DEPENDENT VARIABLES
 ARCH_FILE ?= make_arch/make.docker_gcc
 
+#only include the ARCH_FILE when we do not clean or destroy
+ifneq ($(MAKECMDGOALS),clean)
 include $(ARCH_FILE)
+endif
 
 ################################################################################
-# FROM HERE, DO NOT TOUCH
+# FROM HERE, DO NOT CHANGE
 #-----------------------------------------------------------------------------
 PREFIX ?= ./
 NAME := murphy
 # library naming
 TARGET := $(NAME)
+# git commit
+GIT_COMMIT ?= $(shell git describe --always --dirty)
 
 #-----------------------------------------------------------------------------
-SRC_DIR := src
+# get a list of all the source directories + the main one
+SRC_DIR := src $(shell find src/** -type d)
+# SUB_DIR := $(shell find $(SRC_DIR)/** -type d| sed 's/$(SRC_DIR)\///1')
 TEST_DIR := test
 OBJ_DIR := build
 
-## add the headers to the vpaths
-INC := -I$(SRC_DIR)
+
 
 #-----------------------------------------------------------------------------
+# the sources/headers are listed without the folder, vpath will find them
+SRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.cpp)))
+HEAD := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.hpp)))
+
+# find the test sources, mandatory all in the same folder!
+TSRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(TEST_DIR)/$(dir)/*.cpp)))
+THEAD := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(TEST_DIR)/$(dir)/*.hpp)))
+
+## generate object list
+DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
+OBJ := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
+IN := $(SRC:%.cpp=$(OBJ_DIR)/%.in)
+TIDY := $(SRC:%.cpp=$(OBJ_DIR)/%.tidy)
+TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
+TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
+
+
+#-----------------------------------------------------------------------------
+# add the folders to the includes and to the vpath
+
+## add the source dirs to the includes flags
+INC := $(foreach dir,$(SRC_DIR),-I$(dir))
+TINC := $(foreach dir,$(TEST_DIR)/$(SRC_DIR),-I$(dir))
+
+## add them to the VPATH as well (https://www.gnu.org/software/make/manual/html_node/Selective-Search.html)
+vpath %.hpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
+vpath %.cpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
+
+#-----------------------------------------------------------------------------
+# LIBRARIES
 #---- FLUPS
 FLUPS_INC ?= /flups/include
 FLUPS_LIB ?= /flups/lib
@@ -55,60 +94,67 @@ GTEST_INC ?= /usr/include
 GTEST_LIB ?= /usr/lib
 GTEST_LIBNAME ?= -lgtest
 
-#-----------------------------------------------------------------------------
-## add the wanted folders - common folders
-SRC := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
-HEAD := $(wildcard $(SRC_DIR)/*.hpp)
-TSRC := $(notdir $(wildcard $(TEST_DIR)/$(SRC_DIR)/*.cpp))
-THEAD := $(wildcard $(TEST_DIR)/$(SRC_DIR)/*.hpp)
 
-## generate object list
-DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
-OBJ := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
-IN := $(SRC:%.cpp=$(OBJ_DIR)/%.in)
-TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
-TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
+
+#---- MPI - get flags
+
 
 ################################################################################
-$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -c $< -o $@
+# mandatory flags
+M_FLAGS := -std=c++17 -fPIC -MMD -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
-$(TEST_DIR)/$(OBJ_DIR)/%.o : $(TEST_DIR)/$(SRC_DIR)/%.cpp $(THEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++17 -fPIC -MMD -c $< -o $@
+# standard compilation
+$(OBJ_DIR)/%.o : %.cpp $(HEAD)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS)  -c $< -o $@
 
+# compilation of the tests
+$(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -c $< -o $@
+
+# include link
 $(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -std=c++17 -fPIC -MMD -E $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -E $< -o $@
+
+# clang-tidy files, define the MPI_INC which is only for this target
+$(OBJ_DIR)/%.tidy : MPI_INC = $(shell $(CXX) --showme:compile)
+$(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
+	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) $(M_FLAGS)
 
 ################################################################################
+.PHONY: default
 default: $(TARGET)
 
+.PHONY: all
 all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CXX) $(LDFLAGS) $^ $(LIB) -o $@
+
+.PHONY: tidy
+tidy: $(TIDY)
 
 .PHONY: preproc 
 preproc: $(IN)
-
-$(TARGET): $(OBJ)
-	$(CXX) $(LDFLAGS) $^ -o $@ $(LIB)
 
 .PHONY: test 
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
-
+#clean
 .PHONY: clean 
 clean:
 	@rm -rf $(OBJ_DIR)/*.o
+	@rm -rf $(OBJ_DIR)/*.tidy
 	@rm -rf $(TARGET)
 	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
 	@rm -rf $(TARGET)_test
 
+# destroy = clean but even more aggressive
 .PHONY: destroy
 destroy:
-	@rm -rf $(OBJ_DIR)/*.o
-	@rm -rf $(OBJ_DIR)/*.d
+	@rm -rf $(OBJ_DIR)/*
+	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*
 	@rm -rf $(TARGET)
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.d
 	@rm -rf $(TARGET)_test
 
 .PHONY: logo info
@@ -130,9 +176,12 @@ info: logo
 	$(info - lib: -L$(HDF5_LIB) $(HDF5_LIBNAME) -Wl,-rpath,$(HDF5_LIB))
 	$(info ------------)
 	$(info LIST OF OBJECTS:)
-	$(info - SRC = $(SRC))
-	$(info - OBJ = $(OBJ))
-	$(info - DEP = $(DEP))
+	$(info - SRC  = $(SRC))
+	$(info - HEAD = $(HEAD))
+	$(info - OBJ  = $(OBJ))
+	$(info - DEP  = $(DEP))
+	$(info - TEST_DIR = $(TEST_DIR))
+	$(info - TEST_DIR = $(TEST_DIR)/$(OBJ_DIR))
 	$(info - test SRC = $(TSRC))
 	$(info - test OBJ = $(TOBJ))
 	$(info - test DEP = $(TDEP))

@@ -4,11 +4,12 @@ CC = mpicc
 # override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
 
 #CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
-CXXFLAGS := -g -Og -fopenmp -DLOG_ALLRANKS\
-                     -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
-# -DNDEBUG
-# -DLOG_ALLRANKS
-# -DVERBOSE 
+#CXXFLAGS := -g -O0 -fopenmp -DLOG_ALLRANKS -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
+
+CXXFLAGS := -g -O3 -fopenmp -DCOLOR_PROF\
+            -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align\
+            -ftree-vectorize -fsave-optimization-record
+
 LDFLAGS := -fopenmp -lstdc++ -lm
 
 FFTW_LIB := /usr/lib/x86_64-linux-gnu

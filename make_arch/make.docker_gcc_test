@@ -3,11 +3,8 @@ CC = mpicc
 
 # CXXFLAGS := -O3 -g --debug -DVERBOSE -Wno-format-security -fopenmp
 # CXXFLAGS := -O0 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage -Wextra
-CXXFLAGS := -O3 -g -Wno-format-security -fopenmp -fprofile-arcs -ftest-coverage -DLOG_ALLRANKS
-
-# -DLOG_MUTE
-#  
-LDFLAGS := -fopenmp -lstdc++ -lm -fprofile-arcs -ftest-coverage 
+CXXFLAGS := -O3 -g -fopenmp
+LDFLAGS := -fopenmp -lstdc++ -lm
 
 FFTW_LIB := /usr/lib/x86_64-linux-gnu
 HDF5_INC := /usr/include/hdf5/openmpi
