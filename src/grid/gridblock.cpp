@@ -230,9 +230,9 @@ void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, 
  * @param coarsen_vec 
  */
 void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const {
+    m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE,"the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
     //-------------------------------------------------------------------------
-    coarsen_vec[qid->cid] = (short_t) status_lvl_;
-    // m_log("block # %d is puting %d at location %d", qid->cid, coarsen_vec[qid->cid], qid->cid);
+    coarsen_vec[qid->cid] = (short_t)status_lvl_;
     //-------------------------------------------------------------------------
 }
 
@@ -286,7 +286,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
         };
         // if the neighbor is a newly created block -> smooth
         if (status_ngh_[count] == M_ADAPT_NEW_COARSE) {
-            m_assert(status_lvl_ == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
+            m_assert(this->status_level() == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
 
             // get the sign of the ibidule
             real_t sign[3];
@@ -466,6 +466,7 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
         GridBlock* root = this->PopDependency(0);
         m_assert(n_dependency_active_ == 0, "I should be empty now");
 
+        // check the status
         m_assert(this->status_level() == M_ADAPT_NEW_FINE, "my status must be M_ADAPT_NEW_FINE instead of %d", this->status_level());
         m_assert(root->status_level() == M_ADAPT_FINER, "the status of the new root must be M_ADAPT_FINER instead of %d", root->status_level());
 
@@ -493,7 +494,6 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
             }
         }
         // set the status of my newblock
-
         // remove my ref from the parent
         GridBlock* this_should_be_me = root->PopDependency(childid);
         m_assert(this_should_be_me == this, "this should be me");
