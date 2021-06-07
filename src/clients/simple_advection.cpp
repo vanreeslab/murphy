@@ -104,12 +104,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->level_limit(param->level_min, param->level_max);
 
     // get the fields
-    vel_.Alloc("velocity", 3);
-    vel_->bctype(M_BC_EXTRAP);
-    vel_->is_temp(true);
     scal_.Alloc("scalar", 1);
     scal_->bctype(M_BC_EXTRAP);
-    grid_->AddField(vel_);
     grid_->AddField(scal_);
 
     // add the solution as temp
@@ -133,6 +129,10 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the velocity, 1.0 in every direction
+    vel_.Alloc("velocity", 3);
+    vel_->bctype(M_BC_EXTRAP);
+    vel_->is_temp(true);
+    grid_->AddField(vel_);
     const lid_t  deg[3]   = {0, 0, 0};
     const real_t dir[3]   = {1.0, 0.0, 0.0};
     const real_t shift[3] = {0.0, 0.0, 0.0};
