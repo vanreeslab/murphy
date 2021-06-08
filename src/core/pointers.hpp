@@ -96,7 +96,7 @@ class m_ptr {
     T* operator->() const { return data_; }
 
     /** @brief operator *, return the associated object */
-    T& operator[](const size_t idx) const { return data_[idx]; }
+    T& operator[](const int idx) const { return data_[idx]; }
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
