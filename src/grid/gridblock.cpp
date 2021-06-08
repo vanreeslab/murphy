@@ -343,8 +343,10 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     // do it for every field
     for (auto fid = field_start; fid != field_end; ++fid) {
         auto current_field = fid->second;
-        for (lda_t ida = 0; ida < current_field->lda(); ida++) {
-            interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+        if (!current_field->is_temp()) {
+            for (lda_t ida = 0; ida < current_field->lda(); ida++) {
+                interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+            }
         }
     }
 
