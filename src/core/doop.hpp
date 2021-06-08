@@ -54,12 +54,11 @@ void DoOpMesh(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
     // get the grid info
     p8est_t*      forest  = grid->p4est_forest();
     p8est_mesh_t* mesh    = grid->p4est_mesh();
-    const lid_t   nqlocal = mesh->local_num_quadrants;  // number of trees * number of elem/tree
+    const iblock_t nqlocal = mesh->local_num_quadrants;  // number of trees * number of elem/tree
 
-    for (lid_t bid = 0; bid < nqlocal; bid++) {
+    for (iblock_t bid = 0; bid < nqlocal; ++bid) {
         // get the tree
-        p8est_tree_t* tree;
-        tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
+        p8est_tree_t* tree = p8est_tree_array_index(forest->trees, mesh->quad_to_tree[bid]);
         // get the id
         qid_t myid;
         myid.cid = bid;                           // cummulative id
@@ -129,7 +128,7 @@ void DoOpMeshLevel(const O op, F memfunc, m_ptr<const ForestGrid> grid, const le
     p8est_mesh_t*  mesh    = grid->p4est_mesh();
     const iblock_t nqlocal = p4est_NumQuadOnLevel(mesh, lvl);
 
-    for (iblock_t lid = 0; lid < nqlocal; lid++) {
+    for (iblock_t lid = 0; lid < nqlocal; ++lid) {
         // get the corresponding id of the quadrant
         const iblock_t bid = p4est_GetQuadIdOnLevel(mesh, lvl, lid);
         // get the tree
@@ -202,9 +201,9 @@ void DoOpTree(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
         p8est_tree_t* tree    = p8est_tree_array_index(forest->trees, it);
         const size_t  nqlocal = tree->quadrants.elem_count;
 
-        for (size_t bid = 0; bid < nqlocal; bid++) {
+        for (size_t bid = 0; bid < nqlocal; ++bid) {
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
-            GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+            GridBlock*        block = p4est_GetGridBlock(quad);
 
             // get the id
             qid_t myid;
