@@ -850,6 +850,7 @@ void GridBlock::GhostFreeLists() {
     auto remove_block = [](auto block) { delete (block); };
     std::for_each(local_sibling_.begin(), local_sibling_.end(), remove_block);
     std::for_each(local_parent_.begin(), local_parent_.end(), remove_block);
+    std::for_each(local_children_.begin(), local_children_.end(), remove_block);
     std::for_each(local_parent_reverse_.begin(), local_parent_reverse_.end(), remove_block);
     std::for_each(ghost_sibling_.begin(), ghost_sibling_.end(), remove_block);
     std::for_each(ghost_parent_.begin(), ghost_parent_.end(), remove_block);
@@ -860,6 +861,7 @@ void GridBlock::GhostFreeLists() {
     // clear the lists
     local_sibling_.clear();
     local_parent_.clear();
+    local_children_.clear();
     local_parent_reverse_.clear();
     ghost_sibling_.clear();
     ghost_parent_.clear();
