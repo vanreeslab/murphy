@@ -2,14 +2,13 @@
 
 #include "operator/advection.hpp"
 #include "operator/blas.hpp"
+#include "operator/error.hpp"
+#include "operator/xblas.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
-#include "operator/xblas.hpp"
-#include "operator/error.hpp"
 
 using std::string;
 using std::to_string;
-
 
 // static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
 //     // get the position
@@ -155,8 +154,8 @@ void SimpleAdvection::Run() {
     m_begin;
     //-------------------------------------------------------------------------
     // time
-    lid_t  iter    = 0;
-    real_t t       = tstart_;
+    lid_t  iter = 0;
+    real_t t    = tstart_;
 
     // advection
     RKFunctor* advection;
