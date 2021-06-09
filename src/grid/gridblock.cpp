@@ -115,7 +115,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
             return;
         }
         // if one dimension is preventing the coarsening, register
-        coarsen &= (norm < ctol);
+        coarsen = coarsen & (norm < ctol);
     }
     // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
     // also make sure that we can coarsen!
@@ -202,12 +202,12 @@ void GridBlock::UpdateStatusFromPolicy() {
 
     iblock_t count = 0;
     for (auto gblock : local_parent_) {
-        forbid_coarsening = forbid_coarsening | (status_ngh_[count] == M_ADAPT_FINER);
+        forbid_coarsening = forbid_coarsening || (status_ngh_[count] == M_ADAPT_FINER);
         ++count;
     }
     m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %ld", count, local_parent_.size());
     for (auto gblock : ghost_parent_) {
-        forbid_coarsening = forbid_coarsening | (status_ngh_[count] == M_ADAPT_FINER);
+        forbid_coarsening = forbid_coarsening || (status_ngh_[count] == M_ADAPT_FINER);
         ++count;
     }
 
