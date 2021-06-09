@@ -584,6 +584,10 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
                      m_ptr<const Wavelet>(interp_), patches, m_ptr<Prof>(prof_));
         }
 
+        // synchronize the statuses and handle the neighbor policies
+        ghost_->UpdateStatus();
+        DoOpTree(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
+
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
         // we still save them as dependencies but all the rest is gone.
@@ -591,15 +595,6 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         DestroyAdapt();
 
         //................................................
-        // coarsening for p4est-> only one level
-        // The limit in levels are handled directly on the block, not in p4est
-        if (coarsen_cback != nullptr) {
-            m_profStart(prof_, "p4est coarsen");
-            p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_cback, nullptr, interpolate_fct);
-            m_profStop(prof_, "p4est coarsen");
-            m_log("coarsen is done");
-        }
-
         // refinement -> only one level
         // The limit in levels are handled directly on the block, not in p4est
         if (refine_cback != nullptr) {
@@ -607,6 +602,15 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
             p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est refine");
             m_log("refine is done");
+        }
+
+        // coarsening for p4est-> only one level
+        // The limit in levels are handled directly on the block, not in p4est
+        if (coarsen_cback != nullptr) {
+            m_profStart(prof_, "p4est coarsen");
+            p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_cback, nullptr, interpolate_fct);
+            m_profStop(prof_, "p4est coarsen");
+            m_log("coarsen is done");
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case

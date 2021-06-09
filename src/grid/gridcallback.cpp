@@ -305,7 +305,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
 
     // create the incoming block if we have no existing blocks
     // if we already have registered depts, the GridBlocks already exist, so no need to do it
-    for (sid_t iin = 0; iin < num_incoming * (n_active_total == 0); ++iin) {
+    for (sid_t iin = 0; iin < (num_incoming * (n_active_total == 0)); ++iin) {
         qdrt_t* quad = incoming[iin];
 
         // get block informations and create it
