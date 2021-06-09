@@ -205,14 +205,17 @@ void GridBlock::UpdateStatusFromPolicy() {
         forbid_coarsening = forbid_coarsening | (status_ngh_[count] == M_ADAPT_FINER);
         ++count;
     }
+    m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %ld", count, local_parent_.size());
     for (auto gblock : ghost_parent_) {
         forbid_coarsening = forbid_coarsening | (status_ngh_[count] == M_ADAPT_FINER);
         ++count;
     }
 
-    StatusAdapt current_status = this->status_level();
-    StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? M_ADAPT_SAME : current_status;
-    this->status_level(new_status);
+    if (forbid_coarsening) {
+        StatusAdapt current_status = this->status_level();
+        StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? M_ADAPT_SAME : current_status;
+        this->status_level(new_status);
+    }
 
     m_free(status_ngh_);
     //-------------------------------------------------------------------------
