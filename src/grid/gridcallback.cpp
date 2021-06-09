@@ -218,7 +218,6 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     GridBlock* block = p4est_GetGridBlock(quadrant);
 
     const StatusAdapt current_status = block->status_level();
-    m_assert(current_status == M_ADAPT_SAME || current_status == M_ADAPT_COARSER || current_status == M_ADAPT_FINER, "the status = %d must be same, finer or coarser", current_status);
 
     bool refine = current_status == M_ADAPT_FINER &&
                   grid->level_limit_min() <= block->level() &&
@@ -249,7 +248,6 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     for (short_t id = 0; id < P8EST_CHILDREN; id++) {
         GridBlock*        block          = p4est_GetGridBlock(quadrant[id]);
         const StatusAdapt current_status = block->status_level();
-        m_assert(current_status == M_ADAPT_SAME || current_status == M_ADAPT_COARSER || current_status == M_ADAPT_FINER, "the status = %d must be same, finer or coarser", current_status);
         // if we cannot coarsen for one of the block, return false
         coarsen = coarsen &&
                   current_status == M_ADAPT_COARSER &&
