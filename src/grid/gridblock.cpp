@@ -95,6 +95,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
 
     // prevent coarsening if we have finer neighbors
     bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
 
     // I need to visit every dimension and determine if we have to refine and/or coarsen.
     // afterthat we choose given the conservative approach
@@ -106,7 +107,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
         const real_t norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
-        bool refine = norm > rtol;
+        bool refine = (norm > rtol) && (!forbid_refinement);
         if (refine) {
             status_lvl_ = M_ADAPT_FINER;
             // finito
@@ -134,6 +135,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp
 
     // prevent coarsening if we have finer neighbors
     bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
 
     // get the block length
     real_t len = p4est_QuadLen(this->level());
@@ -164,7 +166,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp
 
         } else if (this->level() < patch->level()) {
             // if not, we have a coarser block and we might want to refine if the location matches
-            bool refine = true;
+            bool refine = !forbid_refinement;
 
             for (lda_t id = 0; id < 3; id++) {
                 // we have to satisfy both the our max > min and the min < our max

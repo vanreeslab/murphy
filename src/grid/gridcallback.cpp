@@ -217,15 +217,17 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     Grid*      grid  = reinterpret_cast<Grid*>(forest->user_pointer);
     GridBlock* block = p4est_GetGridBlock(quadrant);
 
-    bool refine = block->status_level() == M_ADAPT_FINER &&
+    const StatusAdapt current_status = block->status_level();
+    m_assert(current_status == M_ADAPT_SAME || current_status == M_ADAPT_COARSER || current_status == M_ADAPT_FINER, "the status = %d must be same, finer or coarser", current_status);
+
+    bool refine = current_status == M_ADAPT_FINER &&
                   grid->level_limit_min() <= block->level() &&
                   block->level() < grid->level_limit_max();
 
     if (refine) {
         grid->AddOneQuadToAdapt();
     } else {
-        StatusAdapt current_status = block->status_level();
-        StatusAdapt new_status     = (current_status == M_ADAPT_FINER) ? (M_ADAPT_SAME) : (current_status);
+        StatusAdapt new_status = (current_status == M_ADAPT_FINER) ? (M_ADAPT_SAME) : (current_status);
         block->status_level(new_status);
     }
     return refine;
@@ -244,23 +246,24 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
 
     bool coarsen = true;
     // for each of the children, check if any of them prevent the coarsening
-    for (sid_t id = 0; id < P8EST_CHILDREN; id++) {
-        GridBlock* block = p4est_GetGridBlock(quadrant[id]);
+    for (short_t id = 0; id < P8EST_CHILDREN; id++) {
+        GridBlock*        block          = p4est_GetGridBlock(quadrant[id]);
+        const StatusAdapt current_status = block->status_level();
+        m_assert(current_status == M_ADAPT_SAME || current_status == M_ADAPT_COARSER || current_status == M_ADAPT_FINER, "the status = %d must be same, finer or coarser", current_status);
         // if we cannot coarsen for one of the block, return false
         coarsen = coarsen &&
-                  !(block->status_level() == M_ADAPT_SAME ||
-                    block->status_level() == M_ADAPT_FINER ||
-                    block->level() <= grid->level_limit_min());
+                  current_status == M_ADAPT_COARSER &&
+                  block->level() > grid->level_limit_min();
     }
     // if I can coarsen the whole group, register them
     if (coarsen) {
         grid->AddQuadToAdapt(P8EST_CHILDREN);
     } else {
         // if not, make sure that the block that wanted to get coarsened have their tag changed
-        for (sid_t id = 0; id < P8EST_CHILDREN; id++) {
-            GridBlock*  block          = p4est_GetGridBlock(quadrant[id]);
-            StatusAdapt current_status = block->status_level();
-            StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? (M_ADAPT_SAME) : (current_status);
+        for (short_t id = 0; id < P8EST_CHILDREN; id++) {
+            GridBlock*        block          = p4est_GetGridBlock(quadrant[id]);
+            const StatusAdapt current_status = block->status_level();
+            const StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? (M_ADAPT_SAME) : (current_status);
             block->status_level(new_status);
         }
     }
