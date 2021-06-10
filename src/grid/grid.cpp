@@ -595,15 +595,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         DestroyAdapt();
 
         //................................................
-        // refinement -> only one level
-        // The limit in levels are handled directly on the block, not in p4est
-        if (refine_cback != nullptr) {
-            m_profStart(prof_, "p4est refine");
-            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
-            m_profStop(prof_, "p4est refine");
-            m_log("refine is done");
-        }
-
+        // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
         if (coarsen_cback != nullptr) {
@@ -611,6 +603,14 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
             p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est coarsen");
             m_log("coarsen is done");
+        }
+        // refinement -> only one level
+        // The limit in levels are handled directly on the block, not in p4est
+        if (refine_cback != nullptr) {
+            m_profStart(prof_, "p4est refine");
+            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
+            m_profStop(prof_, "p4est refine");
+            m_log("refine is done");
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case

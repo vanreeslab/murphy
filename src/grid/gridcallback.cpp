@@ -250,8 +250,8 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
         const StatusAdapt current_status = block->status_level();
         // if we cannot coarsen for one of the block, return false
         coarsen = coarsen &&
-                  current_status == M_ADAPT_COARSER &&
-                  block->level() > grid->level_limit_min();
+                  (current_status == M_ADAPT_COARSER) &&
+                  (block->level() > grid->level_limit_min());
     }
     // if I can coarsen the whole group, register them
     if (coarsen) {
@@ -332,8 +332,9 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
 
         if (n_active == 0) { /* most common: if we had no active dependencies, allocate new blocks, lock them and add them */
-            StatusAdapt new_out_status = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
-            block_out->status_level(new_out_status);
+            // StatusAdapt new_out_status = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
+            // block_out->status_level(new_out_status);
+            m_assert(block_out->status_level() == M_ADAPT_COARSER || block_out->status_level() == M_ADAPT_FINER, "the leaving block must have status %d or %d instead of %d", M_ADAPT_COARSER, M_ADAPT_FINER, block_out->status_level());
 
             // globaly we created the block ourselves
             m_assert(n_active_total == 0, "we must have created the associated block");
