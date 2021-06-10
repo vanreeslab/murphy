@@ -62,7 +62,7 @@ template <>
 inline real_t Advection<M_WENO_Z, 3>::cfl_rk3() const {
     // comes from the "worst case scenario" von neumann analysis on the stencil, i.e. the 5th order stencil.
     // we assume that the smoothing will only introduce diffusion and hence will ease the CLF constraint
-    return 1.6 * 0.95;
+    return 1.6;
 };
 template <>
 inline lid_t Advection<M_WENO_Z, 3>::NGhost() const {
@@ -76,7 +76,7 @@ template <>
 inline real_t Advection<M_WENO_Z, 5>::cfl_rk3() const {
     // comes from the "worst case scenario" von neumann analysis on the stencil, i.e. the 5th order stencil.
     // we assume that the smoothing will only introduce diffusion and hence will ease the CLF constraint
-    return 1.4 * 0.95;
+    return 1.4;
 };
 template <>
 inline lid_t Advection<M_WENO_Z, 5>::NGhost() const {

@@ -142,8 +142,9 @@ static struct argp_option options[] = {
     {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution"},
     // {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil"},
     {"weno", 3015, "value", 0, "order of the weno scheme for the advection, can be 3 or 5"},
-    {"eps-start", 3016, "value", 0, "start epsilon (epsilon test)"},
-    {"delta-eps", 3017, "value", 0, "factor from one epsilon to another (epsilon test)"},
+    {"eps-start", 3016, "double", 0, "start epsilon (epsilon test)"},
+    {"delta-eps", 3017, "double", 0, "factor from one epsilon to another (epsilon test)"},
+    {"cfl-max", 3018, "double", 0, "The max CLF number"},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients/testcases:", 4},
@@ -343,6 +344,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             real_t* tol = &arguments->delta_eps;
             error_t err = atof_list(1, arg, tol);
             m_log("delta epsilon: %f", tol[0]);
+            return err;
+        }
+        case 3018: { /* cfl-max */
+            real_t* cfl = &arguments->cfl_max;
+            error_t err = atof_list(1, arg, cfl);
+            m_log("CFL max: %f", cfl[0]);
             return err;
         }
         //................................................

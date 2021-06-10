@@ -32,6 +32,8 @@ struct ParserArguments {
     real_t eps_start = 0.1;
     real_t delta_eps = 0.1;
 
+    real_t cfl_max = 100.0;
+
     level_t level_min = 0;
     level_t level_max = P8EST_QMAXLEVEL;
 

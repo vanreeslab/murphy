@@ -11,7 +11,7 @@
  * 
  * @param grid 
  */
-RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof) {
+RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof, const real_t cfl_max) {
     m_begin;
     m_assert(!grid.IsEmpty(), "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
@@ -20,6 +20,8 @@ RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr
     prof_    = prof;
     field_u_ = state;
     f_       = f;  // store the stencil
+
+    cfl_max_ = cfl_max;
 
     // add a temp field to the grid
     field_y1_ = new Field("rk3_y1", field_u_->lda());
@@ -36,7 +38,6 @@ RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr
             field_y2_->bctype(state->bctype(ida, iface), ida, iface);
         }
     }
-
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -104,7 +105,7 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
 
     //................................................
     // step 3
-    // y1 = y1 + f(y2) = f(y2)
+    // y1 = f(y2)
     m_profStart(prof_(), "rhs");
     f_->RhsSet(grid_, *time + 0.5 * dt, field_y2_, field_y1_);
     m_profStop(prof_(), "rhs");
@@ -144,7 +145,7 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
     // know the limits from the rhs directly
-    real_t cfl_limit = 1.0 * rhs->cfl_rk3();  // CFL = max_vel * dt / h
+    real_t cfl_limit = m_min(rhs->cfl_rk3(), cfl_max_);  // CFL = max_vel * dt / h
     // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
     // get the finest h in the grid
 
@@ -152,7 +153,7 @@ real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocit
     real_t cfl_dt = cfl_limit * h_fine / max_vel;
     m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
 
-    m_log("dt = %e, using h = %e and CFL limit = %e and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
+    m_log("RK3-TVD: dt = %e, using h = %e and CFL limit = %e and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
     //-------------------------------------------------------------------------
     m_end;
     return cfl_dt;

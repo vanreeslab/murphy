@@ -84,6 +84,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     weno_        = param->weno;
     m_assert(weno_ == 3 || weno_ == 5, "the weno order must be 3 or 5");
 
+    // cfl
+    cfl_ = param->cfl_max;
+
     // the the standard stuffs
     if (param->profile) {
         int comm_size;
@@ -171,7 +174,7 @@ void SimpleAdvection::Run() {
     }
 
     // time integration
-    RK3_TVD rk3(grid_, scal_, advection, prof_);
+    RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
 
     real_t wtime_start = MPI_Wtime();
     // let's gooo
