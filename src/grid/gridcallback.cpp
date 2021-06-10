@@ -217,15 +217,16 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     Grid*      grid  = reinterpret_cast<Grid*>(forest->user_pointer);
     GridBlock* block = p4est_GetGridBlock(quadrant);
 
-    bool refine = block->status_level() == M_ADAPT_FINER &&
+    const StatusAdapt current_status = block->status_level();
+
+    bool refine = current_status == M_ADAPT_FINER &&
                   grid->level_limit_min() <= block->level() &&
                   block->level() < grid->level_limit_max();
 
     if (refine) {
         grid->AddOneQuadToAdapt();
     } else {
-        StatusAdapt current_status = block->status_level();
-        StatusAdapt new_status     = (current_status == M_ADAPT_FINER) ? (M_ADAPT_SAME) : (current_status);
+        StatusAdapt new_status = (current_status == M_ADAPT_FINER) ? (M_ADAPT_SAME) : (current_status);
         block->status_level(new_status);
     }
     return refine;
@@ -244,23 +245,23 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
 
     bool coarsen = true;
     // for each of the children, check if any of them prevent the coarsening
-    for (sid_t id = 0; id < P8EST_CHILDREN; id++) {
-        GridBlock* block = p4est_GetGridBlock(quadrant[id]);
+    for (short_t id = 0; id < P8EST_CHILDREN; id++) {
+        GridBlock*        block          = p4est_GetGridBlock(quadrant[id]);
+        const StatusAdapt current_status = block->status_level();
         // if we cannot coarsen for one of the block, return false
         coarsen = coarsen &&
-                  !(block->status_level() == M_ADAPT_SAME ||
-                    block->status_level() == M_ADAPT_FINER ||
-                    block->level() <= grid->level_limit_min());
+                  (current_status == M_ADAPT_COARSER) &&
+                  (block->level() > grid->level_limit_min());
     }
     // if I can coarsen the whole group, register them
     if (coarsen) {
         grid->AddQuadToAdapt(P8EST_CHILDREN);
     } else {
         // if not, make sure that the block that wanted to get coarsened have their tag changed
-        for (sid_t id = 0; id < P8EST_CHILDREN; id++) {
-            GridBlock*  block          = p4est_GetGridBlock(quadrant[id]);
-            StatusAdapt current_status = block->status_level();
-            StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? (M_ADAPT_SAME) : (current_status);
+        for (short_t id = 0; id < P8EST_CHILDREN; id++) {
+            GridBlock*        block          = p4est_GetGridBlock(quadrant[id]);
+            const StatusAdapt current_status = block->status_level();
+            const StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? (M_ADAPT_SAME) : (current_status);
             block->status_level(new_status);
         }
     }
@@ -303,8 +304,8 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     m_assert(n_active_total == 0 || n_active_total == P8EST_CHILDREN, "the number of existing dependences (=%d) must be 0 or P8EST_CHILDREN", n_active_total);
 
     // create the incoming block if we have no existing blocks
-    // if we already have registered depts, the GridBlocks already exist, so noo need to do it
-    for (sid_t iin = 0; iin < num_incoming * (n_active_total == 0); ++iin) {
+    // if we already have registered depts, the GridBlocks already exist, so no need to do it
+    for (sid_t iin = 0; iin < (num_incoming * (n_active_total == 0)); ++iin) {
         qdrt_t* quad = incoming[iin];
 
         // get block informations and create it
@@ -325,14 +326,16 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         // m_assert(!(num_incoming == 1 && (block_out->status_level() != M_ADAPT_COARSER || block_out->status_level() != M_ADAPT_SAME)), "the tag must be coarser instead of %d", block_out->status_level());
         // m_assert(!(num_incoming == P8EST_CHILDREN && (block_out->status_level() != M_ADAPT_FINER || block_out->status_level() != M_ADAPT_SAME)), "(num in = %d) an dthe tag must be finer instead of %d", num_incoming, block_out->status_level());
         // if called via the balancing it can be that the status doesn't match (of the outgoing block)
-        StatusAdapt new_out_status = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
-        block_out->status_level(new_out_status);
 
         // count the number of active dependency blocks that are already there
         sid_t n_active = block_out->n_dependency_active();
         m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
 
         if (n_active == 0) { /* most common: if we had no active dependencies, allocate new blocks, lock them and add them */
+            // StatusAdapt new_out_status = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
+            // block_out->status_level(new_out_status);
+            m_assert(block_out->status_level() == M_ADAPT_COARSER || block_out->status_level() == M_ADAPT_FINER, "the leaving block must have status %d or %d instead of %d", M_ADAPT_COARSER, M_ADAPT_FINER, block_out->status_level());
+
             // globaly we created the block ourselves
             m_assert(n_active_total == 0, "we must have created the associated block");
             for (sid_t iin = 0; iin < num_incoming; ++iin) {
@@ -351,11 +354,12 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
                 int childid_in = (num_incoming == 1) ? 0 : p4est_GetChildID(block_in->xyz(), block_in->level());
                 block_out->PushDependency(childid_in, block_in);
             }
-        } else if (n_active == 1) { /* we want to coarsen blocks that have been asked for refinement */
+        } else if (n_active == 1) { /* in case of 2:1 balacing: we want to coarsen blocks that have been asked for refinement */
             m_assert(n_active_total == P8EST_CHILDREN, "we must found a total of P8EST_CHILDREN blocks");
             m_assert(num_incoming == 1 && num_outgoing == P8EST_CHILDREN, "we cannot refine a block that has already been targeted for refinement!");
 
-            // store the old block and remove the dependency from the block (might be done several times, no prob)
+            // recover the old coarse block and remove the dependency from the block
+            // this might be done several times, no problem
             GridBlock* parent = block_out->PopDependency(0);
             p4est_SetGridBlock(incoming[0], parent);
 
@@ -364,11 +368,12 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
             int childid = p4est_GetChildID(block_out->xyz(), block_out->level());
             parent->PopDependency(childid);
 
-            // check the status
-            m_assert(parent->status_level() == M_ADAPT_SAME,"the parent must not change its status (now %d)",parent->status_level());
+            // check the status, the parent must have been asked to refine and reset it
+            m_assert(parent->status_level() == M_ADAPT_FINER, "the parent must not change its status (now %d)", parent->status_level());
+            parent->status_level(M_ADAPT_SAME);
 
-            // delete the created block
-            delete (block_out);
+            // delete the created block, no need to update the status
+            delete block_out;
 
         } else if (n_active == P8EST_CHILDREN) { /* we want to refine blocks that have been asked for coarsening */
             m_assert(n_active_total == P8EST_CHILDREN, "we must found a total of P8EST_CHILDREN blocks");
@@ -379,15 +384,16 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
                 int        childid = p8est_quadrant_child_id(incoming[iin]);
                 GridBlock* child   = block_out->PopDependency(childid);
 
-                // check the status
-                m_assert(child->status_level() == M_ADAPT_SAME, "the parent must not change its status (now %d)", child->status_level());
+                // check the status (the child must have been asked to coarsen) and reset it
+                m_assert(child->status_level() == M_ADAPT_COARSER, "the parent must not change its status (now %d)", child->status_level());
+                child->status_level(M_ADAPT_SAME);
 
                 // store the child adress as the new block
                 p4est_SetGridBlock(incoming[iin], child);
                 // clear y name from the child list
                 child->PopDependency(0);
             }
-            delete (block_out);
+            delete block_out;
         }
     }
     //-------------------------------------------------------------------------

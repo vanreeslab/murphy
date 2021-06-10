@@ -27,7 +27,7 @@ void Dset::ComputeDsetGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock> b
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
-                    const size_t idx = m_idx(i0, i1, i2);
+                    const bidx_t idx = m_idx(i0, i1, i2);
                     data_x[idx]      = value_;
                 }
             }
@@ -64,7 +64,7 @@ void Dcopy::ComputeDcopyGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
-                    const size_t idx = m_idx(i0, i1, i2);
+                    const bidx_t idx = m_idx(i0, i1, i2);
                     data_y[idx]      = data_x[idx];
                 }
             }
@@ -105,7 +105,7 @@ void Daxpy::ComputeDaxpyGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock>
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
-                    const size_t idx = m_idx(i0, i1, i2);
+                    const bidx_t idx = m_idx(i0, i1, i2);
                     data_z[idx]      = alpha_ * data_x[idx] + data_y[idx];
                 }
             }
@@ -140,7 +140,7 @@ void Dscale::ComputeDscaleGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> blo
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
-                    const size_t idx = m_idx(i0, i1, i2);
+                    const bidx_t idx = m_idx(i0, i1, i2);
                     data_x[idx] *= alpha_;
                 }
             }

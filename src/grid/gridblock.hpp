@@ -67,6 +67,7 @@ class GridBlock : public CartBlock {
                                    /* prof */ m_ptr<Prof> profiler);
     void UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
                                  /* prof */ m_ptr<Prof> profiler);
+    void UpdateStatusFromPolicy();
 
     void StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
     void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);

@@ -1207,7 +1207,8 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, m_ptr<const Field> field) {
         myid.tid = mirror->p.piggy3.which_tree;  // tree id
         // use it to retreive the actual quadrant in the correct tree
         p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.cid - tree->quadrants_offset);
-        GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        // GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        GridBlock*        block = p4est_GetGridBlock(quad);
         // send the task
         (this->*op)(&myid, block, field);
     }

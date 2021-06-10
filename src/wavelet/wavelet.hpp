@@ -269,29 +269,29 @@ class Wavelet {
      * @name Coarse sizes
      * @{
      */
-    inline lid_t CoarseNGhostFront() const {
+    inline bidx_t CoarseNGhostFront() const {
         // we need the max between the number of scaling in front ()
         //      = (nghost_front() / 2)
         // and the number of details that need to be computed
         //      = (nghost_front() / 2) + nrefine_front()
-        const lid_t gp = (nghost_front() / 2) + nghost_front_refine();
+        const bidx_t gp = (nghost_front() / 2) + nghost_front_refine();
         return gp;
     };
-    inline lid_t CoarseNGhostBack() const {
+    inline bidx_t CoarseNGhostBack() const {
         // we need the max between the number of scaling
         //      = (interp->nghost_back()+1) / 2
-        const lid_t gp_scaling = ((nghost_back() + 1) / 2);
+        const bidx_t gp_scaling = ((nghost_back() + 1) / 2);
         // and the number of details
         //      = (interp->nghost_back()) / 2 +  + interp->nrefine_back()
-        const lid_t gp_detail = ((nghost_back()) / 2) + nghost_back_refine();
+        const bidx_t gp_detail = ((nghost_back()) / 2) + nghost_back_refine();
         return m_max(gp_scaling, gp_detail);
     };
-    inline size_t CoarseStride() const {
-        const lid_t gp_front = CoarseNGhostFront();
-        const lid_t gp_back  = CoarseNGhostBack();
+    inline bidx_t CoarseStride() const {
+        const bidx_t gp_front = CoarseNGhostFront();
+        const bidx_t gp_back  = CoarseNGhostBack();
         return gp_front + M_NHALF + gp_back;
     };
-    inline size_t CoarseSize() const {
+    inline bidx_t CoarseSize() const {
         return CoarseStride() * CoarseStride() * CoarseStride();
     };
     /**
@@ -319,25 +319,25 @@ class Wavelet {
     * @param interp the Wavelet used
     * @return lid_t 
     */
-    inline lid_t CoarseFromBlock(const lid_t a) const {
-        const lid_t gp_front = CoarseNGhostFront();
-        const lid_t gp_back  = CoarseNGhostBack();
-        const lid_t b        = (a + M_N);
-        const lid_t c        = (b / M_N) + (a > M_N);
-        const lid_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_NHALF, M_NHALF + gp_back};
+    inline bidx_t CoarseFromBlock(const lid_t a) const {
+        const bidx_t gp_front = CoarseNGhostFront();
+        const bidx_t gp_back  = CoarseNGhostBack();
+        const bidx_t b        = (a + M_N);
+        const bidx_t c        = (b / M_N) + (a > M_N);
+        const bidx_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_NHALF, M_NHALF + gp_back};
         // return the correct choice
         return res[c];
     }
     inline void CoarseFromFine(const SubBlock* block_fine, SubBlock* block_coarse) const {
-        lid_t coarse_start[3], coarse_end[3];
-        for (lda_t id = 0; id < 3; ++id) {
+        bidx_t coarse_start[3], coarse_end[3];
+        for (bidx_t id = 0; id < 3; ++id) {
             coarse_start[id] = CoarseFromBlock(block_fine->start(id));
             coarse_end[id]   = CoarseFromBlock(block_fine->end(id));
         }
         block_coarse->Reset(CoarseNGhostFront(), CoarseStride(), coarse_start, coarse_end);
     }
-    inline void CoarseFromFine(const lid_t id_fine[3], lid_t* id_coarse) const {
-        for (lda_t id = 0; id < 3; ++id) {
+    inline void CoarseFromFine(const bidx_t id_fine[3], bidx_t* id_coarse) const {
+        for (bidx_t id = 0; id < 3; ++id) {
             id_coarse[id] = CoarseFromBlock(id_fine[id]);
         }
     }

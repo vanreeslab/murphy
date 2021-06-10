@@ -94,11 +94,12 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
     m_profStart(profiler(), "criterion detail");
 
     // prevent coarsening if we have finer neighbors
-    bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    const bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
 
     // I need to visit every dimension and determine if we have to refine and/or coarsen.
     // afterthat we choose given the conservative approach
-    bool coarsen = true;
+    bool coarsen = !forbid_coarsening;
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
         SubBlock     block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
@@ -106,7 +107,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
         const real_t norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
-        bool refine = norm > rtol;
+        bool refine = (norm > rtol) && (!forbid_refinement);
         if (refine) {
             status_lvl_ = M_ADAPT_FINER;
             // finito
@@ -114,11 +115,11 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
             return;
         }
         // if one dimension is preventing the coarsening, register
-        coarsen &= (norm < ctol);
+        coarsen = coarsen & (norm < ctol);
     }
     // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
     // also make sure that we can coarsen!
-    status_lvl_ = (coarsen && !forbid_coarsening) ? M_ADAPT_COARSER : M_ADAPT_SAME;
+    status_lvl_ = (coarsen) ? M_ADAPT_COARSER : M_ADAPT_SAME;
     // register the coarsening
     m_profStop(profiler(), "criterion detail");
     m_assert(status_lvl_ != M_ADAPT_NONE, "the status of the block cannot be NONE");
@@ -133,7 +134,8 @@ void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp
     //-------------------------------------------------------------------------
 
     // prevent coarsening if we have finer neighbors
-    bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    const bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
 
     // get the block length
     real_t len = p4est_QuadLen(this->level());
@@ -164,7 +166,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp
 
         } else if (this->level() < patch->level()) {
             // if not, we have a coarser block and we might want to refine if the location matches
-            bool refine = true;
+            bool refine = !forbid_refinement;
 
             for (lda_t id = 0; id < 3; id++) {
                 // we have to satisfy both the our max > min and the min < our max
@@ -186,6 +188,36 @@ void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp
     status_lvl_ = M_ADAPT_SAME;
     m_assert(status_lvl_ != M_ADAPT_NONE, "the status of the block cannot be NONE");
     return;
+    //-------------------------------------------------------------------------
+}
+
+/**
+ * @brief prevents a block from coarsening if one of the neighbor is refining (refine first, always!)
+ * 
+ */
+void GridBlock::UpdateStatusFromPolicy() {
+    m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_COARSER || status_lvl_ == M_ADAPT_FINER, "the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_COARSER, M_ADAPT_FINER, status_lvl_);
+    //-------------------------------------------------------------------------
+    bool forbid_coarsening = false;
+
+    iblock_t count = 0;
+    for (auto gblock : local_parent_) {
+        forbid_coarsening = forbid_coarsening || (status_ngh_[count] == M_ADAPT_FINER);
+        ++count;
+    }
+    m_assert(count == local_parent_.size(), "the two numbers must match: %d vs %ld", count, local_parent_.size());
+    for (auto gblock : ghost_parent_) {
+        forbid_coarsening = forbid_coarsening || (status_ngh_[count] == M_ADAPT_FINER);
+        ++count;
+    }
+
+    if (forbid_coarsening) {
+        StatusAdapt current_status = this->status_level();
+        StatusAdapt new_status     = (current_status == M_ADAPT_COARSER) ? M_ADAPT_SAME : current_status;
+        this->status_level(new_status);
+    }
+
+    m_free(status_ngh_);
     //-------------------------------------------------------------------------
 }
 
@@ -230,9 +262,9 @@ void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, 
  * @param coarsen_vec 
  */
 void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const {
+    // m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE,"the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
     //-------------------------------------------------------------------------
-    coarsen_vec[qid->cid] = (short_t) status_lvl_;
-    // m_log("block # %d is puting %d at location %d", qid->cid, coarsen_vec[qid->cid], qid->cid);
+    coarsen_vec[qid->cid] = (short_t)status_lvl_;
     //-------------------------------------------------------------------------
 }
 
@@ -270,7 +302,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> statu
 
 void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
     // the status level has to be 0, otherwise it means that one of the block is not coarsened
-    m_assert(status_lvl_ != M_ADAPT_NONE, "here, all the blocks have been visited and the status level of everybody should be something else than M_ADAPT_NONE: here %d for block @ %f %f %f", status_lvl_, this->xyz(0), this->xyz(1), this->xyz(2));
+    m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE, "the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
     //-------------------------------------------------------------------------
     // reset the temp memory to 0.0
     memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
@@ -286,7 +318,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
         };
         // if the neighbor is a newly created block -> smooth
         if (status_ngh_[count] == M_ADAPT_NEW_COARSE) {
-            m_assert(status_lvl_ == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
+            m_assert(this->status_level() == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
 
             // get the sign of the ibidule
             real_t sign[3];
@@ -323,12 +355,20 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     // for each ghost block, set the mask to 1.0 if needed
     iblock_t block_count = 0;
     for (auto gblock : local_parent_) {
+        // if ((status_ngh_[block_count] != M_ADAPT_SAME) && (this->status_level() != M_ADAPT_SAME)) {
+        //     m_log("block thinks that his neigbor %d (count=%d) has been modified while the block has been changed", gblock->cum_block_id(), block_count);
+        //     m_assert(false, "oouuups");
+        // }
         mask_smooth(block_count, gblock->ibidule());
         // update the counter
         ++block_count;
     }
     m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %ld", block_count, local_parent_.size());
     for (auto gblock : ghost_parent_) {
+        // if ((status_ngh_[block_count] != M_ADAPT_SAME) && (this->status_level() != M_ADAPT_SAME)) {
+        //     m_log("block thinks that his neigbor %d (count=%d) has been modified while the block has been changed", gblock->cum_block_id(), block_count);
+        //     m_assert(false, "oouuups");
+        // }
         mask_smooth(block_count, gblock->ibidule());
         // update the counter
         ++block_count;
@@ -343,8 +383,10 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
     // do it for every field
     for (auto fid = field_start; fid != field_end; ++fid) {
         auto current_field = fid->second;
-        for (lda_t ida = 0; ida < current_field->lda(); ida++) {
-            interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+        if (!current_field->is_temp()) {
+            for (lda_t ida = 0; ida < current_field->lda(); ida++) {
+                interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);
+            }
         }
     }
 
@@ -466,6 +508,7 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
         GridBlock* root = this->PopDependency(0);
         m_assert(n_dependency_active_ == 0, "I should be empty now");
 
+        // check the status
         m_assert(this->status_level() == M_ADAPT_NEW_FINE, "my status must be M_ADAPT_NEW_FINE instead of %d", this->status_level());
         m_assert(root->status_level() == M_ADAPT_FINER, "the status of the new root must be M_ADAPT_FINER instead of %d", root->status_level());
 
@@ -493,7 +536,6 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
             }
         }
         // set the status of my newblock
-
         // remove my ref from the parent
         GridBlock* this_should_be_me = root->PopDependency(childid);
         m_assert(this_should_be_me == this, "this should be me");
@@ -848,6 +890,7 @@ void GridBlock::GhostFreeLists() {
     auto remove_block = [](auto block) { delete (block); };
     std::for_each(local_sibling_.begin(), local_sibling_.end(), remove_block);
     std::for_each(local_parent_.begin(), local_parent_.end(), remove_block);
+    std::for_each(local_children_.begin(), local_children_.end(), remove_block);
     std::for_each(local_parent_reverse_.begin(), local_parent_reverse_.end(), remove_block);
     std::for_each(ghost_sibling_.begin(), ghost_sibling_.end(), remove_block);
     std::for_each(ghost_parent_.begin(), ghost_parent_.end(), remove_block);
@@ -858,6 +901,7 @@ void GridBlock::GhostFreeLists() {
     // clear the lists
     local_sibling_.clear();
     local_parent_.clear();
+    local_children_.clear();
     local_parent_reverse_.clear();
     ghost_sibling_.clear();
     ghost_parent_.clear();

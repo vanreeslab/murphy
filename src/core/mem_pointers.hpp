@@ -142,7 +142,7 @@ class const_data_ptr : public m_ptr<const real_t> {
 class mem_ptr : public m_ptr<real_t> {
     bidx_t stride[2];   //!< array of stride, in the main direction and then in the two other directions
     size_t size   = 0;  //!< store the size of the memory allocated
-    size_t offset = 0;  //!< store the offset needed to return a (const_)data_ptr
+    bidx_t offset = 0;  //!< store the offset needed to return a (const_)data_ptr
 
    public:
     using m_ptr<real_t>::m_ptr;       // inheritates the constructor:

@@ -127,7 +127,7 @@ inline void ToTempMemory(const m_ptr<MemLayout>& layout, const const_data_ptr& d
 
     for (bidx_t i2 = layout->start(2); i2 < layout->end(2); ++i2) {
         for (bidx_t i1 = layout->start(1); i1 < layout->end(1); ++i1) {
-            size_t idx = m_idx(0, i1, i2, 0, layout->stride());
+            bidx_t idx = m_idx(0, i1, i2, 0, layout->stride());
             std::memcpy(tdata + idx, sdata + idx, sizeof(real_t) * (layout->end(0) - layout->start(0)));
         }
     }

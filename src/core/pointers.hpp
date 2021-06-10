@@ -96,7 +96,7 @@ class m_ptr {
     T* operator->() const { return data_; }
 
     /** @brief operator *, return the associated object */
-    T& operator[](const size_t idx) const { return data_[idx]; }
+    T& operator[](const int idx) const { return data_[idx]; }
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
@@ -159,6 +159,8 @@ class mem_ptr : public m_ptr<real_t> {
         //-------------------------------------------------------------------------
         // allocate the new memory
         data_     = reinterpret_cast<real_t*>(m_calloc(size * sizeof(real_t)));
+        // explicitly touch the memory and set 0.0
+        std::memset(data_, 0, size * sizeof(real_t));
         is_owned_ = true;
         //-------------------------------------------------------------------------
     }

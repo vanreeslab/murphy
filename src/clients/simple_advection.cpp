@@ -2,14 +2,13 @@
 
 #include "operator/advection.hpp"
 #include "operator/blas.hpp"
+#include "operator/error.hpp"
+#include "operator/xblas.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
-#include "operator/xblas.hpp"
-#include "operator/error.hpp"
 
 using std::string;
 using std::to_string;
-
 
 // static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
 //     // get the position
@@ -104,12 +103,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->level_limit(param->level_min, param->level_max);
 
     // get the fields
-    vel_.Alloc("velocity", 3);
-    vel_->bctype(M_BC_EXTRAP);
-    vel_->is_temp(true);
     scal_.Alloc("scalar", 1);
     scal_->bctype(M_BC_EXTRAP);
-    grid_->AddField(vel_);
     grid_->AddField(scal_);
 
     // add the solution as temp
@@ -133,6 +128,10 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the velocity, 1.0 in every direction
+    vel_.Alloc("velocity", 3);
+    vel_->bctype(M_BC_EXTRAP);
+    vel_->is_temp(true);
+    grid_->AddField(vel_);
     const lid_t  deg[3]   = {0, 0, 0};
     const real_t dir[3]   = {1.0, 0.0, 0.0};
     const real_t shift[3] = {0.0, 0.0, 0.0};
@@ -155,8 +154,8 @@ void SimpleAdvection::Run() {
     m_begin;
     //-------------------------------------------------------------------------
     // time
-    lid_t  iter    = 0;
-    real_t t       = tstart_;
+    lid_t  iter = 0;
+    real_t t    = tstart_;
 
     // advection
     RKFunctor* advection;

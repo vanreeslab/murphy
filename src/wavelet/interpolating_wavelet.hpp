@@ -273,13 +273,13 @@ class InterpolatingWavelet : public Wavelet {
                         value += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)];
 
                         // check for nan's
-                        m_assert(lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)] == lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)], "nan detected");
-                        m_assert(fact == fact, "nan detected");
+                        m_assert(std::isfinite(lsdata[m_idx(id0, id1, id2, 0, ctx->srcstr)]), "nan detected");
+                        m_assert(std::isfinite(fact), "nan detected");
                     }
                 }
             }
             // check for nan's
-            m_assert(value == value, "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
+            m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
 
             tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = value;
         };
@@ -361,12 +361,12 @@ class InterpolatingWavelet : public Wavelet {
                         value += fact * svalue;
 
                         // check for nan's
-                        m_assert(svalue == svalue, "nan detected");
-                        m_assert(fact == fact, "nan detected");
+                        m_assert(std::isfinite(svalue), "nan detected");
+                        m_assert(std::isfinite(fact), "nan detected");
                     }
                 }
             }
-            m_assert(value == value, "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
+            m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
             tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = value;
         };
 
@@ -451,12 +451,12 @@ class InterpolatingWavelet : public Wavelet {
                         value += fact * svalue;
 
                         // check for nan's
-                        m_assert(svalue == svalue, "nan detected");
-                        m_assert(fact == fact, "nan detected");
+                        m_assert(std::isfinite(svalue), "nan detected");
+                        m_assert(std::isfinite(fact), "nan detected");
                     }
                 }
             }
-            m_assert(value == value, "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
+            m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
             tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = value;
         };
 
@@ -547,7 +547,7 @@ class InterpolatingWavelet : public Wavelet {
                     }
                 }
             }
-            m_assert(detail == detail, "the data in %d %d %d is nan %e", i0, i1, i2, detail);
+            m_assert(std::isfinite(detail), "the data in %d %d %d is nan %e", i0, i1, i2, detail);
 
             // check the maximum
             (*details_max) = m_max(fabs(detail), (*details_max));
@@ -619,7 +619,7 @@ class InterpolatingWavelet : public Wavelet {
                     }
                 }
             }
-            m_assert(wave_data == wave_data, "the data in %d %d %d is nan %e", i0, i1, i2, wave_data);
+            m_assert(std::isfinite(wave_data), "the data in %d %d %d is nan %e", i0, i1, i2, wave_data);
 
             // store the value
             tdata[m_idx(i0, i1, i2, 0, ctx->trgstr)] = wave_data;
@@ -704,7 +704,7 @@ class InterpolatingWavelet : public Wavelet {
             // if (0 <= i0 && i0 < M_N && 0 <= i1 && i1 < M_N && 0 <= i2 && i2 < M_N) {
             //     m_log("@ %d %d %d : smoothed %e -> %e", i0, i1, i2, ltdata[0], ltdata[0] - corr);
             // }
-            m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
+            m_assert(std::isfinite(corr), "the data in %d %d %d is nan %e", i0, i1, i2, corr);
             ltdata[0] -= corr;
 
             // if (fabs(corr) > 1e-3) {
