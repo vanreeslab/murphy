@@ -29,7 +29,7 @@ void BMax::ComputeBMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, 
         const real_t* data      = block->data(fid_x, ida).Read();
 
         auto op = [=, &local_max](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            const size_t idx = m_idx(i0, i1, i2);
+            const bidx_t idx = m_idx(i0, i1, i2);
             local_max        = m_max(fabs(data[idx]), local_max);
         };
         for_loop(&op, start_, end_);
@@ -75,7 +75,7 @@ void BMinMax::ComputeBMinMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
     for (bidx_t i2 = start_; i2 < end_; i2++) {
         for (bidx_t i1 = start_; i1 < end_; i1++) {
             for (bidx_t i0 = start_; i0 < end_; i0++) {
-                const size_t idx = m_idx(i0, i1, i2);
+                const bidx_t idx = m_idx(i0, i1, i2);
                 min_             = m_min(data_x[idx], min_);
                 max_             = m_max(data_x[idx], max_);
             }

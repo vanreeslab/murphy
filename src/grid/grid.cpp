@@ -584,6 +584,10 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
                      m_ptr<const Wavelet>(interp_), patches, m_ptr<Prof>(prof_));
         }
 
+        // synchronize the statuses and handle the neighbor policies
+        ghost_->UpdateStatus();
+        DoOpTree(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
+
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
         // we still save them as dependencies but all the rest is gone.
@@ -591,6 +595,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
         DestroyAdapt();
 
         //................................................
+        // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
         if (coarsen_cback != nullptr) {
@@ -599,7 +604,6 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
             m_profStop(prof_, "p4est coarsen");
             m_log("coarsen is done");
         }
-
         // refinement -> only one level
         // The limit in levels are handled directly on the block, not in p4est
         if (refine_cback != nullptr) {
