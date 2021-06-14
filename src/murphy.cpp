@@ -8,6 +8,7 @@
 #include "clients/flow_abc.hpp"
 #include "clients/navier_stokes.hpp"
 #include "clients/simple_advection.hpp"
+#include "clients/convergence_weno.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -89,6 +90,10 @@ TestCase* MurphyInit(int argc, char** argv) {
         return testcase;
     } else if (argument.do_debug_lifting) {
         testcase = new DebugLifting();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else if (argument.do_conv_weno) {
+        testcase = new ConvergenceWeno();
         testcase->InitParam(&argument);
         return testcase;
     } else {

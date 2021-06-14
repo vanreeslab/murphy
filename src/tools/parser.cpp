@@ -162,6 +162,8 @@ static struct argp_option options[] = {
     // simple advection
     {"dbg-lifting", 4004, 0, OPTION_ARG_OPTIONAL, "Debug lifting"},
     {"eps", 0, 0, OPTION_ALIAS, 0},
+    // simple advection
+    {"conv-weno", 4005, 0, OPTION_ARG_OPTIONAL, "convergence weno"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -376,6 +378,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4004: { /* simple advection */
             m_log("Debug Lifting selected");
             arguments->do_debug_lifting = true;
+            return 0;
+        }
+        case 4005: { /* convergence weno */
+            m_log("convergence weno selected");
+            arguments->do_conv_weno = true;
             return 0;
         }
         

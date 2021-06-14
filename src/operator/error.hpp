@@ -1,8 +1,6 @@
 #ifndef SRC_ERROR_HPP_
 #define SRC_ERROR_HPP_
 
-
-
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "grid/field.hpp"
@@ -56,8 +54,8 @@ class Error : public BlockOperator {
         error_2_ = 0.0;
         error_i_ = 0.0;
 
-        const bool no_level = level == (-1);
-        const bool no_error = error.IsEmpty();
+        const bool no_level = (level == (-1));
+        const bool no_error = (error.IsEmpty());
 
         // call the operator
         if (no_error && no_level) {
@@ -80,13 +78,14 @@ class Error : public BlockOperator {
 
         // do the gathering into
         if (!norm_2.IsEmpty()) {
-            (*norm_2()) = 0.0;
-            MPI_Allreduce(&error_2_, norm_2(), 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
-            (*norm_2()) = std::sqrt(norm_2()[0]);
+            real_t recv_buf = 0.0;
+            MPI_Allreduce(&error_2_, &recv_buf, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+            norm_2[0] = std::sqrt(recv_buf);
         }
         if (!norm_i.IsEmpty()) {
-            (*norm_i()) = 0.0;
-            MPI_Allreduce(&error_i_, norm_i(), 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+            real_t recv_buf = 0.0;
+            MPI_Allreduce(&error_i_, &recv_buf, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+            norm_i[0] = recv_buf;
         }
         //-------------------------------------------------------------------------
         m_end;

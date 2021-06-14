@@ -166,7 +166,7 @@ level_t ForestGrid::MaxLevel() const {
         }
     }
     level_t global_level = P8EST_QMAXLEVEL;
-    m_assert(sizeof(level_t) == sizeof(short),"the MPI call is done for a char");
+    m_assert(sizeof(level_t) == sizeof(short), "the MPI call is done for a char");
     MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MAX, MPI_COMM_WORLD);
     m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
     return global_level;
