@@ -3,32 +3,36 @@
 ---------------------
 ### Dependences
 Murphy relies the following external libraries:
-- **OpenMPI** or **Intel MPI** as mpi library
-- **HDF5** for the I/O operations (version >= 1.10),
-- **P4est** for the parallel gestion of the tree (branch `feature-mesh-edge`).
-
-You can also use Google Test library to run the tests (optional).
+- **MPICH** or **OpenMPI** or any other recent MPI implementation,
+- **hdf5** for the I/O operations (version >= 1.10),
+- **p4est** for the parallel gestion of the tree (branch `feature-mesh-edge`).
+- **google test** (optional) to run the regression tests.
 
 ---------------------
 ### Compilation
+The compilation relies on a `Makefile` (provided) and an _arch file_ (platform dependent).
+
+Trying to compile on a cluster?
+Maybe [this](https://github.com/van-Rees-Lab/murphy/issues/21) can help you.
+
 #### Get the dependencies and the `ARCH` file
-To compile Murphy you have three different options. Each of them will give you a different `ARCH` file that is used to compile the library.
+To compile Murphy you have three different options (listed from the more advanced to the easiest one). Each of them will give you a different `ARCH_FILE` file that is used to compile the framework.
 1. **Local libraries**: install the depencies yourself (you should use a `make_arch/make.YourArchitecture` to indicate the library paths, see `make.docker_gcc` as an example). Then, use the your created file for the `ARCH` file: `ARCH_FILE=make_arch/make.YourArchitecture`.
-2. **Docker**: use the `Dockerfile` in the folder `docker/` or you can also download the image from DockerHub (run `docker pull vanreeslab/murphy:v1.9`). Then, the default `ARCH` file (`make_arch/make.docker_gcc`) is valid, no need to change.
+2. **Docker**: use the `Dockerfile` in the folder `docker/` or you can also download the image from DockerHub (run `docker pull vanreeslab/murphy:v1.10`). Then, the default `ARCH_FILE` file (`make_arch/make.docker_gcc`) is valid, no need to adapt it.
 3. **VSCode**: You can use the remote container extension to open, build and run the code direction into a Docker container:
     - install the *Remote Container* extension in VSCode,
-    - get the DockerHub image (run `docker pull vanreeslab/murphy:v1.9`),
-    - open the murphy folder in VSCode and accept to open in a container. For more information about compiling in a remote
+    - get the DockerHub image (run `docker pull vanreeslab/murphy:v1.10`),
+    - open the murphy folder in VSCode and accept to open in a container.
 
 #### Docker exemple
-We recommend to use the last one as it provides the fastest hand-on approach. However, for advance debugging, the first option is usually the more reliable choice.
+We recommend to use the last approach as it provides the fastest hand-on approach. However, for advance debugging, the first option is usually the more reliable choice.
 To download the image, simply use
 ```
-docker pull vanreeslab/murphy:v1.9
+docker pull vanreeslab/murphy:v1.10
 ```
 To build the container and sync your murphy folder, `MY_MURPHY`, run
 ```
-docker run --name murphy -it -v MY_MURPHY:/murphy vanreeslab/murphy:v1.9
+docker run --name murphy -it -v MY_MURPHY:/murphy vanreeslab/murphy:v1.10
 ```
 You are now within the container and you can access the folder in `/murphy`, which is synced with your local machine.
 To exit, simply type `exit` and to relaunch it, enter `docker start -i murphy`.
@@ -55,7 +59,8 @@ You will now have an executable `murphy` that you can call.
 By default, the make file uses some default values. If an `ARCH` file is given, we use the values defined in the `ARCH` file.
 You can specify the following variables:
 - flags
-    - `CXX_FLAGS`: the compilation flags you want to use (default `none`)
+    - `CXX_FLAGS`: the compilation flags you want to use (default: `none`)
+    - `GIT_COMMIT`: the commit associated to the current version of the code (default: taken from the current repo using `git describe --always --dirty`)
 - FFTW library
     - `FFTW_INC`: the folder with the fftw headers (default `/usr/include`)
     - `FFTW_LIB`: the folder with the fftw libraries (default `/usr/lib`)
@@ -88,11 +93,11 @@ Some compilations flags are available to change the behavior of the code:
 
 To use them, you can append the make command, e.g. to change the wavelet behavior
 ```sh
-make OPTS="-DDBLOCK_GS=4 -DWAVELET_N=4"
+make OPTS="-DBLOCK_GS=4 -DWAVELET_N=4"
 ```
 or add it to the `ARCH` file:
 ```makefile
-override OPTS += -DDBLOCK_GS=4 -DWAVELET_N=2
+override OPTS += -DBLOCK_GS=4 -DWAVELET_N=2
 ```
 
 In doubts, you should always run `make info` to test the different options.

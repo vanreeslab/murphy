@@ -3,19 +3,25 @@ CC = mpicc
 
 # override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
 
-#CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
-#CXXFLAGS := -g -O0 -fopenmp -DLOG_ALLRANKS -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
+CXXFLAGS := -O3 -g -ggdb -fopenmp\
+            #-fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls
 
-CXXFLAGS := -g -O3 -fopenmp -DCOLOR_PROF\
-            -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align\
-            -ftree-vectorize -fsave-optimization-record
+#CXXFLAGS := -Og -g -ggdb -fopenmp -DLOG_ALLRANKS -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
+#CXXFLAGS := -g -O3 -fopenmp -DCOLOR_PROF\
+#            -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align\
+#            -ftree-vectorize -fsave-optimization-record
 
-LDFLAGS := -fopenmp -lstdc++ -lm
+LDFLAGS := -fopenmp -lstdc++ -lm\
+           #-fsanitize=undefined -fsanitize=address
 
-FFTW_LIB := /usr/lib/x86_64-linux-gnu
-HDF5_INC := /usr/include/hdf5/openmpi
-HDF5_LIB := /usr/lib/x86_64-linux-gnu
-HDF5_LIBNAME := -lhdf5_openmpi
+FFTW_INC = /usr/local/fftw/include
+FFTW_LIB = /usr/local/fftw/lib
+HDF5_INC = /usr/local/hdf5/include
+HDF5_LIB = /usr/local/hdf5/lib
+# FFTW_LIB := /usr/lib/x86_64-linux-gnu
+# HDF5_INC := /usr/include/hdf5/openmpi
+# HDF5_LIB := /usr/lib/x86_64-linux-gnu
+# HDF5_LIBNAME := -lhdf5_openmpi
 
 # P4EST_INC := /soft/p4est-2.2-gcc7/include
 # P4EST_LIB := /soft/p4est-2.2-gcc7/lib

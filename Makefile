@@ -1,6 +1,10 @@
-# based on 
-# file names: https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html
-#
+# Makefile MURPHY
+#------------------------------------------------------------------------------
+# usefull links: 
+# - automatic vars: https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html
+# - file names: https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html
+# 
+#------------------------------------------------------------------------------
 
 ################################################################################
 # ARCH DEPENDENT VARIABLES
@@ -28,8 +32,6 @@ SRC_DIR := src $(shell find src/** -type d)
 TEST_DIR := test
 OBJ_DIR := build
 
-
-
 #-----------------------------------------------------------------------------
 # the sources/headers are listed without the folder, vpath will find them
 SRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.cpp)))
@@ -40,13 +42,15 @@ TSRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(TEST_DIR)/$(dir)/*.cpp)))
 THEAD := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(TEST_DIR)/$(dir)/*.hpp)))
 
 ## generate object list
-DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
 OBJ := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
-IN := $(SRC:%.cpp=$(OBJ_DIR)/%.in)
+DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
+# ASS := $(SRC:%.cpp=$(OBJ_DIR)/%.s)
+CDB := $(SRC:%.cpp=$(OBJ_DIR)/%.o.json)
 TIDY := $(SRC:%.cpp=$(OBJ_DIR)/%.tidy)
+
 TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
 TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
-
+TCDB := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o.json)
 
 #-----------------------------------------------------------------------------
 # add the folders to the includes and to the vpath
@@ -94,38 +98,40 @@ GTEST_INC ?= /usr/include
 GTEST_LIB ?= /usr/lib
 GTEST_LIBNAME ?= -lgtest
 
-
-
-#---- MPI - get flags
-
-
 ################################################################################
 # mandatory flags
-M_FLAGS := -std=c++17 -fPIC -MMD -DGIT_COMMIT=\"$(GIT_COMMIT)\"
+M_FLAGS := -std=c++17 -fPIC -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
-# standard compilation
+# compile + dependence + json file
 $(OBJ_DIR)/%.o : %.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS)  -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -MF $(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
 
-# compilation of the tests
+# json only
+$(OBJ_DIR)/%.o.json :  %.cpp $(HEAD)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MJ $@ -E $< -o $(OBJ_DIR)/$*.ii
+
+#-----------------------------------------------------------------------------
+# tests
+# compile + dependence + json
 $(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MMD -MF$(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
 
-# include link
-$(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -E $< -o $@
+# json only
+$(TEST_DIR)/$(OBJ_DIR)/%.o.json : %.cpp $(HEAD) $(THEAD)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MJ $@ -E $< -o $(TEST_DIR)/$(OBJ_DIR)/$*.ii
 
 # clang-tidy files, define the MPI_INC which is only for this target
-$(OBJ_DIR)/%.tidy : MPI_INC = $(shell $(CXX) --showme:compile)
+# $(OBJ_DIR)/%.tidy : MPI_INC = $(shell $(CXX) --showme:compile)
+ 	# clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) $(M_FLAGS)
 $(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
-	clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) $(M_FLAGS)
+	clang-tidy $< --format-style=.clang-format --checks=all*
 
 ################################################################################
 .PHONY: default
 default: $(TARGET)
 
 .PHONY: all
-all: $(TARGET)
+all: $(TARGET) compdb
 
 $(TARGET): $(OBJ)
 	$(CXX) $(LDFLAGS) $^ $(LIB) -o $@
@@ -133,8 +139,18 @@ $(TARGET): $(OBJ)
 .PHONY: tidy
 tidy: $(TIDY)
 
-.PHONY: preproc 
-preproc: $(IN)
+# for the sed commande, see https://sarcasm.github.io/notes/dev/compilation-database.html#clang and https://sed.js.org
+.PHONY: compdb
+compdb: $(CDB)
+	sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $^ > compile_commands.json
+
+# build the full compilation data-base, need to know the test libs!!
+.PHONY: compdb_full
+compdb_full: $(CDB) $(TCDB)
+	sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $^ > compile_commands.json
+
+# .PHONY: dep 
+# dep: $(DEP)
 
 .PHONY: test 
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
@@ -143,7 +159,7 @@ test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 #clean
 .PHONY: clean 
 clean:
-	@rm -rf $(OBJ_DIR)/*.o
+	@rm -rf $(OBJ_DIR)/*
 	@rm -rf $(OBJ_DIR)/*.tidy
 	@rm -rf $(TARGET)
 	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
