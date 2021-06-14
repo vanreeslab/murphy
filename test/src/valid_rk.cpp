@@ -125,7 +125,7 @@ TEST_F(valid_RK, rk3_tvd) {
     level_t     il = 1;
     Grid        grid(il, period, L, MPI_COMM_WORLD, nullptr);
     real_t      origin2[3] = {0.0, 0.0, 0.0};
-    real_t      length2[3] = {L[0], L[1], L[2]};
+    real_t      length2[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
     Patch       p2(origin2, length2, il);
     list<Patch> patch{p2};
     grid.Adapt(&patch);
