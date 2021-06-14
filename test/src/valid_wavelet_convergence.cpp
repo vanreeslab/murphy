@@ -364,7 +364,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
 
             // create the initial field
             real_t freq[3]   = {0.0, 0.0, 0.0};
-            real_t coslen[3] = {L[0], L[1], L[2]};
+            real_t coslen[3] = {(real_t)L[0], (real_t)L[1],(real_t) L[2]};
             real_t alpha[3]  = {0.0, 0.0, 0.0};
             freq[id]         = 1.0;
             alpha[id]        = 1.0;
