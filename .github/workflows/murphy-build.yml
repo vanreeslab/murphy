@@ -9,7 +9,7 @@ jobs:
     runs-on: beast-tower
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy-ci:v1.10
+      image: vanreeslab/murphy_ci:v1.10
     # define the steps
     steps:
       #checkout the repo
