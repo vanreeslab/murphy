@@ -53,86 +53,86 @@ static constexpr real_t eps_c = 1.0;
 //-----------------------------------------------------------------------------
 // Wavelet 2.0
 template <>
-constexpr short_t len_ha_<2, 0> = 1;
+inline constexpr short_t len_ha_<2, 0> = 1;
 template <>
-constexpr short_t len_ga_<2, 0> = 3;
+inline constexpr short_t len_ga_<2, 0> = 3;
 template <>
-constexpr short_t len_js_<2, 0> = 1;
+inline constexpr short_t len_js_<2, 0> = 1;
 template <>
-constexpr short_t len_ks_<2, 0> = 3;
+inline constexpr short_t len_ks_<2, 0> = 3;
 template <>
-constexpr real_t ha_<2, 0>[1] = {1.0};
+inline constexpr real_t ha_<2, 0>[1] = {1.0};
 template <>
-constexpr real_t ga_<2, 0>[3] = {-0.5, 1.0, -0.5};
+inline constexpr real_t ga_<2, 0>[3] = {-0.5, 1.0, -0.5};
 template <>
-constexpr real_t js_<2, 0>[1] = {1.0};
+inline constexpr real_t js_<2, 0>[1] = {1.0};
 template <>
-constexpr real_t ks_<2, 0>[3] = {0.5, 1.0, 0.5};
-template<>
-constexpr real_t eps_c<2,0> = 7.0;
+inline constexpr real_t ks_<2, 0>[3] = {0.5, 1.0, 0.5};
+template <>
+inline constexpr real_t eps_c<2, 0> = 7.0;
 
 //-----------------------------------------------------------------------------
 // Wavelet 2.2
 template <>
-constexpr short_t len_ha_<2, 2> = 5;
+inline constexpr short_t len_ha_<2, 2> = 5;
 template <>
-constexpr short_t len_ga_<2, 2> = 3;
+inline constexpr short_t len_ga_<2, 2> = 3;
 template <>
-constexpr short_t len_js_<2, 2> = 3;
+inline constexpr short_t len_js_<2, 2> = 3;
 template <>
-constexpr short_t len_ks_<2, 2> = 5;
+inline constexpr short_t len_ks_<2, 2> = 5;
 template <>
-constexpr real_t ha_<2, 2>[5] = {-0.125, 0.25, 0.75, 0.25, -0.125};
+inline constexpr real_t ha_<2, 2>[5] = {-0.125, 0.25, 0.75, 0.25, -0.125};
 template <>
-constexpr real_t ga_<2, 2>[3] = {-0.5, 1.0, -0.5};
+inline constexpr real_t ga_<2, 2>[3] = {-0.5, 1.0, -0.5};
 template <>
-constexpr real_t js_<2, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
+inline constexpr real_t js_<2, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
 template <>
-constexpr real_t ks_<2, 2>[5] = {-1.0 / 8.0, 1.0 / 2.0, 3.0 / 4.0, 1.0 / 2.0, -1.0 / 8.0};
-template<>
-constexpr real_t eps_c<2,2> = 7.0;
+inline constexpr real_t ks_<2, 2>[5] = {-1.0 / 8.0, 1.0 / 2.0, 3.0 / 4.0, 1.0 / 2.0, -1.0 / 8.0};
+template <>
+inline constexpr real_t eps_c<2, 2> = 7.0;
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.0
 template <>
-constexpr short_t len_ha_<4, 0> = 1;
+inline constexpr short_t len_ha_<4, 0> = 1;
 template <>
-constexpr short_t len_ga_<4, 0> = 7;
+inline constexpr short_t len_ga_<4, 0> = 7;
 template <>
-constexpr short_t len_js_<4, 0> = 1;
+inline constexpr short_t len_js_<4, 0> = 1;
 template <>
-constexpr short_t len_ks_<4, 0> = 7;
+inline constexpr short_t len_ks_<4, 0> = 7;
 template <>
-constexpr real_t ha_<4, 0>[1] = {1.0};
+inline constexpr real_t ha_<4, 0>[1] = {1.0};
 template <>
-constexpr real_t ga_<4, 0>[7] = {1.0 / 16.0, 0.0, -9.0 / 16.0, 1.0, -9.0 / 16.0, 0.0, 1.0 / 16.0};
+inline constexpr real_t ga_<4, 0>[7] = {1.0 / 16.0, 0.0, -9.0 / 16.0, 1.0, -9.0 / 16.0, 0.0, 1.0 / 16.0};
 template <>
-constexpr real_t js_<4, 0>[1] = {1.0};
+inline constexpr real_t js_<4, 0>[1] = {1.0};
 template <>
-constexpr real_t ks_<4, 0>[7] = {-1.0 / 16.0, 0.0, 9.0 / 16.0, 1.0, 9.0 / 16.0, 0.0, -1.0 / 16.0};
+inline constexpr real_t ks_<4, 0>[7] = {-1.0 / 16.0, 0.0, 9.0 / 16.0, 1.0, 9.0 / 16.0, 0.0, -1.0 / 16.0};
 template <>
-constexpr real_t eps_c<4, 0> = 9.4375;
+inline constexpr real_t eps_c<4, 0> = 9.4375;
 
 //-----------------------------------------------------------------------------
 // Wavelet 4.2
 template <>
-constexpr short_t len_ha_<4, 2> = 9;
+inline constexpr short_t len_ha_<4, 2> = 9;
 template <>
-constexpr short_t len_ga_<4, 2> = 7;
+inline constexpr short_t len_ga_<4, 2> = 7;
 template <>
-constexpr short_t len_js_<4, 2> = 3;
+inline constexpr short_t len_js_<4, 2> = 3;
 template <>
-constexpr short_t len_ks_<4, 2> = 9;
+inline constexpr short_t len_ks_<4, 2> = 9;
 template <>
-constexpr real_t ha_<4, 2>[9] = {1.0 / 64.0, 0.0, -1.0 / 8.0, 1.0 / 4.0, 23.0 / 32.0, 1.0 / 4.0, -1.0 / 8.0, 0.0, 1.0 / 64.0};
+inline constexpr real_t ha_<4, 2>[9] = {1.0 / 64.0, 0.0, -1.0 / 8.0, 1.0 / 4.0, 23.0 / 32.0, 1.0 / 4.0, -1.0 / 8.0, 0.0, 1.0 / 64.0};
 template <>
-constexpr real_t ga_<4, 2>[7] = {1.0 / 16.0, 0.0, -9.0 / 16.0, 1.0, -9.0 / 16.0, 0.0, 1.0 / 16.0};
+inline constexpr real_t ga_<4, 2>[7] = {1.0 / 16.0, 0.0, -9.0 / 16.0, 1.0, -9.0 / 16.0, 0.0, 1.0 / 16.0};
 template <>
-constexpr real_t js_<4, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
+inline constexpr real_t js_<4, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
 template <>
-constexpr real_t ks_<4, 2>[9] = {1.0 / 64.0, -1.0 / 16.0, -1.0 / 8.0, 9.0 / 16.0, 23.0 / 32.0, 9.0 / 16.0, -1.0 / 8.0, -1.0 / 16.0, 1.0 / 64.0};
+inline constexpr real_t ks_<4, 2>[9] = {1.0 / 64.0, -1.0 / 16.0, -1.0 / 8.0, 9.0 / 16.0, 23.0 / 32.0, 9.0 / 16.0, -1.0 / 8.0, -1.0 / 16.0, 1.0 / 64.0};
 template <>
-constexpr real_t eps_c<4, 2> = 9.4375;
+inline constexpr real_t eps_c<4, 2> = 9.4375;
 
 // //-----------------------------------------------------------------------------
 // // Wavelet 4.4
@@ -156,44 +156,44 @@ constexpr real_t eps_c<4, 2> = 9.4375;
 //-----------------------------------------------------------------------------
 // Wavelet 6.0
 template <>
-constexpr short_t len_ha_<6, 0> = 1;
+inline constexpr short_t len_ha_<6, 0> = 1;
 template <>
-constexpr short_t len_ga_<6, 0> = 11;
+inline constexpr short_t len_ga_<6, 0> = 11;
 template <>
-constexpr short_t len_js_<6, 0> = 1;
+inline constexpr short_t len_js_<6, 0> = 1;
 template <>
-constexpr short_t len_ks_<6, 0> = 11;
+inline constexpr short_t len_ks_<6, 0> = 11;
 template <>
-constexpr real_t ha_<6, 0>[1] = {1.0};
+inline constexpr real_t ha_<6, 0>[1] = {1.0};
 template <>
-constexpr real_t ga_<6, 0>[11] = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
+inline constexpr real_t ga_<6, 0>[11] = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
 template <>
-constexpr real_t js_<6, 0>[1] = {1.0};
+inline constexpr real_t js_<6, 0>[1] = {1.0};
 template <>
-constexpr real_t ks_<6, 0>[11] = {3.0 / 256.0, 0.0, -25.0 / 256.0, 0.0, 75.0 / 128.0, 1.0, 75.0 / 128.0, 0.0, -25.0 / 256.0, 0.0, 3.0 / 256.0};
+inline constexpr real_t ks_<6, 0>[11] = {3.0 / 256.0, 0.0, -25.0 / 256.0, 0.0, 75.0 / 128.0, 1.0, 75.0 / 128.0, 0.0, -25.0 / 256.0, 0.0, 3.0 / 256.0};
 template <>
-constexpr real_t eps_c<6, 0> = 10.973388671875;
+inline constexpr real_t eps_c<6, 0> = 10.973388671875;
 
 //-----------------------------------------------------------------------------
 // Wavelet 6.2
 template <>
-constexpr short_t len_ha_<6, 2> = 13;
+inline constexpr short_t len_ha_<6, 2> = 13;
 template <>
-constexpr short_t len_ga_<6, 2> = 11;
+inline constexpr short_t len_ga_<6, 2> = 11;
 template <>
-constexpr short_t len_js_<6, 2> = 3;
+inline constexpr short_t len_js_<6, 2> = 3;
 template <>
-constexpr short_t len_ks_<6, 2> = 13;
+inline constexpr short_t len_ks_<6, 2> = 13;
 template <>
-constexpr real_t ha_<6, 2>[13] = {-3.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -125.0 / 1024.0, 1.0 / 4.0, 181.0 / 256.0, 1.0 / 4.0, -125.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -3.0 / 1024.0};
+inline constexpr real_t ha_<6, 2>[13] = {-3.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -125.0 / 1024.0, 1.0 / 4.0, 181.0 / 256.0, 1.0 / 4.0, -125.0 / 1024.0, 0.0, 11.0 / 512.0, 0.0, -3.0 / 1024.0};
 template <>
-constexpr real_t ga_<6, 2>[11] = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
+inline constexpr real_t ga_<6, 2>[11] = {-3.0 / 256.0, 0.0, 25.0 / 256.0, 0.0, -75.0 / 128.0, 1.0, -75.0 / 128.0, 0.0, 25.0 / 256.0, 0.0, -3.0 / 256.0};
 template <>
-constexpr real_t js_<6, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
+inline constexpr real_t js_<6, 2>[3] = {-1.0 / 4.0, 1.0, -1.0 / 4.0};
 template <>
-constexpr real_t ks_<6, 2>[13] = {-3.0 / 1024.0, 3.0 / 256.0, 11.0 / 512.0, -25.0 / 256.0, -125.0 / 1024.0, 75.0 / 128.0, 181.0 / 256.0, 75.0 / 128.0, -125.0 / 1024.0, -25.0 / 256.0, 11.0 / 512.0, 3.0 / 256.0, -3.0 / 1024.0};
+inline constexpr real_t ks_<6, 2>[13] = {-3.0 / 1024.0, 3.0 / 256.0, 11.0 / 512.0, -25.0 / 256.0, -125.0 / 1024.0, 75.0 / 128.0, 181.0 / 256.0, 75.0 / 128.0, -125.0 / 1024.0, -25.0 / 256.0, 11.0 / 512.0, 3.0 / 256.0, -3.0 / 1024.0};
 template <>
-constexpr real_t eps_c<6, 2> = 10.973388671875;
+inline constexpr real_t eps_c<6, 2> = 10.973388671875;
 
 // //-----------------------------------------------------------------------------
 // // Wavelet 6.4
