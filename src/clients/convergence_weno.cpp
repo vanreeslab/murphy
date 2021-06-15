@@ -43,13 +43,13 @@ void ConvergenceWeno::Run() {
         // create the patch refinement to refine the middle tree
         real_t origin11[3] = {1.0, 1.0, 1.0};
         real_t length1[3]  = {1.0, 1.0, 1.0};
-        Patch  p1(origin11, length1, il + ilevel_);
-        real_t origin2[3] = {0.0, 0.0, 0.0};
-        real_t length2[3] = {3.0, 3.0, 3.0};
-        Patch  p2(origin2, length2, il + ilevel_ - 1);
+        Patch  p1(origin11, length1, il + ilevel_ + 1);
+        // real_t origin2[3] = {0.0, 0.0, 0.0};
+        // real_t length2[3] = {3.0, 3.0, 3.0};
+        // Patch  p2(origin2, length2, il + ilevel_ - 1);
 
         // list<Patch> patch{p11,p2};
-        list<Patch> patch{p1, p2};
+        list<Patch> patch{p1};
         if (adapt_) {
             grid.Adapt(&patch);
         }
