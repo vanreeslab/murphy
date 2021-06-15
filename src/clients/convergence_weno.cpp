@@ -38,7 +38,7 @@ void ConvergenceWeno::Run() {
                                 -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
 
     for (level_t il = 0; il < N_PT; ++il) {
-        Grid grid(il + ilevel_ - 1, period, L, MPI_COMM_WORLD, nullptr);
+        Grid grid(il + ilevel_, period, L, MPI_COMM_WORLD, nullptr);
 
         // create the patch refinement to refine the middle tree
         real_t origin11[3] = {1.0, 1.0, 1.0};
