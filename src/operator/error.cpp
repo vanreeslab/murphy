@@ -2,7 +2,7 @@
 
 // declare the specialization, implement them in the cpp
 template <>
-void Error::ErrorOnGridBlock<const Field*>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
+void Error::ErrorOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     const_data_ptr ptr_sol   = block->data(sol);
@@ -36,7 +36,7 @@ void Error::ErrorOnGridBlock<const Field*>(const qid_t* qid, GridBlock* block, c
     //-------------------------------------------------------------------------
 };
 template <>
-void Error::ErrorFieldOnGridBlock<const Field*>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol, const Field* error) {
+void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol, const Field* error) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     const_data_ptr ptr_sol   = block->data(sol);
@@ -74,7 +74,7 @@ void Error::ErrorFieldOnGridBlock<const Field*>(const qid_t* qid, GridBlock* blo
 };
 
 template <>
-void Error::ErrorOnGridBlock<lambda_i3block_t*>(const qid_t* qid, GridBlock* block, const Field* fid, lambda_i3block_t* sol) {
+void Error::ErrorOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
 
@@ -107,7 +107,7 @@ void Error::ErrorOnGridBlock<lambda_i3block_t*>(const qid_t* qid, GridBlock* blo
 };
 
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_i3block_t*>(const qid_t* qid, GridBlock* block, const Field* fid, lambda_i3block_t* sol, const Field* error) {
+void Error::ErrorFieldOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol, const Field* error) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     data_ptr       ptr_error = block->data(error);
