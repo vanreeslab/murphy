@@ -83,7 +83,9 @@ mem_ptr CartBlock::pointer(const m_ptr<const Field>& fid, const lda_t ida) const
     mem_ptr ptr = it->second.shift_dim(ida, this);
     return ptr;
 #else
-    return mem_map_.at(fid->name());
+    auto    it  = mem_map_.at(fid->name());
+    mem_ptr ptr = it->second.shift_dim(ida, this);
+    return ptr;
 #endif
 }
 
