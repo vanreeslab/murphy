@@ -104,7 +104,11 @@ M_FLAGS := -std=c++17 -fPIC -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
 # compile + dependence + json file
 $(OBJ_DIR)/%.o : %.cpp $(HEAD)
+ifeq ($(CXX),clang)
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -MF $(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
+else
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -c $< -o $@
+endif
 
 # json only
 $(OBJ_DIR)/%.o.json :  %.cpp $(HEAD)
