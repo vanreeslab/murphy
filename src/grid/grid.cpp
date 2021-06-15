@@ -27,12 +27,12 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, const m_ptr<Prof>& prof)
+Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const  prof)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
     //-------------------------------------------------------------------------
     // profiler
-    prof_ = prof();
+    prof_ = prof;
     // create a default Wavelet -> default is M_WAVELET_N and M_WAVELET_NT
     interp_ = new InterpolatingWavelet();
 
@@ -57,14 +57,14 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
  * 
  * @param grid the source grid
  */
-void Grid::CopyFrom(m_ptr<const Grid> grid) {
+void Grid::CopyFrom(const Grid*  grid) {
     m_begin;
     //-------------------------------------------------------------------------
     this->ForestGrid::CopyFrom(grid);
     // copy the field mapping
     for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
         string name   = iter->first;
-        Field* fid    = iter->second();
+        Field* fid    = iter->second;
         fields_[name] = fid;
     }
     // copy the profiler
@@ -91,7 +91,7 @@ Grid::~Grid() {
     // // make sure to destroy any remaning fields
     // m_log("destroying the %d remaining fields", fields_.size());
     // for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-    //     m_ptr<Field> field = fid->second;
+    //     Field*  field = fid->second;
     //     m_assert(field() != nullptr, "the field cannot be null here");
     //     m_log("destroying field <%s>", field->name().c_str());
     //     this->DeleteField(field);
@@ -231,7 +231,7 @@ size_t Grid::GlobalNumDof() const {
     return p4est_forest_->global_num_quadrants * (M_N * M_N * M_N);
 }
 
-bool Grid::IsAField(const m_ptr<const Field> field) const {
+bool Grid::IsAField(const Field* const  field) const {
     std::string key = field->name();
     return (fields_.find(key) != fields_.end());
 }
@@ -243,9 +243,9 @@ bool Grid::IsAField(const m_ptr<const Field> field) const {
  * 
  * @param field 
  */
-void Grid::AddField(m_ptr<Field> field) {
+void Grid::AddField(Field*  field) {
     m_begin;
-    m_assert(!field.IsOwned(), "The field cannot be owned as it has not been created here");
+    // m_assert(!field.IsOwned(), "The field cannot be owned as it has not been created here");
     //-------------------------------------------------------------------------
     if (!IsAField(field)) {
         // add the field
@@ -265,7 +265,7 @@ void Grid::AddField(m_ptr<Field> field) {
  * 
  * @param field
  */
-void Grid::DeleteField(m_ptr<const Field> field) {
+void Grid::DeleteField(const Field*  field) {
     m_begin;
     //-------------------------------------------------------------------------
     if (IsAField(field)) {
@@ -287,14 +287,14 @@ void Grid::DeleteField(m_ptr<const Field> field) {
  * 
  * @param fields 
  */
-void Grid::ResetFields(m_ptr<const std::map<string, m_ptr<Field> > > fields) {
+void Grid::ResetFields(const std::map<string, Field*>* fields) {
     m_begin;
     //-------------------------------------------------------------------------
     // clear the current map
     fields_.clear();
     // copy the new one
     for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
-        fields_[iter->first] = iter->second();
+        fields_[iter->first] = iter->second;
 
         // check if we satisfy the requirements on the key
         m_assert(iter->first == iter->second->name(), "the key of the map must be the name of the field");
@@ -309,10 +309,10 @@ void Grid::ResetFields(m_ptr<const std::map<string, m_ptr<Field> > > fields) {
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPull_Post(m_ptr<const Field> field, const sid_t ida) const {
+void Grid::GhostPull_Post(const Field*  field, const sid_t ida) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
-    m_assert(!field.IsEmpty(), "the source field cannot be empty");
+    m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
@@ -329,10 +329,10 @@ void Grid::GhostPull_Post(m_ptr<const Field> field, const sid_t ida) const {
  * @param field the considered field
  * @param ida the received dimension
  */
-void Grid::GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) const {
+void Grid::GhostPull_Wait(const Field*  field, const sid_t ida) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
-    m_assert(!field.IsEmpty(), "the source field cannot be empty");
+    m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
@@ -348,9 +348,9 @@ void Grid::GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) const {
  * 
  * @param field the field which requires the ghost
  */
-void Grid::GhostPull(m_ptr<Field> field) const {
+void Grid::GhostPull(Field*  field) const {
     m_begin;
-    m_assert(!field.IsEmpty(), "the source field cannot be empty");
+    m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     // start the send in the first dimension
@@ -392,14 +392,14 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  * 
  * @param field the field to use for the criterion computation
  */
-void Grid::Refine(m_ptr<Field> field) {
+void Grid::Refine(Field*  field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        m_ptr<Field> cur_field = fid->second;
+        Field*  cur_field = fid->second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field);
         }
@@ -417,14 +417,14 @@ void Grid::Refine(m_ptr<Field> field) {
  * 
  * @param field the field to use for the criterion computation
  */
-void Grid::Coarsen(m_ptr<Field> field) {
+void Grid::Coarsen(Field*  field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        m_ptr<Field> cur_field = fid->second;
+        Field*  cur_field = fid->second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field);
         }
@@ -442,14 +442,14 @@ void Grid::Coarsen(m_ptr<Field> field) {
  * 
  * @param field the field used for the criterion
  */
-void Grid::Adapt(m_ptr<Field> field) {
+void Grid::Adapt(Field*  field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        m_ptr<Field> cur_field = fid->second;
+        Field*  cur_field = fid->second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field);
         }
@@ -469,7 +469,7 @@ void Grid::Adapt(m_ptr<Field> field) {
  * @param field 
  * @param expression 
  */
-void Grid::Adapt(m_ptr<Field> field, m_ptr<SetValue> expression) {
+void Grid::Adapt(Field*  field, SetValue*  expression) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!(recursive_adapt() && !expression->do_ghost()), "in recursive mode, I need to fill the ghost values while using the analytical expression");
@@ -479,8 +479,8 @@ void Grid::Adapt(m_ptr<Field> field, m_ptr<SetValue> expression) {
     m_assert(field->ghost_status(), "the ghost status should be valid here...");
 
     // refine given the value
-    Field*    myfield = field();
-    SetValue* my_expr = expression();
+    Field*    myfield = field;
+    SetValue* my_expr = expression;
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(myfield), &cback_ValueFill, reinterpret_cast<void*>(my_expr));
 
     // we modified one block after another, so we set the ghost value from the SetValue
@@ -499,7 +499,7 @@ void Grid::Adapt(m_ptr<Field> field, m_ptr<SetValue> expression) {
  * 
  * @param patches the list of patch to match
  */
-void Grid::Adapt(m_ptr<list<Patch> > patches) {
+void Grid::Adapt(list<Patch>* patches) {
     m_begin;
     //-------------------------------------------------------------------------
     if (patches->size() == 0) {
@@ -524,7 +524,7 @@ void Grid::Adapt(m_ptr<list<Patch> > patches) {
  * @param interpolate_ptr pointer to data used in the interpolate callback function
  * @param max_detail stores the value of the max_detail per dimension of the field, if not nullptr
  */
-void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patch> > patches,
+void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
                       /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
                       /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr) {
     m_begin;
@@ -532,7 +532,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
-    m_assert(field_detail.IsEmpty() || patches.IsEmpty(), "you cannot give both a field for detail computation and a patch list");
+    m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
     // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
@@ -543,10 +543,10 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
 
     // inform we start the mess
     string msg = "--> grid adaptation started... (recursive = %d, ";
-    if (!field_detail.IsEmpty()) {
+    if (!(field_detail == nullptr)) {
         msg += "using details";
     }
-    if (!patches.IsEmpty()) {
+    if (!(patches == nullptr)) {
         msg += "using patches";
     }
     msg += ")";
@@ -573,15 +573,13 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
 
         //................................................
         // compute the criterion or use the patches to get the status
-        if (!field_detail.IsEmpty()) {
+        if (!(field_detail == nullptr)) {
             // compute the details
-            DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this,
-                     m_ptr<const Wavelet>(interp_), rtol_, ctol_, m_ptr<const Field>(field_detail), m_ptr<Prof>(prof_));
+            DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, prof_);
         }
-        if (!patches.IsEmpty()) {
+        if (!(patches == nullptr)) {
             // get the patches processed
-            DoOpTree(nullptr, &GridBlock::UpdateStatusFromPatches, this,
-                     m_ptr<const Wavelet>(interp_), patches, m_ptr<Prof>(prof_));
+            DoOpTree(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
         }
 
         // synchronize the statuses and handle the neighbor policies
@@ -717,7 +715,7 @@ void Grid::AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<list<Patc
  * @param criterion the field on which we compute details
  * @param details the field containing the details
  */
-void Grid::StoreDetails(m_ptr<Field> criterion, m_ptr<Field> details) {
+void Grid::StoreDetails(Field*  criterion, Field*  details) {
     m_begin;
     m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
     //-------------------------------------------------------------------------

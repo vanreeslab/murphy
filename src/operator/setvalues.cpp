@@ -8,9 +8,9 @@
  * @param interp the Wavelet object used to retrieve the objects
  * @param profiler the profiler used to time the operations
  */
-SetValue::SetValue(m_ptr<const Wavelet> interp) : BlockOperator(interp) {}
+SetValue::SetValue(const Wavelet*  interp) : BlockOperator(interp) {}
 
-void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field) {
+void SetValue::operator()(const ForestGrid*  grid, Field*  field) {
     m_begin;
     // m_assert(!((grid->domain_periodic(0) || grid->domain_periodic(1) || grid->domain_periodic(2)) && do_ghost_),"if one of the direction is periodic, we shouldn't do the ghosting as it is not taken into accound in the position yet!");
     //-------------------------------------------------------------------------
@@ -26,7 +26,7 @@ void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field) {
     m_end;
 }
 
-void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field, const lda_t ida) {
+void SetValue::operator()(const ForestGrid*  grid, Field*  field, const lda_t ida) {
     m_begin;
     //-------------------------------------------------------------------------
     // get the span of ida
@@ -44,7 +44,7 @@ void SetValue::operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field, cons
 
 //=====================================================================================================
 SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, nullptr) {}
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -55,7 +55,7 @@ SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], m_ptr<const Wavele
     m_end;
 }
 
-void SetAbs::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetAbs::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -63,7 +63,7 @@ void SetAbs::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block());
+        real_t* data = block_data.Write(ida, block);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -84,7 +84,7 @@ void SetAbs::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr
 
 //=====================================================================================================
 SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]) : SetSinus(length, freq, alpha, nullptr) {}
-SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -96,7 +96,7 @@ SetSinus::SetSinus(const real_t length[3], const real_t freq[3], const real_t al
     m_end;
 }
 
-void SetSinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetSinus::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz     = block->xyz();
@@ -105,7 +105,7 @@ void SetSinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_p
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block());
+        real_t* data = block_data.Write(ida, block);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -123,7 +123,7 @@ void SetSinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_p
 
 //=====================================================================================================
 SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]) : SetCosinus(length, freq, alpha, nullptr) {}
-SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -135,7 +135,7 @@ SetCosinus::SetCosinus(const real_t length[3], const real_t freq[3], const real_
     m_end;
 }
 
-void SetCosinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetCosinus::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz     = block->xyz();
@@ -145,7 +145,7 @@ void SetCosinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block());
+        real_t* data = block_data.Write(ida, block);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -163,7 +163,7 @@ void SetCosinus::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
 
 //=====================================================================================================
 SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3]) : SetPolynom(degree, direction, shift, nullptr) {}
-SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -174,7 +174,7 @@ SetPolynom::SetPolynom(const lid_t degree[3], const real_t direction[3], const r
     //-------------------------------------------------------------------------
     m_end;
 }
-void SetPolynom::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetPolynom::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -182,7 +182,7 @@ void SetPolynom::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block());
+        real_t* data = block_data.Write(ida, block);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -201,7 +201,7 @@ void SetPolynom::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
 
 //=====================================================================================================
 SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetExponential(center, sigma, alpha, nullptr) {}
-SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (int id = 0; id < 3; id++) {
@@ -213,7 +213,7 @@ SetExponential::SetExponential(const real_t center[3], const real_t sigma[3], co
     m_end;
 }
 
-void SetExponential::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetExponential::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -225,7 +225,7 @@ void SetExponential::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> bloc
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block());
+        real_t* data = block_data.Write(ida, block);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -247,7 +247,7 @@ void SetExponential::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> bloc
 
 //=====================================================================================================
 SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha) : SetErf(center, sigma, alpha, nullptr) {}
-SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -259,7 +259,7 @@ SetErf::SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha
     m_end;
 }
 
-void SetErf::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetErf::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -272,7 +272,7 @@ void SetErf::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block());
+        real_t* data = block_data.Write(ida, block);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -294,7 +294,7 @@ void SetErf::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr
 
 //=====================================================================================================
 SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius) : SetVortexRing(normal, center, sigma, radius, nullptr) {}
-SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;
@@ -307,7 +307,7 @@ SetVortexRing::SetVortexRing(const lda_t normal, const real_t center[3], const r
     m_end;
 }
 
-void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetVortexRing::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -322,9 +322,9 @@ void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
     const lda_t idz = normal_;
     // get the pointers correct
     data_ptr block_data = block->data(fid);
-    real_t*  wx         = block_data.Write(idx, block());
-    real_t*  wy         = block_data.Write(idy, block());
-    real_t*  wz         = block_data.Write(idz, block());
+    real_t*  wx         = block_data.Write(idx, block);
+    real_t*  wy         = block_data.Write(idy, block);
+    real_t*  wz         = block_data.Write(idz, block);
 
     for (lid_t i2 = start_; i2 < end_; i2++) {
         for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -371,7 +371,7 @@ void SetVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
 
 //=====================================================================================================
 SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff) : SetCompactVortexRing(normal, center, sigma, radius, cutoff, nullptr) {}
-SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;
@@ -385,7 +385,7 @@ SetCompactVortexRing::SetCompactVortexRing(const lda_t normal, const real_t cent
     m_end;
 }
 
-void SetCompactVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetCompactVortexRing::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();
@@ -401,9 +401,9 @@ void SetCompactVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock
     const lda_t idz = normal_;
     // get the pointers correct
     data_ptr block_data = block->data(fid);
-    real_t*  wx         = block_data.Write(idx, block());
-    real_t*  wy         = block_data.Write(idy, block());
-    real_t*  wz         = block_data.Write(idz, block());
+    real_t*  wx         = block_data.Write(idx, block);
+    real_t*  wy         = block_data.Write(idy, block);
+    real_t*  wz         = block_data.Write(idz, block);
 
     for (lid_t i2 = start_; i2 < end_; i2++) {
         for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -442,7 +442,7 @@ void SetCompactVortexRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock
 
 //=====================================================================================================
 SetABSVelocity::SetABSVelocity(const real_t a, const real_t b, const real_t c) : SetABSVelocity(a, b, c, nullptr) {}
-SetABSVelocity::SetABSVelocity(const real_t a, const real_t b, const real_t c, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetABSVelocity::SetABSVelocity(const real_t a, const real_t b, const real_t c, const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     a_ = a;
@@ -452,7 +452,7 @@ SetABSVelocity::SetABSVelocity(const real_t a, const real_t b, const real_t c, m
     m_end;
 }
 
-void SetABSVelocity::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetABSVelocity::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     //-------------------------------------------------------------------------
     real_t* vx = block->data(fid, 0).Write();
     real_t* vy = block->data(fid, 1).Write();
@@ -481,7 +481,7 @@ void SetABSVelocity::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> bloc
 
 //=====================================================================================================
 SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3]) : SetScalarRing(normal, center, sigma, radius, vel, nullptr) {}
-SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3], m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3], const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     normal_ = normal;
@@ -495,7 +495,7 @@ SetScalarRing::SetScalarRing(const lda_t normal, const real_t center[3], const r
     m_end;
 }
 
-void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetScalarRing::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     m_assert(fid->lda() == 1, "this function is for scalar fields only");
     //-------------------------------------------------------------------------
     real_t pos[3];
@@ -538,7 +538,7 @@ void SetScalarRing::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
 
 //=====================================================================================================
 SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b) : SetScalarTube(dir, center, sigma, b, nullptr) {}
-SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b, m_ptr<const Wavelet> interp) : SetValue(interp) {
+SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b, const Wavelet*  interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     dir_   = dir;
@@ -551,7 +551,7 @@ SetScalarTube::SetScalarTube(const lda_t dir, const real_t center[3], const real
     m_end;
 }
 
-void SetScalarTube::FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) {
+void SetScalarTube::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
     m_assert(fid->lda() == 1, "this function is for scalar fields only");
     //-------------------------------------------------------------------------
     real_t        pos[3];

@@ -38,7 +38,7 @@ class ForestGrid {
     ~ForestGrid();
     /** @} */
 
-    void CopyFrom(m_ptr<const ForestGrid> grid);
+    void CopyFrom(const ForestGrid*  grid);
 
     real_t      domain_length(const sid_t id) const { return domain_length_[id]; }
     bool        domain_periodic(const sid_t id) const { return domain_periodic_[id]; }

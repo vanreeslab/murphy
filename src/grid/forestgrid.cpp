@@ -66,7 +66,7 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
  * 
  * @param grid the other grid to copy
  */
-void ForestGrid::CopyFrom(m_ptr<const ForestGrid> grid) {
+void ForestGrid::CopyFrom(const ForestGrid*  grid) {
     m_begin;
     //-------------------------------------------------------------------------
     // copy the existing forest, including the memory adress to the GridBlock

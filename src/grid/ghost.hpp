@@ -26,7 +26,7 @@ class Ghost;
 /**
  * @brief pointer to an member function of the class @ref Ghost
  */
-using gop_t = void (Ghost::*)(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
+using gop_t = void (Ghost::*)(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
 
 /**
  * @brief given an associated grid, performs the ghost update for a given field, in a given component
@@ -53,13 +53,13 @@ class Ghost {
     MPI_Win   status_window_       = MPI_WIN_NULL;    //!< MPI Window for the RMA communication (non null only during the initlist function)
     short_t * status_               = nullptr;         //!< for each quadrant, indicate its corresponding displacement ID (non null !only! during the initlist function, reset afterwards)
 
-    m_ptr<ForestGrid>    grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
-    m_ptr<Prof>          prof_;    //!< the profiler to time operations, not owned
-    m_ptr<const Wavelet> interp_;  //!< pointer to the associated @ref Wavelet, shared, not owned
+    ForestGrid*     grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
+    Prof*           prof_;    //!< the profiler to time operations, not owned
+    const Wavelet*  interp_;  //!< pointer to the associated @ref Wavelet, shared, not owned
 
    public:
-    Ghost(m_ptr<ForestGrid> grid, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler);
-    Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_level, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler);
+    Ghost(ForestGrid*  grid, const Wavelet*  interp, Prof*  profiler);
+    Ghost(ForestGrid*  grid, const level_t min_level, const level_t max_level, const Wavelet*  interp, Prof*  profiler);
     ~Ghost();
 
     // MPI_Group mirror_origin_group() const { return mirror_origin_group_; };
@@ -71,20 +71,20 @@ class Ghost {
      * @name RMA-based high-level ghosting - post and wait
      * @{
      */
-    void PullGhost_Post(m_ptr<const Field> field, const lda_t ida);
-    void PullGhost_Wait(m_ptr<const Field> field, const lda_t ida);
+    void PullGhost_Post(const Field*  field, const lda_t ida);
+    void PullGhost_Wait(const Field*  field, const lda_t ida);
     /** @}*/
 
     /**
      * @name RMA-based low-level ghosting - get and put the values
      * @{
      */
-    void PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
-    void GetGhost4Block_Post(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
-    void GetGhost4Block_Wait(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
-    void PutGhost4Block_Post(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
-    void PutGhost4Block_Wait(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
-    void PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const;
+    void PushToWindow4Block(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
+    void GetGhost4Block_Post(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
+    void GetGhost4Block_Wait(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
+    void PutGhost4Block_Post(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
+    void PutGhost4Block_Wait(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
+    void PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
     /** @}*/
 
    protected:
@@ -117,7 +117,7 @@ class Ghost {
     // inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, const Field *fid) const;
     /** @}*/
 
-    void LoopOnMirrorBlock_(const gop_t op, m_ptr<const Field> field);
+    void LoopOnMirrorBlock_(const gop_t op, const Field*  field);
 };
 
 #endif  // SRC_GRID_GHOST_HPP_

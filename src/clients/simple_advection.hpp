@@ -19,14 +19,14 @@ class SimpleAdvection : public TestCase {
     level_t level_min_ = 0;
     level_t level_max_ = P8EST_QMAXLEVEL;
 
-    m_ptr<Field> vel_;
-    m_ptr<Field> scal_;
-    m_ptr<Field> sol_;
-    m_ptr<Grid>  grid_;
-    m_ptr<Prof>  prof_;
+    Field*  vel_;
+    Field*  scal_;
+    Field*  sol_;
+    Grid*   grid_;
+    Prof*   prof_;
 
-    m_ptr<SetScalarRing> ring_;
-    m_ptr<SetPolynom>    vel_field_;
+    SetScalarRing*  ring_;
+    SetPolynom*     vel_field_;
 
     std::string folder_diag_ = "data";
 

@@ -10,7 +10,7 @@
 using std::string;
 using std::to_string;
 
-// static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
+// static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, GridBlock*  block) -> real_t {
 //     // get the position
 //     real_t pos[3];
 //     m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
@@ -29,7 +29,7 @@ using std::to_string;
 
 // class InitialCondition : public SetValue {
 //    protected:
-//     void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+//     void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
 //         //-------------------------------------------------------------------------
 //         // get the pointers correct
 //         real_t* data = block->data(fid, 0).Write();
@@ -48,13 +48,13 @@ using std::to_string;
 
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
-    if (!prof_.IsEmpty()) {
+    if (!(prof_ == nullptr)) {
         prof_->Disp();
-        prof_.Free();
+        delete (prof_);
     }
     // free the set values
-    ring_.Free();
-    vel_field_.Free();
+    delete (ring_);
+    delete (vel_field_);
 
     // free the grid
     // grid_.Free();
@@ -63,11 +63,11 @@ SimpleAdvection::~SimpleAdvection() {
     grid_->DeleteField(scal_);
     grid_->DeleteField(sol_);
 
-    vel_.Free();
-    scal_.Free();
-    sol_.Free();
+    delete (vel_);
+    delete (scal_);
+    delete (sol_);
     // delete the grid
-    grid_.Free();
+    delete (grid_);
 
     m_log("Navier Stokes is dead");
     //-------------------------------------------------------------------------
@@ -89,33 +89,31 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
         string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
-        prof_.Alloc(name);
+        prof_ = new Prof(name);
     }
 
     // setup the grid
     // bool        period[3] = {false, false, false};
     // const lid_t L[3]      = {1, 1, 1};
-    grid_.Alloc(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
-
-    m_assert(grid_.IsOwned(), "the grid must be owned");
+    grid_ = new Grid(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
 
     // set the min/max level
     grid_->level_limit(param->level_min, param->level_max);
 
     // get the fields
-    scal_.Alloc("scalar", 1);
+    scal_ = new Field("scalar", 1);
     scal_->bctype(M_BC_EXTRAP);
     grid_->AddField(scal_);
 
     // add the solution as temp
-    sol_.Alloc("sol", 1);
+    sol_ = new Field("sol", 1);
     sol_->is_temp(true);
     grid_->AddField(sol_);
 
     // setup the scalar ring
     real_t velocity[3] = {0.0, 0.0, 1.0};
     real_t center[3]   = {0.5, 0.5, 0.5};
-    ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
+    ring_ = new SetScalarRing(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
     ring_->Profile(prof_);
     ring_->SetTime(0.0);
     (*ring_)(grid_, scal_);
@@ -128,14 +126,14 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the velocity, 1.0 in every direction
-    vel_.Alloc("velocity", 3);
+    vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
     vel_->is_temp(true);
     grid_->AddField(vel_);
     const lid_t  deg[3]   = {0, 0, 0};
     const real_t dir[3]   = {1.0, 0.0, 0.0};
     const real_t shift[3] = {0.0, 0.0, 0.0};
-    vel_field_.Alloc(deg, dir, shift);
+    vel_field_ = new SetPolynom(deg, dir, shift);
     (*vel_field_)(grid_, vel_, 2);
     // take the ghosts
     grid_->GhostPull(vel_);
@@ -175,7 +173,7 @@ void SimpleAdvection::Run() {
 
     real_t wtime_start = MPI_Wtime();
     // let's gooo
-    m_profStart(prof_(), "run");
+    m_profStart(prof_, "run");
     while (t < tfinal_ && iter < iter_max()) {
         m_log("--------------------");
         //................................................
@@ -183,7 +181,7 @@ void SimpleAdvection::Run() {
         if (iter % iter_adapt() == 0) {
             if (!no_adapt_) {
                 m_log("---- adapt mesh");
-                m_profStart(prof_(), "adapt");
+                m_profStart(prof_, "adapt");
                 if (!grid_on_sol_) {
                     grid_->Adapt(scal_);
                 } else {
@@ -193,7 +191,7 @@ void SimpleAdvection::Run() {
 
                     grid_->Adapt(sol_);
                 }
-                m_profStop(prof_(), "adapt");
+                m_profStop(prof_, "adapt");
 
                 // reset the velocity
                 (*vel_field_)(grid_, vel_, 2);
@@ -203,11 +201,11 @@ void SimpleAdvection::Run() {
         }
         // we run the first diagnostic
         if (iter == 0) {
-            m_profStart(prof_(), "diagnostics");
+            m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             real_t wtime_now = MPI_Wtime();
             Diagnostics(t, 0, iter, wtime_now - wtime_start);
-            m_profStop(prof_(), "diagnostics");
+            m_profStop(prof_, "diagnostics");
         }
 
         //................................................
@@ -220,22 +218,22 @@ void SimpleAdvection::Run() {
         //................................................
         // advance in time
         m_log("---- do time-step");
-        m_profStart(prof_(), "do dt");
+        m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
-        m_profStop(prof_(), "do dt");
+        m_profStop(prof_, "do dt");
 
         //................................................
         // diagnostics, dumps, whatever
         if (iter % iter_diag() == 0) {
-            m_profStart(prof_(), "diagnostics");
+            m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             real_t time_now = MPI_Wtime();
             Diagnostics(t, dt, iter, time_now);
-            m_profStop(prof_(), "diagnostics");
+            m_profStop(prof_, "diagnostics");
         }
     }
-    m_profStop(prof_(), "run");
+    m_profStop(prof_, "run");
     // run the last diag
     if (iter % iter_diag() != 0) {
         real_t time_now = MPI_Wtime();
@@ -281,7 +279,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     Error  error;
     ring_->SetTime(time);
     (*ring_)(grid_, sol_);
-    error.Norms(grid_, scal_, m_ptr<const Field>(sol_), &err2, &erri);
+    error.Norms(grid_, scal_, sol_, &err2, &erri);
 
     // open the file
     FILE*   file_error;
@@ -308,8 +306,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_);
-        dump(grid_(), scal_(), iter);
-        dump(grid_(), sol_(), iter);
+        dump(grid_, scal_, iter);
+        dump(grid_, sol_, iter);
 
         // dump the details
         if (dump_detail()) {
@@ -320,7 +318,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
 
             grid_->GhostPull(&details);
             // IOH5 dump("data");
-            dump(grid_(), &details, iter);
+            dump(grid_, &details, iter);
 
             grid_->DeleteField(&details);
         }

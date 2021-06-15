@@ -34,7 +34,7 @@ class Stencil : public BlockOperator {
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
      * between the ghost exchange and the stencil computation.
      */
-    void operator()(m_ptr<const Grid> grid, m_ptr<Field> field_src, m_ptr<Field> field_trg);
+    void operator()(const Grid*  grid, Field*  field_src, Field*  field_trg);
 
     /**
      * @brief applies the magic of the stencil on the field_src, in the dimension ida_ only! (inner computation or outer computation depending on is_outer)
@@ -48,7 +48,7 @@ class Stencil : public BlockOperator {
      * @param fid_src the source field, only its dimension ida_ should be used
      * @param fid_trg the target field where all dimensions can be filled
      */
-    virtual void DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const = 0;
+    virtual void DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const = 0;
 };
 
 #endif  // SRC_OPERATOR_STENCIL_HPP_

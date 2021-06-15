@@ -21,19 +21,19 @@ class SetValue : public BlockOperator {
     real_t time_      = 0.0;
 
    public:
-    explicit SetValue(m_ptr<const Wavelet> interp);
+    explicit SetValue(const Wavelet*  interp);
 
     void SetTime(const real_t time) { time_ = time; }
 
-    void operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field);
-    void operator()(m_ptr<const ForestGrid> grid, m_ptr<Field> field, const lda_t ida);
+    void operator()(const ForestGrid*  grid, Field*  field);
+    void operator()(const ForestGrid*  grid, Field*  field, const lda_t ida);
 
     /**
      * @brief Fill the value within the 
      * 
      * @param qid with be nullptr as it shouldn't be used here
      */
-    virtual void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) = 0;
+    virtual void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) = 0;
 };
 
 //=====================================================================================================
@@ -45,11 +45,11 @@ class SetAbs : public SetValue {
     real_t center_[3] = {0, 0, 0};
     real_t alpha_[3]  = {0.0, 0.0, 0.0};
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetAbs(const real_t alpha[3], const real_t center[3]);
-    SetAbs(const real_t alpha[3], const real_t center[3], m_ptr<const Wavelet> interp);
+    SetAbs(const real_t alpha[3], const real_t center[3], const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -65,11 +65,11 @@ class SetSinus : public SetValue {
     real_t length_[3] = {0.0, 0.0, 0.0};
     real_t alpha_[3]  = {0.0, 0.0, 0.0};
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]);
-    SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], m_ptr<const Wavelet> interp);
+    SetSinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -85,11 +85,11 @@ class SetCosinus : public SetValue {
     real_t length_[3] = {0.0, 0.0, 0.0};
     real_t alpha_[3]  = {0.0, 0.0, 0.0};
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3]);
-    SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], m_ptr<const Wavelet> interp);
+    SetCosinus(const real_t length[3], const real_t freq[3], const real_t alpha[3], const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -103,11 +103,11 @@ class SetPolynom : public SetValue {
     real_t dir_[3]   = {0.0, 0.0, 0.0};  //!< the direction concerned: 1.0 means involved, 0.0 means not involved
     real_t shift_[3] = {0.0, 0.0, 0.0};
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3]);
-    SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], m_ptr<const Wavelet> interp);
+    SetPolynom(const lid_t degree[3], const real_t direction[3], const real_t shift[3], const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -120,11 +120,11 @@ class SetExponential : public SetValue {
     real_t sigma_[3]  = {0.0, 0.0, 0.0};
     real_t alpha_     = 1.0;
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, m_ptr<const Wavelet> interp);
+    SetExponential(const real_t center[3], const real_t sigma[3], const real_t alpha, const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -134,11 +134,11 @@ class SetErf : public SetValue {
     real_t sigma_[3]  = {0.0, 0.0, 0.0};
     real_t alpha_     = 1.0;
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha);
-    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, m_ptr<const Wavelet> interp);
+    SetErf(const real_t center[3], const real_t sigma[3], const real_t alpha, const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -149,11 +149,11 @@ class SetVortexRing : public SetValue {
     real_t radius_    = 0.0;              //!< the direction normal to the ring, i.e. the z direction
     real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius);
-    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, m_ptr<const Wavelet> interp);
+    SetVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -165,11 +165,11 @@ class SetCompactVortexRing : public SetValue {
     real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
     real_t cutoff_    = 0.0;              //!< the cutoff distance, i.e. the distance after which the gaussian is set to 0.0
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff);
-    SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, m_ptr<const Wavelet> interp);
+    SetCompactVortexRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t cutoff, const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -179,11 +179,11 @@ class SetABSVelocity : public SetValue {
     real_t b_ = 0.0;  //!< the direction normal to the ring, i.e. the z direction
     real_t c_ = 0.0;  //!< the direction normal to the ring, i.e. the z direction
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetABSVelocity(const real_t a, const real_t b, const real_t c);
-    SetABSVelocity(const real_t a, const real_t b, const real_t c, m_ptr<const Wavelet> interp);
+    SetABSVelocity(const real_t a, const real_t b, const real_t c, const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -195,11 +195,11 @@ class SetScalarRing : public SetValue {
     real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the ring
     real_t vel_[3]    = {0.0, 0.0, 0.0};  //!< advection velocity for the ring
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3]);
-    SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3], m_ptr<const Wavelet> interp);
+    SetScalarRing(const lda_t normal, const real_t center[3], const real_t sigma, const real_t radius, const real_t vel[3], const Wavelet*  interp);
 };
 
 //=====================================================================================================
@@ -210,11 +210,11 @@ class SetScalarTube : public SetValue {
     real_t b_         = 0.0;              //!< the distance between two tubes
     real_t center_[3] = {0.0, 0.0, 0.0};  //!< the center of the tube system
 
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override;
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override;
 
    public:
     SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b);
-    SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b, m_ptr<const Wavelet> interp);
+    SetScalarTube(const lda_t dir, const real_t center[3], const real_t sigma, const real_t b, const Wavelet*  interp);
 };
 
 #endif  // SRC_SETVALUES_HPP_

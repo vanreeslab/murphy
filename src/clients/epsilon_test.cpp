@@ -29,13 +29,13 @@ lambda_i3block_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bi
 
 class InitialCondition : public SetValue {
    protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
         //-------------------------------------------------------------------------
         // get the pointers correct
         real_t* data = block->data(fid, 0).Write();
 
         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block());
+            data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block);
         };
 
         for_loop(&op, start_, end_);
@@ -158,7 +158,7 @@ void EpsilonTest::Run() {
         // measure the error
         real_t normi;
         Error  error;
-        // error.Normi(&grid, &scal, m_ptr<const Field>(&sol), &normi);
+        // error.Normi(&grid, &scal, const Field* (&sol), &normi);
         error.Normi(&grid, &scal, &lambda_initcond, &normi);
 
         grid.DumpLevels(1, "data", string("w" + std::to_string(M_WAVELET_N) + std::to_string(M_WAVELET_NT)));

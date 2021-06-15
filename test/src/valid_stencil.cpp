@@ -110,7 +110,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
-            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_3 + il);
+            error.Normi(&grid, &dtest, &sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
         }
         if (do_weno_5) {
@@ -118,7 +118,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
-            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_5 + il);
+            error.Normi(&grid, &dtest, &sol, erri_adv_weno_5 + il);
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
     }
@@ -220,7 +220,7 @@ TEST_F(ValidStencilUniform, weno_periodic_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
-            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_3 + il);
+            error.Normi(&grid, &dtest, &sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
 
             // check the moment
@@ -236,7 +236,7 @@ TEST_F(ValidStencilUniform, weno_periodic_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
-            error.Normi(&grid, &dtest, m_ptr<const Field>(&sol), erri_adv_weno_5 + il);
+            error.Normi(&grid, &dtest, &sol, erri_adv_weno_5 + il);
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
 
             // check the moment

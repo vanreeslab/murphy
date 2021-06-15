@@ -202,7 +202,7 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
         real_t          err2 = 0.0;
         real_t          erri = 0.0;
         Error  error(grid_->interp());
-        error.Norms(grid_, vort_, m_ptr<const Field>(&anal), &err, &err2, &erri);
+        error.Norms(grid_, vort_, &anal, &err, &err2, &erri);
 
         // I/O the error field
         if (dump_error_) {

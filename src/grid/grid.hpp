@@ -29,7 +29,7 @@
  */
 class Grid : public ForestGrid {
    protected:
-    std::map<std::string, m_ptr<Field> > fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::map<std::string, Field*  > fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
     Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -51,7 +51,7 @@ class Grid : public ForestGrid {
 
    public:
     explicit Grid();
-    Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, const m_ptr<Prof>& prof);
+    Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const  prof);
     ~Grid();
 
     size_t LocalMemSize() const;
@@ -67,13 +67,12 @@ class Grid : public ForestGrid {
 
     bool HasProfiler() { return prof_ == nullptr; }
 
-    void CopyFrom(m_ptr<const Grid> grid);
+    void CopyFrom(const Grid*  grid);
     void SetupMeshGhost();
     void DestroyMeshGhost();
 
     void SetupAdapt();
     void DestroyAdapt();
-
 
     /**
      * @name Fields management
@@ -85,10 +84,10 @@ class Grid : public ForestGrid {
     auto FieldBegin() const { return fields_.cbegin(); }
     auto FieldEnd() const { return fields_.cend(); }
 
-    bool IsAField(m_ptr<const Field> field) const;
-    void AddField(m_ptr<Field> field);
-    void DeleteField(m_ptr<const Field> field);
-    void ResetFields(m_ptr<const std::map<std::string, m_ptr<Field> > > fields);
+    bool IsAField(const Field* field) const;
+    void AddField(Field* field);
+    void DeleteField(const Field* field);
+    void ResetFields(const std::map<std::string, Field*>* fields);
 
     /**@}*/
 
@@ -105,9 +104,9 @@ class Grid : public ForestGrid {
         m_assert(interp_ != nullptr, "interp cannot be null");
         return interp_->nghost_back();
     }
-    void GhostPull(m_ptr<Field> field) const;
-    void GhostPull_Post(m_ptr<const Field> field, const sid_t ida) const;
-    void GhostPull_Wait(m_ptr<const Field> field, const sid_t ida) const;
+    void GhostPull(Field*  field) const;
+    void GhostPull_Post(const Field*  field, const sid_t ida) const;
+    void GhostPull_Wait(const Field*  field, const sid_t ida) const;
     /**@}*/
 
     /**
@@ -128,16 +127,16 @@ class Grid : public ForestGrid {
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
-    void Refine(m_ptr<Field> field);
-    void Coarsen(m_ptr<Field> field);
-    void StoreDetails(m_ptr<Field> criterion, m_ptr<Field> details);
+    void Refine(Field*  field);
+    void Coarsen(Field*  field);
+    void StoreDetails(Field*  criterion, Field*  details);
 
-    void Adapt(m_ptr<Field> field);
-    void Adapt(m_ptr<Field> field, m_ptr<SetValue> expression);
-    void Adapt(m_ptr<std::list<Patch> > patches);
+    void Adapt(Field*  field);
+    void Adapt(Field*  field, SetValue*  expression);
+    void Adapt(std::list<Patch>* patches);
 
-    // void AdaptMagic(m_ptr<Field> field, m_ptr<list<Patch> > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);
-    void AdaptMagic(/* criterion */ m_ptr<Field> field_detail, m_ptr<std::list<Patch> > patches,
+    // void AdaptMagic(Field*  field, list<Patch*  > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);
+    void AdaptMagic(/* criterion */ Field*  field_detail, std::list<Patch>* patches,
                     /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
                     /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr);
 

@@ -11,9 +11,9 @@
  * 
  * @param grid 
  */
-RK3_TVD::RK3_TVD(m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof) {
+RK3_TVD::RK3_TVD(Grid*  grid, Field*  state, RKFunctor*  f, Prof*  prof) {
     m_begin;
-    m_assert(!grid.IsEmpty(), "the grid cannot be null");
+    m_assert(!(grid == nullptr), "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
     //-------------------------------------------------------------------------
     grid_    = grid;
@@ -71,59 +71,59 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
     Dscale scale;
     Daxpy  daxpy;
 
-    m_profStart(prof_(), "rk3");
+    m_profStart(prof_, "rk3");
     //................................................
     // step 1
     // y1 = f(u)
-    m_profStart(prof_(), "rhs");
+    m_profStart(prof_, "rhs");
     f_->RhsSet(grid_, *time, field_u_, field_y1_);
-    m_profStop(prof_(), "rhs");
+    m_profStop(prof_, "rhs");
 
     // y1 = dt*y1 + u -> y1 = u + dt * f(u)
-    m_profStart(prof_(), "update y1");
+    m_profStart(prof_, "update y1");
     daxpy(grid_, dt, field_y1_, field_u_, field_y1_);
-    m_profStop(prof_(), "update y1");
+    m_profStop(prof_, "update y1");
 
     //................................................
     // step 2
     // y2 = f(y1)
-    m_profStart(prof_(), "rhs");
+    m_profStart(prof_, "rhs");
     f_->RhsSet(grid_, *time + dt, field_y1_, field_y2_);
-    m_profStop(prof_(), "rhs");
+    m_profStop(prof_, "rhs");
 
     // y2 = y2 * 1/4 * dt
-    m_profStart(prof_(), "scale");
-    scale(grid_(), 1.0 / 4.0 * dt, field_y2_);
-    m_profStop(prof_(), "scale");
+    m_profStart(prof_, "scale");
+    scale(grid_, 1.0 / 4.0 * dt, field_y2_);
+    m_profStop(prof_, "scale");
 
     // y2 = y2 + 1/4 * y1 + 3/4 * u -> y2 = 3/4*u + 1/4*(y1 + dt * f(y1))
-    m_profStart(prof_(), "update");
+    m_profStart(prof_, "update");
     daxpy(grid_, 1.0 / 4.0, field_y1_, field_y2_, field_y2_);
     daxpy(grid_, 3.0 / 4.0, field_u_, field_y2_, field_y2_);
-    m_profStop(prof_(), "update");
+    m_profStop(prof_, "update");
 
     //................................................
     // step 3
     // y1 = y1 + f(y2) = f(y2)
-    m_profStart(prof_(), "rhs");
+    m_profStart(prof_, "rhs");
     f_->RhsSet(grid_, *time + 0.5 * dt, field_y2_, field_y1_);
-    m_profStop(prof_(), "rhs");
+    m_profStop(prof_, "rhs");
 
     // u = u * 1/3
-    m_profStart(prof_(), "scale");
-    scale(grid_(), 1.0 / 3.0, field_u_);
-    m_profStop(prof_(), "scale");
+    m_profStart(prof_, "scale");
+    scale(grid_, 1.0 / 3.0, field_u_);
+    m_profStop(prof_, "scale");
 
     // u = u + 2/3 * y2 + 2/3 * dt * y1 -> u = 1/3 u + 2/3 * (y2 + dt * f(y2))
-    m_profStart(prof_(), "update");
+    m_profStart(prof_, "update");
     daxpy(grid_, 2.0 / 3.0, field_y2_, field_u_, field_u_);
     daxpy(grid_, 2.0 / 3.0 * dt, field_y1_, field_u_, field_u_);
-    m_profStop(prof_(), "update");
+    m_profStop(prof_, "update");
 
     //................................................
     (*time) += dt;
 
-    m_profStop(prof_(), "rk3");
+    m_profStop(prof_, "rk3");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -133,7 +133,7 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) {
  * 
  * @return real_t 
  */
-real_t RK3_TVD::ComputeDt(m_ptr<const RKFunctor> rhs, m_ptr<const Field> velocity) const {
+real_t RK3_TVD::ComputeDt(const RKFunctor*  rhs, const Field*  velocity) const {
     m_begin;
     //-------------------------------------------------------------------------
     // get the max velocity and the finest h

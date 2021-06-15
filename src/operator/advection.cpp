@@ -92,7 +92,7 @@ static void DoMagic_WENOZ(/* flux weno */ const lambda_flux_weno_z_t* flux_weno,
  * @param fid_trg 
  */
 template <>
-void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const {
     m_assert(u_->ghost_status(), "the ghost values of the velocity must be known!");
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
@@ -158,7 +158,7 @@ void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> bl
 }
 
 template <>
-void Advection<M_WENO_Z, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const {
     m_assert(u_->ghost_status(), "the ghost values of the velocity must be known!");
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
