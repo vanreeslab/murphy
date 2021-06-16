@@ -13,7 +13,7 @@
 	"settings": {
 		"telemetry.enableTelemetry": false,
 		"clang-tidy.checks": [
-			"mpi-*,openmp-*,google-*,performance-*,modernize-*,readability-*,misc-*,clang-analyzer-*"
+			"mpi-*,openmp-*,google-*,performance-*,modernize-*,readability-*,misc-*,clang-analyzer-*,-modernize-avoid-c-arrays"
 		]
 	},
 	// Add the IDs of extensions you want installed when the container is created.
