@@ -91,7 +91,7 @@ Grid::~Grid() {
     DestroyMeshGhost();
     // destroy the remaining blocks
     if (is_connect_owned_) {
-        p8est_iterate(p4est_forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
+        p8est_iterate(p4est_forest_, nullptr, nullptr, cback_DestroyBlock, nullptr, nullptr, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -164,7 +164,7 @@ size_t Grid::LocalMemSize() const {
     memsize += sizeof(prof_);
     // memsize += ghost_->LocalMemSize();
     // memsize += interp_->LocalMemSize();
-    for (auto& fid : fields_) {
+    for (const auto& fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
     //-------------------------------------------------------------------------
@@ -357,8 +357,8 @@ void Grid::Refine(Field*  field) {
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        Field*  cur_field = fid->second;
+    for (auto & fid: fields_) {
+        Field*  cur_field = fid.second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field);
         }
@@ -382,8 +382,8 @@ void Grid::Coarsen(Field*  field) {
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        Field*  cur_field = fid->second;
+    for (auto & fid: fields_) {
+        Field*  cur_field = fid.second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field);
         }
@@ -407,8 +407,8 @@ void Grid::Adapt(Field*  field) {
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        Field*  cur_field = fid->second;
+    for (auto & fid: fields_) {
+        Field*  cur_field = fid.second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field);
         }
@@ -461,7 +461,7 @@ void Grid::Adapt(Field*  field, SetValue*  expression) {
 void Grid::Adapt(list<Patch>* patches) {
     m_begin;
     //-------------------------------------------------------------------------
-    if (patches->size() == 0) {
+    if (patches->empty()) {
         return;
     }
     AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
@@ -488,9 +488,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
                       /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr) {
     m_begin;
     m_assert(interpolate_fct != nullptr, "the interpolation function cannot be a nullptr");
-    m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
-    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
-    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  nullptr");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
     // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
@@ -556,7 +556,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // The limit in levels are handled directly on the block, not in p4est
         if (coarsen_cback != nullptr) {
             m_profStart(prof_, "p4est coarsen");
-            p8est_coarsen_ext(p4est_forest_, false, 0, coarsen_cback, nullptr, interpolate_fct);
+            p8est_coarsen_ext(p4est_forest_, 0, 0, coarsen_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est coarsen");
             m_log("coarsen is done");
         }
@@ -564,7 +564,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // The limit in levels are handled directly on the block, not in p4est
         if (refine_cback != nullptr) {
             m_profStart(prof_, "p4est refine");
-            p8est_refine_ext(p4est_forest_, false, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
+            p8est_refine_ext(p4est_forest_, 0, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est refine");
             m_log("refine is done");
         }
@@ -616,29 +616,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     } while (global_n_quad_to_adapt > 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
 
     //................................................
-    // // exchange the status
-    // // ExchangeStatus_PostStart_();
-
-    // // Solve the dependencies if some have been created -> no dep created if we are recursive
-    // // this is check in the callback UpdateDependency function
-    // if (!recursive_adapt()) {
-
-    //     // we need to process
-    // } else {
-    //     m_log("no depency solving as we were recursivelly refining");
-    // }
-
-    // //................................................
-    // // finally fix the rank partition
-    // m_profStart(prof_, "partition init");
-    // Partitioner partition(&fields_, this, true);
-    // m_profStop(prof_, "partition init");
-    // m_profStart(prof_, "partition comm");
-    // partition.Start(&fields_, M_FORWARD);
-    // partition.End(&fields_, M_FORWARD);
-    // m_profStop(prof_, "partition comm");
-
-    //................................................
     // set the ghosting fields as non-valid
     for (auto& fid : fields_) {
         fid.second->ghost_status(false);
@@ -656,9 +633,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // and finally end that stuff
     m_profStop(prof_, "adaptation");
     //-------------------------------------------------------------------------
-    m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  null");
-    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  null");
-    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to null");
+    m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  nullptr");
+    m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
+    m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     const level_t min_level   = this->MinLevel();
     const level_t max_level   = this->MaxLevel();
     const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * CartBlockMemNum(1) * sizeof(real_t)/1.0e+9;
@@ -683,39 +660,3 @@ void Grid::StoreDetails(Field*  criterion, Field*  details) {
     //-------------------------------------------------------------------------
     m_end;
 }
-
-// /**
-//  * @brief Compute the wavelet transform of a current block and it's refinement/coarsening status
-//  *
-//  * a block is refined if needed
-//  * a block is coarsened if possible and if none of its finer neighbors are coarsened
-//  *
-//  * @param field
-//  */
-// void Grid::ExchangeStatus_PostStart_() const {
-//     // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
-//     // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
-//     // m_assert(ghost_ != nullptr, "the ghost must exist");
-//     // m_assert(ghost_->mirror_origin_group() != MPI_GROUP_NULL, "call the InitComm function first!");
-//     // m_assert(ghost_->mirror_target_group() != MPI_GROUP_NULL, "call the InitComm function first!");
-//     // // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
-//     // //-------------------------------------------------------------------------
-
-//     //-------------------------------------------------------------------------
-// }
-// void Grid::ExchangeStatus_CompleteWait_() const {
-//     // m_assert(coarsen_status_ != nullptr, "we need the ghosting to be alive");
-//     // m_assert(coarsen_status_window_ != MPI_WIN_NULL, "the window cannot be null");
-//     // m_assert(ghost_ != nullptr, "the ghost must exist");
-//     // m_assert(ghost_ != nullptr, "we need the ghosting to be alive");
-//     // m_assert(field->ghost_status(), "the field <%s> must have up to date ghost values", field->name().c_str());
-//     //-------------------------------------------------------------------------
-//     // // close the access epochs
-//     // if (ghost_->mirror_target_group() != MPI_GROUP_EMPTY) {
-//     //     MPI_Win_complete(coarsen_status_window_);
-//     // }
-//     // // close the exposure epochs
-//     // MPI_Win_wait(coarsen_status_window_);
-
-//     //-------------------------------------------------------------------------
-// }
