@@ -19,10 +19,10 @@ class Dset : public BlockOperator {
 
    public:
     explicit Dset();
-    explicit Dset(m_ptr<const Wavelet> interp);
+    explicit Dset(const Wavelet*  interp);
 
-    void operator()(m_ptr<const ForestGrid> grid, const real_t value, m_ptr<Field> fid_x);
-    void ComputeDsetGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock> block, m_ptr<Field> fid_x);
+    void operator()(const ForestGrid*  grid, const real_t value, Field*  fid_x);
+    void ComputeDsetGridBlock(const qid_t*  qid, const GridBlock*  block, Field*  fid_x);
 };
 
 /**
@@ -34,10 +34,10 @@ class Dset : public BlockOperator {
 class Dcopy : public BlockOperator {
    public:
     explicit Dcopy();
-    explicit Dcopy(m_ptr<const Wavelet> interp);
+    explicit Dcopy(const Wavelet*  interp);
 
-    void operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, m_ptr<Field> fid_y);
-    void ComputeDcopyGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x, m_ptr<Field> fid_y);
+    void operator()(const ForestGrid*  grid, const Field*  fid_x, Field*  fid_y);
+    void ComputeDcopyGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x, Field*  fid_y);
 };
 
 /**
@@ -52,10 +52,10 @@ class Daxpy : public BlockOperator {
 
    public:
     explicit Daxpy();
-    explicit Daxpy(m_ptr<const Wavelet> interp);
+    explicit Daxpy(const Wavelet*  interp);
 
-    void operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<const Field> fid_x, m_ptr<const Field> fid_y, m_ptr<Field> fid_z);
-    void ComputeDaxpyGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock> block, m_ptr<const Field> fid_x, m_ptr<const Field> fid_y, m_ptr<Field> fid_z) ;
+    void operator()(const ForestGrid*  grid, const real_t alpha, const Field*  fid_x, const Field*  fid_y, Field*  fid_z);
+    void ComputeDaxpyGridBlock(const qid_t*  qid, const GridBlock*  block, const Field*  fid_x, const Field*  fid_y, Field*  fid_z) ;
 };
 
 /**
@@ -70,10 +70,10 @@ class Dscale : public BlockOperator {
 
    public:
     explicit Dscale();
-    explicit Dscale(m_ptr<const Wavelet> interp);
+    explicit Dscale(const Wavelet*  interp);
 
-    void operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<Field> fid_x);
-    void ComputeDscaleGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid_x);
+    void operator()(const ForestGrid*  grid, const real_t alpha, Field*  fid_x);
+    void ComputeDscaleGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid_x);
 };
 
 #endif  // SRC_BLAS_HPP_

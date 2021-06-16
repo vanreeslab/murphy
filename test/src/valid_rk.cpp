@@ -27,7 +27,7 @@ class RKRhs : public RKFunctor, public SetValue {
     real_t time_      = 0.0;
 
    public:
-    RKRhs(const real_t center[3], const real_t sigma[3], const real_t alpha, const lda_t ida, m_ptr<const Wavelet> interp) : SetValue(interp) {
+    RKRhs(const real_t center[3], const real_t sigma[3], const real_t alpha, const lda_t ida, const Wavelet*  interp) : SetValue(interp) {
         m_begin;
         m_assert(0 <= ida && ida <= 2, "the direction must be in [0,3[");
         //-------------------------------------------------------------------------
@@ -45,7 +45,7 @@ class RKRhs : public RKFunctor, public SetValue {
     real_t cfl_rk3() const override { return 1.0; }
     real_t rdiff() const override { return 1.0; }
 
-    void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
+    void RhsSet(const Grid*  grid, const real_t time, Field*  field_u, Field*  field_y) override {
         accumulate_ = false;
         time_       = time;
         m_log("time is now %e, evaluate the rhs with ida = %d", time_, ida_);
@@ -53,7 +53,7 @@ class RKRhs : public RKFunctor, public SetValue {
         SetValue::operator()(grid, field_y);
         accumulate_ = false;
     };
-    void RhsAcc(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
+    void RhsAcc(const Grid*  grid, const real_t time, Field*  field_u, Field*  field_y) override {
         accumulate_ = true;
         time_       = time;
         SetValue::operator()(grid, field_y);
@@ -61,7 +61,7 @@ class RKRhs : public RKFunctor, public SetValue {
     };
 
    protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
         //-------------------------------------------------------------------------
         real_t        pos[3];
         const real_t* xyz   = block->xyz();
@@ -79,7 +79,7 @@ class RKRhs : public RKFunctor, public SetValue {
 
         data_ptr block_data = block->data(fid);
         for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-            real_t* data = block_data.Write(ida, block());
+            real_t* data = block_data.Write(ida, block);
             for (lid_t i2 = start_; i2 < end_; i2++) {
                 for (lid_t i1 = start_; i1 < end_; i1++) {
                     for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -191,7 +191,7 @@ TEST_F(valid_RK, rk3_tvd) {
 
         // compute the error
         Error error;
-        error.Normi(&grid, &phi, m_ptr<const Field>(&sol), erri_tvd + id);
+        error.Normi(&grid, &phi, &sol, erri_tvd + id);
         m_log("RK3 - TVD: checking iter_max = %d, ei = %e", iter_max, erri_tvd[id]);
 
         // check the min and max

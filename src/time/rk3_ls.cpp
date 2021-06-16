@@ -8,9 +8,9 @@
  * 
  * @param grid 
  */
-RK3_LS::RK3_LS(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof) {
+RK3_LS::RK3_LS(const real_t c2, Grid*  grid, Field*  state, RKFunctor*  f, Prof*  prof) {
     m_begin;
-    m_assert(!grid.IsEmpty(), "the grid cannot be null");
+    m_assert(!(grid == nullptr), "the grid cannot be null");
     m_assert(grid->IsAField(state), "the field must be part of the grid");
     //-------------------------------------------------------------------------
     grid_    = grid;
@@ -78,39 +78,39 @@ void RK3_LS::DoDt(const real_t dt, real_t* time) {
     Dscale scale;
     Daxpy  daxpy;
 
-    m_profStart(prof_(), "rk3");
+    m_profStart(prof_, "rk3");
     //................................................
     // step 1
-    m_profStart(prof_(), "reset");
-    reset(grid_(), 0.0, field_y_);
-    m_profStop(prof_(), "reset");
+    m_profStart(prof_, "reset");
+    reset(grid_, 0.0, field_y_);
+    m_profStop(prof_, "reset");
 
-    m_profStart(prof_(), "rhs");
+    m_profStart(prof_, "rhs");
     f_->RhsAcc(grid_, *time, field_u_, field_y_);
-    m_profStop(prof_(), "rhs");
+    m_profStop(prof_, "rhs");
 
     // update the u
-    m_profStart(prof_(), "update");
+    m_profStart(prof_, "update");
     daxpy(grid_, b1_ * dt, field_y_, field_u_, field_u_);
-    m_profStop(prof_(), "update");
+    m_profStop(prof_, "update");
 
     // udpate time
     (*time) += t1_ * dt;
 
     //................................................
     // step 2
-    m_profStart(prof_(), "scale");
-    scale(grid_(), a2_, field_y_);
-    m_profStop(prof_(), "scale");
+    m_profStart(prof_, "scale");
+    scale(grid_, a2_, field_y_);
+    m_profStop(prof_, "scale");
 
-    m_profStart(prof_(), "rhs");
+    m_profStart(prof_, "rhs");
     f_->RhsAcc(grid_, *time, field_u_, field_y_);
-    m_profStop(prof_(), "rhs");
+    m_profStop(prof_, "rhs");
 
     // update the u
-    m_profStart(prof_(), "update");
+    m_profStart(prof_, "update");
     daxpy(grid_, b2_ * dt, field_y_, field_u_, field_u_);
-    m_profStop(prof_(), "update");
+    m_profStop(prof_, "update");
 
     // time update
     (*time) += t2_ * dt;
@@ -118,23 +118,23 @@ void RK3_LS::DoDt(const real_t dt, real_t* time) {
     //................................................
     // step 3
     // update the y using the stencil operator
-    m_profStart(prof_(), "scale");
-    scale(grid_(), a3_, field_y_);
-    m_profStop(prof_(), "scale");
+    m_profStart(prof_, "scale");
+    scale(grid_, a3_, field_y_);
+    m_profStop(prof_, "scale");
 
-    m_profStart(prof_(), "rhs");
+    m_profStart(prof_, "rhs");
     f_->RhsAcc(grid_, *time, field_u_, field_y_);
-    m_profStop(prof_(), "rhs");
+    m_profStop(prof_, "rhs");
 
     // update the u
-    m_profStart(prof_(), "update");
+    m_profStart(prof_, "update");
     daxpy(grid_, b3_ * dt, field_y_, field_u_, field_u_);
-    m_profStop(prof_(), "update");
+    m_profStop(prof_, "update");
 
     // udpate time
     (*time) += t3_ * dt;
 
-    m_profStop(prof_(), "rk3");
+    m_profStop(prof_, "rk3");
     //-------------------------------------------------------------------------
     m_end;
 }

@@ -84,14 +84,14 @@ GridBlock::~GridBlock() {
  * - if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
  * 
  */
-void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
-                                          /* prof */ m_ptr<Prof> profiler) {
+void GridBlock::UpdateStatusFromCriterion(/* params */ const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion,
+                                          /* prof */ Prof*  profiler) {
     //-------------------------------------------------------------------------
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
     m_assert(field_citerion->ghost_status(), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
     //-------------------------------------------------------------------------
-    m_profStart(profiler(), "criterion detail");
+    m_profStart(profiler, "criterion detail");
 
     // prevent coarsening if we have finer neighbors
     const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
@@ -111,7 +111,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
         if (refine) {
             status_lvl_ = M_ADAPT_FINER;
             // finito
-            m_profStop(profiler(), "criterion detail");
+            m_profStop(profiler, "criterion detail");
             return;
         }
         // if one dimension is preventing the coarsening, register
@@ -121,14 +121,14 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> inte
     // also make sure that we can coarsen!
     status_lvl_ = (coarsen) ? M_ADAPT_COARSER : M_ADAPT_SAME;
     // register the coarsening
-    m_profStop(profiler(), "criterion detail");
+    m_profStop(profiler, "criterion detail");
     m_assert(status_lvl_ != M_ADAPT_NONE, "the status of the block cannot be NONE");
     return;
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
-                                        /* prof */ m_ptr<Prof> profiler) {
+void GridBlock::UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
+                                        /* prof */ Prof* profiler) {
     //-------------------------------------------------------------------------
     m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
     //-------------------------------------------------------------------------
@@ -141,8 +141,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp
     real_t len = p4est_QuadLen(this->level());
 
     // loop over the patches and determine if I am in it or not
-    for (auto iter = patch_list->begin(); iter != patch_list->end(); ++iter) {
-        Patch* patch = &(*iter);
+    for (auto patch = patch_list->begin(); patch != patch_list->end(); ++patch) {
 
         // if we already have the correct level or a higher one, we skip the patch
         if (this->level() > patch->level()) {
@@ -221,7 +220,7 @@ void GridBlock::UpdateStatusFromPolicy() {
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler) {
+void GridBlock::FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler) {
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     m_assert(status_lvl_ == 0, "trying to update a status which is already updated");
     m_assert(field_citerion->ghost_status(), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
@@ -261,7 +260,7 @@ void GridBlock::FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, 
  * @param qid 
  * @param coarsen_vec 
  */
-void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const {
+void GridBlock::SetNewByCoarsening(const qid_t*  qid, short_t* const  coarsen_vec) const {
     // m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE,"the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
     //-------------------------------------------------------------------------
     coarsen_vec[qid->cid] = (short_t)status_lvl_;
@@ -273,7 +272,7 @@ void GridBlock::SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> 
  * 
  * allocate the @ref status_siblings_neighbors_ array, which will be destroyed in the @ref SolveNeighbor function.
  */
-void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> status_vec, MPI_Win status_window) {
+void GridBlock::GetNewByCoarseningFromNeighbors(const short_t* const  status_vec, MPI_Win status_window) {
     //-------------------------------------------------------------------------
     // get the number of status to obtain
     iblock_t nblocks = (local_parent_.size() + ghost_parent_.size());
@@ -300,7 +299,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> statu
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+void GridBlock::SmoothResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler) {
     // the status level has to be 0, otherwise it means that one of the block is not coarsened
     m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE, "the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
     //-------------------------------------------------------------------------
@@ -403,7 +402,7 @@ void GridBlock::SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::
  * @param field_end 
  * @param profiler 
  */
-void GridBlock::ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+void GridBlock::ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler) {
     // //-------------------------------------------------------------------------
     // // reset the temp memory to 0.0
     // memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
@@ -481,7 +480,7 @@ void GridBlock::ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::s
  * @param criterion the criterion field
  * @param details the detail field with the compute detail values
  */
-void GridBlock::StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details) {
+void GridBlock::StoreDetails(const Wavelet*  interp, const Field*  criterion, const Field*  details) {
     m_assert(criterion->ghost_status(), "the field <%s> must have up-to-date ghosts", criterion->name().c_str());
     m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
     //-------------------------------------------------------------------------
@@ -499,9 +498,9 @@ void GridBlock::StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> cri
  * @param field_start the first field to take into account
  * @param field_end the last field to take into account
  */
-void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler) {
+void GridBlock::SolveDependency(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler) {
     m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
-    m_profStart(profiler(), "solve dependency");
+    m_profStart(profiler, "solve dependency");
     //-------------------------------------------------------------------------
     if (n_dependency_active_ == 1) {  // this is REFINEMENT
         // if I get only one dependency, I am a child and I need refinement from my parent
@@ -592,7 +591,7 @@ void GridBlock::SolveDependency(m_ptr<const Wavelet> interp, std::map<std::strin
     } else {
         // we don't refine or coarsen so we compute the Inverse Wavelet Transform
     }
-    m_profStop(profiler(), "solve dependency");
+    m_profStop(profiler, "solve dependency");
     //-------------------------------------------------------------------------
 }
 
@@ -636,7 +635,7 @@ void GridBlock::PushDependency(const sid_t child_id, GridBlock* dependent_block)
  * @param interp the wavelet to use (for coarse ghost sizes etc)
  * @param local2disp_window the displacement information for RMA
  */
-void GridBlock::GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> grid, m_ptr<const Wavelet> interp, MPI_Win local2disp_window) {
+void GridBlock::GhostInitLists(const qid_t*  qid, const ForestGrid*  grid, const Wavelet*  interp, MPI_Win local2disp_window) {
     //-------------------------------------------------------------------------
     // allocate the ghost pointer, which is reused for the wavelets smoothing
     // size_t alloc_size = m_max(interp->CoarseSize(), m_blockmemsize(1));
@@ -924,7 +923,7 @@ void GridBlock::GhostFreeLists() {
  * @param interp the wavelet
  * @param mirrors_window the window where to find the mirrors
  */
-void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
+void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavelet*  interp) {
     //-------------------------------------------------------------------------
     // get the siblings
     {
@@ -981,7 +980,7 @@ void GridBlock::GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<c
  * @param interp 
  * @param mirrors_window 
  */
-void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window) {
+void GridBlock::GhostGet_Post(const Field*  field, const lda_t ida, const Wavelet*  interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     // get the siblings
     {
@@ -1046,7 +1045,7 @@ void GridBlock::GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
  * @param ida 
  * @param interp 
  */
-void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
+void GridBlock::GhostGet_Wait(const Field*  field, const lda_t ida, const Wavelet*  interp) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
@@ -1126,7 +1125,7 @@ void GridBlock::GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<c
  * @param interp 
  * @param mirrors_window 
  */
-void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window) {
+void GridBlock::GhostPut_Post(const Field*  field, const lda_t ida, const Wavelet*  interp, MPI_Win mirrors_window) {
     //-------------------------------------------------------------------------
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
@@ -1252,7 +1251,7 @@ void GridBlock::GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<c
  * @param ida 
  * @param interp 
  */
-void GridBlock::GhostPut_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp) {
+void GridBlock::GhostPut_Wait(const Field*  field, const lda_t ida, const Wavelet*  interp) {
     //-------------------------------------------------------------------------
     data_ptr data_trg = data(field, ida);
     // m_log("apply bc for block @ %f %f %f", xyz(0), xyz(1), xyz(2));

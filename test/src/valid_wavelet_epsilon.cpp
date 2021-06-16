@@ -14,7 +14,7 @@
 
 class InitCond_Epsilon : public SetValue {
    protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
         //-------------------------------------------------------------------------
         real_t        pos[3];
         const real_t* xyz   = block->xyz();
@@ -143,7 +143,7 @@ TEST_P(Epsilon, periodic) {
     // measure the error
     real_t normi;
     Error  error;
-    error.Normi(&grid, &scal, m_ptr<const Field>(&sol), &normi);
+    error.Normi(&grid, &scal, &sol, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
     // measure the moments
@@ -260,7 +260,7 @@ TEST_P(Epsilon, extrap) {
     // measure the error
     real_t normi;
     Error  error;
-    error.Normi(&grid, &scal, m_ptr<const Field>(&sol), &normi);
+    error.Normi(&grid, &scal, &sol, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
     // measure the moments

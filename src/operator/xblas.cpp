@@ -3,9 +3,9 @@
 
 //-----------------------------------------------------------------------------
 BMax::BMax()noexcept : BlockOperator(nullptr){};
-BMax::BMax(m_ptr<const Wavelet> interp)noexcept : BlockOperator(interp){};
+BMax::BMax(const Wavelet*  interp)noexcept : BlockOperator(interp){};
 
-real_t BMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) {
+real_t BMax::operator()(const ForestGrid*  grid, const Field*  fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
     max_ = 0.0;  //std::numeric_limits<real_t>::min();
@@ -20,7 +20,7 @@ real_t BMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x) 
     return max_global;
 }
 
-void BMax::ComputeBMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+void BMax::ComputeBMaxGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
     //-------------------------------------------------------------------------
     // get the data for each direction
     for (sid_t ida = 0; ida < fid_x->lda(); ida++) {
@@ -41,12 +41,12 @@ void BMax::ComputeBMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, 
 
 //-----------------------------------------------------------------------------
 BMinMax::BMinMax() noexcept : BlockOperator(nullptr){};
-BMinMax::BMinMax(m_ptr<const Wavelet> interp) noexcept : BlockOperator(interp){};
+BMinMax::BMinMax(const Wavelet*  interp) noexcept : BlockOperator(interp){};
 
 /**
  * @brief compute the min and the max of fid_x dimension per dimension and store them in min and max (must have the dimension size)
  */
-void BMinMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, real_t* min, real_t* max) {
+void BMinMax::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* min, real_t* max) {
     m_begin;
     //-------------------------------------------------------------------------
     // go on the blocks, for each dim separately
@@ -67,7 +67,7 @@ void BMinMax::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x,
     m_end;
 }
 
-void BMinMax::ComputeBMinMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+void BMinMax::ComputeBMinMaxGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
     //-------------------------------------------------------------------------
     const real_t* data_x = block->data(fid_x, ida_).Read();
     m_assume_aligned(data_x);
@@ -86,7 +86,7 @@ void BMinMax::ComputeBMinMaxGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
 
 //-----------------------------------------------------------------------------
 BMoment::BMoment() noexcept: BlockOperator(nullptr){};
-BMoment::BMoment(m_ptr<const Wavelet> interp) noexcept: BlockOperator(interp){};
+BMoment::BMoment(const Wavelet*  interp) noexcept: BlockOperator(interp){};
 
 /**
  * @brief compute the 0th and the first moment of the block
@@ -94,7 +94,7 @@ BMoment::BMoment(m_ptr<const Wavelet> interp) noexcept: BlockOperator(interp){};
  * @param moment0 the value of the 0th moment = integral (length = #lda of the field)
  * @param moment1 the vlaue of the 1st moments: m_x, m_y and m_z (length = 3 * #lda of the field)
  */
-void BMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, real_t* moment0, real_t* moment1) {
+void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* moment0, real_t* moment1) {
     m_begin;
     m_assert(fid_x->ghost_status(), "the field <%s> must be up to date", fid_x->name().c_str());
     //-------------------------------------------------------------------------
@@ -129,7 +129,7 @@ void BMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x,
  * @param block 
  * @param fid_x 
  */
-void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+void BMoment::ComputeBMomentGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
     m_assert(fid_x->ghost_status(), "the field <%s> must have uptodate ghosts", fid_x->name().c_str());
     //-------------------------------------------------------------------------
     // get the starting pointer:
@@ -170,12 +170,12 @@ void BMoment::ComputeBMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> b
 
 //-----------------------------------------------------------------------------
 BMean::BMean() noexcept : BlockOperator(nullptr){};
-BMean::BMean(m_ptr<const Wavelet> interp) noexcept : BlockOperator(interp){};
+BMean::BMean(const Wavelet*  interp) noexcept : BlockOperator(interp){};
 
 /**
  * @brief compute the sum of the values on the grid
  */
-void BMean::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, real_t* sum) {
+void BMean::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* sum) {
     m_begin;
     //-------------------------------------------------------------------------
     // reset the sum
@@ -203,7 +203,7 @@ void BMean::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, r
  * @param block 
  * @param fid_x 
  */
-void BMean::ComputeBMeanGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+void BMean::ComputeBMeanGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
     //-------------------------------------------------------------------------
     // get the starting pointer:
     const real_t* h    = block->hgrid();
@@ -221,7 +221,7 @@ void BMean::ComputeBMeanGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
 
 //-----------------------------------------------------------------------------
 BDiscreteMoment::BDiscreteMoment() noexcept : BlockOperator(nullptr){};
-BDiscreteMoment::BDiscreteMoment(m_ptr<const Wavelet> interp) noexcept : BlockOperator(interp){};
+BDiscreteMoment::BDiscreteMoment(const Wavelet*  interp) noexcept : BlockOperator(interp){};
 
 /**
  * @brief compute the 0th and the first moment of the block
@@ -229,7 +229,7 @@ BDiscreteMoment::BDiscreteMoment(m_ptr<const Wavelet> interp) noexcept : BlockOp
  * @param moment0 the value of the 0th moment = integral (length = #lda of the field)
  * @param moment1 the vlaue of the 1st moments: m_x, m_y and m_z (length = 3 * #lda of the field)
  */
-void BDiscreteMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, real_t* moment0, real_t* moment1) {
+void BDiscreteMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* moment0, real_t* moment1) {
     m_begin;
     //-------------------------------------------------------------------------
     // go on the blocks, for each dim separately
@@ -260,7 +260,7 @@ void BDiscreteMoment::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field
  * @param block 
  * @param fid_x 
  */
-void BDiscreteMoment::ComputeBDiscreteMomentGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x) {
+void BDiscreteMoment::ComputeBDiscreteMomentGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);
     //-------------------------------------------------------------------------
     // get the starting pointer:

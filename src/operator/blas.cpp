@@ -2,9 +2,9 @@
 
 //-----------------------------------------------------------------------------
 Dset::Dset() : BlockOperator(nullptr){};
-Dset::Dset(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
+Dset::Dset(const Wavelet*  interp) : BlockOperator(interp){};
 
-void Dset::operator()(m_ptr<const ForestGrid> grid, const real_t value, m_ptr<Field> fid_x) {
+void Dset::operator()(const ForestGrid*  grid, const real_t value, Field*  fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
     value_ = value;
@@ -16,7 +16,7 @@ void Dset::operator()(m_ptr<const ForestGrid> grid, const real_t value, m_ptr<Fi
     m_end;
 }
 
-void Dset::ComputeDsetGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock> block, m_ptr<Field> fid_x) {
+void Dset::ComputeDsetGridBlock(const qid_t*  qid, const GridBlock*  block, Field*  fid_x) {
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
     for (sid_t ida = 0; ida < lda; ida++) {
@@ -37,9 +37,9 @@ void Dset::ComputeDsetGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock> b
 
 //-----------------------------------------------------------------------------
 Dcopy::Dcopy() : BlockOperator(nullptr){};
-Dcopy::Dcopy(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
+Dcopy::Dcopy(const Wavelet*  interp) : BlockOperator(interp){};
 
-void Dcopy::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, m_ptr<Field> fid_y) {
+void Dcopy::operator()(const ForestGrid*  grid, const Field*  fid_x, Field*  fid_y) {
     m_begin;
     //-------------------------------------------------------------------------
     DoOpMesh(this, &Dcopy::ComputeDcopyGridBlock, grid, fid_x, fid_y);
@@ -49,7 +49,7 @@ void Dcopy::operator()(m_ptr<const ForestGrid> grid, m_ptr<const Field> fid_x, m
     m_end;
 }
 
-void Dcopy::ComputeDcopyGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid_x, m_ptr<Field> fid_y) {
+void Dcopy::ComputeDcopyGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x, Field*  fid_y) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
@@ -74,9 +74,9 @@ void Dcopy::ComputeDcopyGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block
 
 //-----------------------------------------------------------------------------
 Daxpy::Daxpy() : BlockOperator(nullptr){};
-Daxpy::Daxpy(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
+Daxpy::Daxpy(const Wavelet*  interp) : BlockOperator(interp){};
 
-void Daxpy::operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<const Field> fid_x, m_ptr<const Field> fid_y, m_ptr<Field> fid_z) {
+void Daxpy::operator()(const ForestGrid*  grid, const real_t alpha, const Field*  fid_x, const Field*  fid_y, Field*  fid_z) {
     m_begin;
     //-------------------------------------------------------------------------
     alpha_ = alpha;
@@ -88,7 +88,7 @@ void Daxpy::operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<c
     m_end;
 }
 
-void Daxpy::ComputeDaxpyGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock> block, m_ptr<const Field> fid_x, m_ptr<const Field> fid_y, m_ptr<Field> fid_z) {
+void Daxpy::ComputeDaxpyGridBlock(const qid_t*  qid, const GridBlock*  block, const Field*  fid_x, const Field*  fid_y, Field*  fid_z) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     m_assert(fid_y->lda() == fid_z->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
@@ -116,9 +116,9 @@ void Daxpy::ComputeDaxpyGridBlock(m_ptr<const qid_t> qid, m_ptr<const GridBlock>
 
 //-----------------------------------------------------------------------------
 Dscale::Dscale() : BlockOperator(nullptr){};
-Dscale::Dscale(m_ptr<const Wavelet> interp) : BlockOperator(interp){};
+Dscale::Dscale(const Wavelet*  interp) : BlockOperator(interp){};
 
-void Dscale::operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<Field> fid_x) {
+void Dscale::operator()(const ForestGrid*  grid, const real_t alpha, Field*  fid_x) {
     m_begin;
     //-------------------------------------------------------------------------
     alpha_ = alpha;
@@ -129,7 +129,7 @@ void Dscale::operator()(m_ptr<const ForestGrid> grid, const real_t alpha, m_ptr<
     m_end;
 }
 
-void Dscale::ComputeDscaleGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid_x) {
+void Dscale::ComputeDscaleGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid_x) {
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
     for (sid_t ida = 0; ida < lda; ida++) {

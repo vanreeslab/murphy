@@ -49,8 +49,8 @@ class Boundary {
      *                 f[0]   f[1]   f[2]     ...         f[2]    f[1]    f[0]
      * ```
      */
-    // virtual inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const = 0;
-    virtual inline real_t Stencil_(const m_ptr<const real_t>& xf, const m_ptr<const real_t>& f, const real_t xb, const real_t fb, const real_t xp) const = 0;
+    // virtual inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value) const = 0;
+    virtual inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const = 0;
 
     /**
      * @brief returns true if the border element of the block is overwritten
@@ -70,7 +70,7 @@ class Boundary {
      * @param gblock the ghost block where to apply it
      * @param data the data
      */
-    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const m_ptr<const SubBlock>& gblock, const data_ptr data) const {
+    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const  gblock, const data_ptr data) const {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
         // m_assert(block->stride() == gblock->stride(), "the two strides must be the same");
@@ -152,7 +152,7 @@ class Boundary {
 
 class ZeroBoundary : public Boundary<0> {
    protected:
-    inline real_t Stencil_(const m_ptr<const real_t>& xf, const m_ptr<const real_t>& f, const real_t xb, const real_t fb, const real_t xp) const override { return 0.0; };
+    inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const override { return 0.0; };
 };
 
 template <lda_t len>
@@ -197,8 +197,8 @@ class ExtrapBoundary : public Boundary<npoint> {
      * @param bc_value 
      * @return real_t 
      */
-    // inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value, const rea) const override {
-    inline real_t Stencil_(const m_ptr<const real_t>& xf, const m_ptr<const real_t>& f, const real_t xb, const real_t fb, const real_t xp) const override{
+    // inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value, const rea) const override {
+    inline real_t Stencil_(const real_t* const xf, const real_t* const f, const real_t xb, const real_t fb, const real_t xp) const override {
         //-------------------------------------------------------------------------
         constexpr lda_t len = npoint;
         // get the arrays
@@ -208,9 +208,9 @@ class ExtrapBoundary : public Boundary<npoint> {
 
         // m = 0
         for (lda_t id = 0; id < npoint; ++id) {
-            d[id] = f()[id];
-            c[id] = f()[id];
-            x[id] = xf()[id];
+            d[id] = f[id];
+            c[id] = f[id];
+            x[id] = xf[id];
         }
 
         // return the value
@@ -240,8 +240,8 @@ class DirichletBoundary : public Boundary<npoint> {
      * 
      * -> this one is easy, we know the value to use for the boundary
      */
-    // inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const override {
-    inline real_t Stencil_(const m_ptr<const real_t>& xf, const m_ptr<const real_t>& f, const real_t xb, const real_t fb, const real_t xp) const override{
+    // inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value) const override {
+    inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const override{
         m_assert(fb == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         //-------------------------------------------------------------------------
         constexpr lda_t len = npoint + 1;
@@ -257,9 +257,9 @@ class DirichletBoundary : public Boundary<npoint> {
         // set the rest of the vector
         for (lda_t id = 0; id < npoint; ++id) {
             // store the value
-            c[id + 1] = f()[id];
-            d[id + 1] = f()[id];
-            x[id + 1] = xf()[id];
+            c[id + 1] = f[id];
+            d[id + 1] = f[id];
+            x[id + 1] = xf[id];
         }
 
         // return the value
@@ -297,19 +297,19 @@ class NeumanBoundary : public Boundary<npoint> {
      * @param bc_value is the flux value COMING IN * hgrid !!!!
      * @return real_t 
      */
-    // inline real_t Stencil_(const m_ptr<const real_t>& f, const m_ptr<const real_t>& xf, const real_t xp, const real_t bc_value) const override {
-    inline real_t Stencil_(const m_ptr<const real_t>& xf, const m_ptr<const real_t>& f, const real_t xb, const real_t fb, const real_t xp) const override {
+    // inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value) const override {
+    inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const override {
         m_assert(fb == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         //-------------------------------------------------------------------------
 
         // get the correct
         real_t f0_value;
         if constexpr (npoint == 1) {
-            f0_value = (fb - (1.0 * f()[0])) * (-1.0);
+            f0_value = (fb - (1.0 * f[0])) * (-1.0);
         } else if (npoint == 3) {
-            f0_value = (fb - (3.0 * f()[0] - 3.0 / 2.0 * f()[1] + 1.0 / 3.0 * f()[2])) * (-6.0 / 11.0);
+            f0_value = (fb - (3.0 * f[0] - 3.0 / 2.0 * f[1] + 1.0 / 3.0 * f[2])) * (-6.0 / 11.0);
         } else if (npoint == 5) {
-            f0_value = (fb - (5.0 * f()[0] - 5.0 * f()[1] + 10.0 / 3.0 * f()[2] - 5.0 / 4.0 * f()[3] + 1.0 / 5.0 * f()[4])) * (-60.0 / 137.0);
+            f0_value = (fb - (5.0 * f[0] - 5.0 * f[1] + 10.0 / 3.0 * f[2] - 5.0 / 4.0 * f[3] + 1.0 / 5.0 * f[4])) * (-60.0 / 137.0);
         } else {
             m_assert(false, "error, the npoint = %d is not valid", npoint);
         }
@@ -328,9 +328,9 @@ class NeumanBoundary : public Boundary<npoint> {
         // set the rest of the vector
         for (lda_t id = 0; id < npoint; ++id) {
             // store the value
-            c[id + 1] = f()[id];
-            d[id + 1] = f()[id];
-            x[id + 1] = xf()[id];
+            c[id + 1] = f[id];
+            d[id + 1] = f[id];
+            x[id + 1] = xf[id];
         }
 
         return NevilleInterp<len>(c, d, x, xp);

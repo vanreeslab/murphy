@@ -38,15 +38,15 @@ class RK3_LS {
     real_t b1_, a2_, b2_, a3_, b3_;
     real_t t1_, t2_, t3_;
 
-    m_ptr<Grid>      grid_    = nullptr;
-    m_ptr<Field>     field_u_ = nullptr;
-    m_ptr<RKFunctor> f_       = nullptr;
-    m_ptr<Prof>      prof_    = nullptr;
+    Grid*       grid_    = nullptr;
+    Field*      field_u_ = nullptr;
+    RKFunctor*  f_       = nullptr;
+    Prof*       prof_    = nullptr;
 
     Field* field_y_ = nullptr;
 
    public:
-    explicit RK3_LS(const real_t c2, m_ptr<Grid> grid, m_ptr<Field> state, m_ptr<RKFunctor> f, m_ptr<Prof> prof);
+    explicit RK3_LS(const real_t c2, Grid*  grid, Field*  state, RKFunctor*  f, Prof*  prof);
     virtual ~RK3_LS();
 
     void DoDt(const real_t dt, real_t* time);
