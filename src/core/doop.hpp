@@ -199,9 +199,9 @@ void DoOpTree(const O op, F memfunc, const ForestGrid*  grid, T... data) {
 
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; ++it) {
         p8est_tree_t* tree    = p8est_tree_array_index(forest->trees, it);
-        const size_t  nqlocal = tree->quadrants.elem_count;
+        const bidx_t  nqlocal = static_cast<bidx_t>(tree->quadrants.elem_count);
 
-        for (size_t bid = 0; bid < nqlocal; ++bid) {
+        for (bidx_t bid = 0; bid < nqlocal; ++bid) {
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
             GridBlock*        block = p4est_GetGridBlock(quad);
 

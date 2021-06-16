@@ -37,7 +37,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
     interp_ = new InterpolatingWavelet();
 
     // create the associated blocks
-    p8est_iterate(p4est_forest_, NULL, NULL, cback_CreateBlock, NULL, NULL, NULL);
+    p8est_iterate(p4est_forest_, nullptr, nullptr, cback_CreateBlock, nullptr, nullptr, nullptr);
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
@@ -46,7 +46,6 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 
     // setup the ghost stuctures as the mesh will not change anymore
     SetupMeshGhost();
-    SetupAdapt();
     //-------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
@@ -88,17 +87,8 @@ Grid::~Grid() {
         m_verb("dealloc the interp");
         delete (interp_);
     }
-    // // make sure to destroy any remaning fields
-    // m_log("destroying the %d remaining fields", fields_.size());
-    // for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-    //     Field*  field = fid->second;
-    //     m_assert(field() != nullptr, "the field cannot be null here");
-    //     m_log("destroying field <%s>", field->name().c_str());
-    //     this->DeleteField(field);
-    // }
     // destroy the ghosts, they are mine as well
     DestroyMeshGhost();
-    DestroyAdapt();
     // destroy the remaining blocks
     if (is_connect_owned_) {
         p8est_iterate(p4est_forest_, NULL, NULL, cback_DestroyBlock, NULL, NULL, NULL);
@@ -152,43 +142,12 @@ void Grid::DestroyMeshGhost() {
     //-------------------------------------------------------------------------
     if (ghost_ != nullptr) {
         m_verb("dealloc the ghost");
-        delete (ghost_);
+        delete ghost_;
         ghost_ = nullptr;
     }
     this->DestroyP4estMeshAndGhost();
     //-------------------------------------------------------------------------
     m_end;
-}
-
-void Grid::SetupAdapt() {
-    m_begin;
-    m_assert(is_mesh_valid(), "the mesh must be valid");
-    //-------------------------------------------------------------------------
-    // MPI_Info info;
-    // MPI_Info_create(&info);
-    // MPI_Info_set(info, "no_locks", "true");
-
-    // MPI_Aint status_mem_size = local_num_quadrants() * sizeof(short);
-    // MPI_Win_create(neighbor_status_window_, status_mem_size, sizeof(short), info, mpicomm(), &neighbor_status_window_);
-    // neighbor_status_ = reinterpret_cast<short*>(m_calloc(status_mem_size));
-
-    // MPI_Info_free(&info);
-    //-------------------------------------------------------------------------
-    m_end;
-}
-
-void Grid::DestroyAdapt() {
-    m_begin;
-    // //-------------------------------------------------------------------------
-    // if (coarsen_status_ != nullptr) {
-    //     m_free(coarsen_status_);
-    //     coarsen_status_ = nullptr;
-    // }
-    // if (coarsen_status_window_ != MPI_WIN_NULL) {
-    //     MPI_Win_free(&coarsen_status_window_);
-    //     coarsen_status_window_ = MPI_WIN_NULL;
-    // }
-    //-------------------------------------------------------------------------
 }
 
 /**
@@ -205,8 +164,8 @@ size_t Grid::LocalMemSize() const {
     memsize += sizeof(prof_);
     // memsize += ghost_->LocalMemSize();
     // memsize += interp_->LocalMemSize();
-    for (auto fid = fields_.cbegin(); fid != fields_.cend(); fid++) {
-        memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid->second->lda() * sizeof(real_t);
+    for (auto& fid : fields_) {
+        memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -549,8 +508,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     if (!(patches == nullptr)) {
         msg += "using patches";
     }
-    msg += ")";
-    m_log(msg.c_str(), recursive_adapt());
+    msg += ") -> %d fields";
+    m_log(msg.c_str(), recursive_adapt(),fields_.size());
 
     //................................................
     // store the ptrs and the grid
@@ -590,7 +549,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
         // we still save them as dependencies but all the rest is gone.
         DestroyMeshGhost();
-        DestroyAdapt();
 
         //................................................
         // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
@@ -639,7 +597,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //................................................
         // create a new ghost and mesh as the partioning is done
         SetupMeshGhost();
-        SetupAdapt();
 
         //................................................
         // solve the jump in resolution
@@ -683,8 +640,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
     //................................................
     // set the ghosting fields as non-valid
-    for (auto fid = fields_.begin(); fid != fields_.end(); fid++) {
-        fid->second->ghost_status(false);
+    for (auto& fid : fields_) {
+        fid.second->ghost_status(false);
     }
 
     //................................................
