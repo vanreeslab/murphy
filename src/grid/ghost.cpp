@@ -332,24 +332,33 @@ void Ghost::FreeComm_() {
 void Ghost::UpdateStatus() {
     m_begin;
     //-------------------------------------------------------------------------
+    m_profStart(prof_, "update status");
+    m_profStart(prof_, "fill status");
     // get the status to the array
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SetNewByCoarsening, grid_, il, status_);
     }
+    m_profStop(prof_, "fill status");
 
     // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
+    m_profStart(prof_, "comm PS");
     MPI_Win_post(mirror_origin_group_, 0, status_window_);
     MPI_Win_start(mirror_target_group_, 0, status_window_);
+    m_profStop(prof_, "comm PS");
 
+    m_profStart(prof_, "RMA Get");
     // update neigbbor status, only use the already computed status on level il + 1
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, grid_, il, status_, status_window_);
     }
+    m_profStop(prof_, "RMA Get");
 
     // close the access epochs
+    m_profStart(prof_, "comm CW");
     MPI_Win_complete(status_window_);
     MPI_Win_wait(status_window_);
-
+    m_profStop(prof_, "comm CW");
+    m_profStop(prof_, "update status");
     //-------------------------------------------------------------------------
     m_end;
 }

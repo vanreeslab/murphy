@@ -498,6 +498,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     //................................................
     // pre-assigne the profiling in case every cpu doesn't enter it
     m_profInitLeave(prof_, "criterion detail");
+    m_profInitLeave(prof_, "patch");
     m_profInitLeave(prof_, "solve dependency");
 
     // inform we start the mess
@@ -548,7 +549,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
         // we still save them as dependencies but all the rest is gone.
+        m_profStart(prof_, "destroy mesh and ghost");
         DestroyMeshGhost();
+        m_profStop(prof_, "destroy mesh and ghost");
+        
 
         //................................................
         // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
