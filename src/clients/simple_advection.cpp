@@ -194,9 +194,11 @@ void SimpleAdvection::Run() {
                 m_profStop(prof_, "adapt");
 
                 // reset the velocity
+                m_profStart(prof_, "set velocity");
                 (*vel_field_)(grid_, vel_, 2);
                 grid_->GhostPull(vel_);
                 m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
+                m_profStop(prof_, "set velocity");
             }
         }
         // we run the first diagnostic
@@ -210,7 +212,9 @@ void SimpleAdvection::Run() {
 
         //................................................
         // get the time-step given the field
+        m_profStart(prof_, "compute dt");
         real_t dt = rk3.ComputeDt(advection, vel_);
+        m_profStop(prof_, "compute dt");
 
         // dump some info
         m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, tfinal_, iter, iter_max(), dt);
@@ -236,8 +240,10 @@ void SimpleAdvection::Run() {
     m_profStop(prof_, "run");
     // run the last diag
     if (iter % iter_diag() != 0) {
+        m_profStart(prof_, "diagnostics");
         real_t time_now = MPI_Wtime();
         Diagnostics(t, 0.0, iter, time_now);
+        m_profStop(prof_, "diagnostics");
     }
 
     // free the advection

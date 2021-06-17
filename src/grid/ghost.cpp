@@ -213,12 +213,6 @@ void Ghost::FreeList_() {
         DoOpMeshLevel(nullptr, &GridBlock::GhostFreeLists, grid_, il);
     }
     // DoOpMesh(nullptr, &GridBlock::GhostFreeLists, grid_);
-
-    // free the status
-    MPI_Win_free(&status_window_);
-    m_free(status_);
-    status_window_ = MPI_WIN_NULL;
-    status_        = nullptr;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -334,8 +328,11 @@ void Ghost::FreeComm_() {
     MPI_Group_free(&mirror_origin_group_);
     MPI_Group_free(&mirror_target_group_);
     // free the window
-    m_free(mirrors_);
     MPI_Win_free(&mirrors_window_);
+    m_free(mirrors_);
+    // free the status
+    MPI_Win_free(&status_window_);
+    m_free(status_);
     //-------------------------------------------------------------------------
     m_end;
 }
