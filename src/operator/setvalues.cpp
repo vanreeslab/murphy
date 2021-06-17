@@ -18,7 +18,7 @@ void SetValue::operator()(const ForestGrid*  grid, Field*  field) {
     ida_start_ = 0;
     ida_end_   = field->lda();
     // go for it
-    DoOpTree(this, &SetValue::FillGridBlock, grid, field);
+    DoOpMesh(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to %d", field->name().c_str(), do_ghost_);
     field->ghost_status(do_ghost_);
@@ -33,7 +33,7 @@ void SetValue::operator()(const ForestGrid*  grid, Field*  field, const lda_t id
     ida_start_ = ida;
     ida_end_   = ida + 1;
     // go for it
-    DoOpTree(this, &SetValue::FillGridBlock, grid, field);
+    DoOpMesh(this, &SetValue::FillGridBlock, grid, field);
     // update the ghost status
     m_verb("setting the ghosts of %s to false", field->name().c_str());
     // we cannot set the ghost status as only one direction has been done...
