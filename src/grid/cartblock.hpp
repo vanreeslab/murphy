@@ -93,8 +93,8 @@ class CartBlock : public MemLayout {
      */
     // data_ptr data(const std::string name)const ;
     // data_ptr data(const std::string name, const sid_t ida);
-    data_ptr data(const m_ptr<const Field>& fid, const lda_t ida = 0) const;
-    mem_ptr  pointer(const m_ptr<const Field>& fid, const lda_t ida = 0) const;
+    data_ptr data(const Field* const  fid, const lda_t ida = 0) const;
+    mem_ptr  pointer(const Field* const  fid, const lda_t ida = 0) const;
     /** @} */
 
     /**
@@ -102,9 +102,9 @@ class CartBlock : public MemLayout {
      * 
      * @{
      */
-    void AddField(const m_ptr<const Field>& fid);
-    void DeleteField(const m_ptr<const Field>& fid);
-    void AddFields(const std::map<std::string, m_ptr<Field> >* fields);
+    void AddField(const Field* const  fid);
+    void DeleteField(const Field* const  fid);
+    void AddFields(const std::map<std::string, Field*  >* fields);
     bool IsFieldOwned(const std::string name) const;
     /** @} */
 };
@@ -116,7 +116,7 @@ class CartBlock : public MemLayout {
  * @param data the initial data
  * @param temp the temporary data (of size @ref CartBlockMemNum(1))
  */
-inline void ToTempMemory(const m_ptr<MemLayout>& layout, const const_data_ptr& data, const data_ptr& temp) {
+inline void ToTempMemory(MemLayout* const  layout, const const_data_ptr& data, const data_ptr& temp) {
     m_begin;
     //-------------------------------------------------------------------------
     // reset the memory size to 0

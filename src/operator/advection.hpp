@@ -21,11 +21,11 @@ template <AdvectionType_t type, short_t order>
 class Advection : public Stencil, public RKFunctor {
    protected:
     bool               accumulate_ = false;    //!<  used to determine if we accumuate or not the solution
-    m_ptr<const Field> u_          = nullptr;  //!< velocity field used for the advection
+    const Field*  u_          = nullptr;  //!< velocity field used for the advection
 
    public:
     // create the advection, just store the u field
-    explicit Advection(m_ptr<const Field> u) : u_(u), Stencil(), RKFunctor(){};
+    explicit Advection(const Field*  u) : u_(u), Stencil(), RKFunctor(){};
     ~Advection() = default;
 
     // return the stability conditions
@@ -35,14 +35,14 @@ class Advection : public Stencil, public RKFunctor {
     // return the number of ghost points, needed, depend on the stencil etc
     lid_t NGhost() const override { return 0; };
 
-    void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
+    void RhsSet(const Grid*  grid, const real_t time, Field*  field_u, Field*  field_y) override {
         // -------------------------------------------------------------------------
         accumulate_ = false;
         Stencil::operator()(grid, field_u, field_y);
         accumulate_ = false;  // reset the value to false for other calls
         // -------------------------------------------------------------------------
     };
-    void RhsAcc(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
+    void RhsAcc(const Grid*  grid, const real_t time, Field*  field_u, Field*  field_y) override {
         // -------------------------------------------------------------------------
         accumulate_ = true;
         Stencil::operator()(grid, field_u, field_y);
@@ -51,7 +51,7 @@ class Advection : public Stencil, public RKFunctor {
     };
 
    protected:
-    void DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const override {
+    void DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const override {
         m_assert(false, "This combination of type and order does not exist!");
     };
 };
@@ -70,7 +70,7 @@ inline lid_t Advection<M_WENO_Z, 3>::NGhost() const {
     return 2;
 };
 template <>
-void Advection<M_WENO_Z, 3>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const;
+void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const;
 
 template <>
 inline real_t Advection<M_WENO_Z, 5>::cfl_rk3() const {
@@ -84,6 +84,6 @@ inline lid_t Advection<M_WENO_Z, 5>::NGhost() const {
     return 3;
 };
 template <>
-void Advection<M_WENO_Z, 5>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const;
+void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const;
 
 #endif  // SRC_ADVECTION_DIFFUSION_HPP_

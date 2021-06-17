@@ -28,7 +28,7 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
  * @param ida the required dimension
  * @return data_ptr the data_ptr corresponding to the point in the block, i.e. (0,0,0), for the given dimension.
  */
-data_ptr CartBlock::data(const m_ptr<const Field>& fid, const lda_t ida) const {
+data_ptr CartBlock::data(const Field* const  fid, const lda_t ida) const {
     //-------------------------------------------------------------------------
 #ifndef NDEBUG
     // check the field validity
@@ -74,7 +74,7 @@ data_ptr CartBlock::data(const m_ptr<const Field>& fid, const lda_t ida) const {
  * @param ida the required dimension (default = 0)
  * @return mem_ptr the memory pointer
  */
-mem_ptr CartBlock::pointer(const m_ptr<const Field>& fid, const lda_t ida) const {
+mem_ptr CartBlock::pointer(const Field* const  fid, const lda_t ida) const {
 #ifndef NDEBUG
     // check the field validity
     auto it = mem_map_.find(fid->name());
@@ -94,7 +94,7 @@ mem_ptr CartBlock::pointer(const m_ptr<const Field>& fid, const lda_t ida) const
  * 
  * @param fid the pointer to the field to add
  */
-void CartBlock::AddField(const m_ptr<const Field>& fid) {
+void CartBlock::AddField(const Field* const  fid) {
     //-------------------------------------------------------------------------
     string name = fid->name();
     // try to find the field
@@ -116,7 +116,7 @@ void CartBlock::AddField(const m_ptr<const Field>& fid) {
  * 
  * @param fields 
  */
-void CartBlock::AddFields(const std::map<string, m_ptr<Field> >* fields) {
+void CartBlock::AddFields(const std::map<string, Field*  >* fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
     for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
@@ -140,7 +140,7 @@ bool CartBlock::IsFieldOwned(const std::string name) const {
  * 
  * @param fid the field to remove
  */
-void CartBlock::DeleteField(const m_ptr<const Field>& fid) {
+void CartBlock::DeleteField(const Field* const  fid) {
     //-------------------------------------------------------------------------
     string name = fid->name();
 

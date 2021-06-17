@@ -14,7 +14,7 @@
 
 class InitCondition_TwoLevels : public SetValue {
    protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
         //-------------------------------------------------------------------------
         real_t        pos[3];
         const real_t* xyz   = block->xyz();
@@ -48,12 +48,12 @@ class InitCondition_TwoLevels : public SetValue {
 
    public:
     explicit InitCondition_TwoLevels() : SetValue(nullptr){};
-    explicit InitCondition_TwoLevels(m_ptr<const Wavelet> interp) : SetValue(interp){};
+    explicit InitCondition_TwoLevels(const Wavelet*  interp) : SetValue(interp){};
 };
 
 class InitCondition_FlipFlop : public SetValue {
    protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
+    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
         //-------------------------------------------------------------------------
         real_t        pos[3];
         const real_t* xyz   = block->xyz();
@@ -92,7 +92,7 @@ class InitCondition_FlipFlop : public SetValue {
 
    public:
     explicit InitCondition_FlipFlop() : SetValue(nullptr){};
-    explicit InitCondition_FlipFlop(m_ptr<const Wavelet> interp) : SetValue(interp){};
+    explicit InitCondition_FlipFlop(const Wavelet*  interp) : SetValue(interp){};
 };
 
 class TwoLevel : public ::testing::TestWithParam<int> {
@@ -205,7 +205,7 @@ TEST_P(TwoLevel, periodic) {
         // get the error
         real_t err2, erri;
         Error  error;
-        error.Norms(grid_, scal_, m_ptr<const Field>(&sol), &err2, &erri);
+        error.Norms(grid_, scal_, &sol, &err2, &erri);
         real_t interp_pred = fabs(grid_->interp()->eps_const() * max_detail);
         m_log("[case %d] interp error = %e <? %e -> factor = %e vs %e", case_id_, erri, interp_pred, erri / max_detail, grid_->interp()->eps_const());
         grid_->DeleteField(&sol);
@@ -300,7 +300,7 @@ TEST_P(TwoLevel, flipfop) {
         // get the error
         real_t err2, erri;
         Error  error;
-        error.Norms(grid_, scal_, m_ptr<const Field>(&sol), &err2, &erri);
+        error.Norms(grid_, scal_, &sol, &err2, &erri);
         real_t interp_pred = fabs(grid_->interp()->eps_const() * max_detail);
         m_log("[case %d] interp error = %e <? %e -> factor = %e vs %e", case_id_, erri, interp_pred, erri / max_detail, grid_->interp()->eps_const());
         grid_->DeleteField(&sol);

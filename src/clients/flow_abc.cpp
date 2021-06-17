@@ -2,23 +2,23 @@
 
 #include "core/forloop.hpp"
 #include "operator/advection.hpp"
+#include "operator/xblas.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
-#include "operator/xblas.hpp"
 
 using std::string;
 using std::to_string;
 
 FlowABC::~FlowABC() {
     //-------------------------------------------------------------------------
-    if (prof_() != nullptr) {
+    if (prof_ != nullptr) {
         prof_->Disp();
-        prof_.Free();
+        delete (prof_);
     }
 
-    vel_.Free();
-    scal_.Free();
-    grid_.Free();
+    delete (vel_);
+    delete (scal_);
+    delete (grid_);
 
     m_log("Navier Stokes is dead");
     //-------------------------------------------------------------------------
@@ -34,21 +34,20 @@ void FlowABC::InitParam(ParserArguments* param) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
         string name = string("ABC_Flow_") + to_string(comm_size) + string("ranks");
-        prof_.Alloc(name);
+        prof_       = new Prof(name);
     }
 
     // setup the grid
-    bool period[3] = {true, true, true};
-    grid_.Alloc(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
+    bool period[3]    = {true, true, true};
+    grid_             = new Grid(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
     const real_t L[3] = {1.0, 1.0, 1.0};
-    m_assert(grid_.IsOwned(), "the grid must be owned");
 
     // set the levels
     grid_->level_limit(param->level_min, param->level_max);
 
     // get the fields
-    vel_.Alloc("velocity", 3);
-    scal_.Alloc("scalar", 1);
+    vel_  = new Field("velocity", 3);
+    scal_ = new Field("scalar", 1);
     grid_->AddField(vel_);
     grid_->AddField(scal_);
 
@@ -82,16 +81,16 @@ void FlowABC::Run() {
     adv.Profile(prof_);
 
     // let's gooo
-    m_profStart(prof_(), "run");
+    m_profStart(prof_, "run");
     while (t < t_final && iter < iter_max()) {
         m_log("--------------------");
         //................................................
         // adapt the mesh
         if (iter % iter_adapt() == 0) {
             m_log("---- adapt mesh");
-            m_profStart(prof_(), "adapt");
+            m_profStart(prof_, "adapt");
             grid_->Adapt(scal_);
-            m_profStop(prof_(), "adapt");
+            m_profStop(prof_, "adapt");
 
             // reset the velocity
             flow_vel(grid_, vel_);
@@ -99,15 +98,15 @@ void FlowABC::Run() {
         }
         // we run the first diagnostic
         if (iter == 0) {
-            m_profStart(prof_(), "diagnostics");
+            m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             Diagnostics(t, 0, iter);
-            m_profStop(prof_(), "diagnostics");
+            m_profStop(prof_, "diagnostics");
         }
 
         //................................................
         // get the time-step given the field
-        real_t dt = rk3.ComputeDt(&adv,vel_);
+        real_t dt = rk3.ComputeDt(&adv, vel_);
 
         // dump some info
         m_log("RK3 - time = %f - step %d/%d - dt = %e", t, iter, iter_max(), dt);
@@ -115,21 +114,21 @@ void FlowABC::Run() {
         //................................................
         // advance in time
         m_log("---- do time-step");
-        m_profStart(prof_(), "do dt");
+        m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
-        m_profStop(prof_(), "do dt");
+        m_profStop(prof_, "do dt");
 
         //................................................
         // diagnostics, dumps, whatever
         if (iter % iter_diag() == 0) {
-            m_profStart(prof_(), "diagnostics");
+            m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             Diagnostics(t, dt, iter);
-            m_profStop(prof_(), "diagnostics");
+            m_profStop(prof_, "diagnostics");
         }
     }
-    m_profStop(prof_(), "run");
+    m_profStop(prof_, "run");
     // run the last diag
     if (iter % iter_diag() != 0) {
         Diagnostics(t, 0.0, iter);
@@ -176,7 +175,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_);
         // grid_->GhostPull(vel_);
-        dump(grid_(), scal_(), iter);
+        dump(grid_, scal_, iter);
         // dump(grid_(), vel_(), iter);
 
         // dump the details
@@ -188,7 +187,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
 
             grid_->GhostPull(&details);
             // IOH5 dump("data");
-            dump(grid_(), &details, iter);
+            dump(grid_, &details, iter);
 
             grid_->DeleteField(&details);
         }

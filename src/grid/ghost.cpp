@@ -27,7 +27,7 @@
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
  * @param interp the Wavelet to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(m_ptr<ForestGrid> grid, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
+Ghost::Ghost(ForestGrid*  grid, const Wavelet*  interp, Prof*  profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
     //-------------------------------------------------------------------------
     // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp)
     //-------------------------------------------------------------------------
@@ -47,7 +47,7 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, m_ptr<const Wavelet> interp, m_ptr<Prof> pr
  * @param max_level the maximum level on which the GP are initiated
  * @param interp the Wavelet to use, will drive the number of ghost points to consider
  */
-Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_level, m_ptr<const Wavelet> interp, m_ptr<Prof> profiler) : interp_(interp) {
+Ghost::Ghost(ForestGrid*  grid, const level_t min_level, const level_t max_level, const Wavelet*  interp, Prof*  profiler) : interp_(interp) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
@@ -83,10 +83,10 @@ Ghost::Ghost(m_ptr<ForestGrid> grid, const level_t min_level, const level_t max_
 
     //................................................
     // initialize the communications and the ghost's lists
-    m_profStart(prof_(), "ghost_init");
+    m_profStart(prof_, "ghost_init");
     InitComm_();
     InitList_();
-    m_profStop(prof_(), "ghost_init");
+    m_profStop(prof_, "ghost_init");
 
     //-------------------------------------------------------------------------
     m_end;
@@ -178,7 +178,7 @@ void Ghost::InitList_() {
     // init the list on every active block that matches the level requirements
     // const Wavelet*
     // const ForestGrid* mygrid = grid_;
-    m_ptr<const ForestGrid> mygrid = grid_;
+    const ForestGrid*  mygrid = grid_;
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOpMeshLevel(this, &Ghost::InitList4Block_, grid_, il);
         DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, mygrid, interp_, local2disp_window_);
@@ -213,12 +213,6 @@ void Ghost::FreeList_() {
         DoOpMeshLevel(nullptr, &GridBlock::GhostFreeLists, grid_, il);
     }
     // DoOpMesh(nullptr, &GridBlock::GhostFreeLists, grid_);
-
-    // free the status
-    MPI_Win_free(&status_window_);
-    m_free(status_);
-    status_window_ = MPI_WIN_NULL;
-    status_        = nullptr;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -334,8 +328,11 @@ void Ghost::FreeComm_() {
     MPI_Group_free(&mirror_origin_group_);
     MPI_Group_free(&mirror_target_group_);
     // free the window
-    m_free(mirrors_);
     MPI_Win_free(&mirrors_window_);
+    m_free(mirrors_);
+    // free the status
+    MPI_Win_free(&status_window_);
+    m_free(status_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -345,7 +342,7 @@ void Ghost::UpdateStatus() {
     //-------------------------------------------------------------------------
     // get the status to the array
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOpMeshLevel(nullptr, &GridBlock::SetNewByCoarsening, grid_, il, m_ptr<short_t>(status_));
+        DoOpMeshLevel(nullptr, &GridBlock::SetNewByCoarsening, grid_, il, status_);
     }
 
     // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
@@ -357,7 +354,7 @@ void Ghost::UpdateStatus() {
 
     // update neigbbor status, only use the already computed status on level il + 1
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOpMeshLevel(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, grid_, il, m_ptr<short_t>(status_), status_window_);
+        DoOpMeshLevel(nullptr, &GridBlock::GetNewByCoarseningFromNeighbors, grid_, il, status_, status_window_);
     }
 
     // close the access epochs
@@ -381,23 +378,23 @@ void Ghost::UpdateStatus() {
  * @param field 
  * @param ida 
  */
-void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
+void Ghost::PullGhost_Post(const Field*  field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
     // store the current dimension
     ida_ = ida;
-    m_profStart(prof_(), "pullghost post");
+    m_profStart(prof_, "pullghost post");
     //................................................
     // fill the Window memory with the Mirror information
-    m_profStart(prof_(), "computation");
+    m_profStart(prof_, "computation");
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
-    m_profStop(prof_(), "computation");
+    m_profStop(prof_, "computation");
 
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
-    m_profStart(prof_(), "RMA post get");
+    m_profStart(prof_, "RMA post get");
     MPI_Win_post(mirror_origin_group_, MPI_MODE_NOPUT, mirrors_window_);
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
@@ -407,17 +404,17 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
-    m_profStop(prof_(), "RMA post get");
+    m_profStop(prof_, "RMA post get");
 
     // m_log("get compute");
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
-    m_profStart(prof_(), "computation");
+    m_profStart(prof_, "computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Cmpt, grid_, il, field, ida, interp_);
     }
-    m_profStop(prof_(), "computation");
-    m_profStop(prof_(), "pullghost post");
+    m_profStop(prof_, "computation");
+    m_profStop(prof_, "pullghost post");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -428,35 +425,35 @@ void Ghost::PullGhost_Post(m_ptr<const Field> field, const lda_t ida) {
  * @param field the field on which to operate
  * @param ida the dimemsion inside the field
  */
-void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
+void Ghost::PullGhost_Wait(const Field*  field, const lda_t ida) {
     m_begin;
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(ida_ == ida, "the ongoing dimension (%d) must be over first", ida_);
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-    m_profStart(prof_(), "pullghost wait");
+    m_profStart(prof_, "pullghost wait");
     //................................................
     // finish the access epochs for the exposure epoch to be over
-    m_profStart(prof_(), "RMA complete get");
+    m_profStart(prof_, "RMA complete get");
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_complete(mirrors_window_);
     }
-    m_profStop(prof_(), "RMA complete get");
+    m_profStop(prof_, "RMA complete get");
 
-    m_profStart(prof_(), "RMA wait get");
+    m_profStart(prof_, "RMA wait get");
     MPI_Win_wait(mirrors_window_);
-    m_profStop(prof_(), "RMA wait get");
+    m_profStop(prof_, "RMA wait get");
 
     // we now have all the information needed to compute the ghost points in coarser blocks
-    m_profStart(prof_(), "computation");
+    m_profStart(prof_, "computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
         // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Wait, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Wait, grid_, il, field, ida, interp_);
     }
-    m_profStop(prof_(), "computation");
+    m_profStop(prof_, "computation");
 
     //................................................
-    m_profStart(prof_(), "RMA post put");
+    m_profStart(prof_, "RMA post put");
     // post exposure and access epochs for to put the values to my neighbors
     MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
@@ -466,28 +463,28 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
-    m_profStop(prof_(), "RMA post put");
+    m_profStop(prof_, "RMA post put");
 
-    m_profStart(prof_(), "RMA complete put");
+    m_profStart(prof_, "RMA complete put");
     // finish the access epochs for the exposure epoch to be over
     if (mirror_target_group_ != MPI_GROUP_EMPTY) {
         MPI_Win_complete(mirrors_window_);
     }
-    m_profStop(prof_(), "RMA complete put");
+    m_profStop(prof_, "RMA complete put");
 
-    m_profStart(prof_(), "RMA wait put");
+    m_profStart(prof_, "RMA wait put");
     MPI_Win_wait(mirrors_window_);
-    m_profStop(prof_(), "RMA wait put");
+    m_profStop(prof_, "RMA wait put");
 
-    m_profStart(prof_(), "computation");
+    m_profStart(prof_, "computation");
     // we copy back the missing info
     LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
     // we now have all the information needed, we finish with a physbc
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Wait, grid_, il, field, ida, interp_);
     }
-    m_profStop(prof_(), "computation");
-    m_profStop(prof_(), "pullghost wait");
+    m_profStop(prof_, "computation");
+    m_profStop(prof_, "pullghost wait");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -754,7 +751,7 @@ void Ghost::PullGhost_Wait(m_ptr<const Field> field, const lda_t ida) {
  * @param block the grid block considered
  * @param fid the field ID
  */
-void Ghost::PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const {
+void Ghost::PushToWindow4Block(const qid_t*  qid, GridBlock*  block, const Field*  fid) const {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
@@ -774,11 +771,11 @@ void Ghost::PushToWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m
  * @param block the gridblock considered
  * @param fid the field id
  */
-void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid) const {
+void Ghost::PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Field*  fid) const {
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, block());
+    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, block);
     data_ptr data   = block->data(fid, ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
@@ -788,7 +785,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
         const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
         real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block->stride());
-        real_t* data_trg = data.Write(start[0], start[1], start[2], 0, block());
+        real_t* data_trg = data.Write(start[0], start[1], start[2], 0, block);
 
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;
@@ -1184,7 +1181,7 @@ void Ghost::PullFromWindow4Block(m_ptr<const qid_t> qid, m_ptr<GridBlock> block,
  * @param op 
  * @param field 
  */
-void Ghost::LoopOnMirrorBlock_(const gop_t op, m_ptr<const Field> field) {
+void Ghost::LoopOnMirrorBlock_(const gop_t op, const Field*  field) {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------

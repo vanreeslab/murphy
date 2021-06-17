@@ -2,7 +2,7 @@
 
 // declare the specialization, implement them in the cpp
 template <>
-void Error::ErrorOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, m_ptr<const Field> sol) {
+void Error::ErrorOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     const_data_ptr ptr_sol   = block->data(sol);
@@ -11,8 +11,8 @@ void Error::ErrorOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_ptr<G
     real_t ei = 0.0;
     for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
-        const real_t* data_field = ptr_field.Read(ida, block());
-        const real_t* data_sol   = ptr_sol.Read(ida, block());
+        const real_t* data_field = ptr_field.Read(ida, block);
+        const real_t* data_sol   = ptr_sol.Read(ida, block);
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // we need to discard the physical BC for the edges
@@ -36,7 +36,7 @@ void Error::ErrorOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_ptr<G
     //-------------------------------------------------------------------------
 };
 template <>
-void Error::ErrorFieldOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, m_ptr<const Field> sol, m_ptr<const Field> error) {
+void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol, const Field* error) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     const_data_ptr ptr_sol   = block->data(sol);
@@ -46,9 +46,9 @@ void Error::ErrorFieldOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_
     real_t ei = 0.0;
     for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
-        const real_t* data_field = ptr_field.Read(ida, block());
-        const real_t* data_sol   = ptr_sol.Read(ida, block());
-        real_t*       data_error = ptr_error.Write(ida, block());
+        const real_t* data_field = ptr_field.Read(ida, block);
+        const real_t* data_sol   = ptr_sol.Read(ida, block);
+        real_t*       data_error = ptr_error.Write(ida, block);
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get the local error
@@ -74,7 +74,7 @@ void Error::ErrorFieldOnGridBlock<m_ptr<const Field>>(m_ptr<const qid_t> qid, m_
 };
 
 template <>
-void Error::ErrorOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_i3block_t* sol) {
+void Error::ErrorOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
 
@@ -82,11 +82,11 @@ void Error::ErrorOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<Gr
     real_t ei = 0.0;
     for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
-        const real_t* data_field = ptr_field.Read(ida, block());
+        const real_t* data_field = ptr_field.Read(ida, block);
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // we need to discard the physical BC for the edges
-            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block());
+            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block);
             m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
             // update the block errors
             e2 += error * error;
@@ -107,7 +107,7 @@ void Error::ErrorOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<Gr
 };
 
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<const Field> fid, lambda_i3block_t* sol, m_ptr<const Field> error) {
+void Error::ErrorFieldOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol, const Field* error) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     data_ptr       ptr_error = block->data(error);
@@ -116,12 +116,12 @@ void Error::ErrorFieldOnGridBlock<lambda_i3block_t*>(m_ptr<const qid_t> qid, m_p
     real_t ei = 0.0;
     for (sid_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
-        const real_t* data_field = ptr_field.Read(ida, block());
-        real_t*       data_error = ptr_error.Write(ida, block());
+        const real_t* data_field = ptr_field.Read(ida, block);
+        real_t*       data_error = ptr_error.Write(ida, block);
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get the local error
-            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block());
+            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block);
             m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
             // store it
             data_error[m_idx(i0, i1, i2)] = error;

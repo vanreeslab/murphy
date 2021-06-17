@@ -5,6 +5,8 @@
 #include <mpi.h>
 #include <p8est.h>
 
+#include <omp.h>
+
 #include <cstdio>
 #include <cstdlib>
 

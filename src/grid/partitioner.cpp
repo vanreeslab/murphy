@@ -50,7 +50,7 @@ constexpr size_t PartCommSize(lda_t lda) {
  * @param grid the grid on which the partitionning is done
  * @param destructive dictate if the partitioning is used to permanently change the grid or to go from one grid to another.
  */
-Partitioner::Partitioner(map<string, m_ptr<Field>> *fields, Grid *grid, bool destructive) {
+Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destructive) {
     m_begin;
     //-------------------------------------------------------------------------
     const rank_t commsize = grid->mpisize();
@@ -398,7 +398,7 @@ Partitioner::~Partitioner() {
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
  */
-void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t dir) {
+void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
     m_begin;
     m_assert(dir == M_FORWARD || dir == M_BACKWARD, "the dir can be forward or backward");
     m_assert(!(dir == M_BACKWARD && destructive_), "unable to perform backward on destructive partitioner");
@@ -461,7 +461,7 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
             buf += 1;
             lid_t idacount = 0;
             for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
-                const Field *fid  = iter->second();
+                const Field *fid  = iter->second;
                 string       name = fid->name();
                 // security check
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
@@ -492,7 +492,7 @@ void Partitioner::Start(map<string, m_ptr<Field>> *fields, const m_direction_t d
  * @param dir the direction, forward or backward
  * @param do_copy do we need to copy the non-traveling blocks or not
  */
-void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir) {
+void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
     m_begin;
     m_assert(dir == M_FORWARD || dir == M_BACKWARD, "the dir can be forward or backward");
     m_assert(!(dir == M_BACKWARD && destructive_), "unable to perform backward on destructive partitioner");
@@ -550,7 +550,7 @@ void Partitioner::End(map<string, m_ptr<Field>> *fields, const m_direction_t dir
 
             lid_t idacount = 0;
             for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
-                const Field *fid  = iter->second();
+                const Field *fid  = iter->second;
                 string       name = fid->name();
                 // security check
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");

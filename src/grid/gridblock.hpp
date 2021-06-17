@@ -63,18 +63,18 @@ class GridBlock : public CartBlock {
     void        status_level(const StatusAdapt status) { status_lvl_ = status; };
     void        ResetStatus() { status_lvl_ = M_ADAPT_NONE; };
 
-    void UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
-                                   /* prof */ m_ptr<Prof> profiler);
-    void UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
-                                 /* prof */ m_ptr<Prof> profiler);
+    void UpdateStatusFromCriterion(/* params */ const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
+                                   /* prof */ Prof* profiler);
+    void UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
+                                 /* prof */ Prof* profiler);
     void UpdateStatusFromPolicy();
 
-    void StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
-    void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
+    void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
+    void UpdateSmoothingMask(const Wavelet* const interp);
 
-    void FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
-    void SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const;
-    void GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> status_vec, MPI_Win status_window);
+    void FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler);
+    void SetNewByCoarsening(const qid_t*  qid, short_t* const  coarsen_vec) const;
+    void GetNewByCoarseningFromNeighbors(const short_t* const  status_vec, MPI_Win status_window);
     void UpdateDetails();
     /** @} */
 
@@ -86,9 +86,9 @@ class GridBlock : public CartBlock {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
-    void       SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
-    void       ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
+    void       SolveDependency(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
+    void       SmoothResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
+    void       ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
     /** @} */
 
     /**
@@ -114,12 +114,12 @@ class GridBlock : public CartBlock {
     std::list<PhysBlock*>*              phys() { return &phys_; };
     /**@} */
 
-    void GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> grid, m_ptr<const Wavelet> interp, MPI_Win local2disp_window);
-    void GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
-    void GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window);
-    void GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
-    void GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window);
-    void GhostPut_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
+    void GhostInitLists(const qid_t*  qid, const ForestGrid*  grid, const Wavelet*  interp, MPI_Win local2disp_window);
+    void GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavelet*  interp);
+    void GhostGet_Post(const Field*  field, const lda_t ida, const Wavelet*  interp, MPI_Win mirrors_window);
+    void GhostGet_Wait(const Field*  field, const lda_t ida, const Wavelet*  interp);
+    void GhostPut_Post(const Field*  field, const lda_t ida, const Wavelet*  interp, MPI_Win mirrors_window);
+    void GhostPut_Wait(const Field*  field, const lda_t ida, const Wavelet*  interp);
     void GhostFreeLists();
 
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);

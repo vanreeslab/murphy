@@ -19,7 +19,7 @@ class BlockOperator {
     bool        do_ghost_ = false;    //!< indicate if the block operator fills the ghost region or not.
     bidx_t      start_    = 0;        //!< starting index for the loop
     bidx_t      end_      = M_N;      //!< ending index for the loop
-    m_ptr<Prof> prof_     = nullptr;  //!< profiler
+    Prof*  prof_     = nullptr;  //!< profiler
 
    public:
     /**
@@ -28,17 +28,17 @@ class BlockOperator {
      * @param interp the interpolation driving the number of ghost point to operate on. If nullptr, we operates from 0 to M_N
      * @param profiler the profier
      */
-    explicit BlockOperator(m_ptr<const Wavelet> interp) noexcept {
+    explicit BlockOperator(const Wavelet*  interp) noexcept {
         m_begin;
         //-------------------------------------------------------------------------
-        do_ghost_ = !(interp.IsEmpty());
-        start_    = (interp.IsEmpty()) ? 0 : (-interp->nghost_front());
-        end_      = (interp.IsEmpty()) ? M_N : (M_N + interp->nghost_back());
+        do_ghost_ = !((interp == nullptr));
+        start_    = ((interp == nullptr)) ? 0 : (-interp->nghost_front());
+        end_      = ((interp == nullptr)) ? M_N : (M_N + interp->nghost_back());
         //-------------------------------------------------------------------------
         m_end;
     }
 
-    void Profile(m_ptr<Prof> profiler) { prof_ = profiler; }
+    void Profile(Prof*  profiler) { prof_ = profiler; }
 
     /**
      * @brief return true if the BlockOperator fills the ghosts

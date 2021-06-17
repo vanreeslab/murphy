@@ -116,7 +116,7 @@ void ConvergenceWeno::Run() {
             // now, we need to check
             Error  error;
             real_t erri, err2;
-            error.Norms(&grid, &dtest, m_ptr<const Field>(&sol), &err2, &erri);
+            error.Norms(&grid, &dtest, &sol, &err2, &erri);
             if (rank == 0) {
                 string fname     = "data/conv_weno3_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
@@ -132,7 +132,7 @@ void ConvergenceWeno::Run() {
             // now, we need to check
             Error  error;
             real_t erri, err2;
-            error.Norms(&grid, &dtest, m_ptr<const Field>(&sol), &err2, &erri);
+            error.Norms(&grid, &dtest, &sol, &err2, &erri);
             if (rank == 0) {
                 string fname     = "data/conv_weno5_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
