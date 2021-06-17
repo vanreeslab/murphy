@@ -51,38 +51,35 @@ class Grid : public ForestGrid {
 
    public:
     explicit Grid();
-    Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const  prof);
+    Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const prof);
     ~Grid();
 
-    size_t LocalMemSize() const;
-    size_t LocalNumDof() const;
-    size_t GlobalNumDof() const;
+    [[nodiscard]] size_t LocalMemSize() const;
+    [[nodiscard]] size_t LocalNumDof() const;
+    [[nodiscard]] size_t GlobalNumDof() const;
 
-    level_t level_limit_max() const { return level_limit_max_; }
-    level_t level_limit_min() const { return level_limit_min_; }
-    void    level_limit(const level_t min, const level_t max);
+    [[nodiscard]] level_t level_limit_max() const { return level_limit_max_; }
+    [[nodiscard]] level_t level_limit_min() const { return level_limit_min_; }
+    void                  level_limit(const level_t min, const level_t max);
 
-    Wavelet* interp() const { return interp_; }
-    Prof*    profiler() const { return prof_; }
+    [[nodiscard]] Wavelet* interp() const { return interp_; }
+    [[nodiscard]] Prof*    profiler() const { return prof_; }
 
     bool HasProfiler() { return prof_ == nullptr; }
 
-    void CopyFrom(const Grid*  grid);
+    void CopyFrom(const Grid* grid);
     void SetupMeshGhost();
     void DestroyMeshGhost();
-
-    void SetupAdapt();
-    void DestroyAdapt();
 
     /**
      * @name Fields management
      * 
      * @{
      */
-    lid_t NField() const { return (lid_t)(fields_.size()); }
+    [[nodiscard]] lid_t NField() const { return static_cast<lid_t>(fields_.size()); }
 
-    auto FieldBegin() const { return fields_.cbegin(); }
-    auto FieldEnd() const { return fields_.cend(); }
+    [[nodiscard]] auto FieldBegin() const { return fields_.cbegin(); }
+    [[nodiscard]] auto FieldEnd() const { return fields_.cend(); }
 
     bool IsAField(const Field* field) const;
     void AddField(Field* field);
@@ -96,17 +93,17 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    inline lid_t NGhostFront() const {
+    [[nodiscard]] inline lid_t NGhostFront() const {
         m_assert(interp_ != nullptr, "interp cannot be null");
         return interp_->nghost_front();
     }
-    inline lid_t NGhostBack() const {
+    [[nodiscard]] inline lid_t NGhostBack() const {
         m_assert(interp_ != nullptr, "interp cannot be null");
         return interp_->nghost_back();
     }
-    void GhostPull(Field*  field) const;
-    void GhostPull_Post(const Field*  field, const sid_t ida) const;
-    void GhostPull_Wait(const Field*  field, const sid_t ida) const;
+    void GhostPull(Field* field) const;
+    void GhostPull_Post(const Field* field, const sid_t ida) const;
+    void GhostPull_Wait(const Field* field, const sid_t ida) const;
     /**@}*/
 
     /**
@@ -114,13 +111,13 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    real_t rtol() const { return rtol_; }
-    real_t ctol() const { return ctol_; }
-    bool   recursive_adapt() const { return recursive_adapt_; }
-    void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
-    void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
+    [[nodiscard]] real_t rtol() const { return rtol_; }
+    [[nodiscard]] real_t ctol() const { return ctol_; }
+    [[nodiscard]] bool   recursive_adapt() const { return recursive_adapt_; }
+    [[nodiscard]] void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
+    [[nodiscard]] void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
-    lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
+    [[nodiscard]] lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
     void  AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
     void  AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
 

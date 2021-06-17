@@ -98,25 +98,6 @@ class Ghost {
     void FreeList_();
     /** @}*/
 
-    /**
-     * @name Different operations needed on the block itself, given a ghost list
-     * @{
-     */
-    // inline void InitList4Block_(const qid_t *qid, GridBlock *block) const;
-    // inline void FreeList4Block_(const qid_t *qid, GridBlock *block) const;
-    // inline void Compute4Block_Myself2Coarse_(const qid_t *qid, GridBlock *cur_block, const Field *fid, mem_ptr ptr_trg) const;
-    // inline void Compute4Block_Copy2Myself_(const ListGBLocal *ghost_list, const Field *fid, data_ptr data_trg) const;
-    // inline void Compute4Block_Copy2Coarse_(const ListGBLocal *ghost_list, const Field *fid, mem_ptr ptr_trg) const;
-    // inline void Compute4Block_GetRma2Myself_(const ListGBMirror *ghost_list, const Field *fid, data_ptr data_trg) const;
-    // inline void Compute4Block_GetRma2Coarse_(const ListGBMirror *ghost_list, const Field *fid, mem_ptr ptr_trg) const;
-    // inline void Compute4Block_Refine_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, data_ptr data_trg) const;
-    // inline void Compute4Block_Refine_(const ListGBMirror *ghost_list, const mem_ptr ptr_src, data_ptr data_trg) const;
-    // inline void Compute4Block_Coarsen2Coarse_(data_ptr data_src, data_ptr ptr_trg) const;
-    // inline void Compute4Block_Copy2Parent_(const ListGBLocal *ghost_list, const mem_ptr ptr_src, const Field *fid) const;
-    // inline void Compute4Block_PutRma2Parent_(const ListGBMirror *ghost_list, const mem_ptr ptr_src) const;
-    // inline void Compute4Block_Phys2Myself_(const qid_t *qid, GridBlock *cur_block, const Field *fid) const;
-    /** @}*/
-
     void LoopOnMirrorBlock_(const gop_t op, const Field*  field);
 };
 

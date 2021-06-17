@@ -251,7 +251,7 @@ void Ghost::InitComm_() {
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
     MPI_Aint win_mem_size = n_mirror_to_send_ * CartBlockMemNum(1) * sizeof(real_t);
-    mirrors_              = reinterpret_cast<real_t*>(m_calloc(win_mem_size));
+    mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_window_);
     MPI_Info_free(&info);
     // because of alignement issues (https://github.com/open-mpi/ompi/issues/7955), cannot use this one
@@ -263,7 +263,7 @@ void Ghost::InitComm_() {
     // get the list of ranks that will generate a call to access my mirrors
     rank_t n_in_group = 0;
     // over allocate the array to its max size and fill it only partially... not great
-    rank_t* group_ranks = reinterpret_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
+    rank_t* group_ranks = static_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
     for (rank_t ir = 0; ir < mpi_size; ir++) {
         // for every mirror send to the current
         iblock_t send_first = ghost->mirror_proc_offsets[ir];
