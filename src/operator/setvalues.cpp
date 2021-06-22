@@ -44,7 +44,7 @@ void SetValue::operator()(const ForestGrid*  grid, Field*  field, const lda_t id
 
 //=====================================================================================================
 SetAbs::SetAbs(const real_t alpha[3], const real_t center[3]) : SetAbs(alpha, center, nullptr) {}
-SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Wavelet*  interp) : SetValue(interp) {
+SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Wavelet* interp) : SetValue(interp) {
     m_begin;
     //-------------------------------------------------------------------------
     for (lda_t id = 0; id < 3; id++) {
@@ -55,7 +55,7 @@ SetAbs::SetAbs(const real_t alpha[3], const real_t center[3], const Wavelet*  in
     m_end;
 }
 
-void SetAbs::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
+void SetAbs::FillGridBlock(const qid_t* qid, GridBlock* block, Field* fid) {
     //-------------------------------------------------------------------------
     real_t        pos[3];
     const real_t* xyz   = block->xyz();

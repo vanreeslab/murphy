@@ -283,7 +283,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const short_t* const status_vec,
 
     // loop over the same level neighbors and get the status
     iblock_t count = local_parent_.size();
-    for (auto gblock : ghost_parent_) {
+    for (auto* gblock : ghost_parent_) {
         // m_log("count = %d -> requestion block cum id = %ld at rank %d", count, displ, gblock->rank());
         m_assert(sizeof(short_t) == sizeof(short), "the two sizes must match to garantee mpi data types");
         MPI_Get(status_ngh_ + count, 1, MPI_SHORT, gblock->rank(), gblock->cum_block_id(), 1, MPI_SHORT, status_window);
@@ -293,7 +293,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const short_t* const status_vec,
 
     // get the local ones now
     count = 0;
-    for (auto gblock : local_parent_) {
+    for (auto *gblock : local_parent_) {
         // m_log("neighbor id %d gets value %d at id = %d", count, status_vec[gblock->cum_block_id()], gblock->cum_block_id());
         status_ngh_[count] = status_vec[gblock->cum_block_id()];
         ++count;
@@ -357,7 +357,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
 
     // for each ghost block, set the mask to 1.0 if needed
     iblock_t block_count = 0;
-    for (auto gblock : local_parent_) {
+    for (auto *gblock : local_parent_) {
         // if ((status_ngh_[block_count] != M_ADAPT_SAME) && (this->status_level() != M_ADAPT_SAME)) {
         //     m_log("block thinks that his neigbor %d (count=%d) has been modified while the block has been changed", gblock->cum_block_id(), block_count);
         //     m_assert(false, "oouuups");
@@ -367,7 +367,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
         ++block_count;
     }
     m_assert(block_count == local_parent_.size(), "the two numbers must match: %d vs %ld", block_count, local_parent_.size());
-    for (auto gblock : ghost_parent_) {
+    for (auto *gblock : ghost_parent_) {
         // if ((status_ngh_[block_count] != M_ADAPT_SAME) && (this->status_level() != M_ADAPT_SAME)) {
         //     m_log("block thinks that his neigbor %d (count=%d) has been modified while the block has been changed", gblock->cum_block_id(), block_count);
         //     m_assert(false, "oouuups");
@@ -385,7 +385,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
 
     // do it for every field
     for (auto fid = field_start; fid != field_end; ++fid) {
-        auto current_field = fid->second;
+        auto *current_field = fid->second;
         if (!current_field->is_temp()) {
             for (lda_t ida = 0; ida < current_field->lda(); ida++) {
                 interp->SmoothOnMask(&block_src, this, this->data(current_field, ida), &block_det, mask);

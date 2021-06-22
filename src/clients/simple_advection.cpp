@@ -54,7 +54,8 @@ SimpleAdvection::~SimpleAdvection() {
     }
     // free the set values
     delete (ring_);
-    delete (vel_field_);
+    delete (vel_field_0_);
+    delete (vel_field_1_);
 
     // free the grid
     // grid_.Free();
@@ -134,10 +135,16 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     vel_->is_temp(true);
     grid_->AddField(vel_);
     const lid_t  deg[3]   = {0, 0, 0};
-    const real_t dir[3]   = {1.0, 0.0, 0.0};
+    const real_t dir1[3]   = {1.0, 0.0, 0.0};
     const real_t shift[3] = {0.0, 0.0, 0.0};
-    vel_field_ = new SetPolynom(deg, dir, shift);
-    (*vel_field_)(grid_, vel_, 2);
+    vel_field_1_ = new SetPolynom(deg, dir1, shift);
+    const real_t dir0[3]   = {0.0, 0.0, 0.0};
+    vel_field_0_ = new SetPolynom(deg, dir0, shift);
+
+    (*vel_field_0_)(grid_, vel_, 0);
+    (*vel_field_0_)(grid_, vel_, 1);
+    (*vel_field_1_)(grid_, vel_, 2);
+    
     // take the ghosts
     grid_->GhostPull(vel_);
 
@@ -198,7 +205,10 @@ void SimpleAdvection::Run() {
 
                 // reset the velocity
                 m_profStart(prof_, "set velocity");
-                (*vel_field_)(grid_, vel_, 2);
+                // (*vel_field_)(grid_, vel_, 2);
+                (*vel_field_0_)(grid_, vel_, 0);
+                (*vel_field_0_)(grid_, vel_, 1);
+                (*vel_field_1_)(grid_, vel_, 2);
                 grid_->GhostPull(vel_);
                 m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
                 m_profStop(prof_, "set velocity");

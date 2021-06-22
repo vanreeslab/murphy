@@ -765,7 +765,7 @@ void Ghost::PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Fie
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
 
-    for (auto gblock : (*block->ghost_children())) {
+    for (auto* gblock : (*block->ghost_children())) {
         const lid_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
         const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
