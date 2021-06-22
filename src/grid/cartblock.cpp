@@ -34,7 +34,7 @@ data_ptr CartBlock::data(const Field* const  fid, const lda_t ida) const {
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    data_ptr data = it->second(ida, this);
+    data_ptr data = it->second(ida);
     return data;
 #else
     return mem_map_.at(fid->name())(ida, this);
@@ -80,7 +80,7 @@ mem_ptr CartBlock::pointer(const Field* const  fid, const lda_t ida) const {
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     // m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
-    mem_ptr ptr = it->second.shift_dim(ida, this);
+    mem_ptr ptr = it->second.shift_dim(ida);
     return ptr;
 #else
     return mem_map_.at(fid->name());

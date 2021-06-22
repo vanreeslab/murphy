@@ -63,7 +63,7 @@ void SetAbs::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block);
+        real_t* data = block_data.Write(ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -105,7 +105,7 @@ void SetSinus::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) 
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block);
+        real_t* data = block_data.Write(ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -145,7 +145,7 @@ void SetCosinus::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block);
+        real_t* data = block_data.Write(ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -182,7 +182,7 @@ void SetPolynom::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block);
+        real_t* data = block_data.Write(ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -225,7 +225,7 @@ void SetExponential::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field* 
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block);
+        real_t* data = block_data.Write(ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -272,7 +272,7 @@ void SetErf::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) {
 
     data_ptr block_data = block->data(fid);
     for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-        real_t* data = block_data.Write(ida, block);
+        real_t* data = block_data.Write(ida);
         for (lid_t i2 = start_; i2 < end_; i2++) {
             for (lid_t i1 = start_; i1 < end_; i1++) {
                 for (lid_t i0 = start_; i0 < end_; i0++) {
@@ -322,9 +322,9 @@ void SetVortexRing::FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  
     const lda_t idz = normal_;
     // get the pointers correct
     data_ptr block_data = block->data(fid);
-    real_t*  wx         = block_data.Write(idx, block);
-    real_t*  wy         = block_data.Write(idy, block);
-    real_t*  wz         = block_data.Write(idz, block);
+    real_t*  wx         = block_data.Write(idx);
+    real_t*  wy         = block_data.Write(idy);
+    real_t*  wz         = block_data.Write(idz);
 
     for (lid_t i2 = start_; i2 < end_; i2++) {
         for (lid_t i1 = start_; i1 < end_; i1++) {
@@ -401,9 +401,9 @@ void SetCompactVortexRing::FillGridBlock(const qid_t*  qid, GridBlock*  block, F
     const lda_t idz = normal_;
     // get the pointers correct
     data_ptr block_data = block->data(fid);
-    real_t*  wx         = block_data.Write(idx, block);
-    real_t*  wy         = block_data.Write(idy, block);
-    real_t*  wz         = block_data.Write(idz, block);
+    real_t*  wx         = block_data.Write(idx);
+    real_t*  wy         = block_data.Write(idy);
+    real_t*  wz         = block_data.Write(idz);
 
     for (lid_t i2 = start_; i2 < end_; i2++) {
         for (lid_t i1 = start_; i1 < end_; i1++) {

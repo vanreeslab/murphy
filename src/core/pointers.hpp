@@ -2,7 +2,7 @@
 #define SRC_CORE_POINTERS_HPP_
 
 #include "core/macros.hpp"
-#include "core/memlayout.hpp"
+#include "core/layout.hpp"
 #include "core/types.hpp"
 
 /**
@@ -21,8 +21,10 @@
 template <typename T>
 class m_ptr {
    protected:
-    T*   data_;      //!< the underlying information
-    bool is_owned_;  //!< indicate if we own the memory and that we should deallocate
+    T*   data_;                         //!< the underlying information
+    bool is_owned_;                     //!< indicate if we own the memory and that we should deallocate
+    bidx_t gs_     = M_GS;
+    bidx_t stride_ =M_STRIDE;
 
    public:
     //-------------------------------------------------------------------------
@@ -32,7 +34,10 @@ class m_ptr {
     explicit m_ptr() noexcept : data_(nullptr), is_owned_(false){};
 
     /** @brief copy constructor: copy the adress without ownership */
-    m_ptr(const m_ptr<T>& ptr) noexcept : data_(ptr()), is_owned_(false){};
+    m_ptr(const m_ptr<T>& ptr) noexcept : data_(ptr()), is_owned_(false), gs_(ptr.gs()), stride_(ptr.stride()){};
+
+    /** @brief copy constructor: copy the adress without ownership */
+    m_ptr(const m_ptr<T>& ptr, const bidx_t gs, const bidx_t stride) noexcept : data_(ptr()), is_owned_(false), gs_(gs), stride_(stride){};
 
     /** @brief copy assignment: copy the address, without ownership */
     m_ptr<T>& operator=(const m_ptr<T>& other) {
@@ -40,6 +45,7 @@ class m_ptr {
         is_owned_ = false;
         return *this;
     };
+
 
     //-------------------------------------------------------------------------
     // additional usefull constructors
@@ -97,25 +103,36 @@ class m_ptr {
 
     /** @brief operator *, return the associated object */
     T& operator[](const int idx) const { return data_[idx]; }
+
+    //-------------------------------------------------------------------------
+    /** @brief Memory info */
+    inline void   set_gs(const bidx_t gs) { gs_ = gs; }
+    inline void   set_stride(const bidx_t stride) { stride_ = stride; }
+    inline bidx_t gs() const { return gs_; }
+    inline bidx_t stride() const { return stride_; }
 };
+
+
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
  * 
  * It relies on a mem_ptr, created first
  */
-class data_ptr : public m_ptr<real_t> {
+class data_ptr : public m_ptr<real_t>{
    public:
     using m_ptr<real_t>::m_ptr;       // inheritates the constructors
     using m_ptr<real_t>::operator();  // inheritates the operator()
 
-    real_t* Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
-    real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    real_t* Write(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    // real_t* Write(const m_ptr<const MemLayout>& layout, const lda_t ida = 0) const;
+    // real_t* Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
+    // real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const Layout>& layout) const;
+    // real_t* Write(const lda_t ida, const m_ptr<const Layout>& layout) const;
+    // real_t* Write(const m_ptr<const Layout>& layout, const lda_t ida = 0) const;
+    real_t* Write(const lda_t ida = 0) const;
 
-    const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
-    const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    const real_t* Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    // const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
+    // const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const Layout>& layout) const;
+    // const real_t* Read(const lda_t ida, const m_ptr<const Layout>& layout) const;
+    const real_t* Read(const lda_t ida = 0) const;
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
@@ -126,13 +143,14 @@ class const_data_ptr : public m_ptr<const real_t> {
    public:
     using m_ptr<const real_t>::m_ptr;       // inheritates the constructor
     using m_ptr<const real_t>::operator();  // inheritates the operators
-
+    
     /** @brief build a const_data_ptr from a data_ptr: copy */
     const_data_ptr(const data_ptr& ptr) : m_ptr<const real_t>(ptr){};
-
-    const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
-    const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    const real_t* Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    
+    const real_t* Read(const lda_t ida = 0) const;
+    // const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
+    // const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const Layout>& layout) const;
+    // const real_t* Read(const lda_t ida, const m_ptr<const Layout>& layout) const;
 };
 
 /** @brief pointer to a 3d memory chunck
@@ -141,11 +159,12 @@ class const_data_ptr : public m_ptr<const real_t> {
  * In particular, we make sure that 
  *
  */
-class mem_ptr : public m_ptr<real_t> {
+// template <fid_t fieldtype = M_GRID>
+class mem_ptr : public m_ptr<real_t>{
    public:
     using m_ptr<real_t>::m_ptr;       // inheritates the constructor:
     using m_ptr<real_t>::operator();  // inheritates the operators:
-
+    
     // define the destructor to free the mem, otherwise it's never done
 #ifndef NDEBUG
     ~mem_ptr() {
@@ -154,16 +173,35 @@ class mem_ptr : public m_ptr<real_t> {
 #endif
 
     /** @brief allocate an owned array of size */
-    void Calloc(const size_t size) {
+    void Calloc(const size_t size, const bidx_t gs = M_GS, const bidx_t stride = M_N + 2 * M_GS) {
         m_assert(!IsOwned(), "we cannot have some memory already");
         //-------------------------------------------------------------------------
+        // initiate the ghost size and the stride size
+        gs_     = gs;
+        stride_ = stride;
+
         // allocate the new memory
-        data_     = reinterpret_cast<real_t*>(m_calloc(size * sizeof(real_t)));
+        data_ = reinterpret_cast<real_t*>(m_calloc(size * sizeof(real_t)));
+
         // explicitly touch the memory and set 0.0
         std::memset(data_, 0, size * sizeof(real_t));
         is_owned_ = true;
         //-------------------------------------------------------------------------
     }
+
+    /** @brief set an existing pointer to */
+    void Reset(const size_t size, const bidx_t gs, const bidx_t stride ) {
+        m_assert(IsOwned(), "to set a pointer, we have to own it");
+        //-------------------------------------------------------------------------
+        // Reset the ghost size and the stride size
+        gs_     = gs;
+        stride_ = stride;
+
+        // Set the memory
+        memset(data_, 0, size * sizeof(real_t));
+        //-------------------------------------------------------------------------
+    }
+
 
     /** @brief free the allocated memory if we own it */
     void Free() {
@@ -171,13 +209,30 @@ class mem_ptr : public m_ptr<real_t> {
         m_free(data_);
         data_     = nullptr;
         is_owned_ = false;
+        gs_       = 0;
+        stride_   = 0;
     }
 
-    data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
-    data_ptr operator()(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    mem_ptr  shift_dim(const lda_t ida, const m_ptr<const MemLayout>& layout) const;
+    /** @} */
+
+    /**
+     * @name Access the actual data
+     * 
+     * @{ 
+    */
+    // data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
+    // data_ptr operator()(const lda_t ida, const m_ptr<const Layout>& layout) const;
+    // mem_ptr  shift_dim(const lda_t ida, const m_ptr<const Layout>& layout) const;
+    data_ptr operator()(const lda_t ida) const;
+    data_ptr operator()(const lda_t ida, const bidx_t gs, const bidx_t stride) const;
+    mem_ptr  shift_dim(const lda_t ida) const;
+
+    /** @} */
 };
 /**@}*/
+
+// template<>
+// inline fid_t mem_ptr<M_PART>::fidtype()const{return M_PART;}
 
 // put the assert if we are not in non-debug mode
 // #ifdef NDEBUG
@@ -216,7 +271,7 @@ constexpr bidx_t m_idx_delta(const bidx_t delta, const lda_t ida_delta, const bi
     bidx_t offset = i0 + stride * (i1 + stride * i2);
     return offset;
 }
-// constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, const MemLayout* block) {
+// constexpr bidx_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, const Layout* block) {
 //     const bidx_t stride = block->stride();
 //     bidx_t       offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
 //     return offset;
@@ -229,7 +284,7 @@ constexpr bidx_t m_idx_delta(const bidx_t delta, const lda_t ida_delta, const bi
 // }
 // #endif
 
-// constexpr size_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, m_ptr<const MemLayout> layout) {
+// constexpr size_t m_idx(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida, m_ptr<const Layout> layout) {
 //     const size_t stride = layout->stride();
 //     return (size_t)(i0 + stride * (i1 + stride * (i2 + stride * ida)));
 // }

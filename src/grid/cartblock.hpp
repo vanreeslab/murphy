@@ -6,7 +6,7 @@
 #include <string>
 #include <functional>
 
-#include "core/memlayout.hpp"
+#include "core/layout.hpp"
 #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/field.hpp"
@@ -46,7 +46,7 @@ constexpr real_t CartBlockHGrid(const real_t length) {
  * @warning no ghosting is available for that block
  * 
  */
-class CartBlock : public MemLayout {
+class CartBlock : public Layout {
    protected:
     level_t level_    = -1;               //!< the level of the block
     real_t  xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
@@ -61,8 +61,8 @@ class CartBlock : public MemLayout {
      * @name Memory Layout functions
      * 
      * @{ */
-    inline bidx_t gs() const override { return M_GS; }
-    inline bidx_t stride() const override { return (M_N + 2 * M_GS); }
+    // inline bidx_t gs() const override { return M_GS; }
+    // inline bidx_t stride() const override { return (M_N + 2 * M_GS); }
     inline bidx_t start(const lda_t ida) const override { return 0; }
     inline bidx_t end(const lda_t ida) const override { return M_N; }
     /** @} */
@@ -109,31 +109,31 @@ class CartBlock : public MemLayout {
     /** @} */
 };
 
-/**
- * @brief copy the values of a given CartBlock to the temp array
- * 
- * @param layout the layout to be copied, everything outside the layout is set to 0
- * @param data the initial data
- * @param temp the temporary data (of size @ref CartBlockMemNum(1))
- */
-inline void ToTempMemory(MemLayout* const  layout, const const_data_ptr& data, const data_ptr& temp) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    // reset the memory size to 0
-    std::memset(temp(), 0, sizeof(real_t) * CartBlockMemNum(1));
+// /**
+//  * @brief copy the values of a given CartBlock to the temp array
+//  * 
+//  * @param layout the layout to be copied, everything outside the layout is set to 0
+//  * @param data the initial data
+//  * @param temp the temporary data (of size @ref CartBlockMemNum(1))
+//  */
+// inline void ToTempMemory(Layout* const  layout, const const_data_ptr& data, const data_ptr& temp) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     // reset the memory size to 0
+//     std::memset(temp(), 0, sizeof(real_t) * CartBlockMemNum(1));
 
-    const real_t* sdata = data.Read();
-    real_t*       tdata = temp.Write();
+//     const real_t* sdata = data.Read();
+//     real_t*       tdata = temp.Write();
 
-    for (bidx_t i2 = layout->start(2); i2 < layout->end(2); ++i2) {
-        for (bidx_t i1 = layout->start(1); i1 < layout->end(1); ++i1) {
-            bidx_t idx = m_idx(0, i1, i2, 0, layout->stride());
-            std::memcpy(tdata + idx, sdata + idx, sizeof(real_t) * (layout->end(0) - layout->start(0)));
-        }
-    }
-    //-------------------------------------------------------------------------
-    m_end;
-}
+//     for (bidx_t i2 = layout->start(2); i2 < layout->end(2); ++i2) {
+//         for (bidx_t i1 = layout->start(1); i1 < layout->end(1); ++i1) {
+//             bidx_t idx = m_idx(0, i1, i2, 0, layout->stride());
+//             std::memcpy(tdata + idx, sdata + idx, sizeof(real_t) * (layout->end(0) - layout->start(0)));
+//         }
+//     }
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 //-------------------------------------------------------------------------
 // defines code-wide usefull lambda functions

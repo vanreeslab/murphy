@@ -8,9 +8,7 @@
  * @param start the start index in 3D
  * @param end the end index in 3D
  */
-SubBlock::SubBlock(const lid_t gs, const lid_t stride, const lid_t start[3], const lid_t end[3]) {
-    gs_     = gs;
-    stride_ = stride;
+SubBlock::SubBlock(const lid_t start[3], const lid_t end[3]) {
     for (lda_t id = 0; id < 3; id++) {
         end_[id]   = end[id];
         start_[id] = start[id];
@@ -21,9 +19,7 @@ SubBlock::SubBlock(const lid_t gs, const lid_t stride, const lid_t start[3], con
  * @brief Construct a new Sub Block with the given ghost size, stride, start and end, see @ref MemLayout
  * where the start and end is the same in each direction
  */
-SubBlock::SubBlock(const lid_t gs, const lid_t stride, const lid_t start, const lid_t end) {
-    gs_     = gs;
-    stride_ = stride;
+SubBlock::SubBlock(const lid_t start, const lid_t end) {
     for (lda_t id = 0; id < 3; id++) {
         end_[id]   = end;
         start_[id] = start;
@@ -33,9 +29,7 @@ SubBlock::SubBlock(const lid_t gs, const lid_t stride, const lid_t start, const 
 /**
  * @brief reset the SubBlock on the given values
  */
-void SubBlock::Reset(const lid_t gs, const lid_t stride, const lid_t start[3], const lid_t end[3]) {
-    gs_     = gs;
-    stride_ = stride;
+void SubBlock::Reset(const lid_t start[3], const lid_t end[3]) {
     for (lda_t id = 0; id < 3; id++) {
         end_[id]   = end[id];
         start_[id] = start[id];
@@ -45,9 +39,7 @@ void SubBlock::Reset(const lid_t gs, const lid_t stride, const lid_t start[3], c
 /**
  * @brief reset the SubBlock on the given values (same start and end index in the 3 dimensions)
  */
-void SubBlock::Reset(const lid_t gs, const lid_t stride, const lid_t start, const lid_t end) {
-    gs_     = gs;
-    stride_ = stride;
+void SubBlock::Reset(const lid_t start, const lid_t end) {
     for (lda_t id = 0; id < 3; id++) {
         end_[id]   = end;
         start_[id] = start;
@@ -75,14 +67,10 @@ void SubBlock::Extend(/* param */ const real_t sign[3], const bidx_t n_front, co
             end[ida] += n_back;  // extend outside the block
         } else if (sign[ida] < (-0.5)) {
             start[ida] -= n_front;  // extend outside the block
-        } 
-        // else {
-        //     start[ida] -= n_front;
-        //     end[ida] += n_back;
-        // }
+        }
     }
     m_log("extension from %d %d %d -> %d %d %d to %d %d %d -> %d %d %d", this->start(0), this->start(1), this->start(2), this->end(0), this->end(1), this->end(2), start[0], start[1], start[2], end[0], end[1], end[2]);
     // set the new block to the computed start/end
-    new_block->Reset(this->gs(), this->stride(), start, end);
+    new_block->Reset(start, end);
     //-------------------------------------------------------------------------
 }

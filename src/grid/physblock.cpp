@@ -8,17 +8,17 @@
  * @param iface the face ID (0 <= iface < 6)
  * @param block the block on which we act
  */
-PhysBlock::PhysBlock(const iface_t iface, const MemLayout* block, const lid_t nghost_front, const lid_t nghost_back) {
+PhysBlock::PhysBlock(const iface_t iface, const Layout* block, const lid_t nghost_front, const lid_t nghost_back) {
     m_assert(0 <= iface && iface < 6, "iface must be 0<= iface < 6");
     //-------------------------------------------------------------------------
     // remember the block origin
-    gs_     = block->gs();
-    stride_ = block->stride();
+    // gs_     = block->gs();
+    // stride_ = block->stride();
 
     for (int id = 0; id < 3; id++) {
         start_[id] = -nghost_front;
         end_[id]   = M_N + nghost_back;
-        m_assert((end_[id] - start_[id]) <= stride_, "the face is too big for the stride");
+        // m_assert((end_[id] - start_[id]) <= stride_, "the face is too big for the stride");
     }
 
     // store the face ID

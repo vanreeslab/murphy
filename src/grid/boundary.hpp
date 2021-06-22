@@ -84,8 +84,8 @@ class Boundary {
         const real_t* fsign     = face_sign[iface];
 
         // move the data around the starting point of the face to fill
-        bidx_t  b_stride = gblock->stride();
-        real_t* sdata    = data.Write(0, gblock);
+        bidx_t  b_stride = data.stride(); // gblock->stride();
+        real_t* sdata    = data.Write(0);
 
         // m_log("sdata from data = %ld", (sdata - data()) / sizeof(real_t));
         // m_log("the boundary will be from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
@@ -116,13 +116,13 @@ class Boundary {
                 const bidx_t idx2 = (!isphys[2]) ? 0 : (-(ip + OverWriteFirst_(fsign[2])) * fsign[2] - dis2);
 
                 // check that we stay at the correct sport for everybody
-                m_assert((i0 + idx0) >= (-gblock->gs()) && (i0 + idx0) < (b_stride), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), b_stride);
-                m_assert((i1 + idx1) >= (-gblock->gs()) && (i1 + idx1) < (b_stride), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), b_stride);
-                m_assert((i2 + idx2) >= (-gblock->gs()) && (i2 + idx2) < (b_stride), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), b_stride);
+                m_assert((i0 + idx0) >= (-data.gs()) && (i0 + idx0) < (b_stride), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, -data.gs(), b_stride);
+                m_assert((i1 + idx1) >= (-data.gs()) && (i1 + idx1) < (b_stride), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, -data.gs(), b_stride);
+                m_assert((i2 + idx2) >= (-data.gs()) && (i2 + idx2) < (b_stride), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, -data.gs(), b_stride);
                 // check the specific isphys direction
-                m_assert((((i0 + idx0) * isphys[0]) >= 0) && ((i0 + idx0) * isphys[0]) < (b_stride - gblock->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), gblock->stride());
-                m_assert((((i1 + idx1) * isphys[1]) >= 0) && ((i1 + idx1) * isphys[1]) < (b_stride - gblock->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), gblock->stride());
-                m_assert((((i2 + idx2) * isphys[2]) >= 0) && ((i2 + idx2) * isphys[2]) < (b_stride - gblock->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), gblock->stride());
+                m_assert((((i0 + idx0) * isphys[0]) >= 0) && ((i0 + idx0) * isphys[0]) < (b_stride - -data.gs()), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, -data.gs(), data.stride());
+                m_assert((((i1 + idx1) * isphys[1]) >= 0) && ((i1 + idx1) * isphys[1]) < (b_stride - -data.gs()), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, -data.gs(), data.stride());
+                m_assert((((i2 + idx2) * isphys[2]) >= 0) && ((i2 + idx2) * isphys[2]) < (b_stride - -data.gs()), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, -data.gs(), data.stride());
 
                 // store the result
                 f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];

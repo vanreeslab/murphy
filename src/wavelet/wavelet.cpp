@@ -15,7 +15,7 @@
  * @param block_trg descripiton of data_trg memory layout
  * @param data_trg the trg data_ptr
  */
-void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const {
+void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg) const {
     //-------------------------------------------------------------------------
     m_assert(dlvl == 0 || dlvl == 1, "only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
@@ -36,7 +36,7 @@ void Wavelet::Copy(const level_t dlvl, const lid_t shift[3], const MemLayout*  b
  * @param block_trg descripiton of data_trg
  * @param data_trg the 0-position of the trg memory, i.e. the memory location of (0,0,0) for the target
  */
-void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const {
+void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg) const {
     //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
@@ -59,7 +59,7 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
+void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
     //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, block_src, data_src, block_trg, data_trg, 0.0, nullptr);
@@ -83,7 +83,7 @@ void Wavelet::Interpolate(const level_t dlvl, const lid_t shift[3], const MemLay
  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
-void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
+void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
     m_assert(!((alpha != 0.0 && data_cst.IsEmpty())), "if alpha = %e, the data_cst cannot be empty", alpha);
@@ -102,15 +102,15 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
         ctx.trgstart[id] = block_trg->start(id);
         ctx.trgend[id]   = block_trg->end(id);
     }
-    ctx.srcstr = block_src->stride();
-    ctx.trgstr = block_trg->stride();
+    ctx.srcstr = data_src.stride();
+    ctx.trgstr = data_trg.stride();
 
     // store the multiplication factor and the normal
     ctx.alpha = alpha;
 
     // get the correct aligned arrays
     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
-    ctx.sdata = data_src.Read(shift[0], shift[1], shift[2], 0, block_src->stride());
+    ctx.sdata = data_src.Read(0) + m_idx(shift[0], shift[1], shift[2], 0, data_src.stride());
     // ctx.cdata = data_cst;
     ctx.tdata = data_trg;
 
@@ -179,14 +179,14 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t*  ctx) const {
  * 
  * @param dlvl the level gap = source level - target level (must be 0 or 1)
  * @param shift the shift, i.e. the position of the (0,0,0) of the target in the source framework (and resolution!)
- * @param block_src the memory layout corresponding to the source layout, only the ghost size and the stride are used
+ * @param data_src the memory layout corresponding to the source layout, only the ghost size and the stride are used
  * @param disp_src the displacement wrt to the target's window base pointer (the units are given by the disp_unit provided at the creation of the window on the target rank)
  * @param block_trg the memory layout corresponding to the target layout
  * @param data_trg the data memory pointer, i.e. the memory position of (0,0,0)
  * @param src_rank the rank of the source memory
  * @param win the window to use for the RMA calls
  */
-void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, MPI_Aint disp_src, const MemLayout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const {
+void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const_data_ptr data_src, MPI_Aint disp_src, const Layout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
@@ -196,7 +196,7 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, data_trg.stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
@@ -204,11 +204,11 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
     MPI_Datatype dtype_src;
-    ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
+    ToMPIDatatype(src_start, src_end, data_src.stride(), scale, &dtype_src);
 
     //................................................
-    real_t*  local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
-    MPI_Aint disp      = disp_src + m_zeroidx(0, block_src) + m_idx(src_start[0], src_start[1], src_start[2], 0, block_src->stride());
+    real_t*  local_trg = data_trg.Write() + m_idx(trg_start[0], trg_start[1], trg_start[2], 0 , data_trg.stride());
+    MPI_Aint disp      = disp_src + m_zeroidx(0, &data_src) + m_idx(src_start[0], src_start[1], src_start[2], 0, data_src.stride());
     // //#pragma omp critical
 
     int size_trg;
@@ -241,7 +241,7 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
  * @param src_rank the rank of the source memory
  * @param win the window to use for the RMA calls
  */
-void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const {
+void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, const_data_ptr data_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
@@ -251,7 +251,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, data_trg.stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
@@ -259,11 +259,11 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     const lid_t  src_start[3] = {shift[0] + block_trg->start(0) * scale, shift[1] + block_trg->start(1) * scale, shift[2] + block_trg->start(2) * scale};
     const lid_t  src_end[3]   = {shift[0] + block_trg->end(0) * scale, shift[1] + block_trg->end(1) * scale, shift[2] + block_trg->end(2) * scale};
     MPI_Datatype dtype_src;
-    ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
+    ToMPIDatatype(src_start, src_end, data_src.stride(), scale, &dtype_src);
 
     //................................................
-    const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src);
-    MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
+    const real_t* local_src = data_src.Read(0) + m_idx(src_start[0], src_start[1], src_start[2], 0, data_src.stride());
+    MPI_Aint      disp      = disp_trg + m_zeroidx(0, &data_trg) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, data_trg.stride());
     //#pragma omp critical
     int size_trg;
     MPI_Type_size(dtype_trg, &size_trg);
@@ -295,8 +295,8 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
  * @param smooth 
  * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
-real_t Wavelet::Criterion(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
-                          /* target */ const MemLayout* const  detail_block) const {
+real_t Wavelet::Criterion(/* source */ const Layout* const  block_src, const const_data_ptr& data,
+                          /* target */ const Layout* const  detail_block) const {
     //-------------------------------------------------------------------------
     // get the detail coefficients
     real_t details_max = 0.0;
@@ -394,8 +394,8 @@ real_t Wavelet::Criterion(/* source */ const MemLayout* const  block_src, const 
  * @param tol if > 0, used to decide wether a detail must be stored cfr @ref Detail_ for storing policy
  * @param details_max the max of the infinite norm on the details
  */
-void Wavelet::Details(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
-                      /* target */ const MemLayout* const  detail_block, const data_ptr& detail, const real_t tol,
+void Wavelet::Details(/* source */ const Layout* const  block_src, const const_data_ptr& data,
+                      /* target */ const Layout* const  detail_block, const data_ptr& detail, const real_t tol,
                       /* output*/ real_t*  details_max) const {
     //-------------------------------------------------------------------------
     // get memory details
@@ -408,9 +408,9 @@ void Wavelet::Details(/* source */ const MemLayout* const  block_src, const cons
         ctx.trgstart[id] = detail_block->start(id);
         ctx.trgend[id]   = detail_block->end(id);
     }
-    ctx.srcstr = block_src->stride();
+    ctx.srcstr = data.stride();
     ctx.sdata  = data;
-    ctx.trgstr = detail_block->stride();
+    ctx.trgstr = detail.stride();
     ctx.tdata  = detail;
     // we do not neeed to store
     ctx.alpha = tol;
@@ -457,9 +457,9 @@ void Wavelet::Details(/* source */ const MemLayout* const  block_src, const cons
  * @param detail_block the region of details that need to be computed
  * @param detail_mask the mask on the details to compute (1.0 means we remove the detail)
  */
-void Wavelet::SmoothOnMask(/* source */ const MemLayout* const  block_src,
-                           /* target */ const MemLayout* const  block_trg, const data_ptr& data,
-                           /* detail */ const MemLayout* const  detail_block, const data_ptr& detail_mask) const {
+void Wavelet::SmoothOnMask(/* source */ const Layout* const  block_src,
+                           /* target */ const Layout* const  block_trg, const data_ptr& data,
+                           /* detail */ const Layout* const  detail_block, const data_ptr& detail_mask) const {
     //-------------------------------------------------------------------------
     //.........................................................................
     // get the details
@@ -479,9 +479,9 @@ void Wavelet::SmoothOnMask(/* source */ const MemLayout* const  block_src,
         ctx.trgstart[id] = block_trg->start(id);
         ctx.trgend[id]   = block_trg->end(id);
     }
-    ctx.srcstr = detail_block->stride();
+    ctx.srcstr = detail_mask.stride();
     ctx.sdata  = detail_mask;  // this are the details
-    ctx.trgstr = block_trg->stride();
+    ctx.trgstr = data.stride();
     ctx.tdata  = data;  // this is the block
 
     // smooth them
@@ -498,8 +498,8 @@ void Wavelet::SmoothOnMask(/* source */ const MemLayout* const  block_src,
  * @param block_trg the region where the details must be overwritten
  * @param data the modified data
  */
-void Wavelet::OverwriteDetails(/* source */ const MemLayout* const  block_src,
-                               /* target */ const MemLayout* const  block_trg, const data_ptr& data) const {
+void Wavelet::OverwriteDetails(/* source */ const Layout* const  block_src,
+                               /* target */ const Layout* const  block_trg, const data_ptr& data) const {
     //-------------------------------------------------------------------------
     //.........................................................................
     interp_ctx_t ctx;
@@ -512,9 +512,9 @@ void Wavelet::OverwriteDetails(/* source */ const MemLayout* const  block_src,
         ctx.trgend[id]   = block_trg->end(id);
     }
     // source and target data are the same!!
-    ctx.srcstr = block_trg->stride();
+    ctx.srcstr = data.stride();
     ctx.sdata  = data;
-    ctx.trgstr = block_trg->stride();
+    ctx.trgstr = data.stride();
     ctx.tdata  = data;
 
     // let's go
@@ -525,8 +525,8 @@ void Wavelet::OverwriteDetails(/* source */ const MemLayout* const  block_src,
 /**
  * @brief Compute and store the details in the data_trg field
  */
-void Wavelet::StoreDetails(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
-                           /* target */ const MemLayout* const  block_detail, const data_ptr& detail) const {
+void Wavelet::StoreDetails(/* source */ const Layout* const  block_src, const const_data_ptr& data,
+                           /* target */ const Layout* const  block_detail, const data_ptr& detail) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
@@ -538,8 +538,8 @@ void Wavelet::StoreDetails(/* source */ const MemLayout* const  block_src, const
         ctx.trgstart[id] = block_detail->start(id);
         ctx.trgend[id]   = block_detail->end(id);
     }
-    ctx.srcstr = block_src->stride();
-    ctx.trgstr = block_detail->stride();
+    ctx.srcstr = data.stride();
+    ctx.trgstr = detail.stride();
     ctx.sdata  = data;
     ctx.tdata  = detail;
     // set alpha to a huuge value, will store everything beneath it
