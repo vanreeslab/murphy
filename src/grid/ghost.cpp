@@ -167,8 +167,12 @@ void Ghost::InitList_() {
     m_assert(mirror_target_group_ != MPI_GROUP_NULL, "call the InitComm function first!");
 
     // start the exposure epochs if any
-    MPI_Win_post(mirror_origin_group_, 0, local2disp_window_);
-    MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_post(mirror_origin_group_, 0, local2disp_window_);
+    }
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, local2disp_window_);
+    }
 
     // init the list on every active block that matches the level requirements
     const ForestGrid* mygrid = grid_;
@@ -178,8 +182,12 @@ void Ghost::InitList_() {
     }
 
     // complete the epoch and wait for the exposure one
-    MPI_Win_complete(local2disp_window_);
-    MPI_Win_wait(local2disp_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(local2disp_window_);
+    }
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_wait(local2disp_window_);
+    }
 
     //................................................
     MPI_Win_free(&local2disp_window_);
@@ -274,6 +282,7 @@ void Ghost::InitComm_() {
     MPI_Group win_group;
     MPI_Win_get_group(mirrors_window_, &win_group);
     MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_origin_group_);
+    m_assert(!(n_in_group == 0 && mirror_origin_group_ != MPI_GROUP_EMPTY),"if there is no cpu, the group must be empty");
 
     //................................................
     // get the list of ranks that will received a call from me to access their mirrors
@@ -297,6 +306,7 @@ void Ghost::InitComm_() {
     // add the cpus that will get a call from me
     MPI_Group_incl(win_group, n_in_group, group_ranks, &mirror_target_group_);
     MPI_Group_free(&win_group);
+    m_assert(!(n_in_group == 0 && mirror_origin_group_ != MPI_GROUP_EMPTY),"if there is no cpu, the group must be empty");
 
     //................................................
     // free the allocated memory
@@ -342,8 +352,12 @@ void Ghost::UpdateStatus() {
 
     // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
     m_profStart(prof_, "comm PS");
-    MPI_Win_post(mirror_origin_group_, 0, status_window_);
-    MPI_Win_start(mirror_target_group_, 0, status_window_);
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_post(mirror_origin_group_, 0, status_window_);
+    }
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, status_window_);
+    }
     m_profStop(prof_, "comm PS");
 
     m_profStart(prof_, "RMA Get");
@@ -355,8 +369,12 @@ void Ghost::UpdateStatus() {
 
     // close the access epochs
     m_profStart(prof_, "comm CW");
-    MPI_Win_complete(status_window_);
-    MPI_Win_wait(status_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(status_window_);
+    }
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_wait(status_window_);
+    }
     m_profStop(prof_, "comm CW");
     m_profStop(prof_, "update status");
     //-------------------------------------------------------------------------
@@ -391,8 +409,12 @@ void Ghost::PullGhost_Post(const Field*  field, const lda_t ida) {
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     m_profStart(prof_, "RMA post get");
-    MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
-    MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
+    }
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    }
     // m_log("get post");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
@@ -428,10 +450,14 @@ void Ghost::PullGhost_Wait(const Field*  field, const lda_t ida) {
     //................................................
     // finish the access epochs for the exposure epoch to be over
     m_profStart(prof_, "RMA complete get");
-    MPI_Win_complete(mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(mirrors_window_);
+    }
     m_profStop(prof_, "RMA complete get");
     m_profStart(prof_, "RMA wait get");
-    MPI_Win_wait(mirrors_window_);
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_wait(mirrors_window_);
+    }
     m_profStop(prof_, "RMA wait get");
 
     // we now have all the information needed to compute the ghost points in coarser blocks
@@ -445,8 +471,12 @@ void Ghost::PullGhost_Wait(const Field*  field, const lda_t ida) {
     //................................................
     m_profStart(prof_, "RMA post put");
     // post exposure and access epochs for to put the values to my neighbors
-    MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
-    MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_post(mirror_origin_group_, 0, mirrors_window_);
+    }
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_start(mirror_target_group_, 0, mirrors_window_);
+    }
     // start what can be done = sibling and parents copy
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Post, grid_, il, field, ida, interp_, mirrors_window_);
@@ -455,10 +485,14 @@ void Ghost::PullGhost_Wait(const Field*  field, const lda_t ida) {
 
     m_profStart(prof_, "RMA complete put");
     // finish the access epochs for the exposure epoch to be over
-    MPI_Win_complete(mirrors_window_);
+    if (mirror_target_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_complete(mirrors_window_);
+    }
     m_profStop(prof_, "RMA complete put");
     m_profStart(prof_, "RMA wait put");
-    MPI_Win_wait(mirrors_window_);
+    if (mirror_origin_group_ != MPI_GROUP_EMPTY) {
+        MPI_Win_wait(mirrors_window_);
+    }
     m_profStop(prof_, "RMA wait put");
 
     m_profStart(prof_, "computation");
