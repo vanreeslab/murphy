@@ -24,7 +24,7 @@ class m_ptr {
     T*   data_;                         //!< the underlying information
     bool is_owned_;                     //!< indicate if we own the memory and that we should deallocate
     bidx_t gs_     = M_GS;
-    bidx_t stride_ =M_STRIDE;
+    bidx_t stride_ = M_STRIDE;
 
    public:
     //-------------------------------------------------------------------------
@@ -145,7 +145,10 @@ class const_data_ptr : public m_ptr<const real_t> {
     using m_ptr<const real_t>::operator();  // inheritates the operators
     
     /** @brief build a const_data_ptr from a data_ptr: copy */
-    const_data_ptr(const data_ptr& ptr) : m_ptr<const real_t>(ptr){};
+    const_data_ptr(const data_ptr& ptr) : m_ptr<const real_t>(ptr){
+        gs_ = ptr.gs();
+        stride_ = ptr.stride();
+    };
     
     const real_t* Read(const lda_t ida = 0) const;
     // const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;

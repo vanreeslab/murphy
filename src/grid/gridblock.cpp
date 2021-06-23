@@ -519,6 +519,7 @@ void GridBlock::SolveDependency(const Wavelet*  interp, std::map<std::string, Fi
         const lid_t shift[3]     = {M_NCENTER * ((childid % 2)), M_NCENTER * ((childid % 4) / 2), M_NCENTER * ((childid / 4))};
         const lid_t src_start[3] = {shift[0] - M_GS, shift[1] - M_GS, shift[2] - M_GS};
         const lid_t src_end[3]   = {shift[0] + M_NCENTER + M_GS, shift[1] + M_NCENTER + M_GS, shift[2] + M_NCENTER + M_GS};
+        // SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
         SubBlock    mem_src(src_start, src_end);
 
         // for every field on my parent, interpolate it
@@ -1096,9 +1097,10 @@ void GridBlock::GhostGet_Wait(const Field*  field, const lda_t ida, const Wavele
         //................................................
         // refine from the coarse to the parents
         {
+
             // take the full coarse block and set the info in my GP
             const SubBlock block_src(-interp->CoarseNGhostFront(), M_NHALF + interp->CoarseNGhostBack());
-            const data_ptr data_src = coarse_ptr_(0, interp->CoarseNGhostFront(), interp->CoarseStride());
+            const_data_ptr data_src = const_data_ptr(coarse_ptr_(0, interp->CoarseNGhostFront(), interp->CoarseStride()));
             lid_t          shift[3] = {0, 0, 0};
 
             for (const auto gblock : local_parent_) {
