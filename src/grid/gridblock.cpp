@@ -104,6 +104,9 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const Wavelet*  interp, c
         // go to the computation
         SubBlock     block_src( -interp->nghost_front(), M_N + interp->nghost_back());
         SubBlock     block_detail( -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
+        // SubBlock     block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+        // SubBlock     block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
+
         const real_t norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
@@ -377,6 +380,8 @@ void GridBlock::SmoothResolutionJump(const Wavelet*  interp, std::map<std::strin
 
     //................................................
     // smooth depending on the mask
+    // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+    // SubBlock block_det(this->gs(), this->stride(), -interp->ndetail_smooth_extend_front(), M_N + interp->ndetail_smooth_extend_back());
     SubBlock block_src( -interp->nghost_front(), M_N + interp->nghost_back());
     SubBlock block_det( -interp->ndetail_smooth_extend_front(), M_N + interp->ndetail_smooth_extend_back());
 
@@ -935,7 +940,7 @@ void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavele
         // get the copy of local siblings
         for (const auto gblock : (local_sibling_)) {
             GridBlock*       ngh_block = gblock->data_src();
-            const data_ptr   data_src  = ngh_block->data(field, ida);
+            const_data_ptr   data_src  = const_data_ptr(ngh_block->data(field, ida));
             const Layout* block_trg = gblock;
             // copy the information
             interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
@@ -953,8 +958,8 @@ void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavele
             GridBlock* ngh_block = gblock->data_src();
             SubBlock   block_trg;
             interp->CoarseFromFine(gblock, &block_trg);
-            data_ptr data_src = ngh_block->data(field, ida);
-            data_ptr data_trg = coarse_ptr_(0);
+            const_data_ptr data_src = const_data_ptr(ngh_block->data(field, ida));
+            data_ptr data_trg = coarse_ptr_(0, interp->CoarseNGhostFront(),interp->CoarseStride());
             // interpolate, the level is 1 coarser and the shift is unchanged
             m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
             interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
@@ -964,8 +969,8 @@ void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavele
             GridBlock* ngh_block = gblock->data_src();
             SubBlock   block_trg;
             interp->CoarseFromFine(gblock, &block_trg);
-            data_ptr data_src = ngh_block->data(field, ida);
-            data_ptr data_trg = coarse_ptr_(0);
+            const_data_ptr data_src = const_data_ptr(ngh_block->data(field, ida));
+            data_ptr data_trg = coarse_ptr_(0, interp->CoarseNGhostFront(),interp->CoarseStride());
             // interpolate, the level is 1 coarser and the shift is unchanged
             m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
             interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
@@ -1059,7 +1064,7 @@ void GridBlock::GhostGet_Wait(const Field*  field, const lda_t ida, const Wavele
             const SubBlock coarse_block(0, M_NHALF);
             // copy myself to the coarse, one point out of 2
             const lid_t    shift[3] = {0, 0, 0};
-            const data_ptr data_src = data(field, ida);
+            const_data_ptr data_src = const_data_ptr(data(field, ida));
             const data_ptr data_trg = coarse_ptr_(0, interp->CoarseNGhostFront(), interp->CoarseStride());
             // interpolate
             interp->Copy(1, shift, this, data_src, &coarse_block, data_trg);

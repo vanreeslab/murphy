@@ -14,7 +14,7 @@
 real_t* data_ptr::Write(const lda_t ida) const {
     // m_assert(0 <= stride && stride <= M_STRIDE, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
-    const bidx_t offset = stride_ *stride_ * stride_ * ida;
+    const bidx_t offset = stride_ * stride_ * stride_ * ida;
     real_t* data   = (*this)();
     return data + offset;
     //-------------------------------------------------------------------------
@@ -156,7 +156,7 @@ const real_t* data_ptr::Read(const lda_t ida) const {
 const real_t* const_data_ptr::Read(const lda_t ida) const {
     // m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
-    const bidx_t  offset = stride_ *stride_ * stride_ * ida;
+    const bidx_t  offset = stride_ * stride_ * stride_ * ida;
     const real_t* data   = (*this)();
     return data + offset;
     //-------------------------------------------------------------------------
@@ -213,7 +213,7 @@ data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stri
     // m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     // get the offset and return a data_ptr to it
-    
+
     const bidx_t offset = gs + stride * (gs + stride * (gs + stride * ida));
     return data_ptr(this->m_ptr::operator()() + offset, gs, stride);
     //-------------------------------------------------------------------------
