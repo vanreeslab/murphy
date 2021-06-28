@@ -62,14 +62,16 @@ void NavierStokes::InitParam(ParserArguments* param) {
     vort_ = new Field("vorticity", 3);
     vort_->bctype(M_BC_EXTRAP);
     grid_->AddField(vort_);
-    SetVortexRing vr_init(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
-    vr_init.Profile(prof_);
-    vr_init(grid_, vort_);
+    // SetVortexRing vr_init(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
+    // vr_init.Profile(prof_);
+    // vr_init(grid_, vort_);
+    m_assert(false,"need update here");
 
     // setup the grid with the given initial condition
     grid_->SetTol(param->refine_tol, param->coarsen_tol);
     grid_->SetRecursiveAdapt(true);
-    grid_->Adapt(vort_, &vr_init);
+    // grid_->Adapt(vort_, &vr_init);
+    m_assert(false,"need update here");
 
     //-------------------------------------------------------------------------
     m_end;
@@ -194,8 +196,9 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
         real_t        center[3] = {0.5 + u_stream_[0] * time, 0.5 + u_stream_[1] * time, 0.5 + u_stream_[2] * time};
         real_t        radius    = 0.25;
         real_t        sigma     = 0.025 + sqrt(4.0 * nu_ * time);
-        SetVortexRing vr_init(2, center, sigma, radius, grid_->interp());
-        vr_init(grid_, &anal);
+        // SetVortexRing vr_init(2, center, sigma, radius, grid_->interp());
+        // vr_init(grid_, &anal);
+        m_assert(false,"need update here");
 
         grid_->GhostPull(vort_);
         // compute the error wrt to the analytical solution

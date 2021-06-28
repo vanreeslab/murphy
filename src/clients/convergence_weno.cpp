@@ -32,6 +32,7 @@ void ConvergenceWeno::Run() {
     // setup the mesh
     const bool  period[3] = {true, true, true};
     const lid_t L[3]      = {3, 3, 3};
+    const real_t freq[3]    = {2.0, 2.0, 2.0};
 
     const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
                                 -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
@@ -56,51 +57,70 @@ void ConvergenceWeno::Run() {
 
         // create the needed fields
         string fieldName = "field" + std::to_string(il);
-        string solName   = "sol" + std::to_string(il);
+        // string solName   = "sol" + std::to_string(il);
         string velName   = "vel" + std::to_string(il);
         string diffName  = "deriv" + std::to_string(il);
         Field  test(fieldName, 1);
-        Field  sol(solName, 1);
+        // Field  sol(solName, 1);
         Field  vel(velName, 3);
         Field  dtest(diffName, 1);
         grid.AddField(&test);
-        grid.AddField(&sol);
+        // grid.AddField(&sol);
         grid.AddField(&vel);
         grid.AddField(&dtest);
 
         // set a constant velocity
         {
-            const lid_t  deg[3]   = {0, 0, 0};
-            const real_t shift[3] = {0.0, 0.0, 0.0};
-            for (lda_t ida = 0; ida < 3; ++ida) {
-                const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
-                SetPolynom   vel_init(deg, dir, shift, grid.interp());
-                vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
-            }
-            grid.GhostPull(&vel);
+            lambda_setvalue_t lambda_vel = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid)->void{
+                block->data(fid,0).Write(i0,i1,i2)[0] = rand_vel[0];
+                block->data(fid,1).Write(i0,i1,i2)[0] = rand_vel[1];
+                block->data(fid,2).Write(i0,i1,i2)[0] = rand_vel[2];
+            };
+            SetValue vel_init(lambda_vel,grid.interp());
+            vel_init(&grid, &vel);
+            // grid.GhostPull(&vel);
         }
 
         // set the test field
         {
-            // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
-            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {2.0, 2.0, 2.0};
-            const real_t alpha[3]   = {1.0, 1.0, 1.0};
-            SetCosinus   field_init(sin_len, freq, alpha);
+            lambda_setvalue_t lambda_cos = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+                real_t* data = block->data(fid, 0).Write(i0, i1, i2);
+
+                data[0] = std::cos(2.0 * M_PI * freq[0] / L[0] * pos[0]) +
+                          std::cos(2.0 * M_PI * freq[0] / L[0] * pos[1]) +
+                          std::cos(2.0 * M_PI * freq[0] / L[0] * pos[2]);
+            };
+            SetValue field_init(lambda_cos, grid.interp());
             field_init(&grid, &test);
         }
 
-        // set the solution
-        {
-            // -> the solution: u* df/dx + v * df/dy + w*df/dz
-            const real_t freq[3]        = {2.0, 2.0, 2.0};
-            const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
-                                           rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
-                                           rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
-            SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
-            sol_init(&grid, &sol);
-        }
+        // // set the solution
+        // {
+        //     // -> the solution: - u* df/dx - v * df/dy - w*df/dz
+        //     const real_t freq[3] = {2.0, 2.0, 2.0};
+
+        //     lambda_setvalue_t lambda_sin = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        //         real_t pos[3];
+        //         block->pos(i0, i1, i2, pos);
+        //         real_t* data = block->data(fid, 0).Write(i0, i1, i2);
+
+        //         data[0] = (rand_vel[0] * 2.0 * M_PI * freq[0] / L[0]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[0]) +
+        //                   (rand_vel[1] * 2.0 * M_PI * freq[1] / L[1]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[1]) +
+        //                   (rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[2]);
+        //     };
+        //     SetValue sol_init(lambda_sin, grid.interp());
+        //     sol_init(&grid, &sol);
+        // }
+        lambda_error_t lambda_sol = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+
+            return (rand_vel[0] * 2.0 * M_PI * freq[0] / L[0]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[0]) +
+                   (rand_vel[1] * 2.0 * M_PI * freq[1] / L[1]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[1]) +
+                   (rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[2]);
+        };
 
         const bool do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
         const bool do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
@@ -114,9 +134,10 @@ void ConvergenceWeno::Run() {
             adv(&grid, &test, &dtest);
             m_log("error weno 3");
             // now, we need to check
+            
             Error  error;
             real_t erri, err2;
-            error.Norms(&grid, &dtest, &sol, &err2, &erri);
+            error.Norms(&grid, &dtest, &lambda_sol, &err2, &erri);
             if (rank == 0) {
                 string fname     = "data/conv_weno3_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
@@ -132,7 +153,7 @@ void ConvergenceWeno::Run() {
             // now, we need to check
             Error  error;
             real_t erri, err2;
-            error.Norms(&grid, &dtest, &sol, &err2, &erri);
+            error.Norms(&grid, &dtest,  &lambda_sol, &err2, &erri);
             if (rank == 0) {
                 string fname     = "data/conv_weno5_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
@@ -142,7 +163,7 @@ void ConvergenceWeno::Run() {
             m_log("%e %e %e", hmax, err2, erri);
         }
 
-        grid.DeleteField(&sol);
+        // grid.DeleteField(&sol);
         grid.DeleteField(&vel);
         grid.DeleteField(&test);
         grid.DeleteField(&dtest);

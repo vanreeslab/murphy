@@ -23,13 +23,8 @@ class SimpleAdvection : public TestCase {
 
     Field*  vel_;
     Field*  scal_;
-    Field*  sol_;
     Grid*   grid_;
     Prof*   prof_;
-
-    SetScalarRing*  ring_;
-    SetPolynom*     vel_field_1_;
-    SetPolynom*     vel_field_0_;
 
     std::string folder_diag_ = "data";
 

@@ -476,12 +476,12 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     m_assert(forest->user_pointer != nullptr, "we need the grid in this function");
     //-------------------------------------------------------------------------
     // retrieve the grid from the forest user-data pointer
-    Grid*     grid  = reinterpret_cast<Grid*>(forest->user_pointer);
-    Field*    field = reinterpret_cast<Field*>(grid->cback_criterion_ptr());
-    SetValue* expr  = reinterpret_cast<SetValue*>(grid->cback_interpolate_ptr());
+    Grid*           grid  = static_cast<Grid*>(forest->user_pointer);
+    Field*          field = static_cast<Field*>(grid->cback_criterion_ptr());
+    SetValue* expr  = static_cast<SetValue*>(grid->cback_interpolate_ptr());
 
     m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
-    m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
+    // m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
     m_assert(field != nullptr, "the field to fill shouldn't be nullptr");
     m_assert(grid->IsAField(field), "the field to fill must exist");
 

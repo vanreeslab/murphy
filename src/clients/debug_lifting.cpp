@@ -8,46 +8,59 @@
 #include "tools/ioh5.hpp"
 #include "tools/patch.hpp"
 
-class InitialCondition : public SetValue {
-   protected:
-    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
-        //-------------------------------------------------------------------------
-        real_t        pos[3];
-        const real_t* xyz   = block->xyz();
-        const real_t* hgrid = block->hgrid();
+// class InitialCondition : public SetValue {
+//    protected:
+//     void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
+//         //-------------------------------------------------------------------------
+//         real_t        pos[3];
+//         const real_t* xyz   = block->xyz();
+//         const real_t* hgrid = block->hgrid();
 
-        real_t sigma     = 0.1;
-        real_t center[3] = {1.0, 0.5, 0.5};
+//         real_t sigma     = 0.1;
+//         real_t center[3] = {1.0, 0.5, 0.5};
 
-        const real_t oo_sigma2 = 1.0 / (sigma * sigma);
-        const real_t fact      = 1.0;  /// sqrt(M_PI * sigma * sigma);  //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
+//         const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+//         const real_t fact      = 1.0;  /// sqrt(M_PI * sigma * sigma);  //todo change that because sqrt(M_PI * sigma_ * sigma_) is the initial amplitude
 
-        // get the pointers correct
-        real_t* data = block->data(fid, 0).Write();
+//         // get the pointers correct
+//         real_t* data = block->data(fid, 0).Write();
 
-        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            // get the position
-            real_t pos[3];
-            block->pos(i0, i1, i2, pos);
+//         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//             // get the position
+//             real_t pos[3];
+//             block->pos(i0, i1, i2, pos);
 
-            // compute the gaussian
-            const real_t rhox = (pos[0] - center[0]) / sigma;
-            const real_t rhoy = (pos[1] - center[1]) / sigma;
-            const real_t rhoz = (pos[2] - center[2]) / sigma;
-            const real_t rho  = rhox * rhox;  //+ rhoy * rhoy + rhoz * rhoz;
+//             // compute the gaussian
+//             const real_t rhox = (pos[0] - center[0]) / sigma;
+//             const real_t rhoy = (pos[1] - center[1]) / sigma;
+//             const real_t rhoz = (pos[2] - center[2]) / sigma;
+//             const real_t rho  = rhox * rhox;  //+ rhoy * rhoy + rhoz * rhoz;
 
-            data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
+//             data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
 
-            // simply give the level
-            // data[m_idx(i0, i1, i2)] = block->level();
-        };
+//             // simply give the level
+//             // data[m_idx(i0, i1, i2)] = block->level();
+//         };
 
-        for_loop(&op, start_, end_);
-        //-------------------------------------------------------------------------
-    };
+//         for_loop(&op, start_, end_);
+//         //-------------------------------------------------------------------------
+//     };
 
-   public:
-    explicit InitialCondition() : SetValue(nullptr){};
+//    public:
+//     explicit InitialCondition() : SetValue(nullptr){};
+// };
+
+constexpr real_t sigma     = 0.1;
+constexpr real_t center[3] = {1.0, 0.5, 0.5};
+
+// define the initial condition and the analytical solution
+static lambda_setvalue_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+    // get the position
+    real_t pos[3];
+    block->pos(i0, i1, i2, pos);
+
+    // call the function
+    block->data(fid).Write(i0, i1, i2)[0] = scalar_exp(pos, center, sigma);
 };
 
 void DebugLifting::InitParam(ParserArguments* param) {}
@@ -67,8 +80,8 @@ void DebugLifting::Run() {
     scal.bctype(M_BC_EXTRAP);
 
     // set the initial condition
-    InitialCondition ring;
-    ring(&grid, &scal);
+    SetValue init_sol(lambda_error);
+    init_sol(&grid, &scal);
 
     // dump
     IOH5 dump("data");

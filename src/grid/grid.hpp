@@ -9,19 +9,16 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/types.hpp"
 #include "core/pointers.hpp"
-\
+#include "core/types.hpp"
+#include "grid/field.hpp"
+#include "grid/ghost.hpp"
 #include "grid/gridblock.hpp"
-
+#include "grid/gridcallback.hpp"
+#include "operator/setvalues.hpp"
+#include "tools/patch.hpp"
+#include "tools/prof.hpp"
 #include "wavelet/wavelet.hpp"
-
-#include "field.hpp"
-#include "ghost.hpp"
-#include "patch.hpp"
-#include "prof.hpp"
-#include "setvalues.hpp"
-#include "gridcallback.hpp"
 
 /**
  * @brief provide understandable grid management
@@ -118,26 +115,27 @@ class Grid : public ForestGrid {
     [[nodiscard]] void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
     [[nodiscard]] lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
-    void  AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
-    void  AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
+    void                AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
+    void                AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
-    void Refine(Field*  field);
-    void Coarsen(Field*  field);
-    void StoreDetails(Field*  criterion, Field*  details);
+    void Refine(Field* field);
+    void Coarsen(Field* field);
+    void StoreDetails(Field* criterion, Field* details);
 
-    void Adapt(Field*  field);
-    void Adapt(Field*  field, SetValue*  expression);
+    void Adapt(Field* field);
+    // void Adapt(Field* field, const setvalue_gridop_t* expr_grid, const setvalue_blockop_t* expr_block);
+    void Adapt(Field* field, const SetValue* expr);
     void Adapt(std::list<Patch>* patches);
 
     // void AdaptMagic(Field*  field, list<Patch*  > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);
-    void AdaptMagic(/* criterion */ Field*  field_detail, std::list<Patch>* patches,
+    void AdaptMagic(/* criterion */ Field* field_detail, std::list<Patch>* patches,
                     /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
                     /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr);
 
-//    private:
+    //    private:
     // void ExchangeStatus_PostStart_() const;
     // void ExchangeStatus_CompleteWait_() const;
     /**@}*/

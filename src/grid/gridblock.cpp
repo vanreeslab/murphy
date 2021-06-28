@@ -94,8 +94,8 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const Wavelet* interp, co
     m_profStart(profiler, "criterion detail");
 
     // prevent coarsening if we have finer neighbors
-    const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
-    const bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
+    const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0);
+    const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL);
 
     // I need to visit every dimension and determine if we have to refine and/or coarsen.
     // afterthat we choose given the conservative approach
@@ -135,8 +135,10 @@ void GridBlock::UpdateStatusFromPatches(/* params */ const Wavelet* interp, std:
     m_profStart(profiler, "patch");
 
     // prevent coarsening if we have finer neighbors
-    const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
-    const bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
+    // const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
+    // const bool forbid_refinement = (local_parent_.size() + ghost_parent_.size()) > 0;
+    const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0);
+    const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL);
 
     // get the block length
     real_t len = p4est_QuadLen(this->level());

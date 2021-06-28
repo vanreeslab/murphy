@@ -8,6 +8,8 @@
 #include "operator/blockoperator.hpp"
 #include "wavelet/wavelet.hpp"
 
+using lambda_error_t = lambda_i3_t<real_t, const CartBlock* const>;
+
 /**
  * @brief Computes the error of a field against the given solution.
  * 
@@ -112,8 +114,8 @@ template <>
 void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol, const Field* error);
 
 template <>
-void Error::ErrorOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol);
+void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_error_t* sol);
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol, const Field* error);
+void Error::ErrorFieldOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_error_t* sol, const Field* error);
 
 #endif  // SRC_ERROR_HPP

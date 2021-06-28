@@ -423,27 +423,25 @@ void Grid::Adapt(Field* field) {
 /**
  * @brief Adapt the grid given an analytical expression for the designated field
  * 
- * @warning For any other field than the one given in argument, no value is guaranteed
- * 
- * @param field 
- * @param expression 
+ * @param field the field to adapt
+ * @param do_ghost determine if the application of expr_block will fill the ghost
+ * @param expr_grid 
+ * @param expr_block 
  */
-void Grid::Adapt(Field* field, SetValue* expression) {
+void Grid::Adapt(Field* field, const SetValue* expr) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    m_assert(!(recursive_adapt() && !expression->do_ghost()), "in recursive mode, I need to fill the ghost values while using the analytical expression");
     //-------------------------------------------------------------------------
     // apply the operator to get the starting value
-    expression->operator()(this, field);
-    m_assert(field->ghost_status(), "the ghost status should be valid here...");
+    (*expr)(this, field);
+    m_assert(field->ghost_status(), "strictly not needed but as we recall the operator just above, we have to enforce the criterion is gonna be ok");
 
-    // refine given the value
-    Field*    myfield = field;
-    SetValue* my_expr = expression;
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, reinterpret_cast<void*>(myfield), &cback_ValueFill, reinterpret_cast<void*>(my_expr));
+    // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
+    void* my_expr = static_cast<void*>( const_cast<SetValue*>(expr) );
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
 
-    // we modified one block after another, so we set the ghost value from the SetValue
-    field->ghost_status(expression->do_ghost());
+    // if the application of the operator on the grid has filled the ghosts, then the operator on the block has done the same
+    field->ghost_status(true);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -562,7 +560,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStart(prof_, "p4est coarsen");
             p8est_coarsen_ext(p4est_forest_, 0, 0, coarsen_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est coarsen");
-            m_log("coarsen is done");
+            m_verb("coarsen is done");
         }
         // refinement -> only one level
         // The limit in levels are handled directly on the block, not in p4est
@@ -570,14 +568,14 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStart(prof_, "p4est refine");
             p8est_refine_ext(p4est_forest_, 0, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est refine");
-            m_log("refine is done");
+            m_verb("refine is done");
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case
         m_profStart(prof_, "p4est balance");
         p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
         m_profStop(prof_, "p4est balance");
-        m_log("balance is done");
+        m_verb("balance is done");
 
         //................................................
         // solve the dependencies on the grid
@@ -585,7 +583,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
             m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
         }
-        m_log("solve dependencies");
+        m_verb("solve dependencies");
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
 
         //................................................

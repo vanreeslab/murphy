@@ -7,43 +7,20 @@
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
 
+constexpr real_t sigma     = 0.05;
+constexpr real_t center[3] = {0.5, 0.5, 0.5};
+
 using std::string;
 using std::to_string;
 
-lambda_i3block_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+// define the initial condition and the analytical solution
+static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     // get the position
     real_t pos[3];
-    m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+    block->pos(i0, i1, i2, pos);
 
-    const real_t sigma     = 0.05;
-    const real_t center[3] = {0.5, 0.5, 0.5};
-
-    // compute the gaussian
-    const real_t rhox = (pos[0] - center[0]) / sigma;
-    const real_t rhoy = (pos[1] - center[1]) / sigma;
-    const real_t rhoz = (pos[2] - center[2]) / sigma;
-    const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-
-    return std::exp(-rho);
-};
-
-class InitialCondition : public SetValue {
-   protected:
-    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
-        //-------------------------------------------------------------------------
-        // get the pointers correct
-        real_t* data = block->data(fid, 0).Write();
-
-        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block);
-        };
-
-        for_loop(&op, start_, end_);
-        //-------------------------------------------------------------------------
-    };
-
-   public:
-    explicit InitialCondition() : SetValue(nullptr){};
+    // call the function
+    return scalar_exp(pos, center, sigma);
 };
 
 void EpsilonTest::InitParam(ParserArguments* param) {
@@ -79,11 +56,19 @@ void EpsilonTest::Run() {
         grid.AddField(&scal);
         scal.bctype(M_BC_EXTRAP);
 
-        // custon stuffs
-        InitialCondition init;
+        // initial condition
+        lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+            real_t* data = block->data(fid).Write(i0, i1, i2);
+            // set value
+            data[0] = scalar_exp(pos, center, sigma);
+        };
+        SetValue init(lambda_initcond);
+        init(&grid, &scal);
 
         // apply it
-        init(&grid, &scal);
         grid.SetTol(epsilon * 1e+20, epsilon);
 
         // grid.GhostPull(&scal);
@@ -93,7 +78,8 @@ void EpsilonTest::Run() {
         // compute the moment at the start
         grid.GhostPull(&scal);
         BMoment moment;
-        real_t  sol_moment0, sol_moment1[3];
+        real_t  sol_moment0;
+        real_t  sol_moment1[3];
         moment(&grid, &scal, &sol_moment0, sol_moment1);
 
         // coarsen
@@ -109,7 +95,8 @@ void EpsilonTest::Run() {
             m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
             grid.GhostPull(&scal);
-            real_t coarse_moment0, coarse_moment1[3];
+            real_t coarse_moment0;
+            real_t coarse_moment1[3];
             moment(&grid, &scal, &coarse_moment0, coarse_moment1);
             m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
 
@@ -117,7 +104,8 @@ void EpsilonTest::Run() {
 
         // measure the moments
         grid.GhostPull(&scal);
-        real_t coarse_moment0, coarse_moment1[3];
+        real_t coarse_moment0;
+        real_t coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
 
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
@@ -159,7 +147,7 @@ void EpsilonTest::Run() {
         real_t normi;
         Error  error;
         // error.Normi(&grid, &scal, const Field* (&sol), &normi);
-        error.Normi(&grid, &scal, &lambda_initcond, &normi);
+        error.Normi(&grid, &scal, &lambda_error, &normi);
 
         grid.DumpLevels(1, "data", string("w" + std::to_string(M_WAVELET_N) + std::to_string(M_WAVELET_NT)));
 

@@ -74,7 +74,7 @@ void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, con
 };
 
 template <>
-void Error::ErrorOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol) {
+void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_error_t* sol) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
 
@@ -107,7 +107,7 @@ void Error::ErrorOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* bloc
 };
 
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_i3block_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_i3block_t* sol, const Field* error) {
+void Error::ErrorFieldOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_error_t* sol, const Field* error) {
     //-------------------------------------------------------------------------
     const_data_ptr ptr_field = block->data(fid);
     data_ptr       ptr_error = block->data(error);

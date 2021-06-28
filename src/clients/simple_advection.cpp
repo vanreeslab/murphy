@@ -10,67 +10,33 @@
 using std::string;
 using std::to_string;
 
-// static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, GridBlock*  block) -> real_t {
-//     // get the position
-//     real_t pos[3];
-//     m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+constexpr lda_t  ring_normal = 3;
+constexpr real_t sigma       = 0.05;
+constexpr real_t radius      = 0.25;
+constexpr real_t center[3]   = {0.5, 0.5, 0.5};
+constexpr real_t velocity[3] = {0.0, 0.0, 1.0};
 
-//     const real_t sigma     = 0.05;
-//     const real_t center[3] = {0.5, 0.5, 0.5};
-
-//     // compute the gaussian
-//     const real_t rhox = (pos[0] - center[0]) / sigma;
-//     const real_t rhoy = (pos[1] - center[1]) / sigma;
-//     const real_t rhoz = (pos[2] - center[2]) / sigma;
-//     const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-
-//     return std::exp(-rho);
-// };
-
-// class InitialCondition : public SetValue {
-//    protected:
-//     void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
-//         //-------------------------------------------------------------------------
-//         // get the pointers correct
-//         real_t* data = block->data(fid, 0).Write();
-
-//         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-//             data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block);
-//         };
-
-//         for_loop(&op, start_, end_);
-//         //-------------------------------------------------------------------------
-//     };
-
-//    public:
-//     explicit InitialCondition() : SetValue(nullptr){};
-// };
+static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+    m_assert(fid->lda() == 3, "the velocity field must be a vector");
+    block->data(fid, 0).Write(i0, i1, i2)[0] = velocity[0];
+    block->data(fid, 1).Write(i0, i1, i2)[0] = velocity[1];
+    block->data(fid, 2).Write(i0, i1, i2)[0] = velocity[2];
+};
 
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
     if (!(prof_ == nullptr)) {
         prof_->Disp();
-        delete (prof_);
+        delete prof_;
     }
-    // free the set values
-    delete (ring_);
-    delete (vel_field_0_);
-    delete (vel_field_1_);
 
-    // free the grid
-    // grid_.Free();
     // delete the field
     grid_->DeleteField(vel_);
     grid_->DeleteField(scal_);
-    grid_->DeleteField(sol_);
 
-    delete (vel_);
-    delete (scal_);
-    delete (sol_);
-    // delete the grid
-    delete (grid_);
-
-    m_log("Navier Stokes is dead");
+    delete vel_;
+    delete scal_;
+    delete grid_;
     //-------------------------------------------------------------------------
 }
 
@@ -93,12 +59,10 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
         string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
-        prof_ = new Prof(name);
+        prof_       = new Prof(name);
     }
 
     // setup the grid
-    // bool        period[3] = {false, false, false};
-    // const lid_t L[3]      = {1, 1, 1};
     grid_ = new Grid(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
 
     // set the min/max level
@@ -109,44 +73,51 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     scal_->bctype(M_BC_EXTRAP);
     grid_->AddField(scal_);
 
-    // add the solution as temp
-    sol_ = new Field("sol", 1);
-    sol_->is_temp(true);
-    grid_->AddField(sol_);
-
     // setup the scalar ring
-    real_t velocity[3] = {0.0, 0.0, 1.0};
-    real_t center[3]   = {0.5, 0.5, 0.5};
-    ring_ = new SetScalarRing(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
-    ring_->Profile(prof_);
-    ring_->SetTime(0.0);
-    (*ring_)(grid_, scal_);
+    lambda_setvalue_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        // get the position
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        real_t* data = block->data(fid).Write(i0, i1, i2);
+        // call the function
+        data[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
+    };
+    SetValue ring(lambda_ring,grid_->interp());
+    ring(grid_, scal_);
 
-    // finish the grid
+    // adapt the grid
     if (!no_adapt_) {
         grid_->SetTol(param->refine_tol, param->coarsen_tol);
         grid_->SetRecursiveAdapt(true);
-        grid_->Adapt(scal_, ring_);
+        grid_->Adapt(scal_, &ring);
     }
 
-    // setup the velocity, 1.0 in every direction
+    // set the velocity field
     vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
     vel_->is_temp(true);
     grid_->AddField(vel_);
-    const lid_t  deg[3]   = {0, 0, 0};
-    const real_t dir1[3]   = {1.0, 0.0, 0.0};
-    const real_t shift[3] = {0.0, 0.0, 0.0};
-    vel_field_1_ = new SetPolynom(deg, dir1, shift);
-    const real_t dir0[3]   = {0.0, 0.0, 0.0};
-    vel_field_0_ = new SetPolynom(deg, dir0, shift);
+    SetValue set_velocity(lambda_velocity, grid_->interp());
+    set_velocity(grid_, vel_);
 
-    (*vel_field_0_)(grid_, vel_, 0);
-    (*vel_field_0_)(grid_, vel_, 1);
-    (*vel_field_1_)(grid_, vel_, 2);
-    
+    // // setup the velocity, 1.0 in every direction
+    // vel_ = new Field("velocity", 3);
+    // vel_->bctype(M_BC_EXTRAP);
+    // vel_->is_temp(true);
+    // grid_->AddField(vel_);
+    // const lid_t  deg[3]   = {0, 0, 0};
+    // const real_t dir1[3]   = {1.0, 0.0, 0.0};
+    // const real_t shift[3] = {0.0, 0.0, 0.0};
+    // vel_field_1_ = new SetPolynom(deg, dir1, shift);
+    // const real_t dir0[3]   = {0.0, 0.0, 0.0};
+    // vel_field_0_ = new SetPolynom(deg, dir0, shift);
+
+    // (*vel_field_0_)(grid_, vel_, 0);
+    // (*vel_field_0_)(grid_, vel_, 1);
+    // (*vel_field_1_)(grid_, vel_, 2);
+
     // take the ghosts
-    grid_->GhostPull(vel_);
+    // grid_->GhostPull(vel_);
 
     // IOH5 dump(folder_diag_);
     // dump(grid_(), vel_(),0);
@@ -193,23 +164,36 @@ void SimpleAdvection::Run() {
                 m_log("---- adapt mesh");
                 m_profStart(prof_, "adapt");
                 if (!grid_on_sol_) {
+                    // adapt on the current field
                     grid_->Adapt(scal_);
                 } else {
-                    // update the solution and refine
-                    ring_->SetTime(t);
-                    (*ring_)(grid_, sol_);
+                    // // update the solution
+                    // const real_t new_center[3] = {center[0] + t * velocity[0],
+                    //                               center[1] + t * velocity[1],
+                    //                               center[2] + t * velocity[2]};
 
-                    grid_->Adapt(sol_);
+                    // lambda_setvalue_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                    //     // get the position
+                    //     real_t pos[3];
+                    //     block->pos(i0, i1, i2, pos);
+                    //     real_t* data = block->data(fid).Write(i0, i1, i2);
+                    //     // call the function
+                    //     data[0] = scalar_ring(pos, new_center, radius, sigma, 3);
+                    // };
+                    // SetValue ring(lambda_ring);
+                    // ring(grid_, scal_);
+
+                    // // and adapt on the analytical solution
+                    // grid_->Adapt(sol_);
+                    m_assert(false, "this option is not supported without a solution field");
                 }
                 m_profStop(prof_, "adapt");
 
                 // reset the velocity
                 m_profStart(prof_, "set velocity");
-                // (*vel_field_)(grid_, vel_, 2);
-                (*vel_field_0_)(grid_, vel_, 0);
-                (*vel_field_0_)(grid_, vel_, 1);
-                (*vel_field_1_)(grid_, vel_, 2);
-                grid_->GhostPull(vel_);
+                // set the velocity field
+                SetValue set_velocity(lambda_velocity, grid_->interp());
+                set_velocity(grid_, vel_);
                 m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
                 m_profStop(prof_, "set velocity");
             }
@@ -293,12 +277,22 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     BMean  mean;
     mean(grid_, scal_, &mean_val);
 
+    // get the solution at the given time
+    const real_t new_center[3] = {center[0] + time * velocity[0],
+                                  center[1] + time * velocity[1],
+                                  center[2] + time * velocity[2]};
+
+    lambda_error_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+        // get the position
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+
+        return scalar_ring(pos, new_center, radius, sigma, ring_normal);
+    };
     // compute the error
     real_t err2, erri;
     Error  error;
-    ring_->SetTime(time);
-    (*ring_)(grid_, sol_);
-    error.Norms(grid_, scal_, sol_, &err2, &erri);
+    error.Norms(grid_, scal_, &lambda_ring, &err2, &erri);
 
     // open the file
     FILE*   file_error;
@@ -326,7 +320,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_);
         dump(grid_, scal_, iter);
-        dump(grid_, sol_, iter);
+        // dump(grid_, sol_, iter);
 
         // dump the details
         if (dump_detail()) {

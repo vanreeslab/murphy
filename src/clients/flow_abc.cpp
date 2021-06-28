@@ -55,7 +55,12 @@ void FlowABC::InitParam(ParserArguments* param) {
     vel_->is_temp(true);
 
     // setup the flow ring
-    SetScalarTube flow_ring(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
+    lambda_setvalue_t lambda_init = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        block->data(fid, 0).Write(i0, i1, i2)[0] = scalar_ring(pos, param->vr_center, param->vr_radius, param->vr_sigma, param->vr_normal);
+    };
+    SetValue flow_ring(lambda_init, grid_->interp());
     flow_ring.Profile(prof_);
     flow_ring(grid_, scal_);
 
@@ -74,7 +79,22 @@ void FlowABC::Run() {
     real_t t_final = 1000.0;
     real_t t       = 0.0;
 
-    SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
+    // SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
+    // setup the flow ring
+    constexpr real_t a = 1.0;
+    constexpr real_t b = 0.5;
+    constexpr real_t c = 0.25;
+    lambda_setvalue_t lambda_abs = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        const real_t x                           = pos[0];
+        const real_t y                           = pos[1];
+        const real_t z                           = pos[2];
+        block->data(fid, 0).Write(i0, i1, i2)[0] = a * sin(2.0 * M_PI * z) + c * cos(2.0 * M_PI * y);
+        block->data(fid, 1).Write(i0, i1, i2)[0] = b * sin(2.0 * M_PI * x) + a * cos(2.0 * M_PI * z);
+        block->data(fid, 2).Write(i0, i1, i2)[0] = c * sin(2.0 * M_PI * y) + b * cos(2.0 * M_PI * x);
+    };
+    SetValue flow_vel(lambda_abs, grid_->interp());
 
     Advection<M_WENO_Z, 3> adv(vel_);
     RK3_TVD                rk3(grid_, scal_, &adv, prof_);
