@@ -81,9 +81,9 @@ void FlowABC::Run() {
 
     // SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
     // setup the flow ring
-    constexpr real_t a = 1.0;
-    constexpr real_t b = 0.5;
-    constexpr real_t c = 0.25;
+    const real_t a = 1.0;
+    const real_t b = 0.5;
+    const real_t c = 0.25;
     lambda_setvalue_t lambda_abs = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
         real_t pos[3];
         block->pos(i0, i1, i2, pos);

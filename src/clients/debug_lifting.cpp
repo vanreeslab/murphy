@@ -50,8 +50,8 @@
 //     explicit InitialCondition() : SetValue(nullptr){};
 // };
 
-constexpr real_t sigma     = 0.1;
-constexpr real_t center[3] = {1.0, 0.5, 0.5};
+static real_t sigma     = 0.1;
+static real_t center[3] = {1.0, 0.5, 0.5};
 
 // define the initial condition and the analytical solution
 static lambda_setvalue_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {

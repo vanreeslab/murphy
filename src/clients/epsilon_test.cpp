@@ -7,8 +7,8 @@
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
 
-constexpr real_t sigma     = 0.05;
-constexpr real_t center[3] = {0.5, 0.5, 0.5};
+static real_t sigma     = 0.05;
+static real_t center[3] = {0.5, 0.5, 0.5};
 
 using std::string;
 using std::to_string;

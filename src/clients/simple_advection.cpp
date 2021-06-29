@@ -10,11 +10,11 @@
 using std::string;
 using std::to_string;
 
-constexpr lda_t  ring_normal = 3;
-constexpr real_t sigma       = 0.05;
-constexpr real_t radius      = 0.25;
-constexpr real_t center[3]   = {0.5, 0.5, 0.5};
-constexpr real_t velocity[3] = {0.0, 0.0, 1.0};
+static lda_t  ring_normal = 2;
+static real_t sigma       = 0.05;
+static real_t radius      = 0.25;
+static real_t center[3]   = {0.5, 0.5, 0.5};
+static real_t velocity[3] = {0.0, 0.0, 1.0};
 
 static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
     m_assert(fid->lda() == 3, "the velocity field must be a vector");
