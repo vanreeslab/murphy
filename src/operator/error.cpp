@@ -86,7 +86,9 @@ void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block,
 
         auto op = [=, &e2, &ei](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // we need to discard the physical BC for the edges
-            real_t error = data_field[m_idx(i0, i1, i2)] - (*sol)(i0, i1, i2, block);
+            const real_t sol_val  = (*sol)(i0, i1, i2, block);
+            const real_t data_val = data_field[m_idx(i0, i1, i2)];
+            const real_t error    = data_val - sol_val;
             m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
             // update the block errors
             e2 += error * error;

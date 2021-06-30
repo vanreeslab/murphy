@@ -73,36 +73,72 @@ TEST_P(Adapt, weno_periodic_cosinus) {
 
         // set a constant velocity
         {
-            const lid_t  deg[3]   = {0, 0, 0};
-            const real_t shift[3] = {0.0, 0.0, 0.0};
-            for (lda_t ida = 0; ida < 3; ++ida) {
-                const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
-                SetPolynom   vel_init(deg, dir, shift, grid.interp());
-                vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
-            }
-            grid.GhostPull(&vel);
+            // const lid_t  deg[3]   = {0, 0, 0};
+            // const real_t shift[3] = {0.0, 0.0, 0.0};
+            // for (lda_t ida = 0; ida < 3; ++ida) {
+            //     const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
+            //     SetPolynom   vel_init(deg, dir, shift, grid.interp());
+            //     vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
+            // }
+            // grid.GhostPull(&vel);
+            lambda_setvalue_t pol_op     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                // get the position
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+
+                // call the function
+                block->data(fid).Write(i0, i1, i2)[0] = rand_vel[0];
+                block->data(fid).Write(i0, i1, i2)[1] = rand_vel[1];
+                block->data(fid).Write(i0, i1, i2)[2] = rand_vel[2];
+            };
+            SetValue field_init(pol_op,grid.interp());
+            field_init(&grid, &vel);
         }
 
         // set the test field
         {
-            // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
-            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {2.0, 2.0, 2.0};
-            const real_t alpha[3]   = {1.0, 1.0, 1.0};
-            SetCosinus   field_init(sin_len, freq, alpha);
+            // // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
+            // const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            // const real_t freq[3]    = {2.0, 2.0, 2.0};
+            // const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            // SetCosinus   field_init(sin_len, freq, alpha);
+            // field_init(&grid, &test);
+            lambda_setvalue_t sin_op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                // get the position
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+
+                // call the function
+                block->data(fid).Write(i0, i1, i2)[0] = sin(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
+                                                        sin(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
+                                                        sin(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
+            };
+            SetValue field_init(sin_op, grid.interp());
             field_init(&grid, &test);
         }
 
         // set the solution
         {
-            // -> the solution: u* df/dx + v * df/dy + w*df/dz
-            const real_t freq[3]        = {2.0, 2.0, 2.0};
-            const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
-                                           rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
-                                           rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
-            SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
-            sol_init(&grid, &sol);
+            // // -> the solution: u* df/dx + v * df/dy + w*df/dz
+            // const real_t freq[3]        = {2.0, 2.0, 2.0};
+            // const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            // const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
+            //                                rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
+            //                                rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
+            // SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
+            // sol_init(&grid, &sol);
+            lambda_setvalue_t cos_op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                // get the position
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+
+                // call the function
+                block->data(fid).Write(i0, i1, i2)[0] = rand_vel[0] * (4.0 * M_PI / ((real_t)L[0])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
+                                                        rand_vel[1] * (4.0 * M_PI / ((real_t)L[1])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
+                                                        rand_vel[2] * (4.0 * M_PI / ((real_t)L[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
+            };
+            SetValue field_init(cos_op, grid.interp());
+            field_init(&grid, &test);
         }
 
         if (do_weno_3) {
@@ -183,36 +219,72 @@ TEST_F(ValidStencilUniform, weno_periodic_cosinus) {
 
         // set a constant velocity
         {
-            const lid_t  deg[3]   = {0, 0, 0};
-            const real_t shift[3] = {0.0, 0.0, 0.0};
-            for (lda_t ida = 0; ida < 3; ++ida) {
-                const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
-                SetPolynom   vel_init(deg, dir, shift, grid.interp());
-                vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
-            }
-            grid.GhostPull(&vel);
+            // const lid_t  deg[3]   = {0, 0, 0};
+            // const real_t shift[3] = {0.0, 0.0, 0.0};
+            // for (lda_t ida = 0; ida < 3; ++ida) {
+            //     const real_t dir[3] = {rand_vel[ida], 0.0, 0.0};
+            //     SetPolynom   vel_init(deg, dir, shift, grid.interp());
+            //     vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
+            // }
+            // grid.GhostPull(&vel);
+            lambda_setvalue_t pol_op     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                // get the position
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+
+                // call the function
+                block->data(fid).Write(i0, i1, i2)[0] = rand_vel[0];
+                block->data(fid).Write(i0, i1, i2)[1] = rand_vel[1];
+                block->data(fid).Write(i0, i1, i2)[2] = rand_vel[2];
+            };
+            SetValue field_init(pol_op,grid.interp());
+            field_init(&grid, &vel);
         }
 
         // set the test field
         {
-            // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
-            const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {2.0, 2.0, 2.0};
-            const real_t alpha[3]   = {1.0, 1.0, 1.0};
-            SetCosinus   field_init(sin_len, freq, alpha);
+            // // cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x) + cos(2*pi*freq[0]/L[0] * x)
+            // const real_t sin_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            // const real_t freq[3]    = {2.0, 2.0, 2.0};
+            // const real_t alpha[3]   = {1.0, 1.0, 1.0};
+            // SetCosinus   field_init(sin_len, freq, alpha);
+            // field_init(&grid, &test);
+            lambda_setvalue_t sin_op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                // get the position
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+
+                // call the function
+                block->data(fid).Write(i0, i1, i2)[0] = sin(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
+                                                        sin(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
+                                                        sin(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
+            };
+            SetValue field_init(sin_op, grid.interp());
             field_init(&grid, &test);
         }
 
         // set the solution
         {
-            // -> the solution: u* df/dx + v * df/dy + w*df/dz
-            const real_t freq[3]        = {2.0, 2.0, 2.0};
-            const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
-                                           rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
-                                           rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
-            SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
-            sol_init(&grid, &sol);
+            // // -> the solution: u* df/dx + v * df/dy + w*df/dz
+            // const real_t freq[3]        = {2.0, 2.0, 2.0};
+            // const real_t sin_len[3]     = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            // const real_t alpha_sol_0[3] = {rand_vel[0] * 2.0 * M_PI * freq[0] / L[0],
+            //                                rand_vel[1] * 2.0 * M_PI * freq[1] / L[1],
+            //                                rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]};
+            // SetSinus     sol_init(sin_len, freq, alpha_sol_0, grid.interp());
+            // sol_init(&grid, &sol);
+            lambda_setvalue_t cos_op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+                // get the position
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+
+                // call the function
+                block->data(fid).Write(i0, i1, i2)[0] = rand_vel[0] * (4.0 * M_PI / ((real_t)L[0])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
+                                                        rand_vel[1] * (4.0 * M_PI / ((real_t)L[1])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
+                                                        rand_vel[2] * (4.0 * M_PI / ((real_t)L[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
+            };
+            SetValue field_init(cos_op, grid.interp());
+            field_init(&grid, &test);
         }
 
         if (do_weno_3) {

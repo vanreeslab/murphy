@@ -120,11 +120,12 @@ void ForestGrid::DestroyP4estMeshAndGhost() {
     if (p4est_mesh_ != nullptr) {
         p8est_mesh_destroy(p4est_mesh_);
         p4est_mesh_ = nullptr;
-        m_log("destroyed the old mesh!!");
+        m_verb("destroyed the old mesh!!");
     }
     if (p4est_ghost_ != nullptr) {
         p8est_ghost_destroy(p4est_ghost_);
         p4est_ghost_ = nullptr;
+        m_verb("destroyed the old ghosts!!");
     }
     // unvalidate the mesh
     is_mesh_valid_ = false;

@@ -66,13 +66,13 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
     //     n_active_quad_ += p4est_NumQuadOnLevel(mesh, il);
     // }
     // m_verb("I will ghost %d local active quads", n_active_quad_);
-    m_log("wavelet info:");
-    m_log("\t#ghost for refinement: %d %d", interp_->nghost_front_refine(), interp_->nghost_back_refine());
-    m_log("\t#ghost for coarsening: %d %d", interp_->nghost_front_coarsen(), interp_->nghost_back_coarsen());
-    m_log("\t#ghost for citerion and smoothing: %d %d", interp_->nghost_front_criterion_smooth(), interp->nghost_back_criterion_smooth());
-    m_log("\t#detail for criterion: %d %d", interp_->ndetail_citerion_extend_front(), interp_->ndetail_citerion_extend_back());
-    m_log("\t#detail for smoothing: %d %d", interp_->ndetail_smooth_extend_front(), interp_->ndetail_smooth_extend_back());
-    m_log("\tghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
+    m_verb("wavelet info:");
+    m_verb("\t#ghost for refinement: %d %d", interp_->nghost_front_refine(), interp_->nghost_back_refine());
+    m_verb("\t#ghost for coarsening: %d %d", interp_->nghost_front_coarsen(), interp_->nghost_back_coarsen());
+    m_verb("\t#ghost for citerion and smoothing: %d %d", interp_->nghost_front_criterion_smooth(), interp->nghost_back_criterion_smooth());
+    m_verb("\t#detail for criterion: %d %d", interp_->ndetail_citerion_extend_front(), interp_->ndetail_citerion_extend_back());
+    m_verb("\t#detail for smoothing: %d %d", interp_->ndetail_smooth_extend_front(), interp_->ndetail_smooth_extend_back());
+    m_verb("\tghost initialized with %s, nghost = %d %d, coarse nghost = %d %d", interp_->Identity().c_str(), interp_->nghost_front(), interp_->nghost_back(), interp_->CoarseNGhostFront(), interp_->CoarseNGhostBack());
 
     // check that a fine block can provide enough ghosts to a coarse one
     m_assert(interp_->nghost_front() <= M_NHALF, "The memory for the ghost points is too small: M_NHALF = %d vs nghost = %d", M_NHALF, interp_->nghost_front());

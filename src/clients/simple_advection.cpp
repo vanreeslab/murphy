@@ -198,7 +198,7 @@ void SimpleAdvection::Run() {
                 m_profStop(prof_, "set velocity");
             }
         }
-        // we run the first diagnostic
+        // we run the first diagnostic if not done yet
         if (iter == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
@@ -207,6 +207,8 @@ void SimpleAdvection::Run() {
             m_profStop(prof_, "diagnostics");
         }
 
+        //................................................
+        m_log("---- do time-step");
         //................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
@@ -218,7 +220,6 @@ void SimpleAdvection::Run() {
 
         //................................................
         // advance in time
-        m_log("---- do time-step");
         m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;

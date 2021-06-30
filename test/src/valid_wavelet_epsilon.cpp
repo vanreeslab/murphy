@@ -12,43 +12,59 @@
 #include "tools/ioh5.hpp"
 #include "valid_toolbox.hpp"
 
-class InitCond_Epsilon : public SetValue {
-   protected:
-    void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
-        //-------------------------------------------------------------------------
-        real_t        pos[3];
-        const real_t* xyz   = block->xyz();
-        const real_t* hgrid = block->hgrid();
+// class InitCond_Epsilon : public SetValue {
+//    protected:
+//     void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
+//         //-------------------------------------------------------------------------
+//         real_t        pos[3];
+//         const real_t* xyz   = block->xyz();
+//         const real_t* hgrid = block->hgrid();
 
-        real_t sigma     = 0.05;
-        real_t center[3] = {0.5, 0.5, 0.5};
+//         real_t sigma     = 0.05;
+//         real_t center[3] = {0.5, 0.5, 0.5};
 
-        // const real_t oo_sigma2 = 1.0 / (sigma * sigma);
-        const real_t fact = 1.0;
+//         // const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+//         const real_t fact = 1.0;
 
-        // get the pointers correct
-        real_t* data = block->data(fid, 0).Write();
+//         // get the pointers correct
+//         real_t* data = block->data(fid, 0).Write();
 
-        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            // get the position
-            real_t pos[3];
-            block->pos(i0, i1, i2, pos);
+//         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//             // get the position
+//             real_t pos[3];
+//             block->pos(i0, i1, i2, pos);
 
-            // compute the gaussian
-            const real_t rhox = (pos[0] - center[0]) / sigma;
-            const real_t rhoy = (pos[1] - center[1]) / sigma;
-            const real_t rhoz = (pos[2] - center[2]) / sigma;
-            const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
+//             // compute the gaussian
+//             const real_t rhox = (pos[0] - center[0]) / sigma;
+//             const real_t rhoy = (pos[1] - center[1]) / sigma;
+//             const real_t rhoz = (pos[2] - center[2]) / sigma;
+//             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
-            data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
-        };
+//             data[m_idx(i0, i1, i2)] = fact * std::exp(-rho);
+//         };
 
-        for_loop(&op, start_, end_);
-        //-------------------------------------------------------------------------
-    };
+//         for_loop(&op, start_, end_);
+//         //-------------------------------------------------------------------------
+//     };
 
-   public:
-    explicit InitCond_Epsilon() : SetValue(nullptr){};
+//    public:
+//     explicit InitCond_Epsilon() : SetValue(nullptr){};
+// };
+
+static real_t sigma     = 0.05;
+static real_t center[3] = {0.5, 0.5, 0.5};
+
+using std::string;
+using std::to_string;
+
+// define the initial condition and the analytical solution
+static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+    // get the position
+    real_t pos[3];
+    block->pos(i0, i1, i2, pos);
+
+    // call the function
+    return scalar_exp(pos, center, sigma);
 };
 
 class Epsilon : public ::testing::TestWithParam<double> {
@@ -78,8 +94,21 @@ TEST_P(Epsilon, periodic) {
     grid.AddField(&scal);
     scal.bctype(M_BC_EXTRAP);
 
-    InitCond_Epsilon init;
+    // InitCond_Epsilon init;
+    // SetValue init(lambda_error,)
+    // init(&grid, &scal);
+    // initial condition
+    lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        // get the position
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        real_t* data = block->data(fid).Write(i0, i1, i2);
+        // set value
+        data[0] = scalar_exp(pos, center, sigma);
+    };
+    SetValue init(lambda_initcond);
     init(&grid, &scal);
+
     grid.SetTol(epsilon * 1e+20, epsilon);
 
     // get the ghosting
@@ -132,18 +161,18 @@ TEST_P(Epsilon, periodic) {
     } while (grid.MinLevel() < level_start);
 
     // set the solution field
-    Field sol("solution", 1);
-    grid.AddField(&sol);
-    init(&grid, &sol);
-    sol.bctype(M_BC_EXTRAP);
+    // Field sol("solution", 1);
+    // grid.AddField(&sol);
+    // init(&grid, &sol);
+    // sol.bctype(M_BC_EXTRAP);
 
-    grid.GhostPull(&sol);
+    // grid.GhostPull(&sol);
     grid.GhostPull(&scal);
 
     // measure the error
     real_t normi;
     Error  error;
-    error.Normi(&grid, &scal, &sol, &normi);
+    error.Normi(&grid, &scal, &lambda_error, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
     // measure the moments
@@ -168,8 +197,8 @@ TEST_P(Epsilon, periodic) {
     }
 
     // cleanup the fields
-    m_log("free fields");
-    grid.DeleteField(&sol);
+    // m_log("free fields");
+    // grid.DeleteField(&sol);
     m_log("free fields");
     grid.DeleteField(&scal);
 };
@@ -195,8 +224,19 @@ TEST_P(Epsilon, extrap) {
     grid.AddField(&scal);
     scal.bctype(M_BC_EXTRAP);
 
-    InitCond_Epsilon init;
+    // InitCond_Epsilon init;
+    // init(&grid, &scal);
+    lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        // get the position
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        real_t* data = block->data(fid).Write(i0, i1, i2);
+        // set value
+        data[0] = scalar_exp(pos, center, sigma);
+    };
+    SetValue init(lambda_initcond);
     init(&grid, &scal);
+
     grid.SetTol(epsilon * 1e+20, epsilon);
 
     // get the ghosting
@@ -249,18 +289,18 @@ TEST_P(Epsilon, extrap) {
     } while (grid.MinLevel() < level_start);
 
     // set the solution field
-    Field sol("solution", 1);
-    grid.AddField(&sol);
-    init(&grid, &sol);
-    sol.bctype(M_BC_EXTRAP);
+    // Field sol("solution", 1);
+    // grid.AddField(&sol);
+    // init(&grid, &sol);
+    // sol.bctype(M_BC_EXTRAP);
 
-    grid.GhostPull(&sol);
+    // grid.GhostPull(&sol);
     grid.GhostPull(&scal);
 
     // measure the error
     real_t normi;
     Error  error;
-    error.Normi(&grid, &scal, &sol, &normi);
+    error.Normi(&grid, &scal, &lambda_error, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
     // measure the moments
@@ -281,9 +321,9 @@ TEST_P(Epsilon, extrap) {
     // }
 
     // cleanup the fields
-    m_log("free fields");
-    grid.DeleteField(&sol);
-    m_log("free fields");
+    // m_log("free fields");
+    // grid.DeleteField(&sol);
+    // m_log("free fields");
     grid.DeleteField(&scal);
 }
 
