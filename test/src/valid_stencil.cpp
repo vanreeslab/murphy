@@ -133,9 +133,9 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             block->pos(i0, i1, i2, pos);
 
             // call the function
-            return rand_vel[0] * (4.0 * M_PI / ((real_t)L[0])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
-                   rand_vel[1] * (4.0 * M_PI / ((real_t)L[1])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
-                   rand_vel[2] * (4.0 * M_PI / ((real_t)L[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
+            return (-rand_vel[0]) * (4.0 * M_PI / ((real_t)L[0])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
+                   (-rand_vel[1]) * (4.0 * M_PI / ((real_t)L[1])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
+                   (-rand_vel[2]) * (4.0 * M_PI / ((real_t)L[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
         };
         //     SetValue field_init(cos_op, grid.interp());
         //     field_init(&grid, &test);
