@@ -137,7 +137,7 @@ class Boundary {
             }
             // get the ghost value
             // ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
-            real_t xb = -dis0 * (dir == 0) - dis1 * (dir == 1) - dis2 * (dir == 2);
+            const real_t xb = -dis0 * (dir == 0) - dis1 * (dir == 1) - dis2 * (dir == 2);
             ldata[0]  = Stencil_(xf, f, xb, boundary_condition, 0.0);
         };
 

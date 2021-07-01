@@ -74,13 +74,11 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->AddField(scal_);
 
     // setup the scalar ring
-    lambda_setvalue_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+    lambda_setvalue_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-        real_t* data = block->data(fid).Write(i0, i1, i2);
-        // call the function
-        data[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
+        block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
     };
     SetValue ring(lambda_ring,grid_->interp());
     ring(grid_, scal_);
