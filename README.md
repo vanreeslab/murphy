@@ -10,7 +10,7 @@ copyright (c) Massachusetts Institute of Technology
 <!-- [![GitHub issues](https://img.shields.io/github/issues/van-Rees-Lab/murphy.js.svg)](https://github.com/van-Rees-Lab/murphy/issues) -->
 
 ### Using Murphy
-The license is a XXX. Please cite the following paper:
+The license is a BSD-3 clauses.
 
 ### More documentation
 Please, refer to the following pages for detailed instructions
