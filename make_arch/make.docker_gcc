@@ -3,10 +3,10 @@ CC = mpicc
 
 # override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
 
-CXXFLAGS := -O3 -g -ggdb -fopenmp\
+CXXFLAGS := -O3 -g -glldb -fopenmp\
             #-fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls
 
-#CXXFLAGS := -Og -g -ggdb -fopenmp -DLOG_ALLRANKS -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
+#CXXFLAGS := -Og -g -glldb -fopenmp -DLOG_ALLRANKS -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
 #CXXFLAGS := -g -O3 -fopenmp -DCOLOR_PROF\
 #            -Wall -Wextra -Wno-ignored-qualifiers -Wcast-align\
 #            -ftree-vectorize -fsave-optimization-record
