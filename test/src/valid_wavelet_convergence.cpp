@@ -158,7 +158,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
 
             // create the test file
             string fieldName = "cosinus" + std::to_string(id) + "__" + std::to_string(il);
-            Field  test(fieldName, 3);
+            Field  test(fieldName, 1);
             grid.AddField(&test);
 
             // put a sinus

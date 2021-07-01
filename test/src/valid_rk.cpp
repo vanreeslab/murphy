@@ -37,12 +37,14 @@ class RKRhs : public RKFunctor {
         m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
 
         // get factors
-        real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
-        real_t fact      = sqrt(1.0 / M_PI * oo_sigma2) * (-2.0 / pow(sigma, 2));
+        const real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
+        const real_t fact      = (-2.0 * oo_sigma2);  //;* sqrt(1.0 / M_PI * oo_sigma2);
 
-        real_t new_center[3] = {center[0] + time * (vel_dir_ == 0),
-                                center[1] + time * (vel_dir_ == 1),
-                                center[2] + time * (vel_dir_ == 2)};
+        const real_t new_center[3] = {center[0] + time * (vel_dir_ == 0),
+                                      center[1] + time * (vel_dir_ == 1),
+                                      center[2] + time * (vel_dir_ == 2)};
+
+        m_log("new center = %f %f %f", new_center[0], new_center[1], new_center[2]);
 
         lambda_setvalue_t lambda_set = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
             // get the position
@@ -54,7 +56,7 @@ class RKRhs : public RKFunctor {
             const real_t rhoy = (sigma > 0) ? ((pos[1] - new_center[1]) / sigma) : 0.0;
             const real_t rhoz = (sigma > 0) ? ((pos[2] - new_center[2]) / sigma) : 0.0;
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-            const real_t dpos = (pos[vel_dir_] - center[vel_dir_]);
+            const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
 
             block->data(fid).Write(i0, i1, i2)[0] = -fact * std::exp(-rho) * dpos;
         };
@@ -67,12 +69,12 @@ class RKRhs : public RKFunctor {
         m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
 
         // get factors
-        real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
-        real_t fact      = sqrt(1.0 / M_PI * oo_sigma2) * (-2.0 / pow(sigma, 2));
+        const real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
+        const real_t fact      = (-2.0 * oo_sigma2);  //;* sqrt(1.0 / M_PI * oo_sigma2);
 
-        real_t new_center[3] = {center[0] + time * (vel_dir_ == 0),
-                                center[1] + time * (vel_dir_ == 1),
-                                center[2] + time * (vel_dir_ == 2)};
+        const real_t new_center[3] = {center[0] + time * (vel_dir_ == 0),
+                                      center[1] + time * (vel_dir_ == 1),
+                                      center[2] + time * (vel_dir_ == 2)};
 
         lambda_setvalue_t lambda_acc = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
             // get the position
@@ -84,7 +86,7 @@ class RKRhs : public RKFunctor {
             const real_t rhoy = (sigma > 0) ? ((pos[1] - new_center[1]) / sigma) : 0.0;
             const real_t rhoz = (sigma > 0) ? ((pos[2] - new_center[2]) / sigma) : 0.0;
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-            const real_t dpos = (pos[vel_dir_] - center[vel_dir_]);
+            const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
 
             block->data(fid).Write(i0, i1, i2)[0] -= fact * std::exp(-rho) * dpos;
         };
@@ -164,7 +166,7 @@ TEST_F(valid_RK, rk3_tvd) {
     grid.Adapt(&patch);
 
     // obtain the time at evaluation as M_N/2 mesh points
-    const real_t cfl          = 0.5;  // cfl = dt/dx
+    const real_t cfl          = 1.0;  // cfl = dt/dx
     const real_t dt_ref       = cfl * grid.FinestH();
     const iter_t iter_max_ref = 1;
     const real_t time_sol     = iter_max_ref * dt_ref;
@@ -225,7 +227,9 @@ TEST_F(valid_RK, rk3_tvd) {
 
         m_log("solution is taken at time %e", time);
         // set the solution, assume velocity in Z: u = (0,0,1)
-        const real_t center_sol[3] = {1.5, 1.5, 1.5 + 1 * time};
+        const real_t center_sol[3] = {center[0],
+                                      center[1],
+                                      center[2] + 1.0 * time};
         // const real_t   center_sol[3] = {1.5, 1.5, 1.5};
         // SetExponential sol_init(center_sol, sigma, alpha, grid.interp());
         // sol_init(&grid, &sol);
