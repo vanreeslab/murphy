@@ -70,7 +70,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // get the fields
     scal_ = new Field("scalar", 1);
-    scal_->bctype(M_BC_EXTRAP);
+    scal_->bctype(M_BC_ZERO);
+    // scal_->bctype(M_BC_EXTRAP);
     grid_->AddField(scal_);
 
     // setup the scalar ring
@@ -163,7 +164,13 @@ void SimpleAdvection::Run() {
                 m_profStart(prof_, "adapt");
                 if (!grid_on_sol_) {
                     // adapt on the current field
+                    BMinMax minmax;
+                    real_t  min, max;
+                    minmax(grid_, scal_, &min, &max);
+                    m_log("MINMAX: field from %e to %e", min, max);
                     grid_->Adapt(scal_);
+                    minmax(grid_, scal_, &min, &max);
+                    m_log("MINMAX: field from %e to %e", min, max);
                 } else {
                     // // update the solution
                     // const real_t new_center[3] = {center[0] + t * velocity[0],
@@ -218,10 +225,16 @@ void SimpleAdvection::Run() {
 
         //................................................
         // advance in time
+        BMinMax minmax;
+        real_t  min, max;
+        minmax(grid_, scal_, &min, &max);
+        m_log("MINMAX: field from %e to %e", min, max);
         m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
         m_profStop(prof_, "do dt");
+        minmax(grid_, scal_, &min, &max);
+        m_log("MINMAX: field from %e to %e", min, max);
 
         //................................................
         // diagnostics, dumps, whatever

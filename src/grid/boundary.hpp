@@ -4,8 +4,8 @@
 #include "core/forloop.hpp"
 #include "core/macros.hpp"
 #include "core/pointers.hpp"
-#include "grid/subblock.hpp"
 #include "grid/cartblock.hpp"
+#include "grid/subblock.hpp"
 
 /**
  * @brief functor that implements a boundary conditions that uses some points inside the block to extrapolate a ghost value
@@ -25,7 +25,7 @@ class Boundary {
      * @param xp the position of the wanted value
      * @return real_t the value of the polynomial extrapolated/interpolated to that point
      * 
-     * if @ref OverWriteFirst_() is false:
+     * if @ref OverWriteFirst_() is true:
      * ```
      *          GHOST   |                       BLOCK                      |    GHOST
      * -----------------|--------------------------------------------------|---------------
@@ -37,7 +37,7 @@ class Boundary {
      *                       f[0]   f[1]     ...         f[1]    f[0]
      * ```
      * 
-     * if @ref OverWriteFirst_() is true:
+     * if @ref OverWriteFirst_() is false:
      * ```
      *          GHOST   |                       BLOCK                      |    GHOST
      * -----------------|--------------------------------------------------|---------------
@@ -50,7 +50,7 @@ class Boundary {
      * ```
      */
     // virtual inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value) const = 0;
-    virtual inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const = 0;
+    virtual inline real_t Stencil_(const real_t* const xf, const real_t* const f, const real_t xb, const real_t fb, const real_t xp) const = 0;
 
     /**
      * @brief returns true if the border element of the block is overwritten
@@ -70,7 +70,7 @@ class Boundary {
      * @param gblock the ghost block where to apply it
      * @param data the data
      */
-    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const  gblock, const data_ptr data) const {
+    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const gblock, const data_ptr data) const {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
         // m_assert(block->stride() == gblock->stride(), "the two strides must be the same");
@@ -100,7 +100,7 @@ class Boundary {
             const bidx_t dis1 = i1 - first_last[1];  //+ 2 * (fsign[1] > 0.5);
             const bidx_t dis2 = i2 - first_last[2];  //+ 2 * (fsign[2] > 0.5);
 
-            // m_log("local is %d %d % d-> %d", i0, i1, i2, m_idx(i0, i1, i2, 0, b_stride));
+            // m_log("local is %d %d %d -> dir = %d -> hgrid = %e ", i0, i1, i2,dir,hgrid[dir]);
             // m_log("distance is %d %d %d", dis0, dis1, dis2);
             // m_log("ghost stride = %d", b_stride);
 
@@ -133,12 +133,14 @@ class Boundary {
                 //                             (idx2)*hgrid[2]};
                 // xf[ip] = data_pos[dir];
 
+                // xf[ip] = idx0 * (dir == 0) * hgrid[0] + idx1 * (dir == 1) * hgrid[1] + idx2 * (dir == 2) * hgrid[2];
                 xf[ip] = idx0 * (dir == 0) + idx1 * (dir == 1) + idx2 * (dir == 2);
             }
             // get the ghost value
             // ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
             const real_t xb = -dis0 * (dir == 0) - dis1 * (dir == 1) - dis2 * (dir == 2);
-            ldata[0]  = Stencil_(xf, f, xb, boundary_condition, 0.0);
+            // const real_t xb = -dis0 * (dir == 0) * hgrid[0] - dis1 * (dir == 1) * hgrid[1] - dis2 * (dir == 2) * hgrid[2];
+            ldata[0]        = Stencil_(xf, f, xb, boundary_condition, 0.0);
         };
 
         // m_log("doing boundary from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
@@ -152,24 +154,27 @@ class Boundary {
 
 class ZeroBoundary : public Boundary<0> {
    protected:
-    inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const override { return 0.0; };
+    inline bool   OverWriteFirst_(const real_t fsign) const override { return true; }
+    inline real_t Stencil_(const real_t* const xf, const real_t* const f, const real_t xb, const real_t fb, const real_t xp) const override { return 0.0; };
 };
 
 template <lda_t len>
-real_t NevilleInterp(real_t* c, real_t* d, const real_t* x, const real_t xp) {
+real_t NevilleInterp(real_t* c, real_t* d, const real_t* x, const real_t xp, short_t ns) {
     //-------------------------------------------------------------------------
-    real_t value = c[0];  // ns = 0
+    real_t value = c[ns--];
+
     // m = 1 -> npoint
-    for (lda_t m = 1; m < len; ++m) {
-        for (lda_t i = 0; i < (len - m); ++i) {
+    for (short_t m = 1; m < len; ++m) {
+        for (short_t i = 0; i < (len - m); ++i) {
             const real_t ho  = x[i] - xp;
             const real_t hp  = x[i + m] - xp;
-            const real_t den = x[i] - x[i + m];
-            const real_t w   = (c[i + 1] - d[i]) / den;
-            d[i]             = hp * w;
-            c[i]             = ho * w;
+            const real_t den = ho - hp;  //x[i] - x[i + m];
+            const real_t w   = (c[i + 1] - d[i]);
+            d[i]             = (hp / den) * w;
+            c[i]             = (ho / den) * w;
         }
-        value += c[0];  // ns = 0
+        // value += c[0];  // ns = 0
+        value += (2 * (ns + 1) < (len - m)) ? c[ns + 1] : d[ns--];
     }
     return value;
     //-------------------------------------------------------------------------
@@ -207,14 +212,14 @@ class ExtrapBoundary : public Boundary<npoint> {
         real_t x[len];
 
         // m = 0
-        for (lda_t id = 0; id < npoint; ++id) {
-            d[id] = f[id];
+        for (lda_t id = 0; id < len; ++id) {
             c[id] = f[id];
+            d[id] = f[id];
             x[id] = xf[id];
         }
 
         // return the value
-        return NevilleInterp<len>(c, d, x, xp);
+        return NevilleInterp<len>(c, d, x, xp, 0);
         //-------------------------------------------------------------------------
     }
 };
@@ -241,7 +246,7 @@ class DirichletBoundary : public Boundary<npoint> {
      * -> this one is easy, we know the value to use for the boundary
      */
     // inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value) const override {
-    inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const override{
+    inline real_t Stencil_(const real_t* const xf, const real_t* const f, const real_t xb, const real_t fb, const real_t xp) const override {
         m_assert(fb == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         //-------------------------------------------------------------------------
         constexpr lda_t len = npoint + 1;
@@ -263,7 +268,7 @@ class DirichletBoundary : public Boundary<npoint> {
         }
 
         // return the value
-        return NevilleInterp<len>(c, d, x, xp);
+        return NevilleInterp<len>(c, d, x, xp, 0);
         //-------------------------------------------------------------------------
     }
 };
@@ -298,7 +303,7 @@ class NeumanBoundary : public Boundary<npoint> {
      * @return real_t 
      */
     // inline real_t Stencil_(const real_t* const  f, const real_t* const  xf, const real_t xp, const real_t bc_value) const override {
-    inline real_t Stencil_(const real_t* const  xf, const real_t* const  f, const real_t xb, const real_t fb, const real_t xp) const override {
+    inline real_t Stencil_(const real_t* const xf, const real_t* const f, const real_t xb, const real_t fb, const real_t xp) const override {
         m_assert(fb == 0.0, "to be honest I have never tested with nn-zero bc_value...");
         //-------------------------------------------------------------------------
 
@@ -333,7 +338,7 @@ class NeumanBoundary : public Boundary<npoint> {
             x[id + 1] = xf[id];
         }
 
-        return NevilleInterp<len>(c, d, x, xp);
+        return NevilleInterp<len>(c, d, x, xp, 0);
         //-------------------------------------------------------------------------
     }
 };

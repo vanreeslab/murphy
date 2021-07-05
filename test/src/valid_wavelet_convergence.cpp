@@ -234,17 +234,17 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
     for (lda_t id = 0; id < 3; id++) {
         // setup the mesh
         bool  period[3] = {false, false, false};
-        lid_t L[3]      = {3, 3, 3};
+        lid_t L[3]      = {2, 2, 2};
 
         for (level_t il = 0; il < 2; ++il) {
             Grid grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
-            real_t origin1[3] = {1.0, 1.0, 1.0};
-            real_t length1[3] = {1.0, 1.0, 1.0};
+            real_t origin1[3] = {1.0, 1.0, 0.0};
+            real_t length1[3] = {1.0, 1.0, 2.0};
             Patch  p1(origin1, length1, il + BLVL + 1);
             real_t origin2[3] = {0.0, 0.0, 0.0};
-            real_t length2[3] = {3.0, 3.0, 3.0};
+            real_t length2[3] = {2.0, 2.0, 2.0};
             Patch  p2(origin2, length2, il + BLVL);
 
             list<Patch> patch{p1, p2};
@@ -257,8 +257,8 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
             grid.AddField(&test);
 
             // put a sinus
-            const real_t cos_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {2.0, 3.0, 1.0};
+            const real_t      cos_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t      freq[3]    = {2.0, 3.0, 1.0};
             lambda_setvalue_t cos_op     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
                 // get the position
                 real_t pos[3];
@@ -298,15 +298,15 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
             };
             Error error(grid.interp());
             // sanity check
-//             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
-//             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
-// #if (M_WAVELET_NT == 0)
-//             error.Norms(&grid, il + BLVL, &test, &sol, err2 + il, erri + il);
-//             m_log("checking in dim %d on LOW: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
-//             // if NT==0, the lowest level has NO error
-//             ASSERT_NEAR(erri[il], 0.0, DOUBLE_TOL);
-//             ASSERT_NEAR(err2[il], 0.0, DOUBLE_TOL);
-// #endif
+            //             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
+            //             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
+            // #if (M_WAVELET_NT == 0)
+            //             error.Norms(&grid, il + BLVL, &test, &sol, err2 + il, erri + il);
+            //             m_log("checking in dim %d on LOW: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
+            //             // if NT==0, the lowest level has NO error
+            //             ASSERT_NEAR(erri[il], 0.0, DOUBLE_TOL);
+            //             ASSERT_NEAR(err2[il], 0.0, DOUBLE_TOL);
+            // #endif
 
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 

@@ -121,6 +121,8 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const
 
             const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_3, h[ida]);
             const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_3, h[ida]);
+            // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
+            // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
@@ -137,6 +139,8 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const
 
             const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_3, h[ida]);
             const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_3, h[ida]);
+            // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
+            // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
@@ -191,6 +195,9 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const
             const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_5, h[ida]);
             const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_5, h[ida]);
             const real_t alpha_2 = alpha_z(gamma_2, beta_2, tau_5, h[ida]);
+            // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
+            // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
+            // const real_t alpha_2 = alpha_js(gamma_2, beta_2);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1 + alpha_2);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
@@ -211,6 +218,9 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const
             const real_t alpha_0 = alpha_z(gamma_0, beta_0, tau_5, h[ida]);
             const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_5, h[ida]);
             const real_t alpha_2 = alpha_z(gamma_2, beta_2, tau_5, h[ida]);
+            // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
+            // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
+            // const real_t alpha_2 = alpha_js(gamma_2, beta_2);
             const real_t denom   = 1.0 / (alpha_0 + alpha_1 + alpha_2);
             const real_t w0      = alpha_0 * denom;
             const real_t w1      = alpha_1 * denom;
