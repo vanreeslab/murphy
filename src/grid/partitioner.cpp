@@ -137,7 +137,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
         // init the send
         if (opart_n > 0) {
             // the send buffer is used to copy the current blocks as they are not continuous to memory
-            send_buf_ = reinterpret_cast<real_t *>(m_calloc(opart_n * PartCommSize(n_lda_) * sizeof(real_t)));
+            send_buf_.Calloc(opart_n * PartCommSize(n_lda_));
             // if (destructive_) {
             //     // the status are only send if the partitioner is destructive
             //     send_status_buf_ = reinterpret_cast<short *>(m_calloc(opart_n * sizeof(short)));
@@ -254,7 +254,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
             m_assert(bcount == cpart_n, "the counters should match");
 
             // the receive buffer is used as a new data location for the blocks
-            recv_buf_ = reinterpret_cast<real_t *>(m_calloc(cpart_n * PartCommSize(n_lda_) * sizeof(real_t)));
+            recv_buf_.Calloc(cpart_n * PartCommSize(n_lda_));
             // m_log("receiving buffer initialize of size %ld bytes (n_lda = %d)", cpart_n * PartCommSize(n_lda_) * sizeof(real_t), n_lda_);
 
             // if (destructive_) {
@@ -377,12 +377,12 @@ Partitioner::~Partitioner() {
         MPI_Request_free(back_send_request_ + i);
     }
 
+    send_buf_.Free();
+    recv_buf_.Free();
     m_free(for_send_request_);
     m_free(for_recv_request_);
     m_free(back_send_request_);
     m_free(back_recv_request_);
-    m_free(send_buf_());
-    m_free(recv_buf_());
     m_free(q_send_cum_block_);
     m_free(q_send_cum_request_);
     m_free(q_recv_cum_block_);

@@ -85,7 +85,8 @@ class Boundary {
 
         // move the data around the starting point of the face to fill
         bidx_t  b_stride = gblock->stride();
-        real_t* sdata    = data.Write(0, gblock);
+        real_t* sdata    = data.Write(0);
+        m_assert(gblock->stride() == data.stride() && gblock->gs() == data.gs(), "The layout and the memory must be equal");
 
         // m_log("sdata from data = %ld", (sdata - data()) / sizeof(real_t));
         // m_log("the boundary will be from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));

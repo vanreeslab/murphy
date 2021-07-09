@@ -19,9 +19,6 @@
  * @warning the exact meaning of each field depends on the wavelet function called! please check the documentation.
  */
 typedef struct interp_ctx_t {
-    bidx_t srcstr;  //!< the source stride
-    bidx_t trgstr;  //!< the target stride
-
     bidx_t trgstart[3];  //!< first index needed in the target memory
     bidx_t trgend[3];    //!< last index needed in the target memory
 #ifndef NDEBUG
@@ -40,6 +37,33 @@ typedef struct interp_ctx_t {
     data_ptr       tdata;  //!< refers the (0,0,0) location of the target memory
     // data_ptr       temp;   //!< refers the (0,0,0) location of the temporary memory (has the layour of trg!)
     /** @} */
+
+    /** @brief Default, parameterless constructor of the structure */
+    interp_ctx_t(){};
+
+#ifndef NDEBUG
+    /** @brief Constructor of the structure to avoid the default initialisation of the const_data_ptr and of the data_ptr */
+    interp_ctx_t(const_data_ptr sdata_in, bidx_t srcstr_in, bidx_t srcstart_in[3],bidx_t srcend_in[3], data_ptr tdata_in, bidx_t trgstr_in, bidx_t trgstart_in[3],bidx_t trgend_in[3], real_t alpha_in):sdata(sdata_in, srcstr_in), tdata(tdata_in, trgstr_in){
+        for(bidx_t i = 0; i < 3 ; i++){
+            trgstart[i] = trgstart_in[i];
+            trgend[i]   = trgend_in[i];
+
+            srcstart[i] = srcstart_in[i];
+            srcend[i]   = srcend_in[i];
+        }
+        alpha = alpha_in;
+    };
+#else 
+/** @brief Constructor of the structure to avoid the default initialisation of the const_data_ptr and of the data_ptr */
+    interp_ctx_t(const_data_ptr sdata_in, bidx_t srcstr_in, data_ptr tdata_in, bidx_t trgstr_in, bidx_t trgstart_in[3],bidx_t trgend_in[3], real_t alpha_in):sdata(sdata_in, srcstr_in), tdata(tdata_in, trgstr_in){
+        for(bidx_t i = 0; i < 3 ; i++){
+            trgstart[i] = trgstart_in[i];
+            trgend[i]   = trgend_in[i];
+        }
+        alpha = alpha_in;
+    };
+#endif
+
 
 } interp_ctx_t;
 
