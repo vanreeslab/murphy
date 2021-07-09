@@ -43,12 +43,14 @@
  * ```
  * 
  */
-class Layout {
+class MemLayout {
    public:
+    virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
+    virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
     virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
     virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
 
-    virtual ~Layout(){};  //!< declare the constructor as virtual to ensure destruction
+    virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
 };
 
 /**

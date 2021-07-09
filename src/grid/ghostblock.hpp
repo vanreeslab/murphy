@@ -100,7 +100,7 @@ class GhostBlock : public SubBlock {
      * @param block_id the cummulative id corresponding to the local block, or the id to use to get the information on another rank
      * @param rank the rank to use in case of MPI call
      */
-    GhostBlock(const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : SubBlock(0, 0) {
+    GhostBlock(const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : SubBlock(0, 0, 0, 0) {
         ibidule_      = ibidule;
         cum_block_id_ = block_id;
         rank_rma_     = rank;
@@ -138,12 +138,12 @@ class GhostBlock : public SubBlock {
     void Intersect(/* source info */ const level_t src_lvl, const real_t src_pos[3], const real_t src_hgrid[3], const real_t src_len[3],
                    //    /* extend info */ const bool restrict_start[3], const bool extend_end[3],
                    /* target info */ const level_t trg_lvl, const real_t trg_pos[3], const real_t trg_hgrid[3],
-                   /* target block */ const bidx_t trg_min[3], const bidx_t trg_max[3]){ // , const bidx_t trg_gs, const bidx_t trg_stride, const rank_t rank_rma) {
+                   /* target block */ const bidx_t trg_min[3], const bidx_t trg_max[3], const bidx_t trg_gs, const bidx_t trg_stride) {  //, const rank_t rank_rma) {
         //-------------------------------------------------------------------------
         // store the source rank, the stride and the ghost size
         // rank_rma_ = rank_rma;
-        // gs_     = trg_gs;
-        // stride_ = trg_stride;
+        gs_     = trg_gs;
+        stride_ = trg_stride;
 
         // set the level gap > 0 if the source if finer
         dlvl_ = src_lvl - trg_lvl;

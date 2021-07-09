@@ -4,7 +4,7 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/layout.hpp"
+#include "core/memlayout.hpp"
 #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -69,24 +69,24 @@ class Wavelet {
     * @{
     */
    public:
-    void Copy(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
-    void GetRma(const level_t dlvl, const lid_t shift[3], const_data_ptr  block_src, MPI_Aint disp_src, const Layout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
-    void PutRma(const level_t dlvl, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, const_data_ptr data_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, MPI_Aint disp_src, const MemLayout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
+    void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(/* source */ const Layout* const  block_src, const const_data_ptr& data,
-                     /* target */ const Layout* const  detail_block) const;
-    void   Details(/* source */ const Layout* const  block_src, const const_data_ptr& data,
-                 /* target */ const Layout* const  detail_block, const data_ptr& detail, const real_t tol,
+    real_t Criterion(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
+                     /* target */ const MemLayout* const  detail_block) const;
+    void   Details(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
+                 /* target */ const MemLayout* const  detail_block, const data_ptr& detail, const real_t tol,
                  /* output*/ real_t*  details_max) const;
-    void   SmoothOnMask(/* source */ const Layout* const  block_src,
-                      /* target */ const Layout* const  block_trg, const data_ptr& data,
-                      /* detail */ const Layout* const  detail_block, const data_ptr& detail_mask) const;
-    void   OverwriteDetails(/* source */ const Layout* const  block_src,
-                          /* target */ const Layout* const  block_trg, const data_ptr& data) const;
-    void   StoreDetails(/* source */ const Layout* const  block_src, const const_data_ptr& data,
-                           /* target */ const Layout* const  block_detail, const data_ptr& detail) const;
+    void   SmoothOnMask(/* source */ const MemLayout* const  block_src,
+                      /* target */ const MemLayout* const  block_trg, const data_ptr& data,
+                      /* detail */ const MemLayout* const  detail_block, const data_ptr& detail_mask) const;
+    void   OverwriteDetails(/* source */ const MemLayout* const  block_src,
+                          /* target */ const MemLayout* const  block_trg, const data_ptr& data) const;
+    void   StoreDetails(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
+                           /* target */ const MemLayout* const  block_detail, const data_ptr& detail) const;
     /** @} */
 
     //................................................
@@ -334,7 +334,7 @@ class Wavelet {
             coarse_start[id] = CoarseFromBlock(block_fine->start(id));
             coarse_end[id]   = CoarseFromBlock(block_fine->end(id));
         }
-        block_coarse->Reset(coarse_start, coarse_end);
+        block_coarse->Reset(CoarseNGhostFront(), CoarseStride(), coarse_start, coarse_end);
     }
     inline void CoarseFromFine(const bidx_t id_fine[3], bidx_t* id_coarse) const {
         for (bidx_t id = 0; id < 3; ++id) {
@@ -349,7 +349,7 @@ class Wavelet {
      * @name Interpolation functions, to be implemented
      * @{
      */
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const Layout*  block_src, const_data_ptr data_src, const Layout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
     virtual void Coarsen_(const interp_ctx_t* const  ctx) const = 0;
     virtual void RefineZeroDetails_(const interp_ctx_t* const  ctx) const  = 0;

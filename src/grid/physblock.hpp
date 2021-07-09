@@ -16,7 +16,7 @@ class PhysBlock : public SubBlock {
    public:
     sid_t iface() { return iface_; }
     // sid_t dir() { return iface_ / 2; }
-    PhysBlock(const iface_t iface, const Layout* block, const lid_t nghost_front, const lid_t nghost_back);
+    PhysBlock(const iface_t iface, const MemLayout* block, const lid_t nghost_front, const lid_t nghost_back);
 };
 
 #endif  // SRC_PHYSBLOCK_HPP_

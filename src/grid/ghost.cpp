@@ -778,8 +778,8 @@ void Ghost::PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Fie
     m_assert(ida_ >= 0, "the current working dimension has to be correct");
     m_assert(ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
+    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, block);
     data_ptr data   = block->data(fid, ida_);
-    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, &data);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
 
@@ -787,13 +787,13 @@ void Ghost::PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Fie
         const lid_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
         const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
-        real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, data.stride());
-        real_t* data_trg = data.Write(0) + m_idx(start[0], start[1], start[2], 0, data.stride());
+        real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block->stride());
+        real_t* data_trg = data.Write(start[0], start[1], start[2], 0, block);
 
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;
         MPI_Datatype dtype;
-        ToMPIDatatype(start, end, data.stride(), 1, &dtype);
+        ToMPIDatatype(start, end, block->stride(), 1, &dtype);
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
         MPI_Type_free(&dtype);
     }

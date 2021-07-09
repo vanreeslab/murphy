@@ -466,8 +466,7 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
                 // security check
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
-                data_ptr ptr = block->data(fid); 
-                real_p data = ptr() - m_zeroidx(0, &ptr);
+                real_p data = block->data(fid)() - m_zeroidx(0, block);
                 real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
                 memcpy(lbuf, data, CartBlockMemNum(fid->lda()) * sizeof(real_t));
@@ -556,8 +555,7 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
                 // security check
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 // the memory returnded by block->data is shifted, so we unshift it :-)
-                data_ptr ptr = block->data(fid); 
-                real_p data = ptr() - m_zeroidx(0, &ptr);
+                real_p data = block->data(fid)() - m_zeroidx(0, block);
                 real_p lbuf = buf + CartBlockMemNum(idacount);
                 // copy the whole memory at once on the dim
                 memcpy(data, lbuf, CartBlockMemNum(fid->lda()) * sizeof(real_t));

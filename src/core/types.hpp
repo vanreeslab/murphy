@@ -54,12 +54,6 @@ typedef enum m_direction_t {
     M_BACKWARD
 } m_direction_t;
 
-
-typedef enum fid_{
-    M_GRID,
-    M_PART
-}fid_t;
-
 //-------------------------------------------------------------------------
 // must be removed from the code
 typedef int  lid_t;

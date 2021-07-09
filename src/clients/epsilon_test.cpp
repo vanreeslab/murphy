@@ -6,7 +6,6 @@
 #include "operator/setvalues.hpp"
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
-#include "core/forloop.hpp"
 
 using std::string;
 using std::to_string;
