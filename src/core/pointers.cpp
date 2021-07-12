@@ -14,11 +14,7 @@
 real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const {
     m_assert(0 <= stride && stride <= M_STRIDE, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
-<<<<<<< HEAD
-    const bidx_t offset = stride_ * stride_ * stride_ * ida;
-=======
     const bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
     real_t* data   = (*this)();
     return data + offset;
     //-------------------------------------------------------------------------
@@ -200,10 +196,6 @@ data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stri
     m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     // get the offset and return a data_ptr to it
-<<<<<<< HEAD
-
-=======
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
     const bidx_t offset = gs + stride * (gs + stride * (gs + stride * ida));
     return data_ptr(this->m_ptr::operator()() + offset);
     //-------------------------------------------------------------------------

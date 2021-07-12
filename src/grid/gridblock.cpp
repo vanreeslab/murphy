@@ -102,16 +102,8 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const Wavelet*  interp, c
     bool coarsen = !forbid_coarsening;
     for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
         // go to the computation
-<<<<<<< HEAD
-        SubBlock     block_src( -interp->nghost_front(), M_N + interp->nghost_back());
-        SubBlock     block_detail( -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
-        // SubBlock     block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-        // SubBlock     block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
-
-=======
         SubBlock     block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
         SubBlock     block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
         const real_t norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
@@ -941,13 +933,8 @@ void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavele
         // get the copy of local siblings
         for (const auto gblock : (local_sibling_)) {
             GridBlock*       ngh_block = gblock->data_src();
-<<<<<<< HEAD
-            const_data_ptr   data_src  = const_data_ptr(ngh_block->data(field, ida));
-            const Layout* block_trg = gblock;
-=======
             const data_ptr   data_src  = ngh_block->data(field, ida);
             const MemLayout* block_trg = gblock;
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
             // copy the information
             interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
         }
@@ -964,13 +951,8 @@ void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavele
             GridBlock* ngh_block = gblock->data_src();
             SubBlock   block_trg;
             interp->CoarseFromFine(gblock, &block_trg);
-<<<<<<< HEAD
-            const_data_ptr data_src = const_data_ptr(ngh_block->data(field, ida));
-            data_ptr data_trg = coarse_ptr_(0, interp->CoarseNGhostFront(),interp->CoarseStride());
-=======
             data_ptr data_src = ngh_block->data(field, ida);
             data_ptr data_trg = coarse_ptr_(0, &block_trg);
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
             // interpolate, the level is 1 coarser and the shift is unchanged
             m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
             interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
@@ -980,13 +962,8 @@ void GridBlock::GhostGet_Cmpt(const Field*  field, const lda_t ida, const Wavele
             GridBlock* ngh_block = gblock->data_src();
             SubBlock   block_trg;
             interp->CoarseFromFine(gblock, &block_trg);
-<<<<<<< HEAD
-            const_data_ptr data_src = const_data_ptr(ngh_block->data(field, ida));
-            data_ptr data_trg = coarse_ptr_(0, interp->CoarseNGhostFront(),interp->CoarseStride());
-=======
             data_ptr data_src = ngh_block->data(field, ida);
             data_ptr data_trg = coarse_ptr_(0, &block_trg);
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
             // interpolate, the level is 1 coarser and the shift is unchanged
             m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1");
             interp->Copy(gblock->dlvl() + 1, gblock->shift(), &bsrc_neighbor, data_src, &block_trg, data_trg);
@@ -1078,13 +1055,8 @@ void GridBlock::GhostGet_Wait(const Field*  field, const lda_t ida, const Wavele
             const SubBlock coarse_block(interp->CoarseNGhostFront(), interp->CoarseStride(), 0, M_NHALF);
             // copy myself to the coarse, one point out of 2
             const lid_t    shift[3] = {0, 0, 0};
-<<<<<<< HEAD
-            const_data_ptr data_src = const_data_ptr(data(field, ida));
-            const data_ptr data_trg = coarse_ptr_(0, interp->CoarseNGhostFront(), interp->CoarseStride());
-=======
             const data_ptr data_src = data(field, ida);
             const data_ptr data_trg = coarse_ptr_(0, &coarse_block);
->>>>>>> parent of efdeffd... :recycle: Issue #50 -- :bug:  does not pass the test..
             // interpolate
             interp->Copy(1, shift, this, data_src, &coarse_block, data_trg);
         }
