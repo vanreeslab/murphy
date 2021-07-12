@@ -788,7 +788,8 @@ void Ghost::PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Fie
         const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
         real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block->stride());
-        real_t* data_trg = data.Write(start[0], start[1], start[2], 0, block);
+        real_t* data_trg = data.Write(start[0], start[1], start[2],0);
+        m_assert(data.gs() == block->gs() && data.stride() == block->stride(), "The layout and the memory must be the same.. ");
 
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;

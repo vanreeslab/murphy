@@ -89,30 +89,44 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
     m_assert(!((alpha != 0.0 && data_cst.IsEmpty())), "if alpha = %e, the data_cst cannot be empty", alpha);
     //-------------------------------------------------------------------------
     // create the interpolation context
-    interp_ctx_t ctx;
+//     interp_ctx_t ctx;
 
-    // get memory details
-    for (sid_t id = 0; id < 3; id++) {
-        // the src starting and ending is place form the target point of view
+//     // get memory details
+//     for (sid_t id = 0; id < 3; id++) {
+//         // the src starting and ending is place form the target point of view
+// #ifndef NDEBUG
+//         // for the target point of view, the start of the source is is in start - shift, same for the end
+//         ctx.srcstart[id] = block_src->start(id) - shift[id];
+//         ctx.srcend[id]   = block_src->end(id) - shift[id];
+// #endif
+//         ctx.trgstart[id] = block_trg->start(id);
+//         ctx.trgend[id]   = block_trg->end(id);
+//     }
+//     ctx.srcstr = block_src->stride();
+//     ctx.trgstr = block_trg->stride();
+
+//     // store the multiplication factor and the normal
+//     ctx.alpha = alpha;
+
+//     // get the correct aligned arrays
+//     // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
+//     ctx.sdata = data_src.Read(shift[0], shift[1], shift[2], 0, block_src->stride());
+//     // ctx.cdata = data_cst;
+//     ctx.tdata = data_trg;
+    const_data_ptr sdata(data_src.Read(shift[0], shift[1], shift[2], 0), block_src->stride(), block_src->gs());
+
+    bidx_t trgstart[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
+    bidx_t trgend[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
+
 #ifndef NDEBUG
-        // for the target point of view, the start of the source is is in start - shift, same for the end
-        ctx.srcstart[id] = block_src->start(id) - shift[id];
-        ctx.srcend[id]   = block_src->end(id) - shift[id];
+    bidx_t srcstart[3] = {block_src->start(0) - shift[0], block_src->start(1) - shift[1], block_src->start(2) - shift[2]};
+    bidx_t srcend[3]   = {block_src->end(0) - shift[0], block_src->end(1) - shift[1], block_src->end(2) - shift[2]};
+
+    interp_ctx_t ctx(sdata, block_src->stride(), srcstart, srcend, data_trg, block_trg->stride(), trgstart, trgend, alpha);
+#else
+    interp_ctx_t ctx(sdata, block_src->stride(), data_trg, block_trg->stride(), trgstart, trgend, alpha);
 #endif
-        ctx.trgstart[id] = block_trg->start(id);
-        ctx.trgend[id]   = block_trg->end(id);
-    }
-    ctx.srcstr = block_src->stride();
-    ctx.trgstr = block_trg->stride();
-
-    // store the multiplication factor and the normal
-    ctx.alpha = alpha;
-
-    // get the correct aligned arrays
-    // note: since the adresses refer to (0,0,0), we have a ghostsize of 0
-    ctx.sdata = data_src.Read(shift[0], shift[1], shift[2], 0, block_src->stride());
-    // ctx.cdata = data_cst;
-    ctx.tdata = data_trg;
+    
 
     // call the correct function
     if (dlvl == 0 || force_copy) {
@@ -121,6 +135,8 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const lid_t sh
     } else if (dlvl == -1) {
         RefineZeroDetails_(&ctx);
     } else if (dlvl > 0) {
+        // m_log("src stride = %d, src start = %d %d %d, src end = %d %d %d, trg stride = %d , trg start = %d %d %d, trg end = %d %d %d, aalpha = %f", block_src->stride(), srcstart[0],srcstart[1],srcstart[2],
+        //   srcend[0],srcend[1],srcend[2], block_trg->stride(),  trgstart[0], trgstart[1], trgstart[2], trgend[0], trgend[1], trgend[2], alpha);
         Coarsen_(&ctx);
     }
     //-------------------------------------------------------------------------
@@ -142,6 +158,9 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t*  ctx) const {
     const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
     const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
+    const bidx_t srcstr   = ctx->sdata.stride();
+    const bidx_t trgstr   = ctx->tdata.stride();
+
     real_t*       tdata = ctx->tdata.Write();
     const real_t* sdata = ctx->sdata.Read();
 
@@ -158,8 +177,8 @@ void Wavelet::Copy_(const level_t dlvl, const interp_ctx_t*  ctx) const {
 
         // get the current parent's data
         // const data_ptr lcdata = ctx->cdata + m_sidx(ik0, ik1, ik2, 0, ctx->trgstr);
-        const real_t* lsdata = sdata + m_idx(scaling * i0, scaling * i1, scaling * i2, 0, ctx->srcstr);
-        real_t*       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
+        const real_t* lsdata = sdata + m_idx(scaling * i0, scaling * i1, scaling * i2, 0, srcstr);
+        real_t*       ltdata = tdata + m_idx(i0, i1, i2, 0, trgstr);
 
         // do the simple copy
         ltdata[0] = lsdata[0];
@@ -207,7 +226,8 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
-    real_t*  local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
+    m_assert(data_trg.stride() == block_trg->stride(), "Stride of the layout is not the same as the stride in the memory.. This is baaaad");
+    real_t*  local_trg = data_trg.Write(trg_start[0], trg_start[1], trg_start[2], 0);
     MPI_Aint disp      = disp_src + m_zeroidx(0, block_src) + m_idx(src_start[0], src_start[1], src_start[2], 0, block_src->stride());
     // //#pragma omp critical
 
@@ -262,7 +282,8 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     ToMPIDatatype(src_start, src_end, block_src->stride(), scale, &dtype_src);
 
     //................................................
-    const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0, block_src);
+    m_assert(data_src.stride() == block_src->stride(), "Stride of the layout is not the same as the stride in the memory.. This is baaaad");
+    const real_t* local_src = data_src.Read(src_start[0], src_start[1], src_start[2], 0);
     MPI_Aint      disp      = disp_trg + m_zeroidx(0, block_trg) + m_idx(trg_start[0], trg_start[1], trg_start[2], 0, block_trg->stride());
     //#pragma omp critical
     int size_trg;
@@ -300,7 +321,8 @@ real_t Wavelet::Criterion(/* source */ const MemLayout* const  block_src, const 
     //-------------------------------------------------------------------------
     // get the detail coefficients
     real_t details_max = 0.0;
-    Details(block_src, data, detail_block, nullptr, 0.0, &details_max);
+    
+    Details(block_src, data, detail_block, data_ptr(nullptr), 0.0, &details_max);
 
     return details_max;
     //-------------------------------------------------------------------------
@@ -399,22 +421,34 @@ void Wavelet::Details(/* source */ const MemLayout* const  block_src, const cons
                       /* output*/ real_t*  details_max) const {
     //-------------------------------------------------------------------------
     // get memory details
-    interp_ctx_t ctx;
-    for (lda_t id = 0; id < 3; id++) {
-#ifndef NDEBUG
-        ctx.srcstart[id] = block_src->start(id);
-        ctx.srcend[id]   = block_src->end(id);
-#endif
-        ctx.trgstart[id] = detail_block->start(id);
-        ctx.trgend[id]   = detail_block->end(id);
-    }
-    ctx.srcstr = block_src->stride();
-    ctx.sdata  = data;
-    ctx.trgstr = detail_block->stride();
-    ctx.tdata  = detail;
-    // we do not neeed to store
-    ctx.alpha = tol;
+//     interp_ctx_t ctx;
+//     for (lda_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = block_src->start(id);
+//         ctx.srcend[id]   = block_src->end(id);
+// #endif
+//         ctx.trgstart[id] = detail_block->start(id);
+//         ctx.trgend[id]   = detail_block->end(id);
+//     }
+//     ctx.srcstr = block_src->stride();
+//     ctx.sdata  = data;
+//     ctx.trgstr = detail_block->stride();
+//     ctx.tdata  = detail;
+//     // we do not neeed to store
+//     ctx.alpha = tol;
 
+
+    bidx_t trgstart[3] = {detail_block->start(0), detail_block->start(1), detail_block->start(2)};
+    bidx_t trgend[3]   = {detail_block->end(0), detail_block->end(1), detail_block->end(2)};
+
+#ifndef NDEBUG
+    bidx_t srcstart[3] = {block_src->start(0), block_src->start(1) , block_src->start(2)};
+    bidx_t srcend[3]   = {block_src->end(0) , block_src->end(1) , block_src->end(2)};
+
+    interp_ctx_t ctx(data, block_src->stride(), srcstart, srcend, detail, detail_block->stride(), trgstart, trgend, tol);
+#else
+    interp_ctx_t ctx(data, block_src->stride(), detail, detail_block->stride(), trgstart, trgend, tol);
+#endif
     // we go for the two norm over the block
     Detail_(&ctx, details_max);
     //-------------------------------------------------------------------------
@@ -469,21 +503,32 @@ void Wavelet::SmoothOnMask(/* source */ const MemLayout* const  block_src,
     //.........................................................................
     // smooth them
     // get memory details
-    interp_ctx_t ctx;
-    for (lda_t id = 0; id < 3; id++) {
-#ifndef NDEBUG
-        // detail block is too small as we need more points that are 0.0 so use the full block_src... bad, I knooow
-        ctx.srcstart[id] = block_src->start(id);
-        ctx.srcend[id]   = block_src->end(id);
-#endif
-        ctx.trgstart[id] = block_trg->start(id);
-        ctx.trgend[id]   = block_trg->end(id);
-    }
-    ctx.srcstr = detail_block->stride();
-    ctx.sdata  = detail_mask;  // this are the details
-    ctx.trgstr = block_trg->stride();
-    ctx.tdata  = data;  // this is the block
+//     interp_ctx_t ctx;
+//     for (lda_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         // detail block is too small as we need more points that are 0.0 so use the full block_src... bad, I knooow
+//         ctx.srcstart[id] = block_src->start(id);
+//         ctx.srcend[id]   = block_src->end(id);
+// #endif
+//         ctx.trgstart[id] = block_trg->start(id);
+//         ctx.trgend[id]   = block_trg->end(id);
+//     }
+//     ctx.srcstr = detail_block->stride();
+//     ctx.sdata  = detail_mask;  // this are the details
+//     ctx.trgstr = block_trg->stride();
+//     ctx.tdata  = data;  // this is the block
 
+    bidx_t trgstart[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
+    bidx_t trgend[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
+
+#ifndef NDEBUG
+    bidx_t srcstart[3] = {block_src->start(0), block_src->start(1), block_src->start(2)};
+    bidx_t srcend[3]   = {block_src->end(0), block_src->end(1), block_src->end(2)};
+
+    interp_ctx_t ctx(detail_mask, detail_block->stride(), srcstart, srcend, data, block_trg->stride(), trgstart, trgend, 0);
+#else
+    interp_ctx_t ctx(detail_mask, detail_block->stride(), data, block_trg->stride(), trgstart, trgend, 0);
+#endif 
     // smooth them
     Smooth_(&ctx);
     //-------------------------------------------------------------------------
@@ -502,21 +547,31 @@ void Wavelet::OverwriteDetails(/* source */ const MemLayout* const  block_src,
                                /* target */ const MemLayout* const  block_trg, const data_ptr& data) const {
     //-------------------------------------------------------------------------
     //.........................................................................
-    interp_ctx_t ctx;
-    for (lda_t id = 0; id < 3; id++) {
-#ifndef NDEBUG
-        ctx.srcstart[id] = block_src->start(id);
-        ctx.srcend[id]   = block_src->end(id);
-#endif
-        ctx.trgstart[id] = block_trg->start(id);
-        ctx.trgend[id]   = block_trg->end(id);
-    }
-    // source and target data are the same!!
-    ctx.srcstr = block_trg->stride();
-    ctx.sdata  = data;
-    ctx.trgstr = block_trg->stride();
-    ctx.tdata  = data;
+//     interp_ctx_t ctx;
+//     for (lda_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = block_src->start(id);
+//         ctx.srcend[id]   = block_src->end(id);
+// #endif
+//         ctx.trgstart[id] = block_trg->start(id);
+//         ctx.trgend[id]   = block_trg->end(id);
+//     }
+//     // source and target data are the same!!
+//     ctx.srcstr = block_trg->stride();
+//     ctx.sdata  = data;
+//     ctx.trgstr = block_trg->stride();
+//     ctx.tdata  = data;
 
+    bidx_t trgstart[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
+    bidx_t trgend[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
+#ifndef NDEBUG
+    bidx_t srcstart[3] = {block_src->start(0), block_src->start(1), block_src->start(2)};
+    bidx_t srcend[3]   = {block_src->end(0), block_src->end(1), block_src->end(2)};
+
+    interp_ctx_t ctx(data, block_trg->stride(), srcstart, srcend, data, block_trg->stride(), trgstart, trgend, 0);
+#else
+    interp_ctx_t ctx(data, block_trg->stride(), data, block_trg->stride(), trgstart, trgend, 0);
+#endif
     // let's go
     OverwriteDetailsDualLifting_(&ctx);
     //-------------------------------------------------------------------------
@@ -529,22 +584,32 @@ void Wavelet::StoreDetails(/* source */ const MemLayout* const  block_src, const
                            /* target */ const MemLayout* const  block_detail, const data_ptr& detail) const {
     //-------------------------------------------------------------------------
     // get memory details
-    interp_ctx_t ctx;
-    for (lda_t id = 0; id < 3; id++) {
-#ifndef NDEBUG
-        ctx.srcstart[id] = block_src->start(id);
-        ctx.srcend[id]   = block_src->end(id);
-#endif
-        ctx.trgstart[id] = block_detail->start(id);
-        ctx.trgend[id]   = block_detail->end(id);
-    }
-    ctx.srcstr = block_src->stride();
-    ctx.trgstr = block_detail->stride();
-    ctx.sdata  = data;
-    ctx.tdata  = detail;
-    // set alpha to a huuge value, will store everything beneath it
-    ctx.alpha = std::numeric_limits<real_t>::max();
+//     interp_ctx_t ctx;
+//     for (lda_t id = 0; id < 3; id++) {
+// #ifndef NDEBUG
+//         ctx.srcstart[id] = block_src->start(id);
+//         ctx.srcend[id]   = block_src->end(id);
+// #endif
+//         ctx.trgstart[id] = block_detail->start(id);
+//         ctx.trgend[id]   = block_detail->end(id);
+//     }
+//     ctx.srcstr = block_src->stride();
+//     ctx.trgstr = block_detail->stride();
+//     ctx.sdata  = data;
+//     ctx.tdata  = detail;
+//     // set alpha to a huuge value, will store everything beneath it
+//     ctx.alpha = std::numeric_limits<real_t>::max();
 
+    bidx_t trgstart[3] = {block_detail->start(0), block_detail->start(1), block_detail->start(2)};
+    bidx_t trgend[3]   = {block_detail->end(0), block_detail->end(1), block_detail->end(2)};
+#ifndef NDEBUG
+    bidx_t srcstart[3] = {block_src->start(0), block_src->start(1), block_src->start(2)};
+    bidx_t srcend[3]   = {block_src->end(0), block_src->end(1), block_src->end(2)};
+    
+    interp_ctx_t ctx(data, block_src->stride(), srcstart, srcend, detail, block_detail->stride(), trgstart, trgend, std::numeric_limits<real_t>::max());
+#else
+    interp_ctx_t ctx(data, block_src->stride(), detail, block_detail->stride(), trgstart, trgend, std::numeric_limits<real_t>::max());
+#endif
     // compute
     real_t detail_max = 0.0;  // -> will be discarded
     Detail_(&ctx, &detail_max);

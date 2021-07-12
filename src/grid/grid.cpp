@@ -562,6 +562,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // coarsening, need to have the 8 children on the same rank
     iter_t   iteration              = 0;
     iblock_t global_n_quad_to_adapt = 0;
+
     do {
         //................................................
         DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
