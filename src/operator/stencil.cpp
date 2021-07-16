@@ -30,15 +30,15 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
     // m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostFront(), this->NGhost());
     // m_assert(grid->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostBack(), this->NGhost());
     //-------------------------------------------------------------------------
-    // const bidx_t ghost_len[2] = {this->NGhost(), this->NGhost()};
-    m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status(ghost_len_need_) ? "OK" : "to be computed");
+    bidx_t ghost_len[2] = {ghost_len_need_[0], ghost_len_need_[1]};
+    m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status(ghost_len) ? "OK" : "to be computed");
 
     m_profStart(prof_, "stencil");
     // init the prof if not already done
     for (lda_t ida = 0; ida < field_src->lda(); ++ida) {
         // start the send of the coarse
         m_profStart(prof_, "ghost");
-        grid->GhostPull_Post(field_src, ida, ghost_len_need_);
+        grid->GhostPull_Post(field_src, ida, ghost_len);
         m_profStop(prof_, "ghost");
 
         // compute the stencil on the outer side
@@ -51,7 +51,7 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
 
         // get the coarse representation back
         m_profStart(prof_, "ghost");
-        grid->GhostPull_Wait(field_src, ida, ghost_len_need_);
+        grid->GhostPull_Wait(field_src, ida, ghost_len);
         m_profStop(prof_, "ghost");
 
         // outer operation on the now received dimension
@@ -64,8 +64,8 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
 
     // update the ghost status
     // we might have not ghosted the field as we already has some up-to-date information
-    const bidx_t ghost_len_actual[2] = {m_max(ghost_len_need_[0], field_src->get_ghost_len(0)),
-                                        m_max(ghost_len_need_[1], field_src->get_ghost_len(1))};
+    const bidx_t ghost_len_actual[2] = {m_max(ghost_len[0], field_src->get_ghost_len(0)),
+                                        m_max(ghost_len[1], field_src->get_ghost_len(1))};
     field_src->ghost_len(ghost_len_actual);
 
     // the trg has been overwritten anyway

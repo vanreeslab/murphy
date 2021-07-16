@@ -99,8 +99,8 @@ class Grid : public ForestGrid {
         return interp_->nghost_back();
     }
     void GhostPull(Field* field, const BlockOperator* op) const;
-    void GhostPull(Field* field, const bidx_t ghost_len[2]) const;
-    void GhostPull_Post(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const;
+    void GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const;
+    void GhostPull_Post(const Field* field, const sid_t ida, bidx_t ghost_len[2]) const;
     void GhostPull_Wait(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const;
     /**@}*/
 

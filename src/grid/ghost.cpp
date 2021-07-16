@@ -384,7 +384,7 @@ void Ghost::UpdateStatus() {
     m_end;
 }
 
-void Ghost::SetLength(const bidx_t ghost_len[2]) {
+void Ghost::SetLength(bidx_t ghost_len[2]) {
     //-------------------------------------------------------------------------
     // adapt the ghost lengths if we are a MR grid
     const bool   is_grid_mr = grid_->MaxLevel() > grid_->MinLevel();
@@ -396,6 +396,10 @@ void Ghost::SetLength(const bidx_t ghost_len[2]) {
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostUpdateSize, grid_, il, new_len);
     }
+
+    // overwrites the real lengths
+    ghost_len[0] = new_len[0];
+    ghost_len[1] = new_len[1];
     //-------------------------------------------------------------------------
 }
 

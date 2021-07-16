@@ -268,7 +268,7 @@ void Grid::ResetFields(const std::map<string, Field*>* fields) {
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPull_Post(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const {
+void Grid::GhostPull_Post(const Field* field, const sid_t ida, bidx_t ghost_len[2]) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(!(field == nullptr), "the source field cannot be empty");
@@ -322,11 +322,14 @@ void Grid::GhostPull(Field* field, const BlockOperator* op) const {
  * 
  * @param field the field which requires the ghost
  */
-void Grid::GhostPull(Field* field, const bidx_t ghost_len[2]) const {
+void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
     m_begin;
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
+    // get the real ghost length
+    bidx_t ghost_len[2] = {ghost_len_usr[0],ghost_len_usr[1]};
+    
     // start the send in the first dimension
     m_log("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed");
     m_profStart(prof_, "pull ghost");

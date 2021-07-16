@@ -68,7 +68,7 @@ class Ghost {
 
     void UpdateStatus();
 
-    void SetLength(const bidx_t ghost_len[2]);
+    void SetLength(bidx_t ghost_len[2]);
 
     /**
      * @name RMA-based high-level ghosting - post and wait
