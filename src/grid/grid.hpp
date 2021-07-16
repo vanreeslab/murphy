@@ -98,6 +98,11 @@ class Grid : public ForestGrid {
     //     m_assert(interp_ != nullptr, "interp cannot be null");
     //     return interp_->nghost_back();
     // }
+    inline void GhostLengthAdapt(bidx_t ghost_len[2]) const {
+        ghost_len[0] = interp_->nghost_front();
+        ghost_len[1] = interp_->nghost_back();
+    }
+
     void GhostPull(Field* field, const BlockOperator* op) const;
     void GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const;
 
