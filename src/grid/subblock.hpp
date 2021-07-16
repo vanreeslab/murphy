@@ -11,7 +11,7 @@
  * if the current index is in a ghost region (the front one or the back one), returns the limit of the new ghost region
  * if the current index is in the block, return the index scaled to the new length of the block
  * 
- * @warning the index must be translatable from one region to another if it is located inside the block
+ * @warning if the new index is NOT an integer, we ceil it! (sometimes we use an index of 1 because we want to visit the index 0, we should preserve that)
  * 
  * @param c_id current index in the current reference
  * @param c_core the number of points inside the current block (typically M_N)
@@ -28,9 +28,9 @@ static bidx_t TranslateBlockLimits(const bidx_t c_id, const bidx_t c_core,
     const bidx_t b = (c_id + c_core);
     const bidx_t c = (b / c_core) + static_cast<bidx_t>(c_id > c_core);
     // compute every possibility
-    const bidx_t res[4] = {-n_front, static_cast<bidx_t>(c_id / ratio), n_core, n_core + n_back};
+    const bidx_t res[4] = {-n_front, static_cast<bidx_t>(ceil(c_id / ratio)), n_core, n_core + n_back};
     // check that we didn't screw up the indexes
-    m_assert(!(c == 1 && !m_fequal(static_cast<real_t>(c_id) / ratio, res[1])), "we cannot translate the id %d from a core of %d to a core of %d: %f == %d", c_id, c_core, n_core, static_cast<real_t>(c_id) / ratio, res[1]);
+    // m_assert(!(c == 1 && !m_fequal(static_cast<real_t>(c_id) / ratio, res[1])), "we cannot translate the id %d from a core of %d to a core of %d: %f == %d", c_id, c_core, n_core, static_cast<real_t>(c_id) / ratio, res[1]);
     // return the correct choice
     return res[c];
 }
