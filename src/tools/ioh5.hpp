@@ -17,6 +17,9 @@
 
 #define M_IOH5_LINE_LEN 128
 
+
+static const bidx_t ghost_len_ioh5[2] = {0,1};
+
 /**
  * @brief perform the I/O using HDF5 and XDMF files
  * 

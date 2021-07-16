@@ -93,6 +93,11 @@ void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block,
             // update the block errors
             e2 += error * error;
             ei = m_max(std::fabs(error), ei);
+
+            if (std::fabs(error) > 7.14) {
+                m_log("block at %f %f %f @ %d %d %d: error = %e = %e - %e", block->xyz(0), block->xyz(1), block->xyz(2), i0, i1, i2, error, data_val, sol_val);
+                m_assert(false,"coucou2");
+            }
         };
         for_loop(&op, start_, end_);
     }

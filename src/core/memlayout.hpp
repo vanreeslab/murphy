@@ -18,8 +18,8 @@
  *                                 stride
  *          <--------------------------------------------------->
  *          +-------+----------------------------------+---------+
- *          |  gs   |                                  |    gs   |
- *          |<----->|                                  |<------->|
+ *          | gs[0] |             core                 |  gs[1]  |
+ *          |<----->|<-------------------------------->||<------->|
  *          +-------x----------------------------------+---------+
  *          |       |                                  |         |
  *          |       |                      end         |         |
@@ -37,7 +37,7 @@
  *          |       |                                  |         |
  *  y       |       |                                  |         |
  *  ^       +-------+----------------------------------+---------+
- *  |    (-gs,-gs)
+ *  |    (-gs[0],-gs[0])
  *  |
  *  +-------> x = memory access
  * ```
@@ -45,12 +45,13 @@
  */
 class MemLayout {
    public:
-    virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
-    virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
-    virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
-    virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
+    [[nodiscard]] virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs[0] + core + gs[1]
+    [[nodiscard]] virtual bidx_t core() const                 = 0;  //!< the number of block points
+    [[nodiscard]] virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
+    [[nodiscard]] virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
+    [[nodiscard]] virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
 
-    virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
+    virtual ~MemLayout() = default;  //!< declare the constructor as virtual to ensure destruction
 };
 
 /**

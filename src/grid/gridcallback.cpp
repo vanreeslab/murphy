@@ -481,7 +481,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     SetValue* expr  = static_cast<SetValue*>(grid->cback_interpolate_ptr());
 
     m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
-    // m_assert(expr->do_ghost(), "the SetValue object must set the ghost values");
+    // m_assert(expr->DoGhost(), "the SetValue object must set the ghost values");
     m_assert(field != nullptr, "the field to fill shouldn't be nullptr");
     m_assert(grid->IsAField(field), "the field to fill must exist");
 

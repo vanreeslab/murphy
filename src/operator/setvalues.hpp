@@ -4,6 +4,7 @@
 #include "core/doop.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
+#include "core/forloop.hpp"
 #include "grid/field.hpp"
 #include "grid/forestgrid.hpp"
 #include "operator/blockoperator.hpp"
@@ -23,7 +24,8 @@ class SetValue : public BlockOperator {
     const lambda_setvalue_t& expr_;
 
    public:
-    explicit SetValue(const lambda_setvalue_t& expr, const Wavelet* interp = nullptr) : expr_(expr), BlockOperator(interp){};
+    explicit SetValue() = delete;
+    explicit SetValue(const lambda_setvalue_t& expr, const bidx_t* ghost_len = nullptr) : expr_(expr), BlockOperator(ghost_len){};
 
     /**
      * @brief set the expr_ to the grid in the given field
@@ -39,8 +41,7 @@ class SetValue : public BlockOperator {
         // go for it
         DoOpMesh(this, &SetValue::FillGridBlock, grid, field);
         // update the ghost status
-        m_verb("setting the ghosts of %s to %d", field->name().c_str(), do_ghost_);
-        field->ghost_status(do_ghost_);
+        field->ghost_len(ghost_len_res_);
         //-------------------------------------------------------------------------
         m_end;
     };

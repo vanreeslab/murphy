@@ -9,6 +9,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
 
 #include "core/types.hpp"
 #include "hdf5.h"
@@ -22,7 +23,7 @@
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
@@ -170,6 +171,13 @@
         __typeof__(a) m_sign_a_    = (a);                        \
         __typeof__(a) m_sign_zero_ = 0;                          \
         (m_sign_zero_ < m_sign_a_) - (m_sign_a_ < m_sign_zero_); \
+    })
+
+#define m_fequal(a, b)                                                                 \
+    ({                                                                                 \
+        real_t m_equal_a_ = (a);                                                       \
+        real_t m_equal_b_ = (b);                                                       \
+        (std::fabs(m_equal_a_ - m_equal_b_) < std::numeric_limits<real_t>::epsilon()); \
     })
 
 /** @} */

@@ -342,9 +342,9 @@ class InterpolatingWavelet : public Wavelet {
             //  - if we are odd = the last odd number
             //  - if we are even = the last even number
             const bidx_t lim[3] = {
-                (odd_x) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
-                (odd_y) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
-                (odd_z) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2))};
+                (odd_x) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2)),
+                (odd_y) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2)),
+                (odd_z) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2))};
 
             m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->srcstart[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx->srcstart[0], (i0_s + (lim[0] + 1) / 2), ctx->srcend[0]);
             m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->srcstart[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx->srcstart[1], (i1_s + (lim[1] + 1) / 2), ctx->srcend[1]);
