@@ -34,9 +34,15 @@ void ConvergenceWeno::Run() {
     const lid_t L[3]      = {3, 3, 3};
     const real_t freq[3]    = {2.0, 2.0, 2.0};
 
-    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    real_t rand_vel[3] = {0.0, 0.0, 0.0};
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    if (rank == 0) {
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+    }
+    MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
 
     for (level_t il = 0; il < N_PT; ++il) {
         m_log("-----------------------------------------------------------------------");

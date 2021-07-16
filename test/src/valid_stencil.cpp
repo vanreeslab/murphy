@@ -39,9 +39,15 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     // bool do_weno_3 = false;
     // bool do_weno_5 = false;
 
-    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    real_t rand_vel[3];
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+    }
+    MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
@@ -198,9 +204,15 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     // bool do_weno_3 = false;
     // bool do_weno_5 = false;
 
-    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    real_t rand_vel[3];
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+    }
+    MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
