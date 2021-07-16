@@ -29,7 +29,7 @@
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif

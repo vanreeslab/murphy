@@ -41,8 +41,9 @@ class Field {
     [[nodiscard]] inline bctype_t*   bctype(const iface_t iface) const { return bctype_[iface]; }
 
     [[nodiscard]] inline bool ghost_status(const bidx_t ghost_len[2]) const {
+        const bool is_trivial = (ghost_len[0] == 0) && (ghost_len[1] == 0);
         const bool is_large_enough = (ghost_len[0] <= ghost_len_[0]) && (ghost_len[1] <= ghost_len_[1]);
-        return (ghost_status_ && is_large_enough);
+        return is_trivial || (ghost_status_ && is_large_enough) ;
     }
     /** @} */
 

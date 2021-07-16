@@ -9,9 +9,9 @@ BMax::BMax(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
 /**
  * @brief computes the max(fabs(value)) over the grid
  */
-real_t BMax::operator()(const ForestGrid* grid, const Field* fid_x)const {
+real_t BMax::operator()(const ForestGrid* grid, const Field* fid_x) const {
     m_begin;
-    m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
+    m_assert(fid_x->ghost_status(ghost_len_need_), "The field  <%s> must have enough valid GP for the refinement - required %d %d, known %d %d", fid_x->name().c_str(), ghost_len_need_[0], ghost_len_need_[1], fid_x->get_ghost_len(0), fid_x->get_ghost_len(1));
     //-------------------------------------------------------------------------
     real_t max_grid = 0.0;
     // go on the blocks

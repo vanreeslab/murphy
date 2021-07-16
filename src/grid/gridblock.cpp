@@ -1169,6 +1169,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
             const lid_t    shift[3] = {0, 0, 0};
             const SubBlock me_extended(M_GS, M_STRIDE, - ghost_len_[0], M_N + ghost_len_[1]);
             // interpolate, the level is 1 coarser and the shift is unchanged
+            m_assert(ghost_len_[0] >= interp->nghost_front_coarsen() && ghost_len_[0] >= interp->nghost_back_coarsen(), "the ghost sizes %d %d must be >= %d %d", ghost_len_[0], ghost_len_[1], interp->nghost_front_coarsen(), interp->nghost_back_coarsen());
             interp->Interpolate(1, shift, &me_extended, data(field, ida), &coarse_block, data_coarse);
 
             //................................................
