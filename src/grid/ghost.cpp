@@ -388,6 +388,8 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
     const bidx_t new_len[2] = {m_max(ghost_len[0], is_grid_mr * m_max(interp_->nghost_front_overwrite(), interp_->nghost_front_coarsen())),
                                m_max(ghost_len[1], is_grid_mr * m_max(interp_->nghost_back_overwrite(), interp_->nghost_back_coarsen()))};
 
+    m_assert(new_len[0] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[0], new_len[0], M_GS);
+    m_assert(new_len[1] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[1], new_len[1], M_GS);
     m_log("length set: %s %d %d", (new_len[0] == ghost_len[0] && new_len[1] == ghost_len[1]) ? "" : "!WARNING! the ghost lenghts have been changed to", new_len[0], new_len[1]);
     //
     for (level_t il = min_level_; il <= max_level_; il++) {

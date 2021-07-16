@@ -597,4 +597,4 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
 
 INSTANTIATE_TEST_SUITE_P(ValidGhost,
                          ValidWaveletInterpolation,
-                         testing::Range(1, 6));
+                         testing::Range(1, M_GS));
