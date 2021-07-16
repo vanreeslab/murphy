@@ -31,7 +31,8 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
     // m_assert(grid->NGhostBack() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostBack(), this->NGhost());
     //-------------------------------------------------------------------------
     bidx_t ghost_len[2] = {ghost_len_need_[0], ghost_len_need_[1]};
-    m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status(ghost_len) ? "OK" : "to be computed");
+    grid->GhostPull_SetLength(field_src, ghost_len);
+    // m_log("ghost check: field <%s> is %s", field_src->name().c_str(), field_src->ghost_status(ghost_len) ? "OK" : "to be computed");
 
     m_profStart(prof_, "stencil");
     // init the prof if not already done

@@ -262,23 +262,34 @@ void Grid::ResetFields(const std::map<string, Field*>* fields) {
     m_end;
 }
 
+void Grid::GhostPull_SetLength(const Field* field, bidx_t ghost_len[2]) const {
+    m_begin;
+    m_assert(!(field == nullptr), "the source field cannot be empty");
+    m_assert(IsAField(field), "the field does not belong to this grid");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
+    //-------------------------------------------------------------------------
+    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed",ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
+    if (!field->ghost_status(ghost_len)) {
+        ghost_->SetLength(ghost_len);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
 /**
  * @brief Pull the ghost points (take values from neighbors to fill my ghost points) - start the comm
  * 
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPull_Post(const Field* field, const sid_t ida, bidx_t ghost_len[2]) const {
+void Grid::GhostPull_Post(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
-    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed",ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
-    // m_log("ghost check - required: %d %d, provided: %d %d", ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
     if (!field->ghost_status(ghost_len)) {
-        ghost_->SetLength(ghost_len);
         ghost_->PullGhost_Post(field, ida);
     }
     //-------------------------------------------------------------------------
@@ -298,8 +309,6 @@ void Grid::GhostPull_Wait(const Field* field, const sid_t ida, const bidx_t ghos
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
-    // m_log("ghost required: %d %d, ghost provided: %d %d", ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
-    // m_log("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed");
     if (!field->ghost_status(ghost_len)) {
         ghost_->PullGhost_Wait(field, ida);
     }
@@ -328,7 +337,8 @@ void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
     // get the real ghost length
-    bidx_t ghost_len[2] = {ghost_len_usr[0],ghost_len_usr[1]};
+    bidx_t ghost_len[2] = {ghost_len_usr[0], ghost_len_usr[1]};
+    GhostPull_SetLength(field, ghost_len);
 
     // start the send in the first dimension
     // m_log("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed");

@@ -142,8 +142,8 @@ void ConvergenceWeno::Run() {
                    (rand_vel[2] * 2.0 * M_PI * freq[2] / L[2]) * std::sin(2.0 * M_PI * freq[0] / L[0] * pos[2]);
         };
 
-        const bool do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        const bool do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+        // const bool do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        // const bool do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
         rank_t rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);

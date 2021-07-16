@@ -158,27 +158,18 @@ void Ghost::InitList_() {
     m_assert(outgroup_ != MPI_GROUP_NULL, "call the InitComm function first!");
 
     // start the exposure epochs if any
-    // if (ingroup_ != MPI_GROUP_EMPTY) {
     MPI_Win_post(ingroup_, 0, local2disp_window);
-    // }
-    // if (outgroup_ != MPI_GROUP_EMPTY) {
     MPI_Win_start(outgroup_, 0, local2disp_window);
-    // }
 
     // init the list on every active block that matches the level requirements
     const ForestGrid* mygrid = grid_;
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::InitList4Block_, grid_, il);
         DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, mygrid, interp_, local2disp_window);
     }
 
     // complete the epoch and wait for the exposure one
-    // if (outgroup_ != MPI_GROUP_EMPTY) {
     MPI_Win_complete(local2disp_window);
-    // }
-    // if (ingroup_ != MPI_GROUP_EMPTY) {
     MPI_Win_wait(local2disp_window);
-    // }
 
     //................................................
     MPI_Win_free(&local2disp_window);
@@ -196,10 +187,8 @@ void Ghost::FreeList_() {
     m_begin;
     //-------------------------------------------------------------------------
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::FreeList4Block_, grid_, il);
         DoOpMeshLevel(nullptr, &GridBlock::GhostFreeLists, grid_, il);
     }
-    // DoOpMesh(nullptr, &GridBlock::GhostFreeLists, grid_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -384,6 +373,14 @@ void Ghost::UpdateStatus() {
     m_end;
 }
 
+/**
+ * @brief sets the length of ghosting for all the blocks and adapt the required length if needed
+ * 
+ * We must be able to overwrite and coarsen while doing the ghosting if the grid contains different levels.
+ * Therefore we have to guarantee that the have enough ghosts points.
+ * 
+ * @param ghost_len the desired length of ghosts, might be changed after the function returns
+ */
 void Ghost::SetLength(bidx_t ghost_len[2]) {
     //-------------------------------------------------------------------------
     // adapt the ghost lengths if we are a MR grid

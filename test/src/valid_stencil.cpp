@@ -36,8 +36,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     lid_t L[3]      = {2, 2, 2};
 
     // see if we run the tests
-    bool do_weno_3 = false;
-    bool do_weno_5 = false;
+    // bool do_weno_3 = false;
+    // bool do_weno_5 = false;
 
     const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
                                 -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
@@ -54,8 +54,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             grid.Adapt(&patch_list);
         }
 
-        do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+        // do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        // do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
         // create the needed fields
         string fieldName = "field" + std::to_string(il);
@@ -142,7 +142,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
         //     field_init(&grid, &test);
         // }
 
-        if (do_weno_3) {
+        // if (do_weno_3) 
+        {
             Advection<M_WENO_Z, 3> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -150,7 +151,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
         }
-        if (do_weno_5) {
+        // if (do_weno_5) 
+        {
             Advection<M_WENO_Z, 5> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -159,12 +161,14 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
     }
-    if (do_weno_3) {
+    // if (do_weno_3)
+    {
         real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> min = 1, ideal = 3", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
     }
-    if (do_weno_5) {
+    // if (do_weno_5)
+    {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 3, ideal = 5", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
@@ -191,8 +195,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     lid_t L[3]      = {2, 2, 2};
 
     // see if we run the tests
-    bool do_weno_3 = false;
-    bool do_weno_5 = false;
+    // bool do_weno_3 = false;
+    // bool do_weno_5 = false;
 
     const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
                                 -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
@@ -202,8 +206,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     for (level_t il = 0; il < 2; ++il) {
         Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
-        do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+        // do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        // do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
         // create the test file
         string fieldName = "field" + std::to_string(il);
@@ -292,7 +296,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
         //     field_init(&grid, &test);
         // }
 
-        if (do_weno_3) {
+        // if (do_weno_3)
+        {
             Advection<M_WENO_Z, 3> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -308,7 +313,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
         }
-        if (do_weno_5) {
+        // if (do_weno_5) 
+        {
             Advection<M_WENO_Z, 5> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -325,12 +331,14 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
             ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
         }
     }
-    if (do_weno_3) {
+    // if (do_weno_3)
+    {
         real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> target: min = 1, ideal = 3", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
     }
-    if (do_weno_5) {
+    // if (do_weno_5)
+    {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
