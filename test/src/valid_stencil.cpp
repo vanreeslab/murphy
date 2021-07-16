@@ -300,7 +300,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             // check the moment
             real_t sum;
-            BMean  sum_grid;
+            BAvg  sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
@@ -316,7 +316,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             // check the moment
             real_t sum;
-            BMean  sum_grid;
+            BAvg  sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
@@ -461,7 +461,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
 //             // check the moment
 //             real_t sum;
-//             BMean  sum_grid;
+//             BAvg  sum_grid;
 //             sum_grid(&grid, &dtest, &sum);
 //             m_log("sum of dtest = %e", sum);
 
@@ -477,7 +477,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
 //             // check the moment
 //             real_t sum;
-//             BMean  sum_grid;
+//             BAvg  sum_grid;
 //             sum_grid(&grid, &dtest, &sum);
 //             m_log("sum of dtest = %e", sum);
 

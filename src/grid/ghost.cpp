@@ -386,9 +386,10 @@ void Ghost::UpdateStatus() {
 
 void Ghost::SetLength(const bidx_t ghost_len[2]) {
     //-------------------------------------------------------------------------
-    // adapt the ghost lengths
-    const bidx_t new_len[2] = {m_max(ghost_len[0], interp_->nghost_front_overwrite()),
-                               m_max(ghost_len[1], interp_->nghost_back_overwrite())};
+    // adapt the ghost lengths if we are a MR grid
+    const bool   is_grid_mr = grid_->MaxLevel() > grid_->MinLevel();
+    const bidx_t new_len[2] = {m_max(ghost_len[0], is_grid_mr * interp_->nghost_front_overwrite()),
+                               m_max(ghost_len[1], is_grid_mr * interp_->nghost_back_overwrite())};
 
     m_log("%s %d %d", (new_len[0] == ghost_len[0] && new_len[1] == ghost_len[1]) ? "the ghost lenghts used are" : "!WARNING! the ghost lenghts have been changed to", new_len[0], new_len[1]);
     //
