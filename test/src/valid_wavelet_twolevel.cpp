@@ -188,7 +188,8 @@ TEST_P(TwoLevel, periodic) {
     SetValue init(exp_setvalue);
     init(grid_, scal_);
     // get the Ghosts:
-    grid_->GhostPull(scal_);
+    const bidx_t ghost_len[2] = {grid_->interp()->nghost_front(), grid_->interp()->nghost_back()};
+    grid_->GhostPull(scal_, ghost_len);
 
     //................................................
     // compute the details and get the max value
@@ -205,7 +206,8 @@ TEST_P(TwoLevel, periodic) {
 
     // get the moment in the fine level
     BMoment moment;
-    real_t  fine_moment0, fine_moment1[3];
+    grid_->GhostPull(scal_, &moment);
+    real_t fine_moment0, fine_moment1[3];
     moment(grid_, scal_, &fine_moment0, fine_moment1);
 
     //................................................
@@ -215,12 +217,13 @@ TEST_P(TwoLevel, periodic) {
         TreeCaseIdToPatch(0, case_id_, &patch_list);
 
         grid_->Adapt(&patch_list);
-        grid_->GhostPull(scal_);
+        // grid_->GhostPull(scal_,ghost_len);
     }
 
     //................................................
     // get the coarse moments
     real_t coarse_moment0, coarse_moment1[3];
+    grid_->GhostPull(scal_, &moment);
     moment(grid_, scal_, &coarse_moment0, coarse_moment1);
     real_t mom0_coarse_error = fabs(fine_moment0 - coarse_moment0);
     m_log("[case %d] coarse moment error = |%e - %e| = %e", case_id_, fine_moment0, coarse_moment0, mom0_coarse_error);
@@ -239,7 +242,7 @@ TEST_P(TwoLevel, periodic) {
 
         // adapt
         grid_->Adapt(&patch_list);
-        grid_->GhostPull(scal_);
+        // grid_->GhostPull(scal_,ghost_len);
     }
 
     //................................................
@@ -253,6 +256,7 @@ TEST_P(TwoLevel, periodic) {
         // get the error
         real_t err2, erri;
         Error  error;
+        grid_->GhostPull(scal_, &error);
         error.Norms(grid_, scal_, &exp_error, &err2, &erri);
         real_t interp_pred = fabs(grid_->interp()->eps_const() * max_detail);
         m_log("[case %d] interp error = %e <? %e -> factor = %e vs %e", case_id_, erri, interp_pred, erri / max_detail, grid_->interp()->eps_const());
@@ -260,6 +264,7 @@ TEST_P(TwoLevel, periodic) {
 
         // get the moment:
         real_t smooth_moment0, smooth_moment1[3];
+        grid_->GhostPull(scal_, &moment);
         moment(grid_, scal_, &smooth_moment0, smooth_moment1);
         real_t mom_smooth_error[4];
         mom_smooth_error[0] = fabs(fine_moment0 - smooth_moment0);
@@ -284,7 +289,8 @@ TEST_P(TwoLevel, flipfop) {
     SetValue init(flipflop_setvalue);
     init(grid_, scal_);
     // get the Ghosts:
-    grid_->GhostPull(scal_);
+    const bidx_t ghost_len[2] = {grid_->interp()->nghost_front(), grid_->interp()->nghost_back()};
+    grid_->GhostPull(scal_, ghost_len);
     //................................................
     // compute the details and get the max value
     Field detail("details", 1);
@@ -310,12 +316,13 @@ TEST_P(TwoLevel, flipfop) {
         TreeCaseIdToPatch(0, case_id_, &patch_list);
 
         grid_->Adapt(&patch_list);
-        grid_->GhostPull(scal_);
+        // grid_->GhostPull(scal_);
     }
 
     //................................................
     // get the coarse moments
     real_t coarse_moment0, coarse_moment1[3];
+    grid_->GhostPull(scal_, &moment);
     moment(grid_, scal_, &coarse_moment0, coarse_moment1);
     real_t mom0_coarse_error = fabs(fine_moment0 - coarse_moment0);
     m_log("[case %d] coarse moment error = |%e - %e| = %e", case_id_, fine_moment0, coarse_moment0, mom0_coarse_error);
@@ -334,7 +341,7 @@ TEST_P(TwoLevel, flipfop) {
 
         // adapt
         grid_->Adapt(&patch_list);
-        grid_->GhostPull(scal_);
+        // grid_->GhostPull(scal_);
     }
 
     //................................................
@@ -348,6 +355,7 @@ TEST_P(TwoLevel, flipfop) {
         // get the error
         real_t err2, erri;
         Error  error;
+        grid_->GhostPull(scal_, &error);
         error.Norms(grid_, scal_, &flipflop_error, &err2, &erri);
         real_t interp_pred = fabs(grid_->interp()->eps_const() * max_detail);
         m_log("[case %d] interp error = %e <? %e -> factor = %e vs %e", case_id_, erri, interp_pred, erri / max_detail, grid_->interp()->eps_const());
@@ -355,6 +363,7 @@ TEST_P(TwoLevel, flipfop) {
 
         // get the moment:
         real_t smooth_moment0, smooth_moment1[3];
+        grid_->GhostPull(scal_, &moment);
         moment(grid_, scal_, &smooth_moment0, smooth_moment1);
         real_t mom_smooth_error[4];
         mom_smooth_error[0] = fabs(fine_moment0 - smooth_moment0);

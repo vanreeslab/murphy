@@ -81,17 +81,18 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             //     vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
             // }
             // grid.GhostPull(&vel);
-            lambda_setvalue_t pol_op     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+            lambda_setvalue_t pol_op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
                 // get the position
                 real_t pos[3];
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid,0).Write(i0, i1, i2)[0] = rand_vel[0];
-                block->data(fid,1).Write(i0, i1, i2)[0] = rand_vel[1];
-                block->data(fid,2).Write(i0, i1, i2)[0] = rand_vel[2];
+                block->data(fid, 0).Write(i0, i1, i2)[0] = rand_vel[0];
+                block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
+                block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
             };
-            SetValue field_init(pol_op,grid.interp());
+            const bidx_t ghost_len[2] = {3, 3};
+            SetValue     field_init(pol_op, ghost_len);
             field_init(&grid, &vel);
         }
 
@@ -113,7 +114,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
                                                         sin(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
                                                         sin(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
             };
-            SetValue field_init(sin_op, grid.interp());
+            SetValue field_init(sin_op);
             field_init(&grid, &test);
         }
 
@@ -240,7 +241,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
                 block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
                 block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
             };
-            SetValue field_init(pol_op, grid.interp());
+            const bidx_t ghost_len[2] = {3, 3};
+            SetValue     field_init(pol_op, ghost_len);
             field_init(&grid, &vel);
         }
 

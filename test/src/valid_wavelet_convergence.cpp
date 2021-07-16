@@ -19,14 +19,17 @@
 using std::list;
 using std::string;
 
-class ValidWaveletInterpolation : public ::testing::Test {
+class ValidWaveletInterpolation : public ::testing::TestWithParam<int> {
    protected:
     void SetUp() override{};
     void TearDown() override{};
 };
 
 //==============================================================================================================================
-TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
+TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
+    // get the ghost length
+    const bidx_t ng           = GetParam();
+    const bidx_t ghost_len[2] = {ng, ng};
     // init the errors
     real_t erri[2];
     real_t err2[2];
@@ -78,10 +81,10 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
 
             // we have perfect ghost -> what is not set will be perfect
             // we force the ghost recomputation
-            test.ghost_status(false);
+            // test.ghost_status(false);
 
             // pull the ghosts
-            grid.GhostPull(&test);
+            grid.GhostPull(&test, ghost_len);
 
             // IOH5 io("data_test");
             // io(&grid, &test);
@@ -104,7 +107,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
                        sin(2.0 * M_PI * freq[2] / sin_len[2] * pos[2]);
             };
             // the error is computed in the ghost region (AS WELL)
-            Error error(grid.interp());
+            Error error(ghost_len);
 
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &lambda_sol, err2 + il, erri + il);
@@ -133,7 +136,10 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
     }
 }
 //==============================================================================================================================
-TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
+TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
+    // get the ghost length
+    const bidx_t ng           = GetParam();
+    const bidx_t ghost_len[2] = {ng, ng};
     // init the errors
     real_t erri[2];
     real_t err2[2];
@@ -162,8 +168,8 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
             grid.AddField(&test);
 
             // put a sinus
-            const real_t cos_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
-            const real_t freq[3]    = {2.0, 3.0, 1.0};
+            const real_t      cos_len[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
+            const real_t      freq[3]    = {2.0, 3.0, 1.0};
             lambda_setvalue_t cos_op     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
                 // get the position
                 real_t pos[3];
@@ -178,7 +184,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
             field_init(&grid, &test);
 
             // pull the ghosts
-            grid.GhostPull(&test);
+            grid.GhostPull(&test, ghost_len);
 
             // IOH5 io("data_test");
             // io(&grid, &test);
@@ -201,7 +207,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
                        cos(2.0 * M_PI * freq[1] / cos_len[1] * pos[1]) +
                        cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
             };
-            Error error(grid.interp());
+            Error error(ghost_len);
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -227,7 +233,10 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
 }
 
 //==============================================================================================================================
-TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
+TEST_P(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
+    // get the ghost length
+    const bidx_t ng           = GetParam();
+    const bidx_t ghost_len[2] = {ng, ng};
     // init the errors
     real_t erri[2];
     real_t err2[2];
@@ -273,7 +282,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
             field_init(&grid, &test);
 
             // pull the ghosts
-            grid.GhostPull(&test);
+            grid.GhostPull(&test, ghost_len);
 
             // IOH5 io("data_test");
             // io(&grid, &test);
@@ -296,7 +305,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
                        cos(2.0 * M_PI * freq[1] / cos_len[1] * pos[1]) +
                        cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
             };
-            Error error(grid.interp());
+            Error error(ghost_len);
             // sanity check
             //             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
             //             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -389,7 +398,11 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
 // }
 
 //==============================================================================================================================
-TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom) {
+TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom) {
+    // get the ghost length
+    const bidx_t ng           = GetParam();
+    const bidx_t ghost_len[2] = {ng, ng};
+
     real_t erri[2];
     real_t err2[2];
     for (lda_t id = 0; id < 3; id++) {
@@ -442,7 +455,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
             field_init(&grid, &test);
 
             // pull the ghosts
-            grid.GhostPull(&test);
+            grid.GhostPull(&test, ghost_len);
 
             // IOH5 io("data_test");
             // io(&grid, &test);
@@ -471,7 +484,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
 
             // now, we need to check
             real_t norm2, normi;
-            Error  error(grid.interp());
+            Error  error(ghost_len);
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -486,7 +499,11 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
 }
 
 //==============================================================================================================================
-TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
+TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
+    // get the ghost length
+    const bidx_t ng           = GetParam();
+    const bidx_t ghost_len[2] = {ng, ng};
+
     real_t erri[2];
     real_t err2[2];
     for (lda_t id = 0; id < 3; id++) {
@@ -536,7 +553,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
             field_init(&grid, &test);
 
             // pull the ghosts
-            grid.GhostPull(&test);
+            grid.GhostPull(&test, ghost_len);
 
             // IOH5 io("data_test");
             // io(&grid, &test);
@@ -564,7 +581,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
 
             // now, we need to check
             real_t norm2, normi;
-            Error  error(grid.interp());
+            Error  error(ghost_len);
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -577,3 +594,7 @@ TEST_F(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
         ASSERT_GE(convi, M_WAVELET_N - ORDERI_TOL);
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(ValidGhost,
+                         ValidWaveletInterpolation,
+                         testing::Range(1, 6));

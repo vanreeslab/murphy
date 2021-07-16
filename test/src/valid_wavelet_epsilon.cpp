@@ -112,7 +112,8 @@ TEST_P(Epsilon, periodic) {
     grid.SetTol(epsilon * 1e+20, epsilon);
 
     // get the ghosting
-    grid.GhostPull(&scal);
+    const bidx_t ghost_len_wavelet[2] = {grid.interp()->nghost_front(),grid.interp()->nghost_back()};
+    grid.GhostPull(&scal,ghost_len_wavelet);
 
     // register the moments
     BMoment moment;
@@ -130,7 +131,7 @@ TEST_P(Epsilon, periodic) {
         level_t tmp_max_lvl = grid.MaxLevel();
         m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,ghost_len_wavelet);
         real_t coarse_moment0, coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
         m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
@@ -138,7 +139,7 @@ TEST_P(Epsilon, periodic) {
     } while (grid.MinLevel() < min_level && grid.MinLevel() > 0);
 
     // measure the moments
-    grid.GhostPull(&scal);
+    grid.GhostPull(&scal,&moment);
     real_t coarse_moment0, coarse_moment1[3];
     moment(&grid, &scal, &coarse_moment0, coarse_moment1);
     m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
@@ -151,7 +152,7 @@ TEST_P(Epsilon, periodic) {
     do {
         min_level = grid.MinLevel();
         // force the field refinement using a patch
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,ghost_len_wavelet);
         grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
         level_t tmp_min_lvl = grid.MinLevel();
@@ -167,7 +168,7 @@ TEST_P(Epsilon, periodic) {
     // sol.bctype(M_BC_EXTRAP);
 
     // grid.GhostPull(&sol);
-    grid.GhostPull(&scal);
+    // grid.GhostPull(&scal);
 
     // measure the error
     real_t normi;
@@ -177,6 +178,7 @@ TEST_P(Epsilon, periodic) {
 
     // measure the moments
     real_t moment0, moment1[3];
+    grid.GhostPull(&scal,&moment);
     moment(&grid, &scal, &moment0, moment1);
     m_log("analytical moments after refinement: %e vs %e -> error = %.12e", fine_moment0, moment0, abs(fine_moment0 - moment0));
     real_t mom_smooth_error[4];
@@ -240,7 +242,8 @@ TEST_P(Epsilon, extrap) {
     grid.SetTol(epsilon * 1e+20, epsilon);
 
     // get the ghosting
-    grid.GhostPull(&scal);
+    const bidx_t ghost_len_wavelet[2] = {grid.interp()->nghost_front(), grid.interp()->nghost_back()};
+    grid.GhostPull(&scal, ghost_len_wavelet);
 
     // // register the moments
     // BMoment moment;
@@ -258,7 +261,7 @@ TEST_P(Epsilon, extrap) {
         level_t tmp_max_lvl = grid.MaxLevel();
         m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,ghost_len_wavelet);
         // real_t coarse_moment0, coarse_moment1[3];
         // moment(&grid, &scal, &coarse_moment0, coarse_moment1);
         // m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
@@ -266,7 +269,7 @@ TEST_P(Epsilon, extrap) {
     } while (grid.MinLevel() < min_level && grid.MinLevel() > 0);
 
     // measure the moments
-    grid.GhostPull(&scal);
+    grid.GhostPull(&scal,ghost_len_wavelet);
     // real_t coarse_moment0, coarse_moment1[3];
     // moment(&grid, &scal, &coarse_moment0, coarse_moment1);
     // m_log("moments after coarsening: %e vs %e -> error = %e", fine_moment0, coarse_moment0, abs(fine_moment0 - coarse_moment0));
@@ -279,7 +282,7 @@ TEST_P(Epsilon, extrap) {
     do {
         min_level = grid.MinLevel();
         // force the field refinement using a patch
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,ghost_len_wavelet);
         grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
         level_t tmp_min_lvl = grid.MinLevel();
@@ -295,7 +298,7 @@ TEST_P(Epsilon, extrap) {
     // sol.bctype(M_BC_EXTRAP);
 
     // grid.GhostPull(&sol);
-    grid.GhostPull(&scal);
+    // grid.GhostPull(&scal);
 
     // measure the error
     real_t normi;
