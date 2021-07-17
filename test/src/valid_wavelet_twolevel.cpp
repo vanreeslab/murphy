@@ -216,6 +216,10 @@ TEST_P(TwoLevel, periodic) {
         list<Patch> patch_list;
         TreeCaseIdToPatch(0, case_id_, &patch_list);
 
+        bidx_t ghost_len[2] = {0, 0};
+        grid_->GhostLengthAdapt(ghost_len);
+        grid_->GhostPull(scal_, ghost_len);
+
         grid_->Adapt(&patch_list);
         // grid_->GhostPull(scal_,ghost_len);
     }
@@ -344,6 +348,10 @@ TEST_P(TwoLevel, flipfop) {
         real_t      origin[3] = {0.0, 0.0, 0.0};
         real_t      length[3] = {2.0, 2.0, 2.0};
         patch_list.push_back(Patch(origin, length, 1));
+
+        bidx_t ghost_len[2] = {0, 0};
+        grid_->GhostLengthAdapt(ghost_len);
+        grid_->GhostPull(scal_, ghost_len);
 
         // adapt
         grid_->Adapt(&patch_list);
