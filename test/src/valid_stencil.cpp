@@ -44,8 +44,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0) {
         rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
-        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
-        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[1] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[2] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
     }
     MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
@@ -171,13 +171,13 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     {
         real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> min = 1, ideal = 3", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.6);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
     }
     // if (do_weno_5)
     {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 3, ideal = 5", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.6);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
     }
 }
 
@@ -209,8 +209,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0) {
         rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
-        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
-        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[1] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[2] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
     }
     MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
