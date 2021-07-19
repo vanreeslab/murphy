@@ -1,10 +1,12 @@
 #ifndef SRC_SETVALUES_HPP_
 #define SRC_SETVALUES_HPP_
 
+#include <vector>
+
 #include "core/doop.hpp"
+#include "core/forloop.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "core/forloop.hpp"
 #include "grid/field.hpp"
 #include "grid/forestgrid.hpp"
 #include "operator/blockoperator.hpp"
@@ -12,7 +14,7 @@
 
 // using lambda_setvalue_scalar_pos_t = lambda_t<void, const real_t*, real_t*>;
 // using lambda_setvalue_vector_pos_t = lambda_t<void, const real_t*, real_t**>;
-using lambda_setvalue_t        = lambda_i3_t<void, const CartBlock* const, const Field* const>;
+using lambda_setvalue_t = lambda_i3_t<void, const CartBlock* const, const Field* const>;
 
 //=====================================================================================================
 /**
@@ -81,13 +83,16 @@ class SetValue : public BlockOperator {
 // };
 // template <>
 // inline void SetValue<lambda_setvalue_vector_pos_t>::FillGridBlock(const qid_t* qid, CartBlock* block, const Field* const fid) const {
-    
+
 // };
 
 // declare later defined functions as lambdas
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t>                            scalar_exp;
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>               scalar_tube;
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const lda_t> scalar_ring;
+extern lambda_t<real_t, const real_t[], const real_t[],
+                const lda_t, const real_t, const real_t, const real_t, const std::vector<short_t>, const std::vector<real_t> >
+    scalar_compact_ring;
 
 //  = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
 //     // get the position

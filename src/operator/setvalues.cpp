@@ -59,6 +59,61 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, con
     return vort;
 };
 
+/**
+ * @brief returns the value of a scalar compact ring perpendicular to the normal direction
+ * 
+ * we rely on the compact gaussian formula: exp( - (r/sigma)^2 / (1 - (r/gamma)^2) )
+ * with:
+ * - sigma = standard variation of the Guassian
+ * - gamma = compactness of the gaussian
+ * 
+ * we define beta = gamma/sigma
+ * 
+ */
+lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, const real_t, const real_t, const std::vector<short_t>, const std::vector<real_t> >
+    scalar_compact_ring = [](const real_t pos[3], const real_t center[3],
+                             const lda_t normal, const real_t radius, const real_t sigma, const real_t beta,
+                             const std::vector<short_t> freq_rad, const std::vector<real_t> amp_rad) -> real_t {
+    //-------------------------------------------------------------------------
+    m_assert(beta > 1, "the beta parameter = %f must be >1", beta);
+    m_assert((beta * sigma) < radius, "to avoid cross combinatin, we must have that alpha < radius");
+
+        const lda_t idx = (normal + 1) % 3;
+    const lda_t idy = (normal + 2) % 3;
+    const lda_t idz = normal;
+
+    const real_t gamma     = beta * sigma;
+    const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+    const real_t oo_gamma2 = 1.0 / (gamma * gamma);
+
+    const real_t x_center = center[idx];
+    const real_t y_center = center[idy];
+    const real_t x        = pos[idx] - x_center;
+    const real_t y        = pos[idy] - y_center;
+
+    const real_t alpha = atan2(y, x);
+
+    // add the modes
+    real_t        z_center = center[idz];
+    const short_t n_mode   = freq_rad.size();
+    for (short_t id = 0; id < n_mode; ++id) {
+        z_center += amp_rad[id] * radius * 1.0 / n_mode * sin(freq_rad[id] * alpha);
+    }
+    const real_t z = pos[idz] - z_center;
+
+    // compute the gaussian
+
+    const real_t radr   = sqrt(pow(x, 2) + pow(y, 2));
+    const real_t rad    = radr - radius;
+    const real_t rad_sq = pow(rad, 2) + pow(z, 2);
+    const real_t rho1   = rad_sq * oo_sigma2;
+    const real_t rho2   = rad_sq * oo_gamma2;
+    const real_t vort   = (rho2 < 1.0) ? exp(-rho1 / (1.0 - rho2)) : 0.0;
+
+    return vort;
+    //-------------------------------------------------------------------------
+};
+
 // void SetValue::operator()(const ForestGrid*  grid, Field*  field, const lda_t ida) {
 //     m_begin;
 //     //-------------------------------------------------------------------------

@@ -6,9 +6,15 @@
 #include "operator/setvalues.hpp"
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
+#include <vector>
+#include <algorithm>
 
-static real_t sigma     = 0.05;
-static real_t center[3] = {0.5, 0.5, 0.5};
+static const real_t sigma     = 0.05;
+static const real_t radius    = 0.3;
+static const real_t beta      = 3;
+static const auto   freq      = std::vector<short_t>{5, 25};
+static const auto   amp       = std::vector<real_t>{0.2, 0.2};
+static const real_t center[3] = {0.5, 0.5, 0.5};
 
 using std::string;
 using std::to_string;
@@ -20,7 +26,8 @@ static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const 
     block->pos(i0, i1, i2, pos);
 
     // call the function
-    return scalar_exp(pos, center, sigma);
+    // return scalar_exp(pos, center, sigma);
+    return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
 };
 
 void EpsilonTest::InitParam(ParserArguments* param) {
@@ -41,10 +48,11 @@ void EpsilonTest::InitParam(ParserArguments* param) {
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = delta_eps_;
+    real_t depsilon = delta_eps_; 
     real_t epsilon  = eps_start_;
     m_log("starting with epsilon = %e", epsilon);
     while (epsilon >= std::pow(2.0, -34)) {
+        m_log("================================================================================");
         // create a grid, put a ring on it on the fixel level
         // bool period[3] = {false, false, false};
         bool  period[3]   = {true, true, true};
@@ -63,7 +71,8 @@ void EpsilonTest::Run() {
             block->pos(i0, i1, i2, pos);
             real_t* data = block->data(fid).Write(i0, i1, i2);
             // set value
-            data[0] = scalar_exp(pos, center, sigma);
+            // data[0] = scalar_exp(pos, center, sigma);
+            data[0] = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
         };
         SetValue init(lambda_initcond);
         init(&grid, &scal);
@@ -71,15 +80,15 @@ void EpsilonTest::Run() {
         // apply it
         grid.SetTol(epsilon * 1e+20, epsilon);
 
-        // grid.GhostPull(&scal);
-        // IOH5 dump("data");
-        // dump(&grid, &scal, 0);
+        grid.GhostPull(&scal, ghost_len_ioh5);
+        IOH5 dump("data");
+        dump(&grid, &scal, 0);
 
         // compute the moment at the start
         BMoment moment;
         real_t  sol_moment0;
         real_t  sol_moment1[3];
-        grid.GhostPull(&scal,&moment);
+        grid.GhostPull(&scal, &moment);
         moment(&grid, &scal, &sol_moment0, sol_moment1);
 
         // coarsen
@@ -102,8 +111,16 @@ void EpsilonTest::Run() {
 
         } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0, level_min_));
 
+        const real_t hmin     = grid.FinestH();
+        const real_t max_freq = std::max_element(freq.begin(), freq.end())[0];
+        const real_t min_freq = std::min_element(freq.begin(), freq.end())[0];
+        const real_t L_max    = 2.0 * M_PI / max_freq * radius;
+        const real_t L_min    = 2.0 * M_PI / min_freq * radius;
+        m_log("worst characteristic length = %e, hmin = %e -> length/hmin = %e", L_max, hmin, L_max / hmin);
+        m_log("best characteristic length = %e, hmin = %e -> length/hmin = %e", L_min, hmin, L_min / hmin);
+
         // measure the moments
-        grid.GhostPull(&scal,&moment);
+        grid.GhostPull(&scal, &moment);
         real_t coarse_moment0;
         real_t coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
@@ -160,6 +177,7 @@ void EpsilonTest::Run() {
 
         // measure the moments
         real_t moment0, moment1[3];
+        grid.GhostPull(&scal, &moment);
         moment(&grid, &scal, &moment0, moment1);
         real_t dmoment0, dmoment1[3];
         // dmoment(&grid, &scal, &dmoment0, dmoment1);
