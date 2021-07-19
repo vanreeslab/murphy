@@ -76,10 +76,10 @@ void EpsilonTest::Run() {
         // dump(&grid, &scal, 0);
 
         // compute the moment at the start
-        grid.GhostPull(&scal);
         BMoment moment;
         real_t  sol_moment0;
         real_t  sol_moment1[3];
+        grid.GhostPull(&scal,&moment);
         moment(&grid, &scal, &sol_moment0, sol_moment1);
 
         // coarsen
@@ -94,7 +94,7 @@ void EpsilonTest::Run() {
             level_t tmp_max_lvl = grid.MaxLevel();
             m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
 
-            grid.GhostPull(&scal);
+            grid.GhostPull(&scal, &moment);
             real_t coarse_moment0;
             real_t coarse_moment1[3];
             moment(&grid, &scal, &coarse_moment0, coarse_moment1);
@@ -103,7 +103,7 @@ void EpsilonTest::Run() {
         } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0, level_min_));
 
         // measure the moments
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,&moment);
         real_t coarse_moment0;
         real_t coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
@@ -125,7 +125,8 @@ void EpsilonTest::Run() {
         do {
             min_level = grid.MinLevel();
             // force the field refinement using a patch
-            grid.GhostPull(&scal);
+            bidx_t ghost_len[2] = {grid.interp()->nghost_front(), grid.interp()->nghost_back()};
+            grid.GhostPull(&scal, ghost_len);
             grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
             level_t tmp_min_lvl = grid.MinLevel();
@@ -140,12 +141,11 @@ void EpsilonTest::Run() {
         init(&grid, &sol);
         sol.bctype(M_BC_EXTRAP);
 
-        grid.GhostPull(&sol);
-        grid.GhostPull(&scal);
-
         // measure the error
         real_t normi;
         Error  error;
+        grid.GhostPull(&sol, &error);
+        grid.GhostPull(&scal, &error);
         // error.Normi(&grid, &scal, const Field* (&sol), &normi);
         error.Normi(&grid, &scal, &lambda_error, &normi);
 

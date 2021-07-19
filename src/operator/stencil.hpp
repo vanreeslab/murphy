@@ -23,12 +23,12 @@ class Stencil : public BlockOperator {
     // default void constructor
     explicit Stencil();
 
-    /**
-     * @brief returns the number of ghost point needed by the stencil
-     * 
-     * @return lid_t 
-     */
-    virtual lid_t NGhost() const = 0;
+    // /**
+    //  * @brief returns the number of ghost point needed by the stencil
+    //  * 
+    //  * @return lid_t 
+    //  */
+    // // virtual lid_t NGhost() const = 0;
 
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping

@@ -262,20 +262,34 @@ void Grid::ResetFields(const std::map<string, Field*>* fields) {
     m_end;
 }
 
+void Grid::GhostPull_SetLength(const Field* field, bidx_t ghost_len[2]) const {
+    m_begin;
+    m_assert(!(field == nullptr), "the source field cannot be empty");
+    m_assert(IsAField(field), "the field does not belong to this grid");
+    m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
+    //-------------------------------------------------------------------------
+    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed",ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
+    if (!field->ghost_status(ghost_len)) {
+        ghost_->SetLength(ghost_len);
+    }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
 /**
  * @brief Pull the ghost points (take values from neighbors to fill my ghost points) - start the comm
  * 
  * @param field the considered field
  * @param ida the dimension of the field which has to be send
  */
-void Grid::GhostPull_Post(const Field* field, const sid_t ida) const {
+void Grid::GhostPull_Post(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
-    if (!field->ghost_status()) {
+    if (!field->ghost_status(ghost_len)) {
         ghost_->PullGhost_Post(field, ida);
     }
     //-------------------------------------------------------------------------
@@ -288,16 +302,26 @@ void Grid::GhostPull_Post(const Field* field, const sid_t ida) const {
  * @param field the considered field
  * @param ida the received dimension
  */
-void Grid::GhostPull_Wait(const Field* field, const sid_t ida) const {
+void Grid::GhostPull_Wait(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const {
     m_begin;
     m_assert(0 <= ida && ida < field->lda(), "the ida is not within the field's limit");
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
-    if (!field->ghost_status()) {
+    if (!field->ghost_status(ghost_len)) {
         ghost_->PullGhost_Wait(field, ida);
     }
+    //-------------------------------------------------------------------------
+    m_end;
+}
+
+void Grid::GhostPull(Field* field, const BlockOperator* op) const {
+    m_begin;
+    //-------------------------------------------------------------------------
+    bidx_t ghost_len[2];
+    op->GhostLengthNeed(ghost_len);
+    GhostPull(field, ghost_len);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -307,23 +331,29 @@ void Grid::GhostPull_Wait(const Field* field, const sid_t ida) const {
  * 
  * @param field the field which requires the ghost
  */
-void Grid::GhostPull(Field* field) const {
+void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
     m_begin;
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
+    // get the real ghost length
+    bidx_t ghost_len[2] = {ghost_len_usr[0], ghost_len_usr[1]};
+    GhostPull_SetLength(field, ghost_len);
+
     // start the send in the first dimension
-    m_verb("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status() ? "OK" : "to be computed");
+    // m_log("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed");
     m_profStart(prof_, "pull ghost");
     for (lda_t ida = 0; ida < field->lda(); ++ida) {
         m_verb("ghosting post field <%s> in dir %d", field->name().c_str(), ida);
-        GhostPull_Post(field, ida);
+        GhostPull_Post(field, ida, ghost_len);
         m_verb("ghosting wait field <%s> in dir %d", field->name().c_str(), ida);
-        GhostPull_Wait(field, ida);
+        GhostPull_Wait(field, ida, ghost_len);
     }
     m_profStop(prof_, "pull ghost");
-    // // set that everything is ready for the field
-    field->ghost_status(true);
+    // set that everything is ready for the field
+    const bidx_t ghost_len_actual[2] = {m_max(ghost_len[0], field->get_ghost_len(0)),
+                                        m_max(ghost_len[1], field->get_ghost_len(1))};
+    field->ghost_len(ghost_len_actual);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -356,11 +386,13 @@ void Grid::Refine(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
+    // get the ghost length
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto& fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
-            GhostPull(cur_field);
+            GhostPull(cur_field, ghost_len);
         }
     }
 
@@ -381,11 +413,13 @@ void Grid::Coarsen(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
+    // get the ghost length
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto& fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
-            GhostPull(cur_field);
+            GhostPull(cur_field, ghost_len);
         }
     }
 
@@ -406,11 +440,13 @@ void Grid::Adapt(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
+    // get the ghost length
+    const bidx_t ghost_len[2] = {interp_->nghost_front(),interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto& fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
-            GhostPull(cur_field);
+            GhostPull(cur_field,ghost_len);
         }
     }
 
@@ -424,7 +460,7 @@ void Grid::Adapt(Field* field) {
  * @brief Adapt the grid given an analytical expression for the designated field
  * 
  * @param field the field to adapt
- * @param do_ghost determine if the application of expr_block will fill the ghost
+ * @param DoGhost determine if the application of expr_block will fill the ghost
  * @param expr_grid 
  * @param expr_block 
  */
@@ -432,16 +468,18 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     //-------------------------------------------------------------------------
+    // get the ghost length
+    const bidx_t ghost_len[2] = {interp_->nghost_front(),interp_->nghost_back()};
     // apply the operator to get the starting value
     (*expr)(this, field);
-    m_assert(field->ghost_status(), "strictly not needed but as we recall the operator just above, we have to enforce the criterion is gonna be ok");
+    m_assert(field->ghost_status(ghost_len), "strictly not needed but as we recall the operator just above, we have to enforce the criterion is gonna be ok");
 
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>( const_cast<SetValue*>(expr) );
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
 
     // if the application of the operator on the grid has filled the ghosts, then the operator on the block has done the same
-    field->ghost_status(true);
+    field->ghost_len(ghost_len);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -622,7 +660,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     //................................................
     // set the ghosting fields as non-valid
     for (auto& fid : fields_) {
-        fid.second->ghost_status(false);
+        const bidx_t ghost_len[2] = {0, 0};
+        fid.second->ghost_len(ghost_len);
     }
 
     //................................................
@@ -657,10 +696,16 @@ void Grid::StoreDetails(Field* criterion, Field* details) {
     m_begin;
     m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
     //-------------------------------------------------------------------------
-    this->GhostPull(criterion);
+    {
+        const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+        this->GhostPull(criterion, ghost_len);
+    }
 
     DoOpMesh(nullptr, &GridBlock::StoreDetails, this, interp(), criterion, details);
-    details->ghost_status(false);
+    {
+        const bidx_t ghost_len[2] = {0, 0};
+        details->ghost_len(ghost_len);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }

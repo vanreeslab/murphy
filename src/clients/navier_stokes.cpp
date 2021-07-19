@@ -170,7 +170,7 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
 
     // dump the vorticity field
     IOH5 dump(folder_diag_);
-    grid_->GhostPull(vort_);
+    grid_->GhostPull(vort_,ghost_len_ioh5);
     dump(grid_, vort_, iter);
 
     // dump the details
@@ -180,7 +180,7 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
         grid_->AddField(&details);
         grid_->StoreDetails(vort_, &details);
 
-        grid_->GhostPull(&details);
+        grid_->GhostPull(&details, ghost_len_ioh5);
         // IOH5 dump("data");
         dump(grid_, &details, iter);
 
@@ -193,24 +193,23 @@ void NavierStokes::Diagnostics(const real_t time, const real_t dt, const lid_t i
         Field err("error", 3);
         grid_->AddField(&anal);
         grid_->AddField(&err);
-        real_t        center[3] = {0.5 + u_stream_[0] * time, 0.5 + u_stream_[1] * time, 0.5 + u_stream_[2] * time};
-        real_t        radius    = 0.25;
-        real_t        sigma     = 0.025 + sqrt(4.0 * nu_ * time);
+        real_t center[3] = {0.5 + u_stream_[0] * time, 0.5 + u_stream_[1] * time, 0.5 + u_stream_[2] * time};
+        real_t radius    = 0.25;
+        real_t sigma     = 0.025 + sqrt(4.0 * nu_ * time);
         // SetVortexRing vr_init(2, center, sigma, radius, grid_->interp());
         // vr_init(grid_, &anal);
-        m_assert(false,"need update here");
+        m_assert(false, "need update here");
 
-        grid_->GhostPull(vort_);
         // compute the error wrt to the analytical solution
-        real_t          err2 = 0.0;
-        real_t          erri = 0.0;
-        Error  error(grid_->interp());
+        real_t err2 = 0.0;
+        real_t erri = 0.0;
+        Error  error;
         error.Norms(grid_, vort_, &anal, &err, &err2, &erri);
 
         // I/O the error field
         if (dump_error_) {
             err.bctype(M_BC_EXTRAP);
-            grid_->GhostPull(&err);
+            grid_->GhostPull(&err, ghost_len_ioh5);
             dump(grid_, &err, iter);
         }
 

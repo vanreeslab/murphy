@@ -90,17 +90,25 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    [[nodiscard]] inline lid_t NGhostFront() const {
-        m_assert(interp_ != nullptr, "interp cannot be null");
-        return interp_->nghost_front();
+    // [[nodiscard]] inline lid_t NGhostFront() const {
+    //     m_assert(interp_ != nullptr, "interp cannot be null");
+    //     return interp_->nghost_front();
+    // }
+    // [[nodiscard]] inline lid_t NGhostBack() const {
+    //     m_assert(interp_ != nullptr, "interp cannot be null");
+    //     return interp_->nghost_back();
+    // }
+    inline void GhostLengthAdapt(bidx_t ghost_len[2]) const {
+        ghost_len[0] = interp_->nghost_front();
+        ghost_len[1] = interp_->nghost_back();
     }
-    [[nodiscard]] inline lid_t NGhostBack() const {
-        m_assert(interp_ != nullptr, "interp cannot be null");
-        return interp_->nghost_back();
-    }
-    void GhostPull(Field* field) const;
-    void GhostPull_Post(const Field* field, const sid_t ida) const;
-    void GhostPull_Wait(const Field* field, const sid_t ida) const;
+
+    void GhostPull(Field* field, const BlockOperator* op) const;
+    void GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const;
+
+    void GhostPull_SetLength(const Field* field, bidx_t ghost_len[2]) const;
+    void GhostPull_Post(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const;
+    void GhostPull_Wait(const Field* field, const sid_t ida, const bidx_t ghost_len[2]) const;
     /**@}*/
 
     /**

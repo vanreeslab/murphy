@@ -65,6 +65,13 @@ typedef enum m_direction_t {
     M_BACKWARD
 } m_direction_t;
 
+// //-------------------------------------------------------------------------
+// typedef enum m_dir_t {
+//     M_FRONT = 0,
+//     M_BACK  = 1
+// }
+// m_dir_t;
+
 //-------------------------------------------------------------------------
 // must be removed from the code
 typedef int  lid_t;

@@ -81,7 +81,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         block->pos(i0, i1, i2, pos);
         block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
     };
-    SetValue ring(lambda_ring,grid_->interp());
+    const bidx_t ghost_len_interp[2] = {grid_->interp()->nghost_front(),
+                                        grid_->interp()->nghost_back()};
+    SetValue     ring(lambda_ring, ghost_len_interp);
     ring(grid_, scal_);
 
     // adapt the grid
@@ -96,7 +98,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     vel_->bctype(M_BC_EXTRAP);
     vel_->is_temp(true);
     grid_->AddField(vel_);
-    SetValue set_velocity(lambda_velocity, grid_->interp());
+    SetValue set_velocity(lambda_velocity, ghost_len_interp);
     set_velocity(grid_, vel_);
 
     // // setup the velocity, 1.0 in every direction
@@ -197,9 +199,11 @@ void SimpleAdvection::Run() {
                 // reset the velocity
                 m_profStart(prof_, "set velocity");
                 // set the velocity field
-                SetValue set_velocity(lambda_velocity, grid_->interp());
+                const bidx_t ghost_len_interp[2] = {grid_->interp()->nghost_front(),
+                                                    grid_->interp()->nghost_back()};
+                SetValue     set_velocity(lambda_velocity, ghost_len_interp);
                 set_velocity(grid_, vel_);
-                m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
+                m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
                 m_profStop(prof_, "set velocity");
             }
         }
@@ -279,14 +283,14 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     real_t  moment0;
     real_t  moment1[3];
     BMoment moments;
-    grid_->GhostPull(scal_);
+    grid_->GhostPull(scal_,&moments);
     moments(grid_, scal_, &moment0, moment1);
     // real_t          dmoment0;
     // real_t          dmoment1[3];
     // BDiscreteMoment dmoments;
     // dmoments(grid_, scal_, &dmoment0, dmoment1);
     real_t mean_val;
-    BMean  mean;
+    BAvg  mean;
     mean(grid_, scal_, &mean_val);
 
     // get the solution at the given time
@@ -309,8 +313,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     // open the file
     FILE*   file_error;
     FILE*   file_diag;
-    level_t min_level = grid_->MinLevel();
-    level_t max_level = grid_->MaxLevel();
+    level_t min_level       = grid_->MinLevel();
+    level_t max_level       = grid_->MaxLevel();
     long    global_num_quad = grid_->global_num_quadrants();
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
@@ -331,7 +335,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     if (iter % iter_dump() == 0 && iter != 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
-        grid_->GhostPull(scal_);
+        grid_->GhostPull(scal_, ghost_len_ioh5);
         dump(grid_, scal_, iter);
         // dump(grid_, sol_, iter);
 
@@ -342,7 +346,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
             grid_->AddField(&details);
             grid_->StoreDetails(scal_, &details);
 
-            grid_->GhostPull(&details);
+            grid_->GhostPull(&details, ghost_len_ioh5);
             // IOH5 dump("data");
             dump(grid_, &details, iter);
 

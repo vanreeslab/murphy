@@ -30,7 +30,8 @@ using lambda_flux_weno_z_t = std::function<void(const lda_t ida, const real_t* c
  * @brief Given a flux function, do the magic for the WENO_Z schemes
  * 
  */
-static void DoMagic_WENOZ(/* flux weno */ const lambda_flux_weno_z_t* flux_weno,
+static void DoMagic_WENOZ(/* param */ const bidx_t                    nghost,
+                          /* flux weno */ const lambda_flux_weno_z_t* flux_weno,
                           /* fields */ const real_t* data_vel[3], const real_t* data_src, real_t* data_trg,
                           /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3]) {
     //-------------------------------------------------------------------------
@@ -56,25 +57,46 @@ static void DoMagic_WENOZ(/* flux weno */ const lambda_flux_weno_z_t* flux_weno,
         }
     };
 
-    auto reset = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        data_trg[m_idx(i0, i1, i2)] *= alpha;
-    };
-
     if (!is_outer) {
+        auto reset = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            data_trg[m_idx(i0, i1, i2)] *= alpha;
+        };
         // reset the whole block, we don't need the ghost points to do that
-        for_loop<0, M_N>(&reset);
-        for_loop<M_GS, M_N - M_GS>(&op);
+        for_loop(&reset, 0, M_N);
+        for_loop(&op, nghost, M_N - nghost);
     } else {
         // do the most on the X side to use vectorization
         // need to start in -1 to put a flux in the point 0!
-        for_loop<-1, M_N + 1, -1, M_N + 1, -1, M_GS>(&op);             // Z-
-        for_loop<-1, M_N + 1, -1, M_N + 1, M_N - M_GS, M_N + 1>(&op);  // Z+
-
-        for_loop<-1, M_N + 1, -1, M_GS, M_GS, M_N - M_GS>(&op);             // Y-
-        for_loop<-1, M_N + 1, M_N - M_GS, M_N + 1, M_GS, M_N - M_GS>(&op);  // Y+
-
-        for_loop<-1, M_GS, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);             // X-
-        for_loop<M_N - M_GS, M_N + 1, M_GS, M_N - M_GS, M_GS, M_N - M_GS>(&op);  // X+
+        {  // Z-
+            const bidx_t start[3] = {-1, -1, -1};
+            const bidx_t end[3]   = {M_N + 1, M_N + 1, nghost};
+            for_loop(&op, start, end);
+        }
+        {  // Z+
+            const bidx_t start[3] = {-1, -1, M_N - nghost};
+            const bidx_t end[3]   = {M_N + 1, M_N + 1, M_N + 1};
+            for_loop(&op, start, end);
+        }
+        {  // Y-
+            const bidx_t start[3] = {-1, -1, nghost};
+            const bidx_t end[3]   = {M_N + 1, nghost, M_N - nghost};
+            for_loop(&op, start, end);
+        }
+        {  // Y+
+            const bidx_t start[3] = {-1, M_N - nghost, nghost};
+            const bidx_t end[3]   = {M_N + 1, M_N + 1, M_N - nghost};
+            for_loop(&op, start, end);
+        }
+        {  // X-
+            const bidx_t start[3] = {-1, nghost, nghost};
+            const bidx_t end[3]   = {nghost, M_N - nghost, M_N - nghost};
+            for_loop(&op, start, end);
+        }
+        {  // X+
+            const bidx_t start[3] = {M_N - nghost, nghost, nghost};
+            const bidx_t end[3]   = {M_N + 1, M_N - nghost, M_N - nghost};
+            for_loop(&op, start, end);
+        }
     }
     // -------------------------------------------------------------------------
 }
@@ -92,8 +114,8 @@ static void DoMagic_WENOZ(/* flux weno */ const lambda_flux_weno_z_t* flux_weno,
  * @param fid_trg 
  */
 template <>
-void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const {
-    m_assert(u_->ghost_status(), "the ghost values of the velocity must be known!");
+void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const {
+    m_assert(u_->ghost_status(ghost_len_need_), "the ghost values of the velocity must be known! expected: %d %d, known: %d %d", ghost_len_need_[0], ghost_len_need_[1], u_->get_ghost_len(0), u_->get_ghost_len(1));
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
 
@@ -123,9 +145,9 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const
             const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_3, h[ida]);
             // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
             // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
-            const real_t denom   = 1.0 / (alpha_0 + alpha_1);
-            const real_t w0      = alpha_0 * denom;
-            const real_t w1      = alpha_1 * denom;
+            const real_t denom = 1.0 / (alpha_0 + alpha_1);
+            const real_t w0    = alpha_0 * denom;
+            const real_t w1    = alpha_1 * denom;
 
             const real_t fvel = 0.5 * (vel[m_idx_delta(-1, ida)] + vel[0]);  // i - 1/2
             flux[0]           = (m_sign(fvel) < 0.0) * (w0 * s0 + w1 * s1);  // it's a negative flux
@@ -141,9 +163,9 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const
             const real_t alpha_1 = alpha_z(gamma_1, beta_1, tau_3, h[ida]);
             // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
             // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
-            const real_t denom   = 1.0 / (alpha_0 + alpha_1);
-            const real_t w0      = alpha_0 * denom;
-            const real_t w1      = alpha_1 * denom;
+            const real_t denom = 1.0 / (alpha_0 + alpha_1);
+            const real_t w0    = alpha_0 * denom;
+            const real_t w1    = alpha_1 * denom;
 
             const real_t fvel = 0.5 * (vel[m_idx_delta(+1, ida)] + vel[0]);  // i + 1/2
             flux[1]           = (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1);  // it's a positive flux
@@ -155,15 +177,16 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t*  qid, GridBlock*  block, const
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
     const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    DoMagic_WENOZ(&flux_weno_3,
+    DoMagic_WENOZ(m_max(ghost_len_need_[0], ghost_len_need_[1]),
+                  &flux_weno_3,
                   data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
                   is_outer, alpha, oneoh);
     // -------------------------------------------------------------------------
 }
 
 template <>
-void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const {
-    m_assert(u_->ghost_status(), "the ghost values of the velocity must be known!");
+void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const {
+    m_assert(u_->ghost_status(ghost_len_need_), "the ghost values of the velocity must be known! expected: %d %d, known: %d %d", ghost_len_need_[0], ghost_len_need_[1], u_->get_ghost_len(0), u_->get_ghost_len(1));
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
 
@@ -198,10 +221,10 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const
             // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
             // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
             // const real_t alpha_2 = alpha_js(gamma_2, beta_2);
-            const real_t denom   = 1.0 / (alpha_0 + alpha_1 + alpha_2);
-            const real_t w0      = alpha_0 * denom;
-            const real_t w1      = alpha_1 * denom;
-            const real_t w2      = alpha_2 * denom;
+            const real_t denom = 1.0 / (alpha_0 + alpha_1 + alpha_2);
+            const real_t w0    = alpha_0 * denom;
+            const real_t w1    = alpha_1 * denom;
+            const real_t w2    = alpha_2 * denom;
 
             const real_t fvel = 0.5 * (vel[m_idx_delta(-1, ida)] + vel[0]);            // i - 1/2
             flux[0]           = (m_sign(fvel) < 0.0) * (w0 * s0 + w1 * s1 + w2 * s2);  // it's a negative flux
@@ -221,10 +244,10 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const
             // const real_t alpha_0 = alpha_js(gamma_0, beta_0);
             // const real_t alpha_1 = alpha_js(gamma_1, beta_1);
             // const real_t alpha_2 = alpha_js(gamma_2, beta_2);
-            const real_t denom   = 1.0 / (alpha_0 + alpha_1 + alpha_2);
-            const real_t w0      = alpha_0 * denom;
-            const real_t w1      = alpha_1 * denom;
-            const real_t w2      = alpha_2 * denom;
+            const real_t denom = 1.0 / (alpha_0 + alpha_1 + alpha_2);
+            const real_t w0    = alpha_0 * denom;
+            const real_t w1    = alpha_1 * denom;
+            const real_t w2    = alpha_2 * denom;
 
             const real_t fvel = 0.5 * (vel[m_idx_delta(+1, ida)] + vel[0]);            // i + 1/2
             flux[1]           = (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1 + w2 * s2);  // it's a positive flux
@@ -235,7 +258,8 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t*  qid, GridBlock*  block, const
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
     const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    DoMagic_WENOZ(&flux_weno_5,
+    DoMagic_WENOZ(m_max(ghost_len_need_[0], ghost_len_need_[1]),
+                  &flux_weno_5,
                   data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
                   is_outer, alpha, oneoh);
     // -------------------------------------------------------------------------

@@ -21,7 +21,7 @@ class Error : public BlockOperator {
 
    public:
     explicit Error() : BlockOperator(nullptr){};
-    explicit Error(const Wavelet* interp) : BlockOperator(interp){};
+    explicit Error(const bidx_t* ghost_len) : BlockOperator(ghost_len){};
 
     template <class Sol>
     void Normi(const Grid* grid, const Field* field, const Sol* sol, real_t* norm_i) {
@@ -51,7 +51,7 @@ class Error : public BlockOperator {
     template <class Sol>
     void Norms(const Grid* grid, const level_t level, const Field* field, const Sol* sol, Field* error, real_t* norm_2, real_t* norm_i) {
         m_begin;
-        m_assert(!(do_ghost_ && (!field->ghost_status())), "we cannot compute the ghost, please get the ghost before for field <%s>", field->name().c_str());
+        m_assert(!(DoGhost() && (!field->ghost_status(ghost_len_need_))), "we cannot compute the ghost, please get the ghost before for field <%s>", field->name().c_str());
         //-------------------------------------------------------------------------
         error_2_ = 0.0;
         error_i_ = 0.0;
@@ -75,7 +75,7 @@ class Error : public BlockOperator {
         }
 
         if (!no_error) {
-            error->ghost_status(do_ghost());
+            error->ghost_len(ghost_len_res_);
         }
 
         // do the gathering into

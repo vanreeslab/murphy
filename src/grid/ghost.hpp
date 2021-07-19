@@ -14,8 +14,8 @@
 #include "wavelet/wavelet.hpp"
 
 // alias boring names
-using GBLocal      = GhostBlock<GridBlock *>;
-using GBMirror     = GhostBlock<MPI_Aint>;
+using GBLocal      = NeighborBlock<GridBlock *>;
+using GBMirror     = NeighborBlock<MPI_Aint>;
 using GBPhysic     = PhysBlock;
 using ListGBLocal  = std::list<GBLocal *>;
 using ListGBMirror = std::list<GBMirror *>;
@@ -37,10 +37,11 @@ using gop_t = void (Ghost::*)(const qid_t*  qid, GridBlock*  block, const Field*
  * 
  */
 class Ghost {
-   protected:
-    lda_t   ida_       = -1;                  //!< current ghosting dimension
-    level_t min_level_ = -1;                  //!< minimum active level, min_level included
-    level_t max_level_ = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
+   private:
+    bidx_t  ghost_lim[2] = {0, 0};              //!< number of points actually being computed
+    lda_t   cur_ida_     = -1;                  //!< current ghosting dimension
+    level_t min_level_   = -1;                  //!< minimum active level, min_level included
+    level_t max_level_   = P8EST_MAXLEVEL + 1;  //!< maximum active level, max_level included
     // iblock_t n_active_quad_ = -1;                  //!< the number of quadrant that needs to have ghost informations
 
     MPI_Group ingroup_           = MPI_GROUP_NULL;  //!< group of ranks that will emit/origin a RMA to access my mirrors (I am the target rank, they are incomming)
@@ -66,6 +67,8 @@ class Ghost {
     // MPI_Group mirror_target_group() const { return outgroup_; };
 
     void UpdateStatus();
+
+    void SetLength(bidx_t ghost_len[2]);
 
     /**
      * @name RMA-based high-level ghosting - post and wait

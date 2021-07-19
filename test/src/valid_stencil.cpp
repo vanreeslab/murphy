@@ -36,12 +36,18 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     lid_t L[3]      = {2, 2, 2};
 
     // see if we run the tests
-    bool do_weno_3 = false;
-    bool do_weno_5 = false;
+    // bool do_weno_3 = false;
+    // bool do_weno_5 = false;
 
-    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    real_t rand_vel[3];
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[1] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[2] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+    }
+    MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
@@ -54,8 +60,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             grid.Adapt(&patch_list);
         }
 
-        do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+        // do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        // do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
         // create the needed fields
         string fieldName = "field" + std::to_string(il);
@@ -81,17 +87,18 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             //     vel_init(&grid, &vel, ida);  // put 1.0 in the indicated direction only
             // }
             // grid.GhostPull(&vel);
-            lambda_setvalue_t pol_op     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+            lambda_setvalue_t pol_op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
                 // get the position
                 real_t pos[3];
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid,0).Write(i0, i1, i2)[0] = rand_vel[0];
-                block->data(fid,1).Write(i0, i1, i2)[0] = rand_vel[1];
-                block->data(fid,2).Write(i0, i1, i2)[0] = rand_vel[2];
+                block->data(fid, 0).Write(i0, i1, i2)[0] = rand_vel[0];
+                block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
+                block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
             };
-            SetValue field_init(pol_op,grid.interp());
+            const bidx_t ghost_len[2] = {3, 3};
+            SetValue     field_init(pol_op, ghost_len);
             field_init(&grid, &vel);
         }
 
@@ -113,7 +120,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
                                                         sin(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
                                                         sin(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
             };
-            SetValue field_init(sin_op, grid.interp());
+            SetValue field_init(sin_op);
             field_init(&grid, &test);
         }
 
@@ -141,7 +148,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
         //     field_init(&grid, &test);
         // }
 
-        if (do_weno_3) {
+        // if (do_weno_3) 
+        {
             Advection<M_WENO_Z, 3> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -149,7 +157,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
         }
-        if (do_weno_5) {
+        // if (do_weno_5) 
+        {
             Advection<M_WENO_Z, 5> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -158,15 +167,17 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
     }
-    if (do_weno_3) {
+    // if (do_weno_3)
+    {
         real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> min = 1, ideal = 3", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.75);
     }
-    if (do_weno_5) {
+    // if (do_weno_5)
+    {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 3, ideal = 5", convi);
-        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.75);
     }
 }
 
@@ -190,19 +201,25 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     lid_t L[3]      = {2, 2, 2};
 
     // see if we run the tests
-    bool do_weno_3 = false;
-    bool do_weno_5 = false;
+    // bool do_weno_3 = false;
+    // bool do_weno_5 = false;
 
-    const real_t rand_vel[3] = {-1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0,
-                                -1.0 + ((real_t)std::rand() / (real_t)RAND_MAX) * 2.0};
+    real_t rand_vel[3];
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0) {
+        rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[1] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        rand_vel[2] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+    }
+    MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
         Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
 
-        do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
-        do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
+        // do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
+        // do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
 
         // create the test file
         string fieldName = "field" + std::to_string(il);
@@ -240,7 +257,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
                 block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
                 block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
             };
-            SetValue field_init(pol_op, grid.interp());
+            const bidx_t ghost_len[2] = {3, 3};
+            SetValue     field_init(pol_op, ghost_len);
             field_init(&grid, &vel);
         }
 
@@ -290,7 +308,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
         //     field_init(&grid, &test);
         // }
 
-        if (do_weno_3) {
+        // if (do_weno_3)
+        {
             Advection<M_WENO_Z, 3> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -300,13 +319,14 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             // check the moment
             real_t sum;
-            BMean  sum_grid;
+            BAvg  sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
             ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
         }
-        if (do_weno_5) {
+        // if (do_weno_5) 
+        {
             Advection<M_WENO_Z, 5> adv(&vel);
             adv(&grid, &test, &dtest);
             // now, we need to check
@@ -316,19 +336,21 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             // check the moment
             real_t sum;
-            BMean  sum_grid;
+            BAvg  sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
             ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
         }
     }
-    if (do_weno_3) {
+    // if (do_weno_3)
+    {
         real_t convi = -log(erri_adv_weno_3[1] / erri_adv_weno_3[0]) / log(2);
         m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> target: min = 1, ideal = 3", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
     }
-    if (do_weno_5) {
+    // if (do_weno_5)
+    {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
@@ -461,7 +483,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
 //             // check the moment
 //             real_t sum;
-//             BMean  sum_grid;
+//             BAvg  sum_grid;
 //             sum_grid(&grid, &dtest, &sum);
 //             m_log("sum of dtest = %e", sum);
 
@@ -477,7 +499,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
 //             // check the moment
 //             real_t sum;
-//             BMean  sum_grid;
+//             BAvg  sum_grid;
 //             sum_grid(&grid, &dtest, &sum);
 //             m_log("sum of dtest = %e", sum);
 

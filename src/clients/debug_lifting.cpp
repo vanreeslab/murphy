@@ -85,7 +85,7 @@ void DebugLifting::Run() {
 
     // dump
     IOH5 dump("data");
-    grid.GhostPull(&scal);
+    grid.GhostPull(&scal,ghost_len_ioh5);
     dump(&grid, &scal, 0);
 
     // get the moment:
@@ -108,7 +108,7 @@ void DebugLifting::Run() {
         grid.Adapt(&plist);
 
         // dump again, the ghosts should be ok
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,ghost_len_ioh5);
         dump(&grid, &scal, 1);
         dump.dump_ghost(true);
         dump(&grid, &scal, 1);
@@ -131,7 +131,7 @@ void DebugLifting::Run() {
         grid.Adapt(&plist);
 
         // dump again, the ghosts should be ok
-        grid.GhostPull(&scal);
+        grid.GhostPull(&scal,ghost_len_ioh5);
         dump(&grid, &scal, 2);
         dump.dump_ghost(true);
         dump(&grid, &scal, 2);
