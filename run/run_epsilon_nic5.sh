@@ -5,9 +5,9 @@
 #
 ##SBATCH --ntasks=64
 ##SBATCH --ntasks-per-node=64
-##SBATCH --mem-per-cpu=2625
+#SBATCH --mem-per-cpu=2625
 ##SBATCH --partition=batch,hmem
-#SBATCH --mem-per-cpu=15625
+##SBATCH --mem-per-cpu=15625
 #SBATCH --partition=batch,hmem
 #
 # #SBATCH --mail-user=thomas.gillis@uclouvain.be
@@ -53,7 +53,7 @@ do
         MURPHY_NAME=murphy_${N}_${NT}
         mv murphy ${MURPHY_NAME}
         # run that shit
-        mpirun ./${MURPHY_NAME} --eps --ilevel=6 > log_${N}${NT}_$SLURM_JOB_ID.log
+        mpirun --mca mpi_abort_print_stack 1 --mca mpi_no_free_handles 1 --mca orte_base_help_aggregate 0 ./${MURPHY_NAME} --eps --ilevel=7 > log_${N}${NT}_$SLURM_JOB_ID.log
         # destroy the compilation infos
         GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5 make destroy
 
