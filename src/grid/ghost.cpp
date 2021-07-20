@@ -126,7 +126,7 @@ void Ghost::InitList_() {
     MPI_Info_set(info, "no_locks", "true");
 
     // displacement
-    size_t    win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
+    MPI_Aint  win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
     MPI_Aint* local2disp        = static_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
     MPI_Win   local2disp_window = MPI_WIN_NULL;
     MPI_Win_create(local2disp, win_disp_mem_size, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
@@ -139,16 +139,24 @@ void Ghost::InitList_() {
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
-    iblock_t active_mirror_count = 0;
-    for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
+    iblock_t    active_mirror_count = 0;
+    const lid_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
+    // get the base address
+    // fill the displacement
+    for (iblock_t im = 0; im < nmlocal; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
         level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
+        m_assert(mirror->level == mirror_level, "the two levels must be the same: %d vs %d", mirror->level, mirror_level);
         // update the counters if the mirror is admissible
         // we need to have called the function p4est_balance()!!
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             // store the displacement in the local2disp_ array
-            iblock_t local_id    = mirror->p.piggy3.local_num;
-            local2disp[local_id] = (active_mirror_count++) * CartBlockMemNum(1);
+            iblock_t local_id = mirror->p.piggy3.local_num;
+            m_assert(local_id >= 0, "the address cannot be negative");
+            m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
+            local2disp[local_id] = active_mirror_count * CartBlockMemNum(1);
+            active_mirror_count++;
+            m_assert(active_mirror_count <= nmlocal, "the number of mirrors cannot be bigger than the local number:  %d vs %d", active_mirror_count, nmlocal);
         }
     }
 

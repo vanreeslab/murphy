@@ -725,7 +725,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     // ask the displacement (will be available later, when completing the call)
-                    m_assert(ngh_cum_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_cum_id);
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_sibling_.push_back(gb);
@@ -738,7 +737,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     // ask the displacement (will be available later, when completing the call
-                    m_assert(ngh_cum_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_cum_id);
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_parent_.push_back(gb);
@@ -747,7 +745,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     GBMirror* invert_gb = new GBMirror(block_gs, block_stride, ibidule, ngh_cum_id, ngh_rank);
                     invert_gb->Intersect(/* source */ level() - 1, xyz(), coarse_hgrid, block_len,
                                          /* target */ nghq->level, ngh_pos, ngh_hgrid, block_ghost_len, block_core_len);  // block_min, block_max);
-                    m_assert(ngh_cum_id >= 0, "the ngh_local_id = %d must be non-negative", ngh_cum_id);
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_parent_reverse_.push_back(invert_gb);
