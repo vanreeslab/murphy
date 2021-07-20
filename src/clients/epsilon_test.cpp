@@ -80,9 +80,9 @@ void EpsilonTest::Run() {
         // apply it
         grid.SetTol(epsilon * 1e+20, epsilon);
 
-        grid.GhostPull(&scal, ghost_len_ioh5);
-        IOH5 dump("data");
-        dump(&grid, &scal, 0);
+        // grid.GhostPull(&scal, ghost_len_ioh5);
+        // IOH5 dump("data");
+        // dump(&grid, &scal, 0);
 
         // compute the moment at the start
         BMoment moment;
