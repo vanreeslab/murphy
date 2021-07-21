@@ -14,8 +14,8 @@ static const lda_t  ring_normal = 2;
 static const real_t sigma       = 0.05;
 static const real_t radius      = 0.3;
 static const real_t beta        = 3;
-static const auto   freq        = std::vector<short_t>{5, 25};
-static const auto   amp         = std::vector<real_t>{0.0, 0.1};
+static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
+static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
 static const real_t center[3]   = {0.5, 0.5, 0.25};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 
@@ -52,6 +52,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     no_adapt_    = param->no_adapt;
     grid_on_sol_ = param->grid_on_sol;
     weno_        = param->weno;
+    fix_weno_    = param->fix_weno;
     m_assert(weno_ == 3 || weno_ == 5, "the weno order must be 3 or 5");
 
     // cfl
@@ -117,12 +118,18 @@ void SimpleAdvection::Run() {
     //-------------------------------------------------------------------------
     // advection
     RKFunctor* advection;
-    if (weno_ == 3) {
+    if (weno_ == 3 && !fix_weno_) {
         advection = new Advection<M_WENO_Z, 3>(vel_);
         m_log("WENO-Z order 3 (cfl = %f)", advection->cfl_rk3());
-    } else if (weno_ == 5) {
+    } else if (weno_ == 5 && !fix_weno_) {
         advection = new Advection<M_WENO_Z, 5>(vel_);
         m_log("WENO-Z order 5 (cfl = %f)", advection->cfl_rk3());
+    } else if (weno_ == 3 && fix_weno_) {
+        advection = new Advection<M_CONS, 3>(vel_);
+        m_log("CONS order 3 (cfl = %f)", advection->cfl_rk3());
+    } else if (weno_ == 5 && fix_weno_) {
+        advection = new Advection<M_CONS, 5>(vel_);
+        m_log("CONS order 5 (cfl = %f)", advection->cfl_rk3());
     } else {
         advection = nullptr;
         m_assert(false, "weno order = %d not valid", weno_);

@@ -54,6 +54,7 @@ struct ParserArguments {
     iter_t iter_dump     = 1;
     // bool   no_weno       = false;
     // bool   weno_5        = false;
+    bool fix_weno    = false;
     int  weno        = 3;
     bool grid_on_sol = false;
 };

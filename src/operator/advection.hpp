@@ -9,7 +9,8 @@
 #include "time/rkfunctor.hpp"
 
 typedef enum AdvectionType_t {
-    M_WENO_Z
+    M_CONS,   //!< conservative type of stencils = weno without the adaptivity
+    M_WENO_Z  //!< Weighted Essencially Non-Oscillatory stencils
 } AdvectionType_t;
 
 /**
@@ -81,6 +82,27 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
 //-----------------------------------------------------------------------------
 template <>
 inline real_t Advection<M_WENO_Z, 5>::cfl_rk3() const {
+    // comes from the "worst case scenario" von neumann analysis on the stencil, i.e. the 5th order stencil.
+    // we assume that the smoothing will only introduce diffusion and hence will ease the CLF constraint
+    return 1.4;
+};
+template <>
+void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
+
+
+//-----------------------------------------------------------------------------
+template <>
+inline real_t Advection<M_CONS, 3>::cfl_rk3() const {
+    // comes from the "worst case scenario" von neumann analysis on the stencil, i.e. the 5th order stencil.
+    // we assume that the smoothing will only introduce diffusion and hence will ease the CLF constraint
+    return 1.6;
+};
+template <>
+void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
+
+//-----------------------------------------------------------------------------
+template <>
+inline real_t Advection<M_CONS, 5>::cfl_rk3() const {
     // comes from the "worst case scenario" von neumann analysis on the stencil, i.e. the 5th order stencil.
     // we assume that the smoothing will only introduce diffusion and hence will ease the CLF constraint
     return 1.4;

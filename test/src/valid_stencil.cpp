@@ -30,6 +30,8 @@ TEST_P(Adapt, weno_periodic_cosinus) {
     // init the errors
     real_t erri_adv_weno_3[3] = {0.0, 0.0, 0.0};
     real_t erri_adv_weno_5[3] = {0.0, 0.0, 0.0};
+    real_t erri_adv_cons_3[3] = {0.0, 0.0, 0.0};
+    real_t erri_adv_cons_5[3] = {0.0, 0.0, 0.0};
 
     // setup the mesh
     bool  period[3] = {true, true, true};
@@ -66,12 +68,12 @@ TEST_P(Adapt, weno_periodic_cosinus) {
         // create the needed fields
         string fieldName = "field" + std::to_string(il);
         // string solName   = "sol" + std::to_string(il);
-        string velName   = "vel" + std::to_string(il);
-        string diffName  = "deriv" + std::to_string(il);
+        string velName  = "vel" + std::to_string(il);
+        string diffName = "deriv" + std::to_string(il);
         Field  test(fieldName, 1);
         // Field  sol(solName, 1);
-        Field  vel(velName, 3);
-        Field  dtest(diffName, 1);
+        Field vel(velName, 3);
+        Field dtest(diffName, 1);
         grid.AddField(&test);
         // grid.AddField(&sol);
         grid.AddField(&vel);
@@ -148,7 +150,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
         //     field_init(&grid, &test);
         // }
 
-        // if (do_weno_3) 
+        // if (do_weno_3)
         {
             Advection<M_WENO_Z, 3> adv(&vel);
             adv(&grid, &test, &dtest);
@@ -157,7 +159,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
         }
-        // if (do_weno_5) 
+        // if (do_weno_5)
         {
             Advection<M_WENO_Z, 5> adv(&vel);
             adv(&grid, &test, &dtest);
@@ -165,6 +167,23 @@ TEST_P(Adapt, weno_periodic_cosinus) {
             Error error;
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_5 + il);
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
+        }
+        {
+            Advection<M_CONS, 3> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_3 + il);
+            m_log("M_CONS - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
+        }
+        // if (do_weno_5)
+        {
+            Advection<M_CONS, 5> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_5 + il);
+            m_log("M_CONS - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_5[il]);
         }
     }
     // if (do_weno_3)
@@ -178,6 +197,17 @@ TEST_P(Adapt, weno_periodic_cosinus) {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e -> min = 3, ideal = 5", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.75);
+    }
+    {
+        real_t convi = -log(erri_adv_cons_3[1] / erri_adv_cons_3[0]) / log(2);
+        m_log("M_ADV_CONS - 3: the convergence orders are: norm_i:%e", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.75);
+    }
+    // if (do_weno_5)
+    {
+        real_t convi = -log(erri_adv_cons_5[1] / erri_adv_cons_5[0]) / log(2);
+        m_log("M_ADV_CONS - 5: the convergence orders are: norm_i:%e", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 5) - 0.75);
     }
 }
 
@@ -194,6 +224,8 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     // init the errors
     real_t erri_adv_weno_3[3] = {0.0, 0.0, 0.0};
     real_t erri_adv_weno_5[3] = {0.0, 0.0, 0.0};
+    real_t erri_adv_cons_3[3] = {0.0, 0.0, 0.0};
+    real_t erri_adv_cons_5[3] = {0.0, 0.0, 0.0};
 
     // setup the mesh
     // bool  period[3] = {false, false, false};
@@ -319,13 +351,13 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             // check the moment
             real_t sum;
-            BAvg  sum_grid;
+            BAvg   sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
             ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
         }
-        // if (do_weno_5) 
+        // if (do_weno_5)
         {
             Advection<M_WENO_Z, 5> adv(&vel);
             adv(&grid, &test, &dtest);
@@ -336,11 +368,28 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
             // check the moment
             real_t sum;
-            BAvg  sum_grid;
+            BAvg   sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
             ASSERT_LT(sum / (L[0] * L[1] * L[2]), DOUBLE_TOL);
+        }
+        {
+            Advection<M_CONS, 3> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_3 + il);
+            m_log("M_CONS - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
+        }
+        // if (do_weno_5)
+        {
+            Advection<M_CONS, 5> adv(&vel);
+            adv(&grid, &test, &dtest);
+            // now, we need to check
+            Error error;
+            error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_5 + il);
+            m_log("M_CONS - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_5[il]);
         }
     }
     // if (do_weno_3)
@@ -352,6 +401,17 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     // if (do_weno_5)
     {
         real_t convi = -log(erri_adv_weno_5[1] / erri_adv_weno_5[0]) / log(2);
+        m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
+    }
+    {
+        real_t convi = -log(erri_adv_cons_3[1] / erri_adv_cons_3[0]) / log(2);
+        m_log("M_ADV_WENO - 3: the convergence orders are: norm_i:%e -> target: min = 1, ideal = 3", convi);
+        ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 1) - 0.5);
+    }
+    // if (do_weno_5)
+    {
+        real_t convi = -log(erri_adv_cons_5[1] / erri_adv_cons_5[0]) / log(2);
         m_log("M_ADV_WENO - 5: the convergence orders are: norm_i:%e", convi);
         ASSERT_GE(convi, m_min(M_WAVELET_N - 1, 3) - 0.5);
     }

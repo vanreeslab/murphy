@@ -12,6 +12,7 @@ class SimpleAdvection : public TestCase {
     bool no_adapt_;
     bool grid_on_sol_;
     int  weno_;
+    bool fix_weno_;
 
     real_t tstart_ = 0.0;
     real_t tfinal_ = 0.0;
