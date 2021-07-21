@@ -545,7 +545,7 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
             m_assert(block != nullptr, "this block shouldn't be accessed here");
             // unpack the status
             m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
-            block->status_level((StatusAdapt)buf[0]);
+            block->status_level(static_cast<StatusAdapt>(buf[0]));
             buf += 1;  //shift the buffer
 
             lid_t idacount = 0;

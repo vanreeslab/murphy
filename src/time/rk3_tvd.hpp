@@ -30,7 +30,7 @@ class RK3_TVD {
     explicit RK3_TVD(Grid* grid, Field* state, RKFunctor* f, Prof* prof, const real_t cfl_max = 1.0);
     virtual ~RK3_TVD();
 
-    void DoDt(const real_t dt, real_t* time);
+    void DoDt(const real_t dt, real_t* time) const;
 
     real_t ComputeDt(const RKFunctor* rhs, const Field* velocity) const;
 };

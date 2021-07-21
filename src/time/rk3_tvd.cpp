@@ -62,7 +62,7 @@ RK3_TVD::~RK3_TVD() {
  * @param dt 
  * @param time 
  */
-void RK3_TVD::DoDt(const real_t dt, real_t* time) {
+void RK3_TVD::DoDt(const real_t dt, real_t* time) const {
     m_begin;
     m_assert(*time >= 0, "the time cannot be negative");
     m_assert(dt > 0.0, "the dt = %e cannot be negative, nor 0", dt);

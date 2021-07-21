@@ -441,12 +441,12 @@ void Grid::Adapt(Field* field) {
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(),interp_->nghost_back()};
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
     for (auto& fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
-            GhostPull(cur_field,ghost_len);
+            GhostPull(cur_field, ghost_len);
         }
     }
 

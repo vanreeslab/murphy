@@ -2,6 +2,7 @@
 #define SRC_GRID_GHOST_HPP_
 
 #include <list>
+#include <string>
 
 #include "core/macros.hpp"
 #include "core/pointers.hpp"
@@ -57,6 +58,8 @@ class Ghost {
     ForestGrid*     grid_;    //!< pointer to the associated @ref ForestGrid, shared, not owned
     Prof*           prof_;    //!< the profiler to time operations, not owned
     const Wavelet*  interp_;  //!< pointer to the associated @ref Wavelet, shared, not owned
+
+    std::string prof_msg_;
 
    public:
     Ghost(ForestGrid*  grid, const Wavelet*  interp, Prof*  profiler);

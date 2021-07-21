@@ -398,7 +398,7 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
 
     m_assert(new_len[0] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[0], new_len[0], M_GS);
     m_assert(new_len[1] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[1], new_len[1], M_GS);
-    m_log("length set: %s %d %d", (new_len[0] == ghost_len[0] && new_len[1] == ghost_len[1]) ? "" : "!WARNING! the ghost lenghts have been changed to", new_len[0], new_len[1]);
+    m_verb("length set: %s %d %d", (new_len[0] == ghost_len[0] && new_len[1] == ghost_len[1]) ? "" : "!WARNING! the ghost lenghts have been changed to", new_len[0], new_len[1]);
     //
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostUpdateSize, grid_, il, new_len);
@@ -407,6 +407,9 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
     // overwrites the real lengths
     ghost_len[0] = new_len[0];
     ghost_len[1] = new_len[1];
+
+    // just store a small string for the prof
+    prof_msg_ = " (" + std::to_string(ghost_len[0]) + "," + std::to_string(ghost_len[1]) + ")";
     //-------------------------------------------------------------------------
 }
 
@@ -427,38 +430,35 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     //-------------------------------------------------------------------------
     // store the current dimension
     cur_ida_ = ida;
-    m_profStart(prof_, "pullghost post");
+    m_profStart(prof_, "pullghost post" + prof_msg_);
     //................................................
     // fill the Window memory with the Mirror information
-    m_profStart(prof_, "computation");
+    m_profStart(prof_, "(01) push to window");
     LoopOnMirrorBlock_(&Ghost::PushToWindow4Block, field);
-    m_profStop(prof_, "computation");
+    m_profStop(prof_, "(01) push to window");
 
     //................................................
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
-    m_profStart(prof_, "RMA post get");
-    // if (ingroup_ != MPI_GROUP_EMPTY) {
+    m_profStart(prof_, "(02) RMA - post start");
     MPI_Win_post(ingroup_, 0, mirrors_window_);
-    // }
-    // if (outgroup_ != MPI_GROUP_EMPTY) {
     MPI_Win_start(outgroup_, 0, mirrors_window_);
-    // }
-    // m_log("get post");
+    m_profStop(prof_, "(02) RMA - post start");
+
+    m_profStart(prof_, "(03) RMA - get");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
-    m_profStop(prof_, "RMA post get");
+    m_profStop(prof_, "(03) RMA - get");
 
-    // m_log("get compute");
     //................................................
     // start what can be done = sibling and parents local copy + physical BC + myself copy
-    m_profStart(prof_, "computation");
+    m_profStart(prof_, "(04) computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Cmpt, grid_, il, field, ida, interp_);
     }
-    m_profStop(prof_, "computation");
-    m_profStop(prof_, "pullghost post");
+    m_profStop(prof_, "(04) computation");
+    m_profStop(prof_, "pullghost post" + prof_msg_);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -475,64 +475,57 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     m_assert(cur_ida_ == ida, "the ongoing dimension (%d) must be over first", cur_ida_);
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
-    m_profStart(prof_, "pullghost wait");
+    m_profStart(prof_, "pullghost wait" + prof_msg_);
     //................................................
     // finish the access epochs for the exposure epoch to be over
-    m_profStart(prof_, "RMA complete get");
-    // if (outgroup_ != MPI_GROUP_EMPTY) {
+    m_profStart(prof_, "(05) RMA - complete");
     MPI_Win_complete(mirrors_window_);
-    // }
-    m_profStop(prof_, "RMA complete get");
-    m_profStart(prof_, "RMA wait get");
-    // if (ingroup_ != MPI_GROUP_EMPTY) {
+    m_profStop(prof_, "(05) RMA - complete");
+    m_profStart(prof_, "(06) RMA - wait");
     MPI_Win_wait(mirrors_window_);
-    // }
-    m_profStop(prof_, "RMA wait get");
+    m_profStop(prof_, "(06) RMA - wait");
 
     // we now have all the information needed to compute the ghost points in coarser blocks
-    m_profStart(prof_, "computation");
+    m_profStart(prof_, "(07) computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
-        // DoOpMeshLevel(this, &Ghost::GetGhost4Block_Wait, grid_, il, field);
         DoOpMeshLevel(nullptr, &GridBlock::GhostGet_Wait, grid_, il, field, ida, interp_);
     }
-    m_profStop(prof_, "computation");
+    m_profStop(prof_, "(07) computation");
 
     //................................................
-    m_profStart(prof_, "RMA post put");
+
     // post exposure and access epochs for to put the values to my neighbors
-    // if (ingroup_ != MPI_GROUP_EMPTY) {
+    m_profStart(prof_, "(08) RMA - post start");
     MPI_Win_post(ingroup_, 0, mirrors_window_);
-    // }
-    // if (outgroup_ != MPI_GROUP_EMPTY) {
     MPI_Win_start(outgroup_, 0, mirrors_window_);
-    // }
+    m_profStop(prof_, "(08) RMA - post start");
+
     // start what can be done = sibling and parents copy
+    m_profStart(prof_, "(09) RMA - put");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Post, grid_, il, field, ida, interp_, mirrors_window_);
     }
-    m_profStop(prof_, "RMA post put");
+    m_profStop(prof_, "(09) RMA - put");
 
-    m_profStart(prof_, "RMA complete put");
     // finish the access epochs for the exposure epoch to be over
-    // if (outgroup_ != MPI_GROUP_EMPTY) {
+    m_profStart(prof_, "(10) RMA complete");
     MPI_Win_complete(mirrors_window_);
-    // }
-    m_profStop(prof_, "RMA complete put");
-    m_profStart(prof_, "RMA wait put");
-    // if (ingroup_ != MPI_GROUP_EMPTY) {
+    m_profStop(prof_, "(10) RMA complete");
+    m_profStart(prof_, "(11) RMA wait");
     MPI_Win_wait(mirrors_window_);
-    // }
-    m_profStop(prof_, "RMA wait put");
+    m_profStop(prof_, "(11) RMA wait");
 
-    m_profStart(prof_, "computation");
-    // we copy back the missing info
+    m_profStart(prof_, "(12) pull from window");
     LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
+    m_profStop(prof_, "(12) pull from window");
+
     // we now have all the information needed, we finish with a physbc
+    m_profStart(prof_, "(13) computation");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostPut_Wait, grid_, il, field, ida, interp_);
     }
-    m_profStop(prof_, "computation");
-    m_profStop(prof_, "pullghost wait");
+    m_profStop(prof_, "(13) computation");
+    m_profStop(prof_, "pullghost wait" + prof_msg_);
     //-------------------------------------------------------------------------
     m_end;
 }
