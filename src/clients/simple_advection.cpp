@@ -11,9 +11,9 @@ using std::string;
 using std::to_string;
 
 static const lda_t  ring_normal = 2;
-static const real_t sigma       = 0.05;
+static const real_t sigma       = 0.075;
 static const real_t radius      = 0.3;
-static const real_t beta        = 3;
+static const real_t beta        = 2;
 static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
 static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
 static const real_t center[3]   = {0.5, 0.5, 0.25};
@@ -28,11 +28,6 @@ static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_
 
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
-    if (!(prof_ == nullptr)) {
-        prof_->Disp();
-        delete prof_;
-    }
-
     // delete the field
     grid_->DeleteField(vel_);
     grid_->DeleteField(scal_);
@@ -40,6 +35,11 @@ SimpleAdvection::~SimpleAdvection() {
     delete vel_;
     delete scal_;
     delete grid_;
+    
+    if (!(prof_ == nullptr)) {
+        prof_->Disp();
+        delete prof_;
+    }
     //-------------------------------------------------------------------------
 }
 
@@ -119,16 +119,16 @@ void SimpleAdvection::Run() {
     // advection
     RKFunctor* advection;
     if (weno_ == 3 && !fix_weno_) {
-        advection = new Advection<M_WENO_Z, 3>(vel_);
+        advection = new Advection<M_WENO_Z, 3>(vel_, prof_);
         m_log("WENO-Z order 3 (cfl = %f)", advection->cfl_rk3());
     } else if (weno_ == 5 && !fix_weno_) {
-        advection = new Advection<M_WENO_Z, 5>(vel_);
+        advection = new Advection<M_WENO_Z, 5>(vel_, prof_);
         m_log("WENO-Z order 5 (cfl = %f)", advection->cfl_rk3());
     } else if (weno_ == 3 && fix_weno_) {
-        advection = new Advection<M_CONS, 3>(vel_);
+        advection = new Advection<M_CONS, 3>(vel_, prof_);
         m_log("CONS order 3 (cfl = %f)", advection->cfl_rk3());
     } else if (weno_ == 5 && fix_weno_) {
-        advection = new Advection<M_CONS, 5>(vel_);
+        advection = new Advection<M_CONS, 5>(vel_, prof_);
         m_log("CONS order 5 (cfl = %f)", advection->cfl_rk3());
     } else {
         advection = nullptr;

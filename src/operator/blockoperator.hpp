@@ -39,7 +39,7 @@ class BlockOperator {
 
     [[nodiscard]] inline bool DoGhost() const { return (ghost_len_res_[0] + ghost_len_res_[1]) > 0; }
 
-    inline void Profile(Prof* profiler) { prof_ = profiler; }
+    inline virtual void Profile(Prof* profiler) { prof_ = profiler; }
 
     inline void GhostLengthNeed(bidx_t* ghost_len) const {
         ghost_len[0] = ghost_len_need_[0];

@@ -17,13 +17,13 @@ using std::to_string;
 
 NavierStokes::~NavierStokes() {
     //-------------------------------------------------------------------------
+    delete (vort_);
+    delete (grid_);
+
     if (prof_ != nullptr) {
         prof_->Disp();
         delete (prof_);
     }
-
-    delete (vort_);
-    delete (grid_);
 
     m_log("Navier Stokes is dead");
     //-------------------------------------------------------------------------

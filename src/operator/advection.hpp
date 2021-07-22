@@ -26,7 +26,7 @@ class Advection : public Stencil, public RKFunctor {
 
    public:
     // create the advection, just store the u field
-    explicit Advection(const Field* u) : u_(u), Stencil(), RKFunctor() {
+    explicit Advection(const Field* u, Prof* profiler = nullptr) : u_(u), Stencil(), RKFunctor() {
         if constexpr (order == 3) {
             // we need one point outside the domain that need 1 ghost point
             ghost_len_need_[0] = 2;
@@ -36,8 +36,15 @@ class Advection : public Stencil, public RKFunctor {
             ghost_len_need_[0] = 3;
             ghost_len_need_[1] = 3;
         }
+        Profile(profiler);
     };
     ~Advection() = default;
+
+    inline void Profile(Prof* profiler) override {
+        prof_ = profiler;
+        // initialize the steps that not every block might do
+        m_profInitLeave(prof_,"do magic");
+    }
 
     // return the stability conditions
     real_t cfl_rk3() const override { return 1.0; };

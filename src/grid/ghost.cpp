@@ -78,10 +78,12 @@ Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level,
 
     //................................................
     // initialize the communications and the ghost's lists
-    m_profStart(prof_, "ghost_init");
+    m_profStart(prof_, "ghost init comm");
     InitComm_();
+    m_profStop(prof_, "ghost init comm");
+    m_profStart(prof_, "ghost init list");
     InitList_();
-    m_profStop(prof_, "ghost_init");
+    m_profStop(prof_, "ghost init list");
 
     //-------------------------------------------------------------------------
     m_end;
@@ -95,8 +97,13 @@ Ghost::~Ghost() {
     m_begin;
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
+    m_profStart(prof_, "ghost free list");
     FreeList_();
+    m_profStop(prof_, "ghost free list");
+
+    m_profStart(prof_, "ghost free comm");
     FreeComm_();
+    m_profStop(prof_, "ghost free comm");
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -242,6 +249,9 @@ void Ghost::InitComm_() {
     MPI_Aint win_mem_size = n_mirror_to_send * CartBlockMemNum(1) * sizeof(real_t);
     mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, MPI_COMM_WORLD, &mirrors_window_);
+
+    // get an idea of the percentage of blocks
+    m_log("mirror window is %e Gbytes", win_mem_size / 1.0e+9);
 
     // window for the status
     MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);

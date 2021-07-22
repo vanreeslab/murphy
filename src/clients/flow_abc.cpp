@@ -11,14 +11,14 @@ using std::to_string;
 
 FlowABC::~FlowABC() {
     //-------------------------------------------------------------------------
+    delete (vel_);
+    delete (scal_);
+    delete (grid_);
+
     if (prof_ != nullptr) {
         prof_->Disp();
         delete (prof_);
     }
-
-    delete (vel_);
-    delete (scal_);
-    delete (grid_);
 
     m_log("Navier Stokes is dead");
     //-------------------------------------------------------------------------
