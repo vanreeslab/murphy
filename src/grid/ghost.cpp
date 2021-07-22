@@ -250,8 +250,15 @@ void Ghost::InitComm_() {
     mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, MPI_COMM_WORLD, &mirrors_window_);
 
-    // get an idea of the percentage of blocks
-    m_log("mirror window is %e Gbytes", win_mem_size / 1.0e+9);
+// get an idea of the percentage of blocks
+#ifndef NDEBUG
+    real_t       global_ratio = 0.0;
+    const real_t ratio        = static_cast<real_t>(n_mirror_to_send) / static_cast<real_t>(mesh->local_num_quadrants);
+    MPI_Allreduce(&ratio, &global_ratio, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+    int comm_size = 0;
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    m_log("mirrors are %2.2f %% of the blocks", 100.0 * global_ratio / (comm_size));
+#endif
 
     // window for the status
     MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
