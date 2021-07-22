@@ -38,7 +38,7 @@ class TimerBlock {
     std::string name() const { return name_; }
     TimerBlock* parent() const { return parent_; }
     real_t      time_acc() const;
-    TimerBlock* AddChild(std::string child_name);
+    TimerBlock* AddChild(std::string child_name) noexcept;
 
     void SetParent(TimerBlock* parent);
     void Disp(FILE* file, const int level, const real_t totalTime, const lda_t icol) const;

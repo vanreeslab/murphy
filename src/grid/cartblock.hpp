@@ -94,8 +94,8 @@ class CartBlock : public MemLayout {
      */
     // data_ptr data(const std::string name)const ;
     // data_ptr data(const std::string name, const sid_t ida);
-    data_ptr data(const Field* const  fid, const lda_t ida = 0) const;
-    mem_ptr  pointer(const Field* const  fid, const lda_t ida = 0) const;
+    data_ptr data(const Field* const fid, const lda_t ida = 0) const noexcept;
+    mem_ptr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 
     /**
@@ -103,9 +103,9 @@ class CartBlock : public MemLayout {
      * 
      * @{
      */
-    void AddField(const Field* const  fid);
-    void DeleteField(const Field* const  fid);
-    void AddFields(const std::map<std::string, Field*  >* fields);
+    void AddField(const Field* const fid);
+    void DeleteField(const Field* const fid);
+    void AddFields(const std::map<std::string, Field*>* fields);
     bool IsFieldOwned(const std::string name) const;
     /** @} */
 };

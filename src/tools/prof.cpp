@@ -92,7 +92,7 @@ void TimerBlock::Stop() {
     t1_ = -1.0;
 }
 
-TimerBlock* TimerBlock::AddChild(string child_name) {
+TimerBlock* TimerBlock::AddChild(string child_name) noexcept {
     // find cleanly the child
     auto it = children_.find(child_name);
 
