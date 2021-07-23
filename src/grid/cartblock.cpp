@@ -40,7 +40,7 @@ data_ptr CartBlock::data(const Field* const fid, const lda_t ida) const noexcept
     data_ptr data = it->second(ida, this);
     return data;
 #else
-    return mem_map_.[fid->name()](ida, this);
+    return mem_map_.at(fid->name())(ida, this);
 #endif
     //-------------------------------------------------------------------------
 }
@@ -86,8 +86,8 @@ mem_ptr CartBlock::pointer(const Field* const fid, const lda_t ida) const noexce
     mem_ptr ptr = it->second.shift_dim(ida, this);
     return ptr;
 #else
-    auto    it  = mem_map_[fid->name()];
-    mem_ptr ptr = it->second.shift_dim(ida, this);
+    auto    it  = mem_map_.at(fid->name());
+    mem_ptr ptr = it.shift_dim(ida, this);
     return ptr;
 #endif
 }
