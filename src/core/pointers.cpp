@@ -11,7 +11,7 @@
  * @param stride the stride
  * @return real_t* 
  */
-real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const {
+real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const  noexcept{
     m_assert(0 <= stride && stride <= M_STRIDE, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     const bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
@@ -32,7 +32,7 @@ real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const
  * @param layout the memory layout
  * @return real_t* 
  */
-real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida,const m_ptr<const MemLayout>& layout) const {
+real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida,const m_ptr<const MemLayout>& layout) const  noexcept{
     //-------------------------------------------------------------------------
     return this->Write(i0, i1, i2, ida, layout->stride());
     //-------------------------------------------------------------------------
@@ -58,7 +58,7 @@ real_t* data_ptr::Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const
  * @param layout the memory layout
  * @return const real_t* 
  */
-real_t* data_ptr::Write(const lda_t ida, const m_ptr<const MemLayout>& layout) const {
+real_t* data_ptr::Write(const lda_t ida, const m_ptr<const MemLayout>& layout) const  noexcept{
     m_assert(0 <= layout->stride() && layout->stride() <= M_STRIDE, "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     const bidx_t stride = layout->stride();
@@ -80,7 +80,7 @@ real_t* data_ptr::Write(const lda_t ida, const m_ptr<const MemLayout>& layout) c
  * @param stride the stride
  * @return real_t* 
  */
-const real_t* data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const {
+const real_t* data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const  noexcept{
     m_assert(0 <= stride && stride <= M_STRIDE, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     const bidx_t offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
@@ -100,7 +100,7 @@ const real_t* data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, 
  * @param layout the memory layout
  * @return real_t* 
  */
-const real_t* data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const {
+const real_t* data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const  noexcept{
     //-------------------------------------------------------------------------
     return this->Read(i0, i1, i2, ida, layout->stride());
     //-------------------------------------------------------------------------
@@ -113,7 +113,7 @@ const real_t* data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, 
  * @param layout the memory layout
  * @return const real_t* 
  */
-const real_t* data_ptr::Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const {
+const real_t* data_ptr::Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const  noexcept{
     m_assert(0 <= layout->stride() && layout->stride() <= M_STRIDE, "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     const bidx_t  stride = layout->stride();
@@ -136,7 +136,7 @@ const real_t* data_ptr::Read(const lda_t ida, const m_ptr<const MemLayout>& layo
  * @param layout the memory layout
  * @return real_t* 
  */
-const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const {
+const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const bidx_t stride) const  noexcept{
     m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
     const bidx_t  offset = i0 + stride * (i1 + stride * (i2 + stride * ida));
@@ -155,7 +155,7 @@ const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_
  * @param layout the memory layout
  * @return const real_t* 
  */
-const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const {
+const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept {
     m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     const bidx_t  stride = layout->stride();
@@ -172,7 +172,7 @@ const real_t* const_data_ptr::Read(const bidx_t i0, const bidx_t i1, const bidx_
  * @param layout the memory layout
  * @return const real_t* 
  */
-const real_t* const_data_ptr::Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const {
+const real_t* const_data_ptr::Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const  noexcept{
     m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     const bidx_t  stride = layout->stride();
@@ -191,7 +191,7 @@ const real_t* const_data_ptr::Read(const lda_t ida, const m_ptr<const MemLayout>
  * @param stride the stride
  * @return data_ptr 
  */
-data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stride) const {
+data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stride) const noexcept {
     m_assert(0 <= gs, "the gs = %d is wrong", gs);
     m_assert(0 <= stride, "the stride = %d is wrong", stride);
     //-------------------------------------------------------------------------
@@ -208,7 +208,7 @@ data_ptr mem_ptr::operator()(const lda_t ida, const bidx_t gs, const bidx_t stri
  * @param layout the layout used to retrieve the dimension (if not ida = 0)
  * @return data_ptr 
  */
-data_ptr mem_ptr::operator()(const lda_t ida,const m_ptr<const MemLayout>& layout) const {
+data_ptr mem_ptr::operator()(const lda_t ida,const m_ptr<const MemLayout>& layout) const noexcept {
     m_assert(0 <= layout->gs(), "the gs = %d is wrong", layout->gs());
     m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
@@ -229,7 +229,7 @@ data_ptr mem_ptr::operator()(const lda_t ida,const m_ptr<const MemLayout>& layou
  * @param layout the layout, only the stride is used here
  * @return mem_ptr 
  */
-mem_ptr mem_ptr::shift_dim(const lda_t ida,const m_ptr<const MemLayout>& layout) const {
+mem_ptr mem_ptr::shift_dim(const lda_t ida,const m_ptr<const MemLayout>& layout) const noexcept {
     m_assert(0 <= layout->stride(), "the stride = %d is wrong", layout->stride());
     //-------------------------------------------------------------------------
     // get the offset and return a data_ptr to it

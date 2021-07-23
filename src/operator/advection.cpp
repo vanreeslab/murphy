@@ -33,7 +33,7 @@ using lambda_flux_weno_z_t = std::function<void(const lda_t ida, const real_t* c
 static void DoMagic_Flux(/* param */ const bidx_t                    nghost,
                           /* flux weno */ const lambda_flux_weno_z_t* flux_weno,
                           /* fields */ const real_t* data_vel[3], const real_t* data_src, real_t* data_trg,
-                          /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3]) {
+                          /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3]) noexcept {
     //-------------------------------------------------------------------------
     auto op = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         const bidx_t  idx[3] = {i0, i1, i2};
@@ -41,6 +41,7 @@ static void DoMagic_Flux(/* param */ const bidx_t                    nghost,
         const real_t* src    = data_src + m_idx(i0, i1, i2);
 
         // loop on the faces
+        #pragma GCC unroll 3
         for (lda_t ida = 0; ida < 3; ++ida) {
             // as we are on the face +1/2, apply the flux on the:
             // -> left only if we are >0

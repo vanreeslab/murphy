@@ -12,7 +12,7 @@
 static const real_t sigma     = 0.05;
 static const real_t radius    = 0.3;
 static const real_t beta      = 3;
-static const auto   freq      = std::vector<short_t>{5, 25};
+static const auto   freq      = std::vector<short_t>{5, 1000};
 static const auto   amp       = std::vector<real_t>{0.2, 0.2};
 static const real_t center[3] = {0.5, 0.5, 0.5};
 
