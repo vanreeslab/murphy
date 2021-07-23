@@ -40,12 +40,6 @@ class Advection : public Stencil, public RKFunctor {
     };
     ~Advection() = default;
 
-    // inline void Profile(Prof* profiler) override {
-    //     prof_ = profiler;
-    //     // initialize the steps that not every block might do
-    //     // m_profInitLeave(prof_, "do magic");
-    // }
-
     // return the stability conditions
     real_t cfl_rk3() const override { return 1.0; };
     real_t rdiff() const override { return std::numeric_limits<real_t>::max(); };  // no limit, return +inf

@@ -407,19 +407,24 @@ void Ghost::UpdateStatus() {
  * @param ghost_len the desired length of ghosts, might be changed after the function returns
  */
 void Ghost::SetLength(bidx_t ghost_len[2]) {
+    m_profStart(prof_, "set length");
     //-------------------------------------------------------------------------
     // adapt the ghost lengths if we are a MR grid
+
+    m_profStart(prof_, "loop");
     const bool   is_grid_mr = grid_->MaxLevel() > grid_->MinLevel();
     const bidx_t new_len[2] = {m_max(ghost_len[0], is_grid_mr * m_max(interp_->nghost_front_overwrite(), interp_->nghost_front_coarsen())),
                                m_max(ghost_len[1], is_grid_mr * m_max(interp_->nghost_back_overwrite(), interp_->nghost_back_coarsen()))};
-
+    m_profStop(prof_, "loop");
     m_assert(new_len[0] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[0], new_len[0], M_GS);
     m_assert(new_len[1] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[1], new_len[1], M_GS);
     m_verb("length set: %s %d %d", (new_len[0] == ghost_len[0] && new_len[1] == ghost_len[1]) ? "" : "!WARNING! the ghost lenghts have been changed to", new_len[0], new_len[1]);
-    //
+    
+    m_profStart(prof_, "loop");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostUpdateSize, grid_, il, new_len);
     }
+    m_profStop(prof_, "loop");
 
     // overwrites the real lengths
     ghost_len[0] = new_len[0];
@@ -428,6 +433,7 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
     // just store a small string for the prof
     prof_msg_ = " (" + std::to_string(ghost_len[0]) + "," + std::to_string(ghost_len[1]) + ")";
     //-------------------------------------------------------------------------
+    m_profStop(prof_, "set length");
 }
 
 /**

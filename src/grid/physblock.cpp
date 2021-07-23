@@ -5,10 +5,12 @@
  * 
  * we set the scale_dir_start_/end_ all true but the start and end index are different depending on the iface
  * 
+ * @param ghost_len the pointer to the ghost_len information
  * @param iface the face ID (0 <= iface < 6)
  * @param block the block on which we act
  */
-PhysBlock::PhysBlock(const iface_t iface, const MemLayout* block) : GhostBlock(block->gs(), block->stride()),
+PhysBlock::PhysBlock(const bidx_t (*const ghost_len)[2],
+                     const iface_t iface, const MemLayout* block) : GhostBlock(block->gs(), block->stride(), ghost_len),
                                                                     iface_(iface) {
     m_assert(block->gs() == M_GS, "the ghost size %d must be %d", block->gs(), M_GS);
     m_assert(block->stride() == M_STRIDE, "the ghost size %d must be %d", block->stride(), M_STRIDE);

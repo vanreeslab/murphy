@@ -33,7 +33,7 @@ typedef enum StatusAdapt {
  */
 class GridBlock : public CartBlock {
    private:
-    bidx_t      ghost_len_[2]               = {-1, -1};      //!< contains the current ghost length
+    bidx_t      ghost_len_[2];                               //!< contains the current ghost length
     StatusAdapt status_lvl_                 = M_ADAPT_NONE;  //!< indicate the status of the block
     short_t*    status_ngh_                 = nullptr;       //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
     short_t     n_dependency_active_        = 0;             //!< list of dependency = how to create my information after refinement/coarsening

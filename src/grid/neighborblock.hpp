@@ -114,18 +114,20 @@ class NeighborBlock : public GhostBlock {
 
    public:
     /**
-     * @brief Construct a new Ghost Block object
+     * @brief Construct a new Neighbor Block object
      * 
      * @param gs the ghost size that corresponds to the block (this is NOT the size of the ghost layer!!)
      * @param stride the stride that corresponds to the block
+     * @param ghost_len the pointer to the ghost_len information
      * @param ibidule the id of the ghost
      * @param block_id the cummulative id of the underlying neighboring block (used to access the data)
      * @param rank the rank where to find the underlying neighboring block (-1 if local)
      */
-    NeighborBlock(const bidx_t gs, const bidx_t stride, const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : GhostBlock(gs, stride),
-                                                                                                                                  ibidule_(ibidule),
-                                                                                                                                  cum_block_id_(block_id),
-                                                                                                                                  rank_rma_(rank) {
+    NeighborBlock(const bidx_t gs, const bidx_t stride, const bidx_t (*const ghost_len)[2],
+                  const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : GhostBlock(gs, stride, ghost_len),
+                                                                                            ibidule_(ibidule),
+                                                                                            cum_block_id_(block_id),
+                                                                                            rank_rma_(rank) {
         //---------------------------------------------------------------------
         m_assert(this->core() == M_N, "the core = %d should be %d", this->core(), M_N);
         m_assert(this->gs(0) == M_GS && this->gs(1) == M_GS, "the gs = %d %d should be %d", this->gs(0), this->gs(1), M_GS);

@@ -593,7 +593,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             if (ibidule < 6) {
                 // register the status
                 // ngh_status[ibidule] = NS_PHYS;
-                PhysBlock* pb = new PhysBlock(ibidule, this);  //, interp->nghost_front(), interp->nghost_back());
+                PhysBlock* pb = new PhysBlock(&ghost_len_, ibidule, this);  //, interp->nghost_front(), interp->nghost_back());
                 //#pragma omp critical
                 phys_.push_back(pb);
                 m_verb("I found a physical boundary ghost!\n");
@@ -668,7 +668,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 if (nghq->level == level()) {
                     // m_log("creating a same level");
                     // sibling: source = neighbor GridBlock, target = me
-                    GBLocal* gb = new GBLocal(block_gs, block_stride, ibidule, ngh_cum_id);
+                    GBLocal* gb = new GBLocal(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id);
                     gb->Intersect(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                   /* traget */ level_, xyz_, hgrid_, block_ghost_len, block_core_len);  // block_min, block_max);
                     gb->data_src(ngh_block);
@@ -679,7 +679,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 } else if (nghq->level < level()) {
                     // m_log("creating a coarser");
                     // parent: source = neighbor, target = me
-                    GBLocal* gb = new GBLocal(block_gs, block_stride, ibidule, ngh_cum_id);
+                    GBLocal* gb = new GBLocal(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id);
                     gb->Intersect(/* source */ ngh_block->level(), ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level_, xyz_, hgrid_, block_ghost_len, block_core_len);  // block_min, block_max);
                     gb->data_src(ngh_block);
@@ -688,7 +688,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
 
                     // m_log("creating a reverse");
                     // the children: the source = the coarse myself, target = my neighbor
-                    GBLocal* invert_gb = new GBLocal(block_gs, block_stride, -1, ngh_cum_id);
+                    GBLocal* invert_gb = new GBLocal(block_gs, block_stride, &ghost_len_, -1, ngh_cum_id);
                     invert_gb->Intersect(/* source */ level_ - 1, xyz_, coarse_hgrid, block_len,
                                          /* target */ ngh_block->level(), ngh_pos, ngh_hgrid, block_ghost_len, block_core_len);  // block_min, block_max);
                     invert_gb->data_src(ngh_block);
@@ -698,7 +698,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     // m_log("creating a finer");
                     m_assert((nghq->level - level_) == 1, "The delta level is not correct: %d - %d", nghq->level, level_);
                     // register the coarse
-                    GBLocal* gb = new GBLocal(block_gs, block_stride, ibidule, ngh_cum_id);
+                    GBLocal* gb = new GBLocal(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id);
                     //#pragma omp critical
                     local_children_.push_back(gb);
                 } else {
@@ -721,7 +721,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 //................................................
                 if (nghq->level == level_) {
                     // sibling: source = neighbor GridBlock, target = me
-                    GBMirror* gb = new GBMirror(block_gs, block_stride, ibidule, ngh_cum_id, ngh_rank);
+                    GBMirror* gb = new GBMirror(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id, ngh_rank);
                     gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     // ask the displacement (will be available later, when completing the call)
@@ -733,7 +733,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 //................................................
                 else if (nghq->level < level_) {
                     // parent: source = neighbor, target = me
-                    GBMirror* gb = new GBMirror(block_gs, block_stride, ibidule, ngh_cum_id, ngh_rank);
+                    GBMirror* gb = new GBMirror(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id, ngh_rank);
                     gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     // ask the displacement (will be available later, when completing the call
@@ -742,7 +742,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     ghost_parent_.push_back(gb);
 
                     // I compute my own contribution to my neighbor ghost points
-                    GBMirror* invert_gb = new GBMirror(block_gs, block_stride, ibidule, ngh_cum_id, ngh_rank);
+                    GBMirror* invert_gb = new GBMirror(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id, ngh_rank);
                     invert_gb->Intersect(/* source */ level() - 1, xyz(), coarse_hgrid, block_len,
                                          /* target */ nghq->level, ngh_pos, ngh_hgrid, block_ghost_len, block_core_len);  // block_min, block_max);
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
@@ -755,7 +755,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     const real_t ngh_hgrid_coarse[3] = {CoarseHGrid(ngh_len[0]), CoarseHGrid(ngh_len[1]), CoarseHGrid(ngh_len[2])};
 
                     // children: source = coarse version of my neighbor, target = myself
-                    GBMirror* gb = new GBMirror(block_gs, block_stride, ibidule, ngh_cum_id, ngh_rank);
+                    GBMirror* gb = new GBMirror(block_gs, block_stride, &ghost_len_, ibidule, ngh_cum_id, ngh_rank);
                     gb->Intersect(/* source */ nghq->level - 1, ngh_pos, ngh_hgrid_coarse, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     //#pragma omp critical
@@ -825,20 +825,26 @@ void GridBlock::GhostUpdateSize(const bidx_t ghost_len[2]) {
     // store them for me
     ghost_len_[0] = ghost_len[0];
     ghost_len_[1] = ghost_len[1];
-    // m_log("set ghost length to %d %d", ghost_len_[0], ghost_len_[1]);
 
-    // same level block are set to the requested length
-    auto adapt_len = [=](auto* block) { block->ghost_len(ghost_len_); };
-    std::for_each(local_sibling_.begin(), local_sibling_.end(), adapt_len);
-    std::for_each(local_parent_.begin(), local_parent_.end(), adapt_len);
-    std::for_each(local_children_.begin(), local_children_.end(), adapt_len);
-    std::for_each(local_parent_reverse_.begin(), local_parent_reverse_.end(), adapt_len);
-    std::for_each(ghost_sibling_.begin(), ghost_sibling_.end(), adapt_len);
-    std::for_each(ghost_parent_.begin(), ghost_parent_.end(), adapt_len);
-    std::for_each(ghost_children_.begin(), ghost_children_.end(), adapt_len);
-    std::for_each(ghost_parent_reverse_.begin(), ghost_parent_reverse_.end(), adapt_len);
-    std::for_each(phys_.begin(), phys_.end(), adapt_len);
+    // // get the lambda to execute on each list
+    // auto adapt_len = [ghost_len](auto& list) -> void {
+    //     for (GhostBlock* __restrict block : list) {
+    //         block->ghost_len(ghost_len);
+    //     }
+    // };
 
+    // // local
+    // adapt_len(local_sibling_);
+    // adapt_len(local_parent_);
+    // adapt_len(local_children_);
+    // adapt_len(local_parent_reverse_);
+    // // ghost
+    // adapt_len(ghost_sibling_);
+    // adapt_len(ghost_parent_);
+    // adapt_len(ghost_children_);
+    // adapt_len(ghost_parent_reverse_);
+    // // physics
+    // adapt_len(phys_);
     //-------------------------------------------------------------------------
 }
 
