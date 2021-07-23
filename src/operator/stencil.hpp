@@ -23,18 +23,11 @@ class Stencil : public BlockOperator {
     // default void constructor
     explicit Stencil();
 
-    // /**
-    //  * @brief returns the number of ghost point needed by the stencil
-    //  * 
-    //  * @return lid_t 
-    //  */
-    // // virtual lid_t NGhost() const = 0;
-
     /**
      * @brief execute the whole stencil, computation on every block, including the ghost value computation, the inner and outer computation using overlapping
      * between the ghost exchange and the stencil computation.
      */
-    void operator()(const Grid*  grid, Field*  field_src, Field*  field_trg);
+    void operator()(const Grid* grid, Field* field_src, Field* field_trg);
 
     /**
      * @brief applies the magic of the stencil on the field_src, in the dimension ida_ only! (inner computation or outer computation depending on is_outer)

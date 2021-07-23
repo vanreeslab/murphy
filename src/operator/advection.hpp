@@ -36,15 +36,15 @@ class Advection : public Stencil, public RKFunctor {
             ghost_len_need_[0] = 3;
             ghost_len_need_[1] = 3;
         }
-        Profile(profiler);
+        Advection<type, order>::Profile(profiler);
     };
     ~Advection() = default;
 
-    inline void Profile(Prof* profiler) override {
-        prof_ = profiler;
-        // initialize the steps that not every block might do
-        m_profInitLeave(prof_,"do magic");
-    }
+    // inline void Profile(Prof* profiler) override {
+    //     prof_ = profiler;
+    //     // initialize the steps that not every block might do
+    //     // m_profInitLeave(prof_, "do magic");
+    // }
 
     // return the stability conditions
     real_t cfl_rk3() const override { return 1.0; };

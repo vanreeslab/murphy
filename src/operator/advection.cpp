@@ -177,12 +177,12 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
     const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    m_profStart(prof_,"do magic");
+    // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
                   &flux_weno_3,
                   data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
                   is_outer, alpha, oneoh);
-    m_profStop(prof_,"do magic");
+    // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
 }
 
@@ -260,12 +260,12 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
     const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    m_profStart(prof_,"do magic");
+    // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
                   &flux_weno_5,
                   data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
                   is_outer, alpha, oneoh);
-    m_profStop(prof_,"do magic");
+    // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
 }
 
@@ -304,12 +304,12 @@ void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
     const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    m_profStart(prof_,"do magic");
+    // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
                   &flux_weno_3,
                   data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
                   is_outer, alpha, oneoh);
-    m_profStop(prof_,"do magic");
+    // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
 }
 
@@ -353,11 +353,11 @@ void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
     const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    m_profStart(prof_,"do magic");
+    // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
                   &flux_weno_5,
                   data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
                   is_outer, alpha, oneoh);
-    m_profStop(prof_,"do magic");
+    // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
 }
