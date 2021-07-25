@@ -17,8 +17,10 @@
  */
 class ForestGrid {
    protected:
-    real_t domain_length_[3];    //!< length of the domain, given by the tree aspect ratio
-    bool   domain_periodic_[3];  //!< boolean indicating if a direction is periodic
+    level_t global_min_level_ = -1;      //!< store the minimum level on the grid
+    level_t global_max_level_ = -1;      //!< store the minimum level on the grid
+    real_t  domain_length_[3];    //!< length of the domain, given by the tree aspect ratio
+    bool    domain_periodic_[3];  //!< boolean indicating if a direction is periodic
 
     p8est_t*       p4est_forest_ = nullptr;  //!< the p8est_t structure
     p8est_mesh_t*  p4est_mesh_   = nullptr;  //!< the p8est_mesh_t structure
@@ -38,7 +40,7 @@ class ForestGrid {
     ~ForestGrid();
     /** @} */
 
-    void CopyFrom(const ForestGrid* grid);
+    // void CopyFrom(const ForestGrid* grid);
 
     [[nodiscard]] real_t      domain_length(const sid_t id) const { return domain_length_[id]; }
     [[nodiscard]] bool        domain_periodic(const sid_t id) const { return domain_periodic_[id]; }

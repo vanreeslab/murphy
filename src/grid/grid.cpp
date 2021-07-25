@@ -51,26 +51,26 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
     m_end;
 }
 
-/**
- * @brief Copy the ForestGrid part from a grid
- * 
- * @param grid the source grid
- */
-void Grid::CopyFrom(const Grid* grid) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    this->ForestGrid::CopyFrom(grid);
-    // copy the field mapping
-    for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
-        string name   = iter->first;
-        Field* fid    = iter->second;
-        fields_[name] = fid;
-    }
-    // copy the profiler
-    prof_ = grid->profiler();
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// /**
+//  * @brief Copy the ForestGrid part from a grid
+//  * 
+//  * @param grid the source grid
+//  */
+// void Grid::CopyFrom(const Grid* grid) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     this->ForestGrid::CopyFrom(grid);
+//     // copy the field mapping
+//     for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
+//         string name   = iter->first;
+//         Field* fid    = iter->second;
+//         fields_[name] = fid;
+//     }
+//     // copy the profiler
+//     prof_ = grid->profiler();
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 /**
  * @brief Destroy the Grid, frees all the blocks and the fields contained (if not done)

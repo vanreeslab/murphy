@@ -64,7 +64,7 @@ class Grid : public ForestGrid {
 
     bool HasProfiler() { return prof_ == nullptr; }
 
-    void CopyFrom(const Grid* grid);
+    // void CopyFrom(const Grid* grid);
     void SetupMeshGhost();
     void DestroyMeshGhost();
 
