@@ -133,6 +133,7 @@ void Ghost::InitList_() {
     MPI_Info_set(info, "no_locks", "true");
 
     // displacement
+    m_profStart(prof_, "MPI_Win_create");
     MPI_Aint  win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
     MPI_Aint* local2disp        = static_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
     MPI_Win   local2disp_window = MPI_WIN_NULL;
@@ -140,6 +141,7 @@ void Ghost::InitList_() {
     m_assert(win_disp_mem_size >= 0, "the memory size should be >=0");
     m_assert(local2disp_window != MPI_WIN_NULL, "window must be ready");
     m_verb("allocating %ld bytes in the window for %d active quad", win_disp_mem_size, mesh->local_num_quadrants);
+    m_profStop(prof_, "MPI_Win_create");
 
     // free the info
     MPI_Info_free(&info);
@@ -173,6 +175,7 @@ void Ghost::InitList_() {
     m_assert(outgroup_ != MPI_GROUP_NULL, "call the InitComm function first!");
 
     // start the exposure epochs if any
+    m_profStart(prof_, "init list on blocks");
     MPI_Win_post(ingroup_, 0, local2disp_window);
     MPI_Win_start(outgroup_, 0, local2disp_window);
 
@@ -185,10 +188,13 @@ void Ghost::InitList_() {
     // complete the epoch and wait for the exposure one
     MPI_Win_complete(local2disp_window);
     MPI_Win_wait(local2disp_window);
+    m_profStop(prof_, "init list on blocks");
 
     //................................................
+    m_profStart(prof_,"MPI_Win_free");
     MPI_Win_free(&local2disp_window);
     m_free(local2disp);
+    m_profStop(prof_,"MPI_Win_free");
 
     //................................................
     // allocate the status
@@ -238,7 +244,17 @@ void Ghost::InitComm_() {
         }
     }
     m_verb("I have %d mirrors to send", n_mirror_to_send);
+
+    // allocate memory
+    m_profStart(prof_, "allocate mem");
+    MPI_Aint win_mem_size = n_mirror_to_send * CartBlockMemNum(1) * sizeof(real_t);
+    mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
+    MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
+    status_                      = static_cast<short_t*>(m_calloc(win_status_mem_size));
+    m_profStop(prof_, "allocate mem");
+
     // initialize the Window by allocating the memory space needed for the exchange
+    m_profStart(prof_, "MPI_Win_create");
     MPI_Info info;
     MPI_Info_create(&info);
     MPI_Info_set(info, "no_locks", "true");
@@ -246,29 +262,27 @@ void Ghost::InitComm_() {
     // window for the mirrors
     // because of alignement issues (https://github.com/open-mpi/ompi/issues/7955), cannot use this one
     // MPI_Win_allocate(win_mem_size, sizeof(real_t), info, mpi_comm, &mirrors_, &mirrors_window_);
-    MPI_Aint win_mem_size = n_mirror_to_send * CartBlockMemNum(1) * sizeof(real_t);
-    mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Win_create(mirrors_, win_mem_size, sizeof(real_t), info, MPI_COMM_WORLD, &mirrors_window_);
-
-// get an idea of the percentage of blocks
-#ifndef NDEBUG
-    real_t       global_ratio = 0.0;
-    const real_t ratio        = static_cast<real_t>(n_mirror_to_send) / static_cast<real_t>(mesh->local_num_quadrants);
-    MPI_Allreduce(&ratio, &global_ratio, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
-    int comm_size = 0;
-    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-    m_log("mirrors are %2.2f %% of the blocks", 100.0 * global_ratio / (comm_size));
-#endif
-
-    // window for the status
-    MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
-    status_                      = static_cast<short_t*>(m_calloc(win_status_mem_size));
     MPI_Win_create(status_, win_status_mem_size, sizeof(short_t), info, MPI_COMM_WORLD, &status_window_);
 
     MPI_Info_free(&info);
-    m_assert(m_isaligned(mirrors_), "the mirror temp array is not aligned");
-    m_assert(mirrors_window_ != MPI_WIN_NULL, "the MPI window created is null, which is not a good news");
-    m_assert(status_window_ != MPI_WIN_NULL, "the MPI window created is null, which is not a good news");
+    m_profStop(prof_, "MPI_Win_create");
+
+    // get an idea of the percentage of blocks
+#ifndef NDEBUG
+    {
+        real_t       global_ratio = 0.0;
+        const real_t ratio        = static_cast<real_t>(n_mirror_to_send) / static_cast<real_t>(mesh->local_num_quadrants);
+        MPI_Allreduce(&ratio, &global_ratio, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+        int comm_size = 0;
+        MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+        m_log("mirrors are %2.2f %% of the blocks", 100.0 * global_ratio / (comm_size));
+
+        m_assert(m_isaligned(mirrors_), "the mirror temp array is not aligned");
+        m_assert(mirrors_window_ != MPI_WIN_NULL, "the MPI window created is null, which is not a good news");
+        m_assert(status_window_ != MPI_WIN_NULL, "the MPI window created is null, which is not a good news");
+    }
+#endif
 
     //................................................
     // get the list of ranks that will generate a call to access my mirrors
@@ -344,14 +358,20 @@ void Ghost::FreeComm_() {
     m_begin;
     //-------------------------------------------------------------------------
     // free the group
+    m_profStart(prof_, "MPI_Group_free");
     MPI_Group_free(&ingroup_);
     MPI_Group_free(&outgroup_);
+    m_profStop(prof_, "MPI_Group_free");
     // free the window
+    m_profStart(prof_, "MPI_Win_free");
     MPI_Win_free(&mirrors_window_);
-    m_free(mirrors_);
-    // free the status
     MPI_Win_free(&status_window_);
+    m_profStop(prof_, "MPI_Win_free");
+
+    m_profStart(prof_, "free mem");
+    m_free(mirrors_);
     m_free(status_);
+    m_profStop(prof_, "free mem");
     //-------------------------------------------------------------------------
     m_end;
 }
