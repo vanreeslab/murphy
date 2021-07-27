@@ -65,20 +65,6 @@ vpath %.cpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
 
 #-----------------------------------------------------------------------------
 # LIBRARIES
-#---- FLUPS
-FLUPS_INC ?= /flups/include
-FLUPS_LIB ?= /flups/lib
-FLUPS_LIBNAME ?= -lflups_a2a
-INC += -I$(FLUPS_INC)
-LIB += -L$(FLUPS_LIB) $(FLUPS_LIBNAME) -Wl,-rpath,$(FLUPS_LIB)
-
-#---- FFTW
-FFTW_INC ?= /usr/include
-FFTW_LIB ?= /usr/lib
-FFTW_LIBNAME ?= -lfftw3_omp -lfftw3
-INC += -I$(FFTW_INC)
-LIB += -L$(FFTW_LIB) $(FFTW_LIBNAME) -Wl,-rpath,$(FFTW_LIB)
-
 #---- HDF5
 HDF5_INC ?= /usr/include
 HDF5_LIB ?= /usr/lib
