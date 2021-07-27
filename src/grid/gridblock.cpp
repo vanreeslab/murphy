@@ -86,46 +86,43 @@ GridBlock::~GridBlock() {
  * - if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
  * 
  */
-void GridBlock::UpdateStatusFromCriterion(/* params */ const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
+void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
                                           /* prof */ Prof* profiler) {
     //-------------------------------------------------------------------------
     const bidx_t ghost_len_interp[2] = {interp->nghost_front(), interp->nghost_back()};
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
-    m_assert(field_citerion->ghost_status(ghost_len_interp), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
+    // m_assert(field_citerion->ghost_status(ghost_len_interp), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
+    m_assert(M_ADAPT_SAME < M_ADAPT_FINER && M_ADAPT_SAME < M_ADAPT_COARSER, "please keep M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
+    m_assert(M_ADAPT_NONE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_FINER && M_ADAPT_NONE < M_ADAPT_COARSER, "please keep M_ADAPT_NONE < M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
     //-------------------------------------------------------------------------
-    m_profStart(profiler, "criterion detail");
+    // m_profStart(profiler, "criterion detail");
 
     // prevent coarsening if we have finer neighbors
     const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0);
     const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL);
+    const bool is_over           = forbid_coarsening || forbid_refinement || (status_lvl_ > M_ADAPT_SAME);
 
-    // I need to visit every dimension and determine if we have to refine and/or coarsen.
-    // afterthat we choose given the conservative approach
-    bool coarsen = !forbid_coarsening;
-    for (lda_t ida = 0; ida < field_citerion->lda(); ida++) {
+    // if no decision has been made, go for the computation
+    if (!is_over) {
         // go to the computation
-        SubBlock     block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-        SubBlock     block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
-        const real_t norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
+        const SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+        const SubBlock block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
+        const real_t   norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
-        bool refine = (norm > rtol) && (!forbid_refinement);
-        if (refine) {
+        if (norm > rtol) {  // refine
             status_lvl_ = M_ADAPT_FINER;
-            // finito
-            m_profStop(profiler, "criterion detail");
-            return;
+        } else if (norm < ctol) {  // coarsen
+            status_lvl_ = M_ADAPT_COARSER;
         }
-        // if one dimension is preventing the coarsening, register
-        coarsen = coarsen & (norm < ctol);
     }
-    // if every field is ok to be coarsened, i.e. the coarsen bool is still true after everything, we coarsen
-    // also make sure that we can coarsen!
-    status_lvl_ = (coarsen) ? M_ADAPT_COARSER : M_ADAPT_SAME;
-    // register the coarsening
-    m_profStop(profiler, "criterion detail");
-    m_assert(status_lvl_ != M_ADAPT_NONE, "the status of the block cannot be NONE");
+    // we get the max between not doing anything and the new status (might be FINER and/or coarser)
+    status_lvl_ = m_max(M_ADAPT_SAME, status_lvl_);
+    // m_profStop(profiler, "criterion detail");
+    // finito
+    m_assert(status_lvl_ > M_ADAPT_NONE, "the status of the block cannot be NONE");
+    m_assert(status_lvl_ <= m_max(M_ADAPT_COARSER, M_ADAPT_FINER), "the status of the block must be SAME, FINER or COARSER");
     return;
     //-------------------------------------------------------------------------
 }
@@ -135,7 +132,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ const Wavelet* interp, std:
     //-------------------------------------------------------------------------
     m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
     //-------------------------------------------------------------------------
-    m_profStart(profiler, "patch");
+    // m_profStart(profiler, "patch");
 
     // prevent coarsening if we have finer neighbors
     // const bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
@@ -165,7 +162,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ const Wavelet* interp, std:
             // if we found a matching patch, it's done
             if (coarsen) {
                 // m_log("block @ %f %f %f coarsening! ", this->xyz(0), this->xyz(1), this->xyz(2));
-                m_profStop(profiler, "patch");
+                // m_profStop(profiler, "patch");
                 return;
             }
 
@@ -185,7 +182,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ const Wavelet* interp, std:
             // if we found a matching patch, it's done
             if (refine) {
                 // m_log("block @ %f %f %f refining! ", this->xyz(0), this->xyz(1), this->xyz(2));
-                m_profStop(profiler, "patch");
+                // m_profStop(profiler, "patch");
                 return;
             }
         }
@@ -193,7 +190,7 @@ void GridBlock::UpdateStatusFromPatches(/* params */ const Wavelet* interp, std:
     // m_log("block @ %f %f %f not changing! ", this->xyz(0), this->xyz(1), this->xyz(2));
     status_lvl_ = M_ADAPT_SAME;
     m_assert(status_lvl_ != M_ADAPT_NONE, "the status of the block cannot be NONE");
-    m_profStop(profiler, "patch");
+    // m_profStop(profiler, "patch");
     return;
     //-------------------------------------------------------------------------
 }
@@ -273,7 +270,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
     // the status level has to be 0, otherwise it means that one of the block is not coarsened
     m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE, "the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
     //-------------------------------------------------------------------------
-    m_profStart(profiler, "smooth jump");
+    // m_profStart(profiler, "smooth jump");
     // reset the temp memory to 0.0
     memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
     data_ptr mask      = coarse_ptr_(0, this);
@@ -362,7 +359,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
 
     // free the status array
     m_free(status_ngh_);
-    m_profStop(profiler, "smooth jump");
+    // m_profStop(profiler, "smooth jump");
     //-------------------------------------------------------------------------
 }
 
@@ -394,7 +391,7 @@ void GridBlock::StoreDetails(const Wavelet* interp, const Field* criterion, cons
  */
 void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, std::map<std::string, Field*>::const_iterator field_end, Prof* profiler) {
     m_assert(n_dependency_active_ == 0 || n_dependency_active_ == 1 || n_dependency_active_ == P8EST_CHILDREN, "wrong value for n_dependency_active_");
-    m_profStart(profiler, "solve dependency");
+    // m_profStart(profiler, "solve dependency");
     //-------------------------------------------------------------------------
     if (n_dependency_active_ == 1) {  // this is REFINEMENT
         // if I get only one dependency, I am a child and I need refinement from my parent
@@ -490,7 +487,7 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
     } else {
         // we don't refine or coarsen so we compute the Inverse Wavelet Transform
     }
-    m_profStop(profiler, "solve dependency");
+    // m_profStop(profiler, "solve dependency");
     //-------------------------------------------------------------------------
 }
 

@@ -20,9 +20,9 @@
 
 typedef enum StatusAdapt {
     M_ADAPT_NONE,
+    M_ADAPT_SAME,
     M_ADAPT_COARSER,
     M_ADAPT_FINER,
-    M_ADAPT_SAME,
     M_ADAPT_NEW_COARSE,
     M_ADAPT_NEW_FINE
 } StatusAdapt;
@@ -64,7 +64,7 @@ class GridBlock : public CartBlock {
     void        status_level(const StatusAdapt status) { status_lvl_ = status; };
     void        ResetStatus() { status_lvl_ = M_ADAPT_NONE; };
 
-    void UpdateStatusFromCriterion(/* params */ const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
+    void UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
                                    /* prof */ Prof* profiler);
     void UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
                                  /* prof */ Prof* profiler);

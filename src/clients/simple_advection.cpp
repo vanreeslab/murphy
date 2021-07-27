@@ -159,6 +159,7 @@ void SimpleAdvection::Run() {
                     // real_t min, max;
                     // minmax(grid_, scal_, &min, &max);
                     // m_log("MINMAX before adaptation: from %e to %e", min, max);
+                    grid_->SetRecursiveAdapt(true);
                     grid_->Adapt(scal_);
                     // minmax(grid_, scal_, &min, &max);
                     // m_log("MINMAX: field from %e to %e", min, max);

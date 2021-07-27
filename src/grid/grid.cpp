@@ -438,17 +438,17 @@ void Grid::Coarsen(Field* field) {
 void Grid::Adapt(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
+    // m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
     // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto& fid : fields_) {
-        Field* cur_field = fid.second;
-        if (!cur_field->is_temp()) {
-            GhostPull(cur_field, ghost_len);
-        }
-    }
+    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    // // compute the ghost needed by the interpolation of every other field in the grid
+    // for (auto& fid : fields_) {
+    //     Field* cur_field = fid.second;
+    //     if (!cur_field->is_temp()) {
+    //         GhostPull(cur_field, ghost_len);
+    //     }
+    // }
 
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
@@ -533,10 +533,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_profStart(prof_, "adaptation");
     //................................................
     // pre-assigne the profiling in case every cpu doesn't enter it
-    m_profInitLeave(prof_, "criterion detail");
-    m_profInitLeave(prof_, "patch");
-    m_profInitLeave(prof_, "solve dependency");
-    m_profInitLeave(prof_, "smooth jump");
+    // m_profInitLeave(prof_, "criterion detail");
+    // m_profInitLeave(prof_, "patch");
+    // m_profInitLeave(prof_, "solve dependency");
+    // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
     string msg = "--> grid adaptation started... (recursive = %d, ";
@@ -561,27 +561,75 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     iblock_t global_n_quad_to_adapt = 0;
     do {
         //................................................
-        DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
-
-        //................................................
-        // reset the adapt counter
-        n_quad_to_adapt_       = 0;
-        global_n_quad_to_adapt = 0;
-
-        //................................................
-        // compute the criterion or use the patches to get the status
+        // ghosting and criterion computation
+        bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
         if (!(field_detail == nullptr)) {
-            // compute the details
-            DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, prof_);
+            m_profStart(prof_, "ghost for criterion");
+            m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
+            // get the length
+            GhostPull_SetLength(field_detail, ghost_len);
+            // start the ghosting in the first dimension only
+            GhostPull_Post(field_detail, 0, ghost_len);
+            m_profStop(prof_, "ghost for criterion");
         }
+
+        // while waiting, reset the status on the blocks
+        m_profStart(prof_, "reset");
+        DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
+        m_profStop(prof_, "reset");
+
+        if (!(field_detail == nullptr)) {
+            m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
+            // wait for the dim = 0 to finish
+            m_profStart(prof_, "ghost for criterion");
+            GhostPull_Wait(field_detail, 0, ghost_len);
+            m_profStop(prof_, "ghost for criterion");
+            // now we can start the next dimensions
+            for (lda_t ida = 1; ida < field_detail->lda(); ++ida) {
+                // start the ghosts for the next dimension
+                m_profStart(prof_, "ghost for criterion");
+                GhostPull_Post(field_detail, ida, ghost_len);
+                m_profStop(prof_, "ghost for criterion");
+
+                // compute the criterion on the previous dimension
+                m_profStart(prof_, "criterion");
+                const lda_t criterion_dim = ida - 1;
+                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail, prof_);
+                m_profStop(prof_, "criterion");
+
+                // finish the ghost for the current dimension
+                m_profStart(prof_, "ghost for criterion");
+                GhostPull_Wait(field_detail, ida, ghost_len);
+                m_profStop(prof_, "ghost for criterion");
+            }
+            // finally, compute on the last dimension of the field
+            const lda_t criterion_dim = field_detail->lda() - 1;
+            m_profStart(prof_, "criterion");
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail, prof_);
+            m_profStop(prof_, "criterion");
+            // register the computed ghosts
+            field_detail->ghost_len(ghost_len);
+        }
+
+        // // compute the criterion or use the patches to get the status
+        // if (!(field_detail == nullptr)) {
+        //     // compute the details
+        //     DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, prof_);
+        // }
+
+        // if needed, compute some patches
         if (!(patches == nullptr)) {
             // get the patches processed
-            DoOpTree(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
+            m_profStart(prof_, "patch");
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
+            m_profStop(prof_, "patch");
         }
 
         // synchronize the statuses and handle the neighbor policies
+        m_profStart(prof_,"update status");
         ghost_->UpdateStatus();
-        DoOpTree(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
+        DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
+        m_profStop(prof_,"update status");
 
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
@@ -591,6 +639,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         m_profStop(prof_, "destroy mesh and ghost");
 
         //................................................
+        // reset the adapt counter, it will be updated in the interpolate fct
+        n_quad_to_adapt_ = 0;
         // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
@@ -598,7 +648,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStart(prof_, "p4est coarsen");
             p8est_coarsen_ext(p4est_forest_, 0, 0, coarsen_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est coarsen");
-            m_verb("coarsen is done");
         }
         // refinement -> only one level
         // The limit in levels are handled directly on the block, not in p4est
@@ -606,14 +655,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStart(prof_, "p4est refine");
             p8est_refine_ext(p4est_forest_, 0, P8EST_QMAXLEVEL, refine_cback, nullptr, interpolate_fct);
             m_profStop(prof_, "p4est refine");
-            m_verb("refine is done");
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case
         m_profStart(prof_, "p4est balance");
         p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
         m_profStop(prof_, "p4est balance");
-        m_verb("balance is done");
 
         //................................................
         // solve the dependencies on the grid
@@ -621,11 +668,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
             m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
         }
-        m_verb("solve dependencies");
+        m_profStart(prof_, "solve dependency");
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        m_profStop(prof_, "solve dependency");
 
         //................................................
-        // if we are recursive, we need to update the rank partitioning and check for new block to change
+        // update the rank partitioning and check for new block to change
         m_profStart(prof_, "partition init");
         Partitioner partition(&fields_, this, true);
         m_profStop(prof_, "partition init");
@@ -642,10 +690,15 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         //................................................
         // solve the jump in resolution
+        m_profStart(prof_, "update status");
         ghost_->UpdateStatus();
+        m_profStop(prof_, "update status");
+
         // solve resolution jump if needed
         m_verb("solve jump resolution");
+        m_profStart(prof_, "smooth jump");
         DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        m_profStop(prof_, "smooth jump");
 
         //................................................
         // sum over the ranks and see if we keep going
