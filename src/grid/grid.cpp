@@ -53,7 +53,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 
 // /**
 //  * @brief Copy the ForestGrid part from a grid
-//  * 
+//  *
 //  * @param grid the source grid
 //  */
 // void Grid::CopyFrom(const Grid* grid) {
@@ -268,7 +268,7 @@ void Grid::GhostPull_SetLength(const Field* field, bidx_t ghost_len[2]) const {
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //-------------------------------------------------------------------------
-    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed",ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
+    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed", ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
     if (!field->ghost_status(ghost_len)) {
         ghost_->SetLength(ghost_len);
     }
@@ -411,17 +411,17 @@ void Grid::Refine(Field* field) {
 void Grid::Coarsen(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
+    // m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto& fid : fields_) {
-        Field* cur_field = fid.second;
-        if (!cur_field->is_temp()) {
-            GhostPull(cur_field, ghost_len);
-        }
-    }
+    // // get the ghost length
+    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    // // compute the ghost needed by the interpolation of every other field in the grid
+    // for (auto& fid : fields_) {
+    //     Field* cur_field = fid.second;
+    //     if (!cur_field->is_temp()) {
+    //         GhostPull(cur_field, ghost_len);
+    //     }
+    // }
 
     AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
@@ -469,13 +469,13 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     //-------------------------------------------------------------------------
     // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(),interp_->nghost_back()};
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // apply the operator to get the starting value
     (*expr)(this, field);
     m_assert(field->ghost_status(ghost_len), "strictly not needed but as we recall the operator just above, we have to enforce the criterion is gonna be ok");
 
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
-    void* my_expr = static_cast<void*>( const_cast<SetValue*>(expr) );
+    void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
 
     // if the application of the operator on the grid has filled the ghosts, then the operator on the block has done the same
@@ -539,6 +539,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
+
     string msg = "--> grid adaptation started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
@@ -560,6 +561,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     iter_t   iteration              = 0;
     iblock_t global_n_quad_to_adapt = 0;
     do {
+        m_log("----> adaptation iteration %d", iteration);
+        m_log_level_plus;
         //................................................
         // ghosting and criterion computation
         bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
@@ -626,10 +629,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
 
         // synchronize the statuses and handle the neighbor policies
-        m_profStart(prof_,"update status");
+        m_profStart(prof_, "update status");
         ghost_->UpdateStatus();
         DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
-        m_profStop(prof_,"update status");
+        m_profStop(prof_, "update status");
 
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
@@ -704,18 +707,21 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // sum over the ranks and see if we keep going
         m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
         MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-        m_log("we have %d blocks to adapt", global_n_quad_to_adapt);
+        m_log("we have adapted %d blocks", global_n_quad_to_adapt);
 
+        // if we adapted some blocks, then the ghosting is not valid
+        if (global_n_quad_to_adapt > 0) {
+            for (auto& fid : fields_) {
+                m_log("changing ghost status of <%s>", fid.second->name().c_str());
+                const bidx_t ghost_len[2] = {0, 0};
+                fid.second->ghost_len(ghost_len);
+            }
+        }
+
+        m_log_level_minus;
         // increment the counter
         ++iteration;
     } while (global_n_quad_to_adapt > 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
-
-    //................................................
-    // set the ghosting fields as non-valid
-    for (auto& fid : fields_) {
-        const bidx_t ghost_len[2] = {0, 0};
-        fid.second->ghost_len(ghost_len);
-    }
 
     //................................................
     // reset the forest pointer
@@ -735,6 +741,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     const level_t min_level   = this->MinLevel();
     const level_t max_level   = this->MaxLevel();
     const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * CartBlockMemNum(1) * sizeof(real_t) / 1.0e+9;
+
+    m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
     m_end;
 }

@@ -290,7 +290,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     // retrieve the grid from the forest user-data pointer
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
     m_assert(grid->interp() != nullptr, "a Grid Wavelet is needed");
-    m_assert(!grid->recursive_adapt(), "the dependency update does not support recursive adaptation as we eventually need the GP values");
+    // m_assert(!grid->recursive_adapt(), "the dependency update does not support recursive adaptation as we eventually need the GP values");
 
     // get needed grid info
     p8est_connectivity_t* connect = forest->connectivity;

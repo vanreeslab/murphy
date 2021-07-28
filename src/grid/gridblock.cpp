@@ -420,8 +420,8 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
             // refine for every dimension, if the field is not temp
             if (!current_field->is_temp()) {
                 // check the ghost ability
-                const bidx_t ghost_len[2] = {interp->nghost_front_refine(),interp->nghost_back_refine()};
-                m_assert(current_field->ghost_status(ghost_len),"The field must have enough valid GP for the refinement - required %d %d, known %d %d",ghost_len[0],ghost_len[1],current_field->get_ghost_len(0),current_field->get_ghost_len(1));
+                const bidx_t ghost_len[2] = {interp->nghost_front_refine(), interp->nghost_back_refine()};
+                m_assert(current_field->ghost_status(ghost_len), "The field <%s> must have enough valid GP for the refinement - required %d %d, known %d %d", current_field->name().c_str(), ghost_len[0], ghost_len[1], current_field->get_ghost_len(0), current_field->get_ghost_len(1));
                 for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                     // get the pointers
                     interp->Interpolate(-1, shift, &mem_src, root->data(current_field, ida), this, this->data(current_field, ida));

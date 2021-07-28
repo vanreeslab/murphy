@@ -271,8 +271,12 @@ void Ghost::InitComm_() {
     // get an idea of the percentage of blocks
 #ifndef NDEBUG
     {
-        real_t       global_ratio = 0.0;
-        const real_t ratio        = static_cast<real_t>(n_mirror_to_send) / static_cast<real_t>(mesh->local_num_quadrants);
+        real_t   global_ratio = 0.0;
+        real_t   ratio        = 0.0;
+        iblock_t n_quad_local = mesh->local_num_quadrants;
+        if (n_quad_local > 0) {
+            ratio = static_cast<real_t>(n_mirror_to_send) / static_cast<real_t>(n_quad_local);
+        }
         MPI_Allreduce(&ratio, &global_ratio, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
         int comm_size = 0;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);

@@ -298,6 +298,27 @@
  * @name logs and verbosity 
  * 
  */
+extern short m_log_level_counter;
+extern char  m_log_level_prefix[32];
+
+#define m_log_level_plus                                  \
+    ({                                                    \
+        m_log_level_counter += (m_log_level_counter < 5); \
+                                                          \
+        m_log_level_prefix[0] = '\0';                     \
+        for (short i = 0; i < m_log_level_counter; ++i) { \
+            strcat(m_log_level_prefix, "  ");             \
+        }                                                 \
+    })
+#define m_log_level_minus                                 \
+    ({                                                    \
+        m_log_level_counter -= (m_log_level_counter > 0); \
+                                                          \
+        m_log_level_prefix[0] = '\0';                     \
+        for (short i = 0; i < m_log_level_counter; ++i) { \
+            strcat(m_log_level_prefix, "  ");             \
+        }                                                 \
+    })
 /**
  * @brief m_log will be displayed as a log, either by every rank or only by the master (given LOG_ALLRANKS)
  * 
@@ -311,7 +332,7 @@
         if (m_log_rank_ == 0) {                           \
             char m_log_msg_[1024];                        \
             sprintf(m_log_msg_, format, ##__VA_ARGS__);   \
-            fprintf(stdout, "[murphy] %s\n", m_log_msg_); \
+            fprintf(stdout, "[murphy] %s %s\n",m_log_level_prefix, m_log_msg_); \
         }                                                 \
     })
 #else
@@ -321,7 +342,7 @@
         MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);                  \
         char m_log_msg_[1024];                                        \
         sprintf(m_log_msg_, format, ##__VA_ARGS__);                   \
-        fprintf(stdout, "[%d murphy] %s\n", m_log_rank_, m_log_msg_); \
+        fprintf(stdout, "[%d murphy] %s %s\n", m_log_rank_,m_log_level_prefix, m_log_msg_); \
     })
 #endif
 #else
