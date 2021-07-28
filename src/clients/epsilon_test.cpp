@@ -12,7 +12,7 @@
 
 static const real_t sigma     = 0.05;
 static const real_t radius    = 0.25;
-static const real_t beta      = 4.5;
+static const real_t beta      = 3.0;
 static const auto   freq      = std::vector<short_t>{};  //std::vector<short_t>{5, 1000};
 static const auto   amp       = std::vector<real_t>{};   //std::vector<real_t>{0.2, 0.2};
 static const real_t center[3] = {0.5, 0.5, 0.5};
@@ -63,7 +63,7 @@ void EpsilonTest::Run() {
         m_log("================================================================================");
         //......................................................................
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {false, false, false};
+        bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
