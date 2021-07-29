@@ -4,8 +4,16 @@
 #include "clients/testcase.hpp"
 
 class ConvergenceWeno : public TestCase {
-    bool    adapt_  = false;
-    level_t ilevel_ = 1;
+    bool    adapt_;
+    bool    fix_weno_;
+    level_t ilevel_;
+
+    level_t level_start_;
+    level_t level_min_;
+    level_t level_max_;
+
+    real_t eps_start_;
+    real_t delta_eps_;
 
    public:
     ~ConvergenceWeno();

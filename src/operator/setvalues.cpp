@@ -78,7 +78,7 @@ lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, cons
     m_assert(beta > 1, "the beta parameter = %f must be >1", beta);
     m_assert((beta * sigma) < radius, "to avoid cross combinatin, we must have that alpha < radius");
 
-        const lda_t idx = (normal + 1) % 3;
+    const lda_t idx = (normal + 1) % 3;
     const lda_t idy = (normal + 2) % 3;
     const lda_t idz = normal;
 

@@ -89,7 +89,7 @@ void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block,
             const real_t sol_val  = (*sol)(i0, i1, i2, block);
             const real_t data_val = data_field[m_idx(i0, i1, i2)];
             const real_t error    = data_val - sol_val;
-            m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)]);
+            m_assert(error == error, "the error cannot be nan: tree %d block %d @ %d %d %d: %f vs %f", qid->tid, qid->qid, i0, i1, i2, data_field[m_idx(i0, i1, i2)],sol_val);
             // update the block errors
             e2 += error * error;
             ei = m_max(std::fabs(error), ei);
