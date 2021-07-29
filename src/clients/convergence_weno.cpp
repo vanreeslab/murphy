@@ -168,7 +168,8 @@ void ConvergenceWeno::Run() {
 
         rank_t rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        real_t hmax = grid.FinestH();
+        const real_t hmax = grid.FinestH();
+        const real_t hmin = grid.CoarsestH();
 
         {  // WENO 3
             if (fix_weno_) {
@@ -188,10 +189,10 @@ void ConvergenceWeno::Run() {
                 string scheme_name = (fix_weno_) ? "cons3" : "weno3";
                 string fname       = "data/conv_" + scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag   = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e\n", hmax, err2, erri);
+                fprintf(file_diag, "%e %e %e %e\n", hmin, hmax, err2, erri);
                 fclose(file_diag);
             }
-            m_log("WENO-3: %e %e %e", hmax, err2, erri);
+            m_log("WENO-3: %e %e %e %e", hmin, hmax, err2, erri);
         }
         {  // WENO 5
             if (fix_weno_) {
@@ -209,10 +210,10 @@ void ConvergenceWeno::Run() {
                 string scheme_name = (fix_weno_) ? "cons5" : "weno5";
                 string fname       = "data/conv_" + scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag   = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e\n", hmax, err2, erri);
+                fprintf(file_diag, "%e %e %e %e\n", hmin, hmax, err2, erri);
                 fclose(file_diag);
             }
-            m_log("WENO-5: %e %e %e", hmax, err2, erri);
+            m_log("WENO-5: %e %e %e %e", hmin, hmax, err2, erri);
         }
 
         grid.DeleteField(&vel);
