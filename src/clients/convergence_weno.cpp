@@ -200,7 +200,7 @@ void ConvergenceWeno::Run() {
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax,global_num_quad);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad);
                 fclose(file_diag);
             }
             m_log("WENO-3: %e %e %e %e", hmin, hmax, err2, erri);
@@ -218,13 +218,13 @@ void ConvergenceWeno::Run() {
             real_t erri, err2;
             error.Norms(&grid, &dtest, &lambda_sol, &err2, &erri);
 
-            const string scheme_name = (fix_weno_) ? "cons3" : "weno3";
+            const string scheme_name = (fix_weno_) ? "cons5" : "weno5";
             const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
 
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax,global_num_quad);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad);
                 fclose(file_diag);
             }
             m_log("WENO-5: %e %e %e %e", hmin, hmax, err2, erri);
