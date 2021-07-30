@@ -429,57 +429,44 @@ void Grid::Coarsen(Field* field) {
 }
 
 /**
- * @brief adapt each block by one level, based on the given field and on the detail coefficient
+ * @brief Adapt the grid based on field which is used as a criterion
  * 
- * Interpolate the field (which are not temporary) to match the new mesh structure
+ * The adaptation might be recursive, see Grid::SetRecursiveAdapt() function
  * 
  * @param field the field used for the criterion
  */
 void Grid::Adapt(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    // m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // get the ghost length
-    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto& fid : fields_) {
-    //     Field* cur_field = fid.second;
-    //     if (!cur_field->is_temp()) {
-    //         GhostPull(cur_field, ghost_len);
-    //     }
-    // }
-
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
-
     //-------------------------------------------------------------------------
     m_end;
 }
 
 /**
- * @brief Adapt the grid given an analytical expression for the designated field
+ * @brief Adapt the grid given an analytical expression for the designated field (typically an initial condition)
+ * 
+ * The anaylical expression is used to start and then is used everytime a new block is created.
+ * Other fields than field might be garbage
+ * 
+ * Notes: 
+ * - The adaptation can be recursive
+ * - if the ghost provided by the SetValue are not sufficient, the ghosts will be recomputed
  * 
  * @param field the field to adapt
- * @param DoGhost determine if the application of expr_block will fill the ghost
- * @param expr_grid 
- * @param expr_block 
+ * @param expr the analytical expression to use as a SetValue object
  */
 void Grid::Adapt(Field* field, const SetValue* expr) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     //-------------------------------------------------------------------------
-    // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // apply the operator to get the starting value
     (*expr)(this, field);
-    m_assert(field->ghost_status(ghost_len), "strictly not needed but as we recall the operator just above, we have to enforce the criterion is gonna be ok");
 
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
-
-    // if the application of the operator on the grid has filled the ghosts, then the operator on the block has done the same
-    field->ghost_len(ghost_len);
     //-------------------------------------------------------------------------
     m_end;
 }

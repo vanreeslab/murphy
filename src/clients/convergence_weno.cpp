@@ -106,7 +106,7 @@ void ConvergenceWeno::Run() {
             if (adapt_) {
                 grid.SetTol(epsilon, epsilon * 1e-2);
                 grid.SetRecursiveAdapt(1);
-                grid.Adapt(&test);
+                grid.Adapt(&test, &init);
             }
         }
         // grid is now adapted!
@@ -168,8 +168,10 @@ void ConvergenceWeno::Run() {
 
         rank_t rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        const real_t hmax = grid.FinestH();
-        const real_t hmin = grid.CoarsestH();
+        const real_t  hmax = grid.FinestH();
+        const real_t  hmin = grid.CoarsestH();
+        const level_t lmin = grid.MinLevel();
+        const level_t lmax = grid.MaxLevel();
 
         {  // WENO 3
             if (fix_weno_) {
@@ -189,7 +191,7 @@ void ConvergenceWeno::Run() {
                 string scheme_name = (fix_weno_) ? "cons3" : "weno3";
                 string fname       = "data/conv_" + scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag   = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e\n",grid.rtol(),grid.ctol(), hmin, hmax, err2, erri);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax);
                 fclose(file_diag);
             }
             m_log("WENO-3: %e %e %e %e", hmin, hmax, err2, erri);
@@ -210,7 +212,7 @@ void ConvergenceWeno::Run() {
                 string scheme_name = (fix_weno_) ? "cons5" : "weno5";
                 string fname       = "data/conv_" + scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data";
                 FILE*  file_diag   = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e\n",grid.rtol(),grid.ctol(), hmin, hmax, err2, erri);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax);
                 fclose(file_diag);
             }
             m_log("WENO-5: %e %e %e %e", hmin, hmax, err2, erri);
