@@ -196,8 +196,7 @@ void Wavelet::GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
-    // ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
-    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source
@@ -252,8 +251,7 @@ void Wavelet::PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout* 
     const lid_t  trg_start[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     const lid_t  trg_end[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
     MPI_Datatype dtype_trg;
-    // ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
-    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), &dtype_trg);
+    ToMPIDatatype(trg_start, trg_end, block_trg->stride(), 1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source

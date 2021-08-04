@@ -623,8 +623,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;
         MPI_Datatype dtype;
-        // ToMPIDatatype(start, end, block->stride(), 1, &dtype);
-        ToMPIDatatype(start, end, block->stride(), &dtype);
+        ToMPIDatatype(start, end, block->stride(), 1, &dtype);
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
         MPI_Type_free(&dtype);
     }
