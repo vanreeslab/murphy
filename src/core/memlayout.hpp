@@ -74,7 +74,7 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(start[1] <= end[1], "the end = %d is smaller than the start = %d", end[1], start[1]);
     m_assert(start[2] <= end[2], "the end = %d is smaller than the start = %d", end[2], start[2]);
     //-------------------------------------------------------------------------
-    // get how much is one real
+    // get how much is one real (in bytes)
     MPI_Aint stride_x, trash_lb;
     MPI_Type_get_extent(M_MPI_REAL, &trash_lb, &stride_x);
 
@@ -94,7 +94,7 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(count_y >= 0, "we at least need to take 1 element");
     m_assert(count_y <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_y / scale, 1, (MPI_Aint)(stride_y * scale), x_type, &xy_type);
-    MPI_Type_free(&x_type);
+
     //................................................
     // do z type
     bidx_t   count_z  = (end[2] - start[2]);
@@ -102,11 +102,30 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(count_z >= 0, "we at least need to take 1 element");
     m_assert(count_z <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_z / scale, 1, (MPI_Aint)(stride_z * scale), xy_type, xyz_type);
-    MPI_Type_free(&xy_type);
     //................................................
     // finally commit the type so it's ready to use
     MPI_Type_commit(xyz_type);
+    MPI_Type_free(&xy_type);
+    MPI_Type_free(&x_type);
     //-------------------------------------------------------------------------
+    m_end;
+};
+
+inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx_t stride, MPI_Datatype* xyz_type) {
+    m_begin;
+    // m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
+    // m_assert(start[0] < end[0], "the end = %d is smaller than the start = %d", end[0], start[0]);
+    // m_assert(start[1] < end[1], "the end = %d is smaller than the start = %d", end[1], start[1]);
+    // m_assert(start[2] < end[2], "the end = %d is smaller than the start = %d", end[2], start[2]);
+    //--------------------------------------------------------------------------
+    const bidx_t type_start[3]    = {0, 0, 0};  // the start index is 0,0,0 as we handle the start before the call!
+    const bidx_t size[3]    = {stride, stride, stride};
+    const bidx_t subsize[3] = {end[2] - start[2], end[1] - start[1], end[0] - start[0]};
+    // m_log("subarray: %d %d %d @ %d %d %d from %d %d %d", subsize[0], subsize[1], subsize[2], start[0], start[1], start[2], size[0], size[1], size[2]);
+    // commit the new type
+    MPI_Type_create_subarray(3, size, subsize, type_start, MPI_ORDER_C, M_MPI_REAL, xyz_type);
+    MPI_Type_commit(xyz_type);
+    //--------------------------------------------------------------------------
     m_end;
 };
 

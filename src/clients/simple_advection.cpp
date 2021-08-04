@@ -11,9 +11,9 @@ using std::string;
 using std::to_string;
 
 static const lda_t  ring_normal = 2;
-static const real_t sigma       = 0.075;
-static const real_t radius      = 0.3;
-static const real_t beta        = 2;
+static const real_t sigma       = 0.05;
+static const real_t radius      = 0.25;
+static const real_t beta        = 3;
 static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
 static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
 static const real_t center[3]   = {0.5, 0.5, 0.25};
@@ -136,7 +136,6 @@ void SimpleAdvection::Run() {
     }
 
     // time integration
-    // time
     lid_t         iter = 0;
     real_t        t    = tstart_;
     const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
