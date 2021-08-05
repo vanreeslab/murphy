@@ -134,6 +134,14 @@ On MacOS, you can install it using homebrew: `brew install graphviz`.
 - the compilation fails and the error indicates that files change sizes during the compilation:
 you might be the victim of slow disk access between docker and your laptop. To solve that, you need to follow [this](https://code.visualstudio.com/docs/remote/containers-advanced#_update-the-mount-consistency-to-delegated-for-macos) and set the consistency to `delegated`.
 
+
+---------------------
+### Building on clusters
+here are the links to the details needed to build murphy on different clusters
+- [Engaging](doc/engaging.md)
+- [NIC 5](doc/nic5.md)
+- [Lemaitre 3](doc/lm3.md)
+
 <!-- 
 -----------------------
 ### Installation from scratch

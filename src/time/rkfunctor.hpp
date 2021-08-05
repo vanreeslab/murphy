@@ -18,8 +18,8 @@ class RKFunctor {
     virtual real_t rdiff() const   = 0;  //!< the diffusion constrain
 
     // do the rhs
-    virtual void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) = 0;
-    virtual void RhsAcc(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) = 0;
+    virtual void RhsSet(const Grid*  grid, const real_t time, Field*  field_u, Field*  field_y) = 0;
+    virtual void RhsAcc(const Grid*  grid, const real_t time, Field*  field_u, Field*  field_y) = 0;
 };
 
 #endif

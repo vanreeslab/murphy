@@ -9,10 +9,10 @@
 #include "tools/prof.hpp"
 
 class FlowABC : public TestCase {
-    m_ptr<Field> vel_;
-    m_ptr<Field> scal_;
-    m_ptr<Grid>  grid_;
-    m_ptr<Prof>  prof_;
+    Field*  vel_;
+    Field*  scal_;
+    Grid*   grid_;
+    Prof*   prof_;
 
     std::string folder_diag_ = "data";
 

@@ -25,17 +25,20 @@ class AdvectionDiffusion : public Stencil {
         for (lda_t i = 0; i < 3; ++i) {
             u_stream_[i] = u_stream[i];
         }
+
+        ghost_len_need_[0] = m_max(length_advection / 2, length_diffusion / 2);
+        ghost_len_need_[1] = m_max(length_advection / 2, length_diffusion / 2);
         //-------------------------------------------------------------------------
     }
 
-    virtual lid_t NGhost() const override { return m_max(length_advection / 2, length_diffusion / 2); };
+    // virtual lid_t NGhost() const override { return m_max(length_advection / 2, length_diffusion / 2); };
 
    protected:
-    void DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const override;
+    void DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const override;
 };
 
 template <sid_t length_advection, sid_t length_diffusion>
-void AdvectionDiffusion<length_advection, length_diffusion>::DoMagic(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, const bool is_outer, m_ptr<const Field> fid_src, m_ptr<Field> fid_trg) const {
+void AdvectionDiffusion<length_advection, length_diffusion>::DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const {
     m_assert((fid_src->lda() == 3) && (fid_trg->lda() == 3), "the source must be 3 times smaller than the target ");
     static_assert(length_advection == 3 || length_advection == 5, "the size of the stencil is not supported");
     static_assert(length_diffusion == 3 || length_diffusion == 5, "the size of the stencil is not supported");

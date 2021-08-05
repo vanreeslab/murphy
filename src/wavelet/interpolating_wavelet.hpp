@@ -243,7 +243,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Coarsen_(const m_ptr<const interp_ctx_t>& ctx) const override {
+    void Coarsen_(const interp_ctx_t* const  ctx) const override {
         //-------------------------------------------------------------------------
         // filter crap
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
@@ -301,7 +301,7 @@ class InterpolatingWavelet : public Wavelet {
      *
      * @param ctx the interpolation context
      */
-    void RefineZeroDetails_(const m_ptr<const interp_ctx_t>& ctx) const override {
+    void RefineZeroDetails_(const interp_ctx_t* const  ctx) const override {
         m_assert(ctx->alpha == 0.0, "the alpha = %e must be = 0.0", ctx->alpha);
         //-------------------------------------------------------------------------
         constexpr short_t   ks_lim = len_ks_<TN, TNT> / 2;
@@ -342,9 +342,9 @@ class InterpolatingWavelet : public Wavelet {
             //  - if we are odd = the last odd number
             //  - if we are even = the last even number
             const bidx_t lim[3] = {
-                (odd_x) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
-                (odd_y) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2)),
-                (odd_z) ? m_max(0, ks_lim - (1 - ks_lim % 2)) : m_max(0, js_lim - (js_lim % 2))};
+                (odd_x) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2)),
+                (odd_y) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2)),
+                (odd_z) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2))};
 
             m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->srcstart[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx->srcstart[0], (i0_s + (lim[0] + 1) / 2), ctx->srcend[0]);
             m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->srcstart[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx->srcstart[1], (i1_s + (lim[1] + 1) / 2), ctx->srcend[1]);
@@ -384,7 +384,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx 
      */
-    void OverwriteDetailsDualLifting_(const m_ptr<const interp_ctx_t>& ctx) const override {
+    void OverwriteDetailsDualLifting_(const interp_ctx_t* const  ctx) const override {
         m_assert(ctx->alpha == 0.0, "the alpha = %e must be = 0.0", ctx->alpha);
         m_assert((len_ga_<TN, TNT> % 2) == 1, "the filter size must be odd");
         //-------------------------------------------------------------------------
@@ -485,8 +485,8 @@ class InterpolatingWavelet : public Wavelet {
      * @param ctx the interpolation context
      * @param details_max the maximum of the local detail coefficients
      */
-    void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const override {
-        m_assert(*details_max == 0.0, "the value must be 0.0");
+    void Detail_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
+        m_assert(details_max[0] == 0.0, "the value must be 0.0");
         //-------------------------------------------------------------------------
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
         constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
@@ -570,7 +570,7 @@ class InterpolatingWavelet : public Wavelet {
         for_loop(&op, start, end);
     };
 
-    void ForwardWaveletTransform_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const override {
+    void ForwardWaveletTransform_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
         m_assert(*details_max == 0.0, "the value must be 0.0");
         //-------------------------------------------------------------------------
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
@@ -647,7 +647,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const override {
+    void Smooth_(const interp_ctx_t* const  ctx) const override {
         //-------------------------------------------------------------------------
         // filters
         constexpr short_t   js_lim = len_js_<TN, TNT> / 2;
@@ -724,7 +724,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Clear_(const m_ptr<const interp_ctx_t>& ctx) const override{
+    void Clear_(const interp_ctx_t* const  ctx) const override{
         // //-------------------------------------------------------------------------
         // // filters, need the forward ones
         // constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;

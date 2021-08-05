@@ -27,7 +27,7 @@
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpMesh(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
+void DoOpMesh(const O op, F memfunc, const ForestGrid*  grid, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -47,8 +47,8 @@ void DoOpMesh(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
     //     static_assert(is_member || is_member_const, "if the operator is null, the function MUST be a member function of the GridBlock class");
     // }
     // check if we need to send the qid with it
-    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(m_ptr<const qid_t>, T...)>();
-    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(m_ptr<const qid_t>, T...) const>();
+    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* , T...)>();
+    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* , T...) const>();
     constexpr bool with_qid                 = is_member_const_with_qid || is_member_with_qid;
     //-------------------------------------------------------------------------
     // get the grid info
@@ -98,7 +98,7 @@ void DoOpMesh(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpMeshLevel(const O op, F memfunc, m_ptr<const ForestGrid> grid, const level_t lvl, T... data) {
+void DoOpMeshLevel(const O op, F memfunc, const ForestGrid*  grid, const level_t lvl, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -118,8 +118,8 @@ void DoOpMeshLevel(const O op, F memfunc, m_ptr<const ForestGrid> grid, const le
     //     static_assert(is_member || is_member_const, "if the operator is null, the function MUST be a member function of the GridBlock class");
     // }
     // check if we need to send the qid with it
-    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(m_ptr<const qid_t>, T...)>();
-    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(m_ptr<const qid_t>, T...) const>();
+    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* , T...)>();
+    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* , T...) const>();
     constexpr bool with_qid                 = is_member_const_with_qid || is_member_with_qid;
 
     //-------------------------------------------------------------------------
@@ -171,7 +171,7 @@ void DoOpMeshLevel(const O op, F memfunc, m_ptr<const ForestGrid> grid, const le
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpTree(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
+void DoOpTree(const O op, F memfunc, const ForestGrid*  grid, T... data) {
     m_begin;
     //-------------------------------------------------------------------------
     // do some static (=compilation) checks to be sure that the couple O and F is compatible
@@ -190,8 +190,8 @@ void DoOpTree(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
     //     static_assert(is_member || is_member_const, "if the operator is null, the function MUST be a member function of the GridBlock class");
     // }
     // check if we need to send the qid with it
-    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(m_ptr<const qid_t>, T...)>();
-    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(m_ptr<const qid_t>, T...) const>();
+    constexpr bool is_member_with_qid       = std::is_same<F, void (GridBlock::*)(const qid_t* , T...)>();
+    constexpr bool is_member_const_with_qid = std::is_same<F, void (GridBlock::*)(const qid_t* , T...) const>();
     constexpr bool with_qid                 = is_member_const_with_qid || is_member_with_qid;
     //-------------------------------------------------------------------------
     // get the grid info
@@ -199,9 +199,9 @@ void DoOpTree(const O op, F memfunc, m_ptr<const ForestGrid> grid, T... data) {
 
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; ++it) {
         p8est_tree_t* tree    = p8est_tree_array_index(forest->trees, it);
-        const size_t  nqlocal = tree->quadrants.elem_count;
+        const bidx_t  nqlocal = static_cast<bidx_t>(tree->quadrants.elem_count);
 
-        for (size_t bid = 0; bid < nqlocal; ++bid) {
+        for (bidx_t bid = 0; bid < nqlocal; ++bid) {
             p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, bid);
             GridBlock*        block = p4est_GetGridBlock(quad);
 

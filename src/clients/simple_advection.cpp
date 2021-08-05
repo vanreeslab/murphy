@@ -10,66 +10,36 @@
 using std::string;
 using std::to_string;
 
-// static lambda_i3block_t lambda_ring = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, m_ptr<GridBlock> block) -> real_t {
-//     // get the position
-//     real_t pos[3];
-//     m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
+static const lda_t  ring_normal = 2;
+static const real_t sigma       = 0.05;
+static const real_t radius      = 0.25;
+static const real_t beta        = 3;
+static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
+static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
+static const real_t center[3]   = {0.5, 0.5, 0.25};
+static const real_t velocity[3] = {0.0, 0.0, 1.0};
 
-//     const real_t sigma     = 0.05;
-//     const real_t center[3] = {0.5, 0.5, 0.5};
-
-//     // compute the gaussian
-//     const real_t rhox = (pos[0] - center[0]) / sigma;
-//     const real_t rhoy = (pos[1] - center[1]) / sigma;
-//     const real_t rhoz = (pos[2] - center[2]) / sigma;
-//     const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-
-//     return std::exp(-rho);
-// };
-
-// class InitialCondition : public SetValue {
-//    protected:
-//     void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
-//         //-------------------------------------------------------------------------
-//         // get the pointers correct
-//         real_t* data = block->data(fid, 0).Write();
-
-//         auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-//             data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block);
-//         };
-
-//         for_loop(&op, start_, end_);
-//         //-------------------------------------------------------------------------
-//     };
-
-//    public:
-//     explicit InitialCondition() : SetValue(nullptr){};
-// };
+static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+    m_assert(fid->lda() == 3, "the velocity field must be a vector");
+    block->data(fid, 0).Write(i0, i1, i2)[0] = velocity[0];
+    block->data(fid, 1).Write(i0, i1, i2)[0] = velocity[1];
+    block->data(fid, 2).Write(i0, i1, i2)[0] = velocity[2];
+};
 
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
-    if (!prof_.IsEmpty()) {
-        prof_->Disp();
-        prof_.Free();
-    }
-    // free the set values
-    ring_.Free();
-    vel_field_.Free();
-
-    // free the grid
-    // grid_.Free();
     // delete the field
     grid_->DeleteField(vel_);
     grid_->DeleteField(scal_);
-    grid_->DeleteField(sol_);
 
-    vel_.Free();
-    scal_.Free();
-    sol_.Free();
-    // delete the grid
-    grid_.Free();
-
-    m_log("Navier Stokes is dead");
+    delete vel_;
+    delete scal_;
+    delete grid_;
+    
+    if (!(prof_ == nullptr)) {
+        prof_->Disp();
+        delete prof_;
+    }
     //-------------------------------------------------------------------------
 }
 
@@ -82,67 +52,60 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     no_adapt_    = param->no_adapt;
     grid_on_sol_ = param->grid_on_sol;
     weno_        = param->weno;
+    fix_weno_    = param->fix_weno;
     m_assert(weno_ == 3 || weno_ == 5, "the weno order must be 3 or 5");
+
+    // cfl
+    cfl_ = param->cfl_max;
 
     // the the standard stuffs
     if (param->profile) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
         string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
-        prof_.Alloc(name);
+        prof_       = new Prof(name);
     }
 
     // setup the grid
-    // bool        period[3] = {false, false, false};
-    // const lid_t L[3]      = {1, 1, 1};
-    grid_.Alloc(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
-
-    m_assert(grid_.IsOwned(), "the grid must be owned");
+    grid_ = new Grid(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
 
     // set the min/max level
     grid_->level_limit(param->level_min, param->level_max);
 
-    // get the fields
-    scal_.Alloc("scalar", 1);
-    scal_->bctype(M_BC_EXTRAP);
+    //-------------------------------------------------------------------------
+    scal_ = new Field("scalar", 1);
+    scal_->bctype(M_BC_ZERO);
+    // scal_->bctype(M_BC_EXTRAP);
     grid_->AddField(scal_);
 
-    // add the solution as temp
-    sol_.Alloc("sol", 1);
-    sol_->is_temp(true);
-    grid_->AddField(sol_);
-
     // setup the scalar ring
-    real_t velocity[3] = {0.0, 0.0, 1.0};
-    real_t center[3]   = {0.5, 0.5, 0.5};
-    ring_.Alloc(param->vr_normal, center, param->vr_sigma, param->vr_radius, velocity, grid_->interp());
-    ring_->Profile(prof_);
-    ring_->SetTime(0.0);
-    (*ring_)(grid_, scal_);
+    lambda_setvalue_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        // get the position
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        // block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
+        block->data(fid).Write(i0, i1, i2)[0] = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
+    };
+    const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
+                                        m_max(grid_->interp()->nghost_back(), 3)};
+    SetValue     ring(lambda_ring, ghost_len_interp);
+    ring(grid_, scal_);
 
-    // finish the grid
+    // adapt the grid
     if (!no_adapt_) {
         grid_->SetTol(param->refine_tol, param->coarsen_tol);
         grid_->SetRecursiveAdapt(true);
-        grid_->Adapt(scal_, ring_);
+        grid_->Adapt(scal_, &ring);
     }
 
-    // setup the velocity, 1.0 in every direction
-    vel_.Alloc("velocity", 3);
+    //-------------------------------------------------------------------------
+    // set the velocity field
+    vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
     vel_->is_temp(true);
     grid_->AddField(vel_);
-    const lid_t  deg[3]   = {0, 0, 0};
-    const real_t dir[3]   = {1.0, 0.0, 0.0};
-    const real_t shift[3] = {0.0, 0.0, 0.0};
-    vel_field_.Alloc(deg, dir, shift);
-    (*vel_field_)(grid_, vel_, 2);
-    // take the ghosts
-    grid_->GhostPull(vel_);
-
-    // IOH5 dump(folder_diag_);
-    // dump(grid_(), vel_(),0);
-    // dump(grid_(), scal_(),0);
+    SetValue set_velocity(lambda_velocity, ghost_len_interp);
+    set_velocity(grid_, vel_);
 
     tstart_ = param->time_start;
     tfinal_ = param->time_final;
@@ -153,93 +116,112 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 void SimpleAdvection::Run() {
     m_begin;
     //-------------------------------------------------------------------------
-    // time
-    lid_t  iter = 0;
-    real_t t    = tstart_;
-
     // advection
     RKFunctor* advection;
-    if (weno_ == 3) {
-        advection = new Advection<M_WENO_Z, 3>(vel_);
+    if (weno_ == 3 && !fix_weno_) {
+        advection = new Advection<M_WENO_Z, 3>(vel_, prof_);
         m_log("WENO-Z order 3 (cfl = %f)", advection->cfl_rk3());
-    } else if (weno_ == 5) {
-        advection = new Advection<M_WENO_Z, 5>(vel_);
+    } else if (weno_ == 5 && !fix_weno_) {
+        advection = new Advection<M_WENO_Z, 5>(vel_, prof_);
         m_log("WENO-Z order 5 (cfl = %f)", advection->cfl_rk3());
+    } else if (weno_ == 3 && fix_weno_) {
+        advection = new Advection<M_CONS, 3>(vel_, prof_);
+        m_log("CONS order 3 (cfl = %f)", advection->cfl_rk3());
+    } else if (weno_ == 5 && fix_weno_) {
+        advection = new Advection<M_CONS, 5>(vel_, prof_);
+        m_log("CONS order 5 (cfl = %f)", advection->cfl_rk3());
     } else {
         advection = nullptr;
         m_assert(false, "weno order = %d not valid", weno_);
     }
 
     // time integration
-    RK3_TVD rk3(grid_, scal_, advection, prof_);
+    lid_t         iter = 0;
+    real_t        t    = tstart_;
+    const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
 
-    real_t wtime_start = MPI_Wtime();
     // let's gooo
-    m_profStart(prof_(), "run");
+    m_profStart(prof_, "run");
+    const real_t wtime_start = MPI_Wtime();
     while (t < tfinal_ && iter < iter_max()) {
-        m_log("--------------------");
+        m_log("--------------------------------------------------------------------------------");
         //................................................
         // adapt the mesh
         if (iter % iter_adapt() == 0) {
             if (!no_adapt_) {
                 m_log("---- adapt mesh");
-                m_profStart(prof_(), "adapt");
+                m_profStart(prof_, "adapt");
                 if (!grid_on_sol_) {
+                    // adapt on the current field
+                    // BMinMax minmax;
+                    // grid_->GhostPull(scal_, &minmax);
+                    // real_t min, max;
+                    // minmax(grid_, scal_, &min, &max);
+                    // m_log("MINMAX before adaptation: from %e to %e", min, max);
+                    grid_->SetRecursiveAdapt(true);
                     grid_->Adapt(scal_);
+                    // minmax(grid_, scal_, &min, &max);
+                    // m_log("MINMAX: field from %e to %e", min, max);
                 } else {
-                    // update the solution and refine
-                    ring_->SetTime(t);
-                    (*ring_)(grid_, sol_);
-
-                    grid_->Adapt(sol_);
+                    m_assert(false, "this option is not supported without a solution field");
                 }
-                m_profStop(prof_(), "adapt");
+                m_profStop(prof_, "adapt");
 
                 // reset the velocity
-                (*vel_field_)(grid_, vel_, 2);
-                grid_->GhostPull(vel_);
-                m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
+                m_profStart(prof_, "set velocity");
+                // set the velocity field
+                const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
+                                                    m_max(grid_->interp()->nghost_back(), 3)};
+                SetValue     set_velocity(lambda_velocity, ghost_len_interp);
+                set_velocity(grid_, vel_);
+                m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
+                m_profStop(prof_, "set velocity");
             }
         }
-        // we run the first diagnostic
+        // we run the first diagnostic if not done yet
         if (iter == 0) {
-            m_profStart(prof_(), "diagnostics");
+            m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
             real_t wtime_now = MPI_Wtime();
             Diagnostics(t, 0, iter, wtime_now - wtime_start);
-            m_profStop(prof_(), "diagnostics");
+            m_profStop(prof_, "diagnostics");
         }
 
         //................................................
+        m_log("---- do time-step");
+        //................................................
         // get the time-step given the field
+        m_profStart(prof_, "compute dt");
         real_t dt = rk3.ComputeDt(advection, vel_);
+        m_profStop(prof_, "compute dt");
 
         // dump some info
         m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, tfinal_, iter, iter_max(), dt);
 
         //................................................
         // advance in time
-        m_log("---- do time-step");
-        m_profStart(prof_(), "do dt");
+        m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
-        m_profStop(prof_(), "do dt");
+        m_profStop(prof_, "do dt");
 
         //................................................
         // diagnostics, dumps, whatever
         if (iter % iter_diag() == 0) {
-            m_profStart(prof_(), "diagnostics");
             m_log("---- run diag");
+            m_profStart(prof_, "diagnostics");
             real_t time_now = MPI_Wtime();
             Diagnostics(t, dt, iter, time_now);
-            m_profStop(prof_(), "diagnostics");
+            m_profStop(prof_, "diagnostics");
         }
     }
-    m_profStop(prof_(), "run");
+    m_profStop(prof_, "run");
     // run the last diag
     if (iter % iter_diag() != 0) {
+        m_profStart(prof_, "diagnostics");
         real_t time_now = MPI_Wtime();
         Diagnostics(t, 0.0, iter, time_now);
+        m_profStop(prof_, "diagnostics");
     }
 
     // free the advection
@@ -262,36 +244,53 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         mkdir(folder_diag_.c_str(), 0770);
     }
 
-    // get fields moments
+    //................................................
+    m_profStart(prof_, "cmpt moments");
     real_t  moment0;
     real_t  moment1[3];
     BMoment moments;
-    grid_->GhostPull(scal_);
+    grid_->GhostPull(scal_, &moments);
     moments(grid_, scal_, &moment0, moment1);
-    // real_t          dmoment0;
-    // real_t          dmoment1[3];
-    // BDiscreteMoment dmoments;
-    // dmoments(grid_, scal_, &dmoment0, dmoment1);
+    m_profStop(prof_, "cmpt moments");
+    //................................................
+    m_profStart(prof_, "cmpt mean");
     real_t mean_val;
-    BMean  mean;
+    BAvg   mean;
     mean(grid_, scal_, &mean_val);
+    m_profStop(prof_, "cmpt mean");
 
+    //................................................
+    // get the solution at the given time
+
+    const real_t new_center[3] = {center[0] + time * velocity[0],
+                                  center[1] + time * velocity[1],
+                                  center[2] + time * velocity[2]};
+
+    lambda_error_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+        // get the position
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+
+        return scalar_ring(pos, new_center, radius, sigma, ring_normal);
+    };
     // compute the error
     real_t err2, erri;
     Error  error;
-    ring_->SetTime(time);
-    (*ring_)(grid_, sol_);
-    error.Norms(grid_, scal_, m_ptr<const Field>(sol_), &err2, &erri);
+    m_profStart(prof_, "cmpt error");
+    error.Norms(grid_, scal_, &lambda_ring, &err2, &erri);
+    m_profStop(prof_, "cmpt error");
 
     // open the file
+    m_profStart(prof_, "dump diag");
     FILE*   file_error;
     FILE*   file_diag;
-    level_t min_level = grid_->MinLevel();
-    level_t max_level = grid_->MaxLevel();
+    level_t min_level       = grid_->MinLevel();
+    level_t max_level       = grid_->MaxLevel();
+    long    global_num_quad = grid_->global_num_quadrants();
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max
-        fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, grid_->global_num_quadrants(), min_level, max_level);
+        fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, global_num_quad, min_level, max_level);
         fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());
         fprintf(file_diag, ";%e;%e", err2, erri);
@@ -301,15 +300,19 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         fprintf(file_diag, "\n");
         fclose(file_diag);
     }
+    m_profStop(prof_, "dump diag");
 
+    m_profStart(prof_, "dump levels");
     grid_->DumpLevels(iter, folder_diag_, string("_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT)));
+    m_profStop(prof_, "dump levels");
 
+    m_profStart(prof_, "dump field");
     if (iter % iter_dump() == 0 && iter != 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
-        grid_->GhostPull(scal_);
-        dump(grid_(), scal_(), iter);
-        dump(grid_(), sol_(), iter);
+        grid_->GhostPull(scal_, ghost_len_ioh5);
+        dump(grid_, scal_, iter);
+        // dump(grid_, sol_, iter);
 
         // dump the details
         if (dump_detail()) {
@@ -318,13 +321,14 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
             grid_->AddField(&details);
             grid_->StoreDetails(scal_, &details);
 
-            grid_->GhostPull(&details);
+            grid_->GhostPull(&details, ghost_len_ioh5);
             // IOH5 dump("data");
-            dump(grid_(), &details, iter);
+            dump(grid_, &details, iter);
 
             grid_->DeleteField(&details);
         }
     }
+    m_profStop(prof_, "dump field");
     //-------------------------------------------------------------------------
     m_end;
 }

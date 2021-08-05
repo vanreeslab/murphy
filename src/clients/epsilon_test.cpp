@@ -1,5 +1,8 @@
 #include "epsilon_test.hpp"
 
+#include <algorithm>
+#include <vector>
+
 #include "grid/grid.hpp"
 #include "grid/gridcallback.hpp"
 #include "operator/error.hpp"
@@ -7,44 +10,15 @@
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
 
+static const real_t sigma     = 0.05;
+static const real_t radius    = 0.25;
+static const real_t beta      = 3.0;
+static const auto   freq      = std::vector<short_t>{};  //std::vector<short_t>{5, 1000};
+static const auto   amp       = std::vector<real_t>{};   //std::vector<real_t>{0.2, 0.2};
+static const real_t center[3] = {0.5, 0.5, 0.5};
+
 using std::string;
 using std::to_string;
-
-lambda_i3block_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
-    // get the position
-    real_t pos[3];
-    m_pos(pos, i0, i1, i2, block->hgrid(), block->xyz());
-
-    const real_t sigma     = 0.05;
-    const real_t center[3] = {0.5, 0.5, 0.5};
-
-    // compute the gaussian
-    const real_t rhox = (pos[0] - center[0]) / sigma;
-    const real_t rhoy = (pos[1] - center[1]) / sigma;
-    const real_t rhoz = (pos[2] - center[2]) / sigma;
-    const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-
-    return std::exp(-rho);
-};
-
-class InitialCondition : public SetValue {
-   protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
-        //-------------------------------------------------------------------------
-        // get the pointers correct
-        real_t* data = block->data(fid, 0).Write();
-
-        auto op = [=, &data](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            data[m_idx(i0, i1, i2)] = lambda_initcond(i0, i1, i2, block());
-        };
-
-        for_loop(&op, start_, end_);
-        //-------------------------------------------------------------------------
-    };
-
-   public:
-    explicit InitialCondition() : SetValue(nullptr){};
-};
 
 void EpsilonTest::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
@@ -62,14 +36,33 @@ void EpsilonTest::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
 }
 
+// lambdas
+static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+    // get the position
+    real_t pos[3];
+    block->pos(i0, i1, i2, pos);
+    real_t* data = block->data(fid).Write(i0, i1, i2);
+    // set value
+    // data[0] = scalar_exp(pos, center, sigma);
+    data[0] = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+};
+static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+    // get the position
+    real_t pos[3];
+    block->pos(i0, i1, i2, pos);
+    // set value
+    return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+};
+
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
     real_t depsilon = delta_eps_;
     real_t epsilon  = eps_start_;
     m_log("starting with epsilon = %e", epsilon);
     while (epsilon >= std::pow(2.0, -34)) {
+        m_log("================================================================================");
+        //......................................................................
         // create a grid, put a ring on it on the fixel level
-        // bool period[3] = {false, false, false};
         bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
@@ -77,67 +70,47 @@ void EpsilonTest::Run() {
 
         Field scal("scalar", 1);
         grid.AddField(&scal);
-        scal.bctype(M_BC_EXTRAP);
+        scal.bctype(M_BC_ZERO);
 
-        // custon stuffs
-        InitialCondition init;
-
-        // apply it
+        SetValue init(lambda_initcond);
         init(&grid, &scal);
-        grid.SetTol(epsilon * 1e+20, epsilon);
 
-        // grid.GhostPull(&scal);
-        // IOH5 dump("data");
-        // dump(&grid, &scal, 0);
-
-        // compute the moment at the start
-        grid.GhostPull(&scal);
+        //......................................................................
+        // get the moments
         BMoment moment;
-        real_t  sol_moment0, sol_moment1[3];
+        real_t  sol_moment0;
+        real_t  sol_moment1[3];
+        grid.GhostPull(&scal, &moment);
         moment(&grid, &scal, &sol_moment0, sol_moment1);
 
-        // coarsen
-        short_t count     = 1;
-        level_t min_level = level_start_;
-        do {
-            min_level = grid.MinLevel();
-            // coarsen the field if needed
-            grid.Coarsen(&scal);
+        //......................................................................
+        // get the tolerance and epsilon, coarsening only
+        grid.SetTol(epsilon * 1e+20, epsilon);
+        grid.SetRecursiveAdapt(1);
+        grid.Coarsen(&scal);
 
-            level_t tmp_min_lvl = grid.MinLevel();
-            level_t tmp_max_lvl = grid.MaxLevel();
-            m_log("Coarsening: level is now %d to %d", tmp_min_lvl, tmp_max_lvl);
-
-            grid.GhostPull(&scal);
-            real_t coarse_moment0, coarse_moment1[3];
-            moment(&grid, &scal, &coarse_moment0, coarse_moment1);
-            m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
-
-        } while (grid.MinLevel() < min_level && grid.MinLevel() > m_max(0, level_min_));
-
+        //......................................................................
         // measure the moments
-        grid.GhostPull(&scal);
-        real_t coarse_moment0, coarse_moment1[3];
+        grid.GhostPull(&scal, &moment);
+        real_t coarse_moment0;
+        real_t coarse_moment1[3];
         moment(&grid, &scal, &coarse_moment0, coarse_moment1);
-
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
-
-        // dump(&grid,&scal,1);
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();
         level_t grid_level_max = grid.MaxLevel();
         long    nblock         = grid.global_num_quadrants();
 
-        // and go back up
+        //......................................................................
+        // and go back up using the patch-based appproach to force everybody to be back up
         std::list<Patch> patch;
         real_t           origin[3] = {0.0, 0.0, 0.0};
         real_t           length[3] = {(real_t)grid_len[0], (real_t)grid_len[1], (real_t)grid_len[2]};
         patch.push_back(Patch(origin, length, level_start_));
         do {
-            min_level = grid.MinLevel();
-            // force the field refinement using a patch
-            grid.GhostPull(&scal);
+            bidx_t ghost_len[2] = {grid.interp()->nghost_front(), grid.interp()->nghost_back()};
+            grid.GhostPull(&scal, ghost_len);
             grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
             level_t tmp_min_lvl = grid.MinLevel();
@@ -147,19 +120,17 @@ void EpsilonTest::Run() {
         } while (grid.MinLevel() < level_start_);
 
         // set the solution field
-        Field sol("solution", 1);
-        grid.AddField(&sol);
-        init(&grid, &sol);
-        sol.bctype(M_BC_EXTRAP);
-
-        grid.GhostPull(&sol);
-        grid.GhostPull(&scal);
+        // Field sol("solution", 1);
+        // grid.AddField(&sol);
+        // init(&grid, &sol);
+        // sol.bctype(M_BC_EXTRAP);
 
         // measure the error
         real_t normi;
         Error  error;
-        // error.Normi(&grid, &scal, m_ptr<const Field>(&sol), &normi);
-        error.Normi(&grid, &scal, &lambda_initcond, &normi);
+        grid.GhostPull(&scal, &error);
+        // error.Normi(&grid, &scal, const Field* (&sol), &normi);
+        error.Normi(&grid, &scal, &lambda_error, &normi);
 
         grid.DumpLevels(1, "data", string("w" + std::to_string(M_WAVELET_N) + std::to_string(M_WAVELET_NT)));
 
@@ -172,6 +143,7 @@ void EpsilonTest::Run() {
 
         // measure the moments
         real_t moment0, moment1[3];
+        grid.GhostPull(&scal, &moment);
         moment(&grid, &scal, &moment0, moment1);
         real_t dmoment0, dmoment1[3];
         // dmoment(&grid, &scal, &dmoment0, dmoment1);
@@ -226,9 +198,9 @@ void EpsilonTest::Run() {
         }
 
         // cleanup the fields
-        m_log("free fields");
-        grid.DeleteField(&sol);
-        m_log("free fields");
+        // m_log("free fields");
+        // grid.DeleteField(&sol);
+        // m_log("free fields");
         grid.DeleteField(&scal);
 
         // get the new epsilon

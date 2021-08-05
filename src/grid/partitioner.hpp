@@ -58,11 +58,11 @@ class Partitioner {
     GridBlock** new_blocks_         = nullptr;
 
    public:
-    Partitioner(std::map<std::string, m_ptr<Field> >* fields, Grid* grid, bool destructive);
+    Partitioner(std::map<std::string, Field*  >* fields, Grid* grid, bool destructive);
     ~Partitioner();
 
-    void Start(std::map<std::string, m_ptr<Field> >* fields, const m_direction_t dir);
-    void End(std::map<std::string, m_ptr<Field> >* fields, const m_direction_t dir);
+    void Start(std::map<std::string, Field*  >* fields, const m_direction_t dir);
+    void End(std::map<std::string, Field*  >* fields, const m_direction_t dir);
 
    protected:
     void DeallocOldies_();

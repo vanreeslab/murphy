@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v2
       # do the build
       - name: build
-        run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j OPTS="-DWAVELET_N=2 -DWAVELET_NT=0 -DBLOCK_GS=2"
+        run: ARCH_FILE=make_arch/make.docker_gcc_test make test -j OPTS="-DWAVELET_N=2 -DWAVELET_NT=0 -DBLOCK_GS=4"
       # run the tests
       - name: run_mpi
         run: OMPI_MCA_btl_vader_single_copy_mechanism=none OMP_NUM_THREADS=1 mpirun --allow-run-as-root -n 7 ./murphy_test

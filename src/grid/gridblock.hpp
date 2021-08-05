@@ -10,7 +10,7 @@
 #include "core/types.hpp"
 #include "grid/cartblock.hpp"
 #include "grid/forestgrid.hpp"
-#include "grid/ghostblock.hpp"
+#include "grid/neighborblock.hpp"
 #include "grid/physblock.hpp"
 #include "tools/patch.hpp"
 #include "tools/prof.hpp"
@@ -20,9 +20,9 @@
 
 typedef enum StatusAdapt {
     M_ADAPT_NONE,
+    M_ADAPT_SAME,
     M_ADAPT_COARSER,
     M_ADAPT_FINER,
-    M_ADAPT_SAME,
     M_ADAPT_NEW_COARSE,
     M_ADAPT_NEW_FINE
 } StatusAdapt;
@@ -32,23 +32,24 @@ typedef enum StatusAdapt {
  * 
  */
 class GridBlock : public CartBlock {
-   protected:
-    StatusAdapt status_lvl_ = M_ADAPT_NONE;   //!< indicat the status of the level: +1 should refine, -1 should coarsen
-    short_t*    status_ngh_;                  //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
-    short_t     n_dependency_active_ = 0;     //!< list of dependency = how to create my information after refinement/coarsening
-    GridBlock*  dependency_[P8EST_CHILDREN];  //!< the pointer to the dependency block
+   private:
+    bidx_t      ghost_len_[2];                               //!< contains the current ghost length
+    StatusAdapt status_lvl_                 = M_ADAPT_NONE;  //!< indicate the status of the block
+    short_t*    status_ngh_                 = nullptr;       //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
+    short_t     n_dependency_active_        = 0;             //!< list of dependency = how to create my information after refinement/coarsening
+    GridBlock*  dependency_[P8EST_CHILDREN] = {nullptr};     //!< the pointer to the dependency block
 
     mem_ptr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
 
     // list of ghosting
-    std::list<GhostBlock<GridBlock*>*> local_sibling_;         //<! local neighbors at my resolution
-    std::list<GhostBlock<GridBlock*>*> local_parent_;          //!< local neighbors coarser (neighbor to me)
-    std::list<GhostBlock<GridBlock*>*> local_children_;        //!< local neighbors finer
-    std::list<GhostBlock<GridBlock*>*> local_parent_reverse_;  //!< local neighbors coarser (me to neighbors)
-    std::list<GhostBlock<MPI_Aint>*>   ghost_sibling_;         //<! ghost neighbors at my resolution
-    std::list<GhostBlock<MPI_Aint>*>   ghost_parent_;          //!< ghost neighbors coarser (neighbor to me)
-    std::list<GhostBlock<MPI_Aint>*>   ghost_children_;        //!< ghost neighbors coarser (neighbor to me)
-    std::list<GhostBlock<MPI_Aint>*>   ghost_parent_reverse_;  //!<  ghost neighbors coarser (me to neighbors)
+    std::list<NeighborBlock<GridBlock*>*> local_sibling_;         //<! local neighbors at my resolution
+    std::list<NeighborBlock<GridBlock*>*> local_parent_;          //!< local neighbors coarser (neighbor to me)
+    std::list<NeighborBlock<GridBlock*>*> local_children_;        //!< local neighbors finer
+    std::list<NeighborBlock<GridBlock*>*> local_parent_reverse_;  //!< local neighbors coarser (me to neighbors)
+    std::list<NeighborBlock<MPI_Aint>*>   ghost_sibling_;         //<! ghost neighbors at my resolution
+    std::list<NeighborBlock<MPI_Aint>*>   ghost_parent_;          //!< ghost neighbors coarser (neighbor to me)
+    std::list<NeighborBlock<MPI_Aint>*>   ghost_children_;        //!< ghost neighbors coarser (neighbor to me)
+    std::list<NeighborBlock<MPI_Aint>*>   ghost_parent_reverse_;  //!<  ghost neighbors coarser (me to neighbors)
     std::list<PhysBlock*>              phys_;                  //!<  physical boundary condition
 
    public:
@@ -63,18 +64,18 @@ class GridBlock : public CartBlock {
     void        status_level(const StatusAdapt status) { status_lvl_ = status; };
     void        ResetStatus() { status_lvl_ = M_ADAPT_NONE; };
 
-    void UpdateStatusFromCriterion(/* params */ m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion,
-                                   /* prof */ m_ptr<Prof> profiler);
-    void UpdateStatusFromPatches(/* params */ m_ptr<const Wavelet> interp, m_ptr<std::list<Patch> > patch_list,
-                                 /* prof */ m_ptr<Prof> profiler);
+    void UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
+                                   /* prof */ Prof* profiler);
+    void UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
+                                 /* prof */ Prof* profiler);
     void UpdateStatusFromPolicy();
 
-    void StoreDetails(m_ptr<const Wavelet> interp, m_ptr<const Field> criterion, m_ptr<const Field> details);
-    void UpdateSmoothingMask(const m_ptr<const Wavelet>& interp);
+    void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
+    void UpdateSmoothingMask(const Wavelet* const interp);
 
-    void FWTAndGetStatus(m_ptr<const Wavelet> interp, const real_t rtol, const real_t ctol, m_ptr<const Field> field_citerion, m_ptr<Prof> profiler);
-    void SetNewByCoarsening(m_ptr<const qid_t> qid, const m_ptr<short_t> coarsen_vec) const;
-    void GetNewByCoarseningFromNeighbors(const m_ptr<const short_t> status_vec, MPI_Win status_window);
+    // void FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler);
+    void SetNewByCoarsening(const qid_t*  qid, short_t* const  coarsen_vec) const;
+    void GetNewByCoarseningFromNeighbors(const short_t* const  status_vec, MPI_Win status_window);
     void UpdateDetails();
     /** @} */
 
@@ -86,9 +87,9 @@ class GridBlock : public CartBlock {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
-    void       SmoothResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
-    void       ClearResolutionJump(m_ptr<const Wavelet> interp, std::map<std::string, m_ptr<Field> >::const_iterator field_start, std::map<std::string, m_ptr<Field> >::const_iterator field_end, m_ptr<Prof> profiler);
+    void       SolveDependency(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
+    void       SmoothResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
+    // void       ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
     /** @} */
 
     /**
@@ -103,23 +104,25 @@ class GridBlock : public CartBlock {
      * @name return the ghost lists
      * @{
      */
-    std::list<GhostBlock<GridBlock*>*>* local_sibling() { return &local_sibling_; };
-    std::list<GhostBlock<GridBlock*>*>* local_parent() { return &local_parent_; };
-    std::list<GhostBlock<GridBlock*>*>* local_children() { return &local_children_; };
-    std::list<GhostBlock<GridBlock*>*>* local_parent_reverse() { return &local_parent_reverse_; };
-    std::list<GhostBlock<MPI_Aint>*>*   ghost_sibling() { return &ghost_sibling_; };
-    std::list<GhostBlock<MPI_Aint>*>*   ghost_parent() { return &ghost_parent_; };
-    std::list<GhostBlock<MPI_Aint>*>*   ghost_children() { return &ghost_children_; };
-    std::list<GhostBlock<MPI_Aint>*>*   ghost_parent_reverse() { return &ghost_parent_reverse_; };
-    std::list<PhysBlock*>*              phys() { return &phys_; };
+    std::list<NeighborBlock<GridBlock*>*>* local_sibling() { return &local_sibling_; };
+    std::list<NeighborBlock<GridBlock*>*>* local_parent() { return &local_parent_; };
+    std::list<NeighborBlock<GridBlock*>*>* local_children() { return &local_children_; };
+    std::list<NeighborBlock<GridBlock*>*>* local_parent_reverse() { return &local_parent_reverse_; };
+    std::list<NeighborBlock<MPI_Aint>*>*   ghost_sibling() { return &ghost_sibling_; };
+    std::list<NeighborBlock<MPI_Aint>*>*   ghost_parent() { return &ghost_parent_; };
+    std::list<NeighborBlock<MPI_Aint>*>*   ghost_children() { return &ghost_children_; };
+    std::list<NeighborBlock<MPI_Aint>*>*   ghost_parent_reverse() { return &ghost_parent_reverse_; };
+    std::list<PhysBlock*>*                 phys() { return &phys_; };
     /**@} */
 
-    void GhostInitLists(m_ptr<const qid_t> qid, m_ptr<const ForestGrid> grid, m_ptr<const Wavelet> interp, MPI_Win local2disp_window);
-    void GhostGet_Cmpt(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
-    void GhostGet_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window);
-    void GhostGet_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
-    void GhostPut_Post(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp, MPI_Win mirrors_window);
-    void GhostPut_Wait(m_ptr<const Field> field, const lda_t ida, m_ptr<const Wavelet> interp);
+    void GhostUpdateSize(const bidx_t ghost_len[2]);
+
+    void GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window);
+    void GhostGet_Cmpt(const Field* field, const lda_t ida, const Wavelet* interp);
+    void GhostGet_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
+    void GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
+    void GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
+    void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
     void GhostFreeLists();
 
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);

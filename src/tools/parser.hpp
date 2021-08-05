@@ -21,16 +21,19 @@ struct ParserArguments {
     bool do_simple_adv    = false;
     bool do_epsilon_test  = false;
     bool do_debug_lifting = false;
+    bool do_conv_weno     = false;
 
     real_t reynolds    = 0.0;
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
 
     real_t time_start = 0.0;
-    real_t time_final = 0.1;
+    real_t time_final = 0.5;
 
     real_t eps_start = 0.1;
     real_t delta_eps = 0.1;
+
+    real_t cfl_max = 100.0;
 
     level_t level_min = 0;
     level_t level_max = P8EST_QMAXLEVEL;
@@ -51,6 +54,7 @@ struct ParserArguments {
     iter_t iter_dump     = 1;
     // bool   no_weno       = false;
     // bool   weno_5        = false;
+    bool fix_weno    = false;
     int  weno        = 3;
     bool grid_on_sol = false;
 };

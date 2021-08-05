@@ -14,93 +14,128 @@
 
 #define DOUBLE_TOL 1e-13
 
+
+static const real_t center[3] = {1.5, 1.5, 1.5};
+static const real_t sigma     = 0.1;
+
 //=====================================================================================================
 // small wrapper class around a Setvalue to access it using RK
-class RKRhs : public RKFunctor, public SetValue {
+class RKRhs : public RKFunctor {
    protected:
-    bool accumulate_ = false;
-
-    lda_t  ida_       = 0;
-    real_t center_[3] = {0.0, 0.0, 0.0};
-    real_t sigma_[3]  = {0.0, 0.0, 0.0};
-    real_t alpha_     = 1.0;
-    real_t time_      = 0.0;
+    const lda_t vel_dir_;
+    const Wavelet* interp_;
 
    public:
-    RKRhs(const real_t center[3], const real_t sigma[3], const real_t alpha, const lda_t ida, m_ptr<const Wavelet> interp) : SetValue(interp) {
-        m_begin;
-        m_assert(0 <= ida && ida <= 2, "the direction must be in [0,3[");
-        //-------------------------------------------------------------------------
-        for (int id = 0; id < 3; id++) {
-            center_[id] = center[id];
-            sigma_[id]  = sigma[id];
-        }
-        alpha_ = alpha;
-        ida_   = ida;
-        //-------------------------------------------------------------------------
-        m_end;
-    }
+    RKRhs(const lda_t vel_dir, const Wavelet* interp): interp_(interp),vel_dir_(vel_dir){}
 
     // rk functor
     real_t cfl_rk3() const override { return 1.0; }
     real_t rdiff() const override { return 1.0; }
 
-    void RhsSet(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
-        accumulate_ = false;
-        time_       = time;
-        m_log("time is now %e, evaluate the rhs with ida = %d", time_, ida_);
+    void RhsSet(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         m_log("evaluation in field %s", field_y->name().c_str());
-        SetValue::operator()(grid, field_y);
-        accumulate_ = false;
+        m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
+
+        // get factors
+        const real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
+        const real_t fact      = (-2.0 * oo_sigma2);  //;* sqrt(1.0 / M_PI * oo_sigma2);
+
+        const real_t new_center[3] = {center[0] + time * (vel_dir_ == 0),
+                                      center[1] + time * (vel_dir_ == 1),
+                                      center[2] + time * (vel_dir_ == 2)};
+
+        m_log("new center = %f %f %f", new_center[0], new_center[1], new_center[2]);
+
+        lambda_setvalue_t lambda_set = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+
+            // compute the gaussian
+            const real_t rhox = (sigma > 0) ? ((pos[0] - new_center[0]) / sigma) : 0.0;
+            const real_t rhoy = (sigma > 0) ? ((pos[1] - new_center[1]) / sigma) : 0.0;
+            const real_t rhoz = (sigma > 0) ? ((pos[2] - new_center[2]) / sigma) : 0.0;
+            const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
+            const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
+
+            block->data(fid).Write(i0, i1, i2)[0] = -fact * std::exp(-rho) * dpos;
+        };
+
+        SetValue init(lambda_set);
+        init(grid, field_y);
     };
-    void RhsAcc(m_ptr<const Grid> grid, const real_t time, m_ptr<Field> field_u, m_ptr<Field> field_y) override {
-        accumulate_ = true;
-        time_       = time;
-        SetValue::operator()(grid, field_y);
-        accumulate_ = false;
+    void RhsAcc(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
+        m_log("evaluation in field %s", field_y->name().c_str());
+        m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
+
+        // get factors
+        const real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
+        const real_t fact      = (-2.0 * oo_sigma2);  //;* sqrt(1.0 / M_PI * oo_sigma2);
+
+        const real_t new_center[3] = {center[0] + time * (vel_dir_ == 0),
+                                      center[1] + time * (vel_dir_ == 1),
+                                      center[2] + time * (vel_dir_ == 2)};
+
+        lambda_setvalue_t lambda_acc = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+
+            // compute the gaussian
+            const real_t rhox = (sigma > 0) ? ((pos[0] - new_center[0]) / sigma) : 0.0;
+            const real_t rhoy = (sigma > 0) ? ((pos[1] - new_center[1]) / sigma) : 0.0;
+            const real_t rhoz = (sigma > 0) ? ((pos[2] - new_center[2]) / sigma) : 0.0;
+            const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
+            const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
+
+            block->data(fid).Write(i0, i1, i2)[0] -= fact * std::exp(-rho) * dpos;
+        };
+
+        SetValue init(lambda_acc);
+        init(grid, field_y);
     };
 
-   protected:
-    void FillGridBlock(m_ptr<const qid_t> qid, m_ptr<GridBlock> block, m_ptr<Field> fid) override {
-        //-------------------------------------------------------------------------
-        real_t        pos[3];
-        const real_t* xyz   = block->xyz();
-        const real_t* hgrid = block->hgrid();
+//    protected:
+//     void FillGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid) override {
+//         //-------------------------------------------------------------------------
+//         real_t        pos[3];
+//         const real_t* xyz   = block->xyz();
+//         const real_t* hgrid = block->hgrid();
 
-        real_t sigma     = sqrt(sigma_[0] * sigma_[0] + sigma_[1] * sigma_[1] + sigma_[2] * sigma_[2]);
-        real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
-        real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2) * (-2.0 / pow(sigma_[ida_], 2));  // * alpha_ * sqrt(1.0 / M_PI) * (1.0 / (sigma * sigma * sigma));
+//         real_t sigma     = sqrt(sigma_[0] * sigma_[0] + sigma_[1] * sigma_[1] + sigma_[2] * sigma_[2]);
+//         real_t oo_sigma2 = (sigma > 0.0) ? 1.0 / (sigma * sigma) : 0.0;
+//         real_t fact      = alpha_ * sqrt(1.0 / M_PI * oo_sigma2) * (-2.0 / pow(sigma_[ida_], 2));  // * alpha_ * sqrt(1.0 / M_PI) * (1.0 / (sigma * sigma * sigma));
 
-        real_t reset = (accumulate_) ? 1.0 : 0.0;
+//         real_t reset = (accumulate_) ? 1.0 : 0.0;
 
-        real_t center[3] = {center_[0] + time_ * (0 == ida_),
-                            center_[1] + time_ * (1 == ida_),
-                            center_[2] + time_ * (2 == ida_)};
+//         real_t center[3] = {center_[0] + time_ * (0 == ida_),
+//                             center_[1] + time_ * (1 == ida_),
+//                             center_[2] + time_ * (2 == ida_)};
 
-        data_ptr block_data = block->data(fid);
-        for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
-            real_t* data = block_data.Write(ida, block());
-            for (lid_t i2 = start_; i2 < end_; i2++) {
-                for (lid_t i1 = start_; i1 < end_; i1++) {
-                    for (lid_t i0 = start_; i0 < end_; i0++) {
-                        // get the position
-                        m_pos(pos, i0, i1, i2, hgrid, xyz);
-                        // compute the gaussian
-                        const real_t rhox = (sigma_[0] > 0) ? ((pos[0] - center[0]) / sigma_[0]) : 0.0;
-                        const real_t rhoy = (sigma_[1] > 0) ? ((pos[1] - center[1]) / sigma_[1]) : 0.0;
-                        const real_t rhoz = (sigma_[2] > 0) ? ((pos[2] - center[2]) / sigma_[2]) : 0.0;
-                        const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
+//         data_ptr block_data = block->data(fid);
+//         for (lda_t ida = ida_start_; ida < ida_end_; ida++) {
+//             real_t* data = block_data.Write(ida, block);
+//             for (lid_t i2 = start_; i2 < end_; i2++) {
+//                 for (lid_t i1 = start_; i1 < end_; i1++) {
+//                     for (lid_t i0 = start_; i0 < end_; i0++) {
+//                         // get the position
+//                         m_pos(pos, i0, i1, i2, hgrid, xyz);
+//                         // compute the gaussian
+//                         const real_t rhox = (sigma_[0] > 0) ? ((pos[0] - center[0]) / sigma_[0]) : 0.0;
+//                         const real_t rhoy = (sigma_[1] > 0) ? ((pos[1] - center[1]) / sigma_[1]) : 0.0;
+//                         const real_t rhoz = (sigma_[2] > 0) ? ((pos[2] - center[2]) / sigma_[2]) : 0.0;
+//                         const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
 
-                        const real_t dpos = (pos[ida_] - center[ida_]);
+//                         const real_t dpos = (pos[ida_] - center[ida_]);
 
-                        data[m_idx(i0, i1, i2)] = 0.0;  // *= reset;
-                        data[m_idx(i0, i1, i2)] -= fact * std::exp(-rho) * dpos;
-                    }
-                }
-            }
-        }
-        //-------------------------------------------------------------------------
-    }
+//                         data[m_idx(i0, i1, i2)] = 0.0;  // *= reset;
+//                         data[m_idx(i0, i1, i2)] -= fact * std::exp(-rho) * dpos;
+//                     }
+//                 }
+//             }
+//         }
+//         //-------------------------------------------------------------------------
+//     }
 };
 
 class valid_RK : public ::testing::Test {
@@ -131,7 +166,7 @@ TEST_F(valid_RK, rk3_tvd) {
     grid.Adapt(&patch);
 
     // obtain the time at evaluation as M_N/2 mesh points
-    const real_t cfl          = 0.5;  // cfl = dt/dx
+    const real_t cfl          = 1.0;  // cfl = dt/dx
     const real_t dt_ref       = cfl * grid.FinestH();
     const iter_t iter_max_ref = 1;
     const real_t time_sol     = iter_max_ref * dt_ref;
@@ -147,18 +182,26 @@ TEST_F(valid_RK, rk3_tvd) {
 
         // get the fields
         string phiName = "phi" + std::to_string(id);
-        string solName = "sol" + std::to_string(id);
+        // string solName = "sol" + std::to_string(id);
         Field  phi(phiName, 1);
-        Field  sol(solName, 1);
+        // Field  sol(solName, 1);
         grid.AddField(&phi);
-        grid.AddField(&sol);
+        // grid.AddField(&sol);
 
         // set the field - inital condition
-        const real_t   center[3] = {1.5, 1.5, 1.5};
-        const real_t   sigma[3]  = {0.1, 0.1, 0.1};
-        const real_t   alpha     = 1.0;
-        SetExponential phi_init(center, sigma, alpha, grid.interp());
-        phi_init(&grid, &phi);
+        // const real_t center[3] = {1.5, 1.5, 1.5};
+        // const real_t sigma     = 0.1;  //{0.1, 0.1, 0.1};
+        // const real_t   alpha     = 1.0;
+        // SetExponential phi_init(center, sigma, alpha, grid.interp());
+        // phi_init(&grid, &phi);
+        lambda_setvalue_t lambda_initcond = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+            block->data(fid).Write(i0, i1, i2)[0] = scalar_exp(pos, center, sigma);
+        };
+        SetValue init(lambda_initcond);
+        init(&grid, &phi);
 
         // check the min and max
         real_t  min_init, max_init;
@@ -166,7 +209,7 @@ TEST_F(valid_RK, rk3_tvd) {
         minmax(&grid, &phi, &min_init, &max_init);
 
         // set the rhs
-        RKRhs rhs(center, sigma, alpha, 2, grid.interp());
+        RKRhs rhs(2, grid.interp());
 
         // set the RK
         RK3_TVD rk3(&grid, &phi, &rhs, nullptr);
@@ -184,14 +227,22 @@ TEST_F(valid_RK, rk3_tvd) {
 
         m_log("solution is taken at time %e", time);
         // set the solution, assume velocity in Z: u = (0,0,1)
-        const real_t center_sol[3] = {1.5, 1.5, 1.5 + 1 * time};
+        const real_t center_sol[3] = {center[0],
+                                      center[1],
+                                      center[2] + 1.0 * time};
         // const real_t   center_sol[3] = {1.5, 1.5, 1.5};
-        SetExponential sol_init(center_sol, sigma, alpha, grid.interp());
-        sol_init(&grid, &sol);
+        // SetExponential sol_init(center_sol, sigma, alpha, grid.interp());
+        // sol_init(&grid, &sol);
+        lambda_error_t lambda_sol = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+            return scalar_exp(pos, center_sol, sigma);
+        };
 
         // compute the error
         Error error;
-        error.Normi(&grid, &phi, m_ptr<const Field>(&sol), erri_tvd + id);
+        error.Normi(&grid, &phi, &lambda_sol, erri_tvd + id);
         m_log("RK3 - TVD: checking iter_max = %d, ei = %e", iter_max, erri_tvd[id]);
 
         // check the min and max
@@ -205,7 +256,7 @@ TEST_F(valid_RK, rk3_tvd) {
 
         // destroy the world
         grid.DeleteField(&phi);
-        grid.DeleteField(&sol);
+        // grid.DeleteField(&sol);
     }
 
     real_t convi = -log(erri_tvd[1] / erri_tvd[0]) / log(2);

@@ -61,29 +61,29 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
     m_end;
 }
 
-/**
- * @brief copies the p4est forest of another grid while keeping the block address
- * 
- * @param grid the other grid to copy
- */
-void ForestGrid::CopyFrom(m_ptr<const ForestGrid> grid) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    // copy the existing forest, including the memory adress to the GridBlock
-    is_connect_owned_ = false;
-    p4est_forest_     = p8est_copy(grid->p4est_forest(), 1);
-    // set the pointer to null
-    p4est_forest_->user_pointer = nullptr;
-    // store the domain periodicity and domain size
-    domain_length_[0]   = grid->domain_length(0);
-    domain_length_[1]   = grid->domain_length(1);
-    domain_length_[2]   = grid->domain_length(2);
-    domain_periodic_[0] = grid->domain_periodic(0);
-    domain_periodic_[1] = grid->domain_periodic(1);
-    domain_periodic_[2] = grid->domain_periodic(2);
-    //-------------------------------------------------------------------------
-    m_end;
-}
+// /**
+//  * @brief copies the p4est forest of another grid while keeping the block address
+//  * 
+//  * @param grid the other grid to copy
+//  */
+// void ForestGrid::CopyFrom(const ForestGrid*  grid) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     // copy the existing forest, including the memory adress to the GridBlock
+//     is_connect_owned_ = false;
+//     p4est_forest_     = p8est_copy(grid->p4est_forest(), 1);
+//     // set the pointer to null
+//     p4est_forest_->user_pointer = nullptr;
+//     // store the domain periodicity and domain size
+//     domain_length_[0]   = grid->domain_length(0);
+//     domain_length_[1]   = grid->domain_length(1);
+//     domain_length_[2]   = grid->domain_length(2);
+//     domain_periodic_[0] = grid->domain_periodic(0);
+//     domain_periodic_[1] = grid->domain_periodic(1);
+//     domain_periodic_[2] = grid->domain_periodic(2);
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 /**
  * @brief Destroy the Forest Grid, reset the ghost and the mesh and clean everything from the p4est side
@@ -120,12 +120,17 @@ void ForestGrid::DestroyP4estMeshAndGhost() {
     if (p4est_mesh_ != nullptr) {
         p8est_mesh_destroy(p4est_mesh_);
         p4est_mesh_ = nullptr;
-        m_log("destroyed the old mesh!!");
+        m_verb("destroyed the old mesh!!");
     }
     if (p4est_ghost_ != nullptr) {
         p8est_ghost_destroy(p4est_ghost_);
         p4est_ghost_ = nullptr;
+        m_verb("destroyed the old ghosts!!");
     }
+    // invalidate the levels
+    global_max_level_ = -1;
+    global_min_level_ = -1;
+
     // unvalidate the mesh
     is_mesh_valid_ = false;
     //-------------------------------------------------------------------------
@@ -147,6 +152,33 @@ void ForestGrid::SetupP4estMeshAndGhost() {
     p4est_mesh_ = p8est_mesh_new_ext(p4est_forest_, p4est_ghost_, 1, 1, P8EST_CONNECT_FULL);
     m_verb("done with mesh");
     is_mesh_valid_ = true;
+
+    {  // compute the levels: MAX
+        level_t il = P8EST_QMAXLEVEL;
+        for (il = P8EST_QMAXLEVEL; il >= 0; --il) {
+            if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
+                break;
+            }
+        }
+        m_assert(sizeof(level_t) == sizeof(short), "the MPI call is done for a char");
+        MPI_Allreduce(&il, &global_max_level_, 1, MPI_SHORT, MPI_MAX, MPI_COMM_WORLD);
+        m_assert(global_max_level_ >= 0, "the level=%d must be >=0", global_max_level_);
+    }
+
+    {  // compute the levels: MIN
+        level_t il = 0;
+        for (il = 0; il <= P8EST_QMAXLEVEL; ++il) {
+            if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
+                break;
+            }
+        }
+
+        // get the max among the cpus
+        m_assert(sizeof(level_t) == sizeof(short), "the MPI call is done for a char");
+        MPI_Allreduce(&il, &global_min_level_, 1, MPI_SHORT, MPI_MIN, MPI_COMM_WORLD);
+        m_assert(global_min_level_ >= 0, "the level=%d must be >=0", global_min_level_);
+    }
+
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -158,19 +190,21 @@ void ForestGrid::SetupP4estMeshAndGhost() {
  */
 level_t ForestGrid::MaxLevel() const {
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
-    //-------------------------------------------------------------------------
-    level_t il = P8EST_QMAXLEVEL;
-    for (il = P8EST_QMAXLEVEL; il >= 0; --il) {
-        if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
-            break;
-        }
-    }
-    level_t global_level = P8EST_QMAXLEVEL;
-    m_assert(sizeof(level_t) == sizeof(short),"the MPI call is done for a char");
-    MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MAX, MPI_COMM_WORLD);
-    m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
-    return global_level;
-    //-------------------------------------------------------------------------
+    m_assert(global_max_level_ > -1, "the max level has not been computed yet");
+    return global_max_level_;
+    // //-------------------------------------------------------------------------
+    // level_t il = P8EST_QMAXLEVEL;
+    // for (il = P8EST_QMAXLEVEL; il >= 0; --il) {
+    //     if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
+    //         break;
+    //     }
+    // }
+    // level_t global_level = P8EST_QMAXLEVEL;
+    // m_assert(sizeof(level_t) == sizeof(short), "the MPI call is done for a char");
+    // MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MAX, MPI_COMM_WORLD);
+    // m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
+    // return global_level;
+    // //-------------------------------------------------------------------------
 }
 
 /**
@@ -180,21 +214,23 @@ level_t ForestGrid::MaxLevel() const {
  */
 level_t ForestGrid::MinLevel() const {
     m_assert(is_mesh_valid(), "the mesh must be valid to return the max level");
-    //-------------------------------------------------------------------------
-    level_t il = 0;
-    for (il = 0; il <= P8EST_QMAXLEVEL; ++il) {
-        if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
-            break;
-        }
-    }
+    m_assert(global_min_level_ > -1, "the max level has not been computed yet");
+    return global_min_level_;
+    // //-------------------------------------------------------------------------
+    // level_t il = 0;
+    // for (il = 0; il <= P8EST_QMAXLEVEL; ++il) {
+    //     if (p4est_NumQuadOnLevel(p4est_mesh_, il) != 0) {
+    //         break;
+    //     }
+    // }
 
-    // get the max among the cpus
-    level_t global_level = 0;
-    m_assert(sizeof(level_t) == sizeof(short),"the MPI call is done for a char");
-    MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MIN, MPI_COMM_WORLD);
-    m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
-    return global_level;
-    //-------------------------------------------------------------------------
+    // // get the max among the cpus
+    // level_t global_level = 0;
+    // m_assert(sizeof(level_t) == sizeof(short),"the MPI call is done for a char");
+    // MPI_Allreduce(&il, &global_level, 1, MPI_SHORT, MPI_MIN, MPI_COMM_WORLD);
+    // m_assert(global_level >= 0, "the level=%d must be >=0", global_level);
+    // return global_level;
+    // //-------------------------------------------------------------------------
 }
 
 real_t ForestGrid::FinestH() const {

@@ -3,20 +3,21 @@
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "subblock.hpp"
-#include "boundary.hpp"
+#include "ghostblock.hpp"
 
 /**
  * @brief Physical block: a @ref SubBlock that will be used to apply a physical boundary condition
  * 
  */
-class PhysBlock : public SubBlock {
+class PhysBlock : public GhostBlock {
    protected:
-    sid_t iface_;  //!< ID of the normal to the face
+    const iface_t iface_;  //!< ID of the normal to the face
+
    public:
-    sid_t iface() { return iface_; }
-    // sid_t dir() { return iface_ / 2; }
-    PhysBlock(const iface_t iface, const MemLayout* block, const lid_t nghost_front, const lid_t nghost_back);
+    PhysBlock() = delete;
+    PhysBlock(const bidx_t (*const ghost_len)[2], const iface_t iface, const MemLayout* block);
+
+    iface_t iface() { return iface_; }
 };
 
 #endif  // SRC_PHYSBLOCK_HPP_

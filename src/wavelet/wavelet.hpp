@@ -69,24 +69,24 @@ class Wavelet {
     * @{
     */
    public:
-    void Copy(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
-    void GetRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, MPI_Aint disp_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
-    void PutRma(const level_t dlvl, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, MPI_Aint disp_src, const MemLayout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
+    void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
-                     /* target */ const m_ptr<const MemLayout>& detail_block) const;
-    void   Details(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
-                 /* target */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail, const real_t tol,
-                 /* output*/ m_ptr<real_t> details_max) const;
-    void   SmoothOnMask(/* source */ const m_ptr<const MemLayout>& block_src,
-                      /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data,
-                      /* detail */ const m_ptr<const MemLayout>& detail_block, const data_ptr& detail_mask) const;
-    void   OverwriteDetails(/* source */ const m_ptr<const MemLayout>& block_src,
-                          /* target */ const m_ptr<const MemLayout>& block_trg, const data_ptr& data) const;
-    void   StoreDetails(/* source */ const m_ptr<const MemLayout>& block_src, const const_data_ptr& data,
-                           /* target */ const m_ptr<const MemLayout>& block_detail, const data_ptr& detail) const;
+    real_t Criterion(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
+                     /* target */ const MemLayout* const  detail_block) const;
+    void   Details(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
+                 /* target */ const MemLayout* const  detail_block, const data_ptr& detail, const real_t tol,
+                 /* output*/ real_t*  details_max) const;
+    void   SmoothOnMask(/* source */ const MemLayout* const  block_src,
+                      /* target */ const MemLayout* const  block_trg, const data_ptr& data,
+                      /* detail */ const MemLayout* const  detail_block, const data_ptr& detail_mask) const;
+    void   OverwriteDetails(/* source */ const MemLayout* const  block_src,
+                          /* target */ const MemLayout* const  block_trg, const data_ptr& data) const;
+    void   StoreDetails(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
+                           /* target */ const MemLayout* const  block_detail, const data_ptr& detail) const;
     /** @} */
 
     //................................................
@@ -155,6 +155,19 @@ class Wavelet {
         // const bidx_t last_scal = last_pt - (1 - (last_pt % 2));  // remove the last point if it's a detail
         // this is how the access is actually made as we skip every detail point
         return m_max((last_pt + 1) / 2, 0);
+    };
+
+    const bidx_t nghost_front_overwrite() const {
+        const bidx_t n_ga   = len_ga() / 2;
+        // overwrites only takes place at the first point
+        const bidx_t last_pt = n_ga-1;
+        return m_max(last_pt, 0);
+    };
+    const bidx_t nghost_back_overwrite() const {
+        const bidx_t n_ga = len_ga() / 2;
+        // overwrites only takes place at the first point
+        const bidx_t last_pt = n_ga;
+        return m_max(last_pt, 0);
     };
 
     /**
@@ -249,7 +262,8 @@ class Wavelet {
         return (is_detail)*lim_detail + (!is_detail) * lim_scaling;
     };
 
-    // nghosts
+
+    // nghosts needed for the interpolation
     const bidx_t nghost_front() const {
         const bidx_t min_wavelet = m_max(nghost_front_coarsen(),
                                          m_max(nghost_front_refine(),
@@ -262,37 +276,38 @@ class Wavelet {
                                                nghost_back_criterion_smooth()));
         return m_max(min_wavelet, M_GS_MIN);
     }
-
+    
     /** @} */
 
     /**
      * @name Coarse sizes
      * @{
      */
-    inline bidx_t CoarseNGhostFront() const {
-        // we need the max between the number of scaling in front ()
-        //      = (nghost_front() / 2)
+    inline bidx_t CoarseNGhostFront(const bidx_t nghost_front) const {
+        // we need the max between the number of scaling in front
+        //      = (nghost_front / 2)
         // and the number of details that need to be computed
-        //      = (nghost_front() / 2) + nrefine_front()
-        const bidx_t gp = (nghost_front() / 2) + nghost_front_refine();
+        //      = (nghost_front / 2) + nrefine_front()
+        const bidx_t gp = ((nghost_front + 1) / 2) + nghost_front_refine();
         return gp;
     };
-    inline bidx_t CoarseNGhostBack() const {
+    inline bidx_t CoarseNGhostBack(const bidx_t nghost_back) const {
         // we need the max between the number of scaling
-        //      = (interp->nghost_back()+1) / 2
-        const bidx_t gp_scaling = ((nghost_back() + 1) / 2);
+        //      = (interp->nghost_back+1) / 2
+        const bidx_t gp_scaling = ((nghost_back + 1) / 2);
         // and the number of details
         //      = (interp->nghost_back()) / 2 +  + interp->nrefine_back()
-        const bidx_t gp_detail = ((nghost_back()) / 2) + nghost_back_refine();
+        const bidx_t gp_detail = ((nghost_back) / 2) + nghost_back_refine();
         return m_max(gp_scaling, gp_detail);
     };
-    inline bidx_t CoarseStride() const {
-        const bidx_t gp_front = CoarseNGhostFront();
-        const bidx_t gp_back  = CoarseNGhostBack();
+    inline bidx_t CoarseStride(const bidx_t ghost_size[2]) const {
+        const bidx_t gp_front = CoarseNGhostFront(ghost_size[0]);
+        const bidx_t gp_back  = CoarseNGhostBack(ghost_size[1]);
         return gp_front + M_NHALF + gp_back;
     };
-    inline bidx_t CoarseSize() const {
-        return CoarseStride() * CoarseStride() * CoarseStride();
+    inline bidx_t CoarseSize(const bidx_t ghost_size[2]) const {
+        const bidx_t stride = CoarseStride(ghost_size);
+        return stride * stride * stride;
     };
     /**
     * @brief given a starting a ghost range for a block, transform it into the needed range for its coarse representation
@@ -319,28 +334,28 @@ class Wavelet {
     * @param interp the Wavelet used
     * @return lid_t 
     */
-    inline bidx_t CoarseFromBlock(const lid_t a) const {
-        const bidx_t gp_front = CoarseNGhostFront();
-        const bidx_t gp_back  = CoarseNGhostBack();
-        const bidx_t b        = (a + M_N);
-        const bidx_t c        = (b / M_N) + (a > M_N);
-        const bidx_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_NHALF, M_NHALF + gp_back};
-        // return the correct choice
-        return res[c];
-    }
-    inline void CoarseFromFine(const SubBlock* block_fine, SubBlock* block_coarse) const {
-        bidx_t coarse_start[3], coarse_end[3];
-        for (bidx_t id = 0; id < 3; ++id) {
-            coarse_start[id] = CoarseFromBlock(block_fine->start(id));
-            coarse_end[id]   = CoarseFromBlock(block_fine->end(id));
-        }
-        block_coarse->Reset(CoarseNGhostFront(), CoarseStride(), coarse_start, coarse_end);
-    }
-    inline void CoarseFromFine(const bidx_t id_fine[3], bidx_t* id_coarse) const {
-        for (bidx_t id = 0; id < 3; ++id) {
-            id_coarse[id] = CoarseFromBlock(id_fine[id]);
-        }
-    }
+    // inline bidx_t CoarseFromBlock(const lid_t a) const {
+    //     const bidx_t gp_front = CoarseNGhostFront();
+    //     const bidx_t gp_back  = CoarseNGhostBack();
+    //     const bidx_t b        = (a + M_N);
+    //     const bidx_t c        = (b / M_N) + (a > M_N);
+    //     const bidx_t res[4]   = {-gp_front, (a / 2) + (a % 2), M_NHALF, M_NHALF + gp_back};
+    //     // return the correct choice
+    //     return res[c];
+    // }
+    // inline void CoarseFromFine(const MemLayout* block_fine, SubBlock* block_coarse) const {
+    //     bidx_t coarse_start[3], coarse_end[3];
+    //     for (bidx_t id = 0; id < 3; ++id) {
+    //         coarse_start[id] = CoarseFromBlock(block_fine->start(id));
+    //         coarse_end[id]   = CoarseFromBlock(block_fine->end(id));
+    //     }
+    //     block_coarse->Reset(CoarseNGhostFront(), CoarseStride(), coarse_start, coarse_end);
+    // }
+    // inline void CoarseFromFine(const bidx_t id_fine[3], bidx_t* id_coarse) const {
+    //     for (bidx_t id = 0; id < 3; ++id) {
+    //         id_coarse[id] = CoarseFromBlock(id_fine[id]);
+    //     }
+    // }
     /** @} */
 
     //-------------------------------------------------------------------------
@@ -349,21 +364,21 @@ class Wavelet {
      * @name Interpolation functions, to be implemented
      * @{
      */
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], m_ptr<const MemLayout> block_src, const_data_ptr data_src, m_ptr<const MemLayout> block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
-    virtual void Coarsen_(const m_ptr<const interp_ctx_t>& ctx) const = 0;
-    virtual void RefineZeroDetails_(const m_ptr<const interp_ctx_t>& ctx) const  = 0;
-    virtual void OverwriteDetailsDualLifting_(const m_ptr<const interp_ctx_t>& ctx) const  = 0;
-    // virtual void Scaling_(const m_ptr<const interp_ctx_t>& ctx) const                                                   = 0;
-    virtual void Detail_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const                  = 0;
-    virtual void ForwardWaveletTransform_(const m_ptr<const interp_ctx_t>& ctx, const m_ptr<real_t>& details_max) const = 0;
-    virtual void Smooth_(const m_ptr<const interp_ctx_t>& ctx) const                                                    = 0;
-    virtual void Clear_(const m_ptr<const interp_ctx_t>& ctx) const                                                     = 0;
-    // virtual void WriteDetail_(m_ptr<const interp_ctx_t> ctx) const                                     = 0;
+    virtual void Coarsen_(const interp_ctx_t* const  ctx) const = 0;
+    virtual void RefineZeroDetails_(const interp_ctx_t* const  ctx) const  = 0;
+    virtual void OverwriteDetailsDualLifting_(const interp_ctx_t* const  ctx) const  = 0;
+    // virtual void Scaling_(const interp_ctx_t* const  ctx) const                                                   = 0;
+    virtual void Detail_(const interp_ctx_t* const  ctx, real_t* const  details_max) const                  = 0;
+    virtual void ForwardWaveletTransform_(const interp_ctx_t* const  ctx, real_t* const  details_max) const = 0;
+    virtual void Smooth_(const interp_ctx_t* const  ctx) const                                                    = 0;
+    virtual void Clear_(const interp_ctx_t* const  ctx) const                                                     = 0;
+    // virtual void WriteDetail_(const interp_ctx_t*  ctx) const                                     = 0;
     /** @} */
 
     // defined function -- might be overriden
-    virtual void Copy_(const level_t dlvl, m_ptr<const interp_ctx_t> ctx) const;
+    virtual void Copy_(const level_t dlvl, const interp_ctx_t*  ctx) const;
 };
 
 #endif  // SRC_WAVELET_HPP_

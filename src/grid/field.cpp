@@ -8,15 +8,15 @@ using std::string;
  * @param name the name has to be unique
  * @param lda the dimension of the field
  */
-Field::Field(string name, sid_t lda) {
-    name_         = name;
-    lda_          = lda;
-    ghost_status_ = false;
+Field::Field(string name, sid_t lda) : name_(name), lda_(lda) {
+    ghost_status_  = false;
+    ghost_len_[0] = 0;
+    ghost_len_[1] = 0;
 
     // create an empty BC array
-    for (iface_t id = 0; id < 6; id++) {
-        bctype_[id] = reinterpret_cast<bctype_t*>(m_calloc(sizeof(bctype_t) * lda));
-        for(iface_t ida=0; ida<lda; ida++){
+    for (iface_t id = 0; id < M_NFACES; id++) {
+        bctype_[id] = static_cast<bctype_t*>(m_calloc(sizeof(bctype_t) * lda));
+        for (iface_t ida = 0; ida < lda; ida++) {
             bctype_[id][ida] = M_BC_NONE;
         }
     }
@@ -28,7 +28,7 @@ Field::Field(string name, sid_t lda) {
  */
 Field::~Field() {
     // create an empty BC array
-    for (iface_t id = 0; id < 6; id++) {
+    for (iface_t id = 0; id < M_NFACES; id++) {
         m_free(bctype_[id]);
     }
 }
@@ -42,7 +42,7 @@ Field::~Field() {
  * @param ida the dimension of the field
  */
 void Field::bctype(bctype_t type, const sid_t ida) {
-    for (iface_t iloc = 0; iloc < 6; iloc++) {
+    for (iface_t iloc = 0; iloc < M_NFACES; iloc++) {
         bctype_[iloc][ida] = type;
     }
 }
@@ -56,7 +56,7 @@ void Field::bctype(bctype_t type, const sid_t ida) {
  */
 void Field::bctype(bctype_t type) {
     for (lda_t ida = 0; ida < lda_; ida++) {
-        for (iface_t iloc = 0; iloc < 6; iloc++) {
+        for (iface_t iloc = 0; iloc < M_NFACES; iloc++) {
             bctype_[iloc][ida] = type;
         }
     }

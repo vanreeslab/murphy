@@ -18,8 +18,8 @@
  *                                 stride
  *          <--------------------------------------------------->
  *          +-------+----------------------------------+---------+
- *          |  gs   |                                  |    gs   |
- *          |<----->|                                  |<------->|
+ *          | gs[0] |             core                 |  gs[1]  |
+ *          |<----->|<-------------------------------->||<------->|
  *          +-------x----------------------------------+---------+
  *          |       |                                  |         |
  *          |       |                      end         |         |
@@ -37,7 +37,7 @@
  *          |       |                                  |         |
  *  y       |       |                                  |         |
  *  ^       +-------+----------------------------------+---------+
- *  |    (-gs,-gs)
+ *  |    (-gs[0],-gs[0])
  *  |
  *  +-------> x = memory access
  * ```
@@ -45,12 +45,13 @@
  */
 class MemLayout {
    public:
-    virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
-    virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
-    virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
-    virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
+    [[nodiscard]] virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs[0] + core + gs[1]
+    [[nodiscard]] virtual bidx_t core() const                 = 0;  //!< the number of block points
+    [[nodiscard]] virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
+    [[nodiscard]] virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
+    [[nodiscard]] virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
 
-    virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
+    virtual ~MemLayout() = default;  //!< declare the constructor as virtual to ensure destruction
 };
 
 /**
@@ -72,10 +73,16 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(start[0] <= end[0], "the end = %d is smaller than the start = %d", end[0], start[0]);
     m_assert(start[1] <= end[1], "the end = %d is smaller than the start = %d", end[1], start[1]);
     m_assert(start[2] <= end[2], "the end = %d is smaller than the start = %d", end[2], start[2]);
-    //-------------------------------------------------------------------------
-    // get how much is one real
-    MPI_Aint stride_x, trash_lb;
-    MPI_Type_get_extent(M_MPI_REAL, &trash_lb, &stride_x);
+    //--------------------------------------------------------------------------
+    // get how much is one real (in bytes)
+    MPI_Aint stride_x = sizeof(real_t);
+#ifndef NDEBUG
+    {
+        MPI_Aint stride_lb, trash_lb;
+        MPI_Type_get_extent(M_MPI_REAL, &trash_lb, &stride_lb);
+        m_assert(stride_x == stride_lb, "the two strides should be the same... I am confused here: %ld vs %ld", stride_lb, stride_x);
+    }
+#endif
 
     MPI_Datatype x_type, xy_type;
     //................................................
@@ -84,8 +91,8 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(count_x >= 0, "we at least need to take 1 element");
     m_assert(count_x <= stride, "we cannot take more element than the stride");
     // MPI_Aint stride_x = sizeof(real_t);
-    // MPI_Type_create_hvector(count_x / scale, 1, stride_x * scale, M_MPI_REAL, &x_type);
-    MPI_Type_vector(count_x / scale, 1, scale, M_MPI_REAL, &x_type);
+    MPI_Type_create_hvector(count_x / scale, 1, stride_x * scale, M_MPI_REAL, &x_type);
+    // MPI_Type_vector(count_x / scale, 1, scale, M_MPI_REAL, &x_type);
     //................................................
     // do y type
     bidx_t   count_y  = (end[1] - start[1]);
@@ -93,7 +100,7 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(count_y >= 0, "we at least need to take 1 element");
     m_assert(count_y <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_y / scale, 1, (MPI_Aint)(stride_y * scale), x_type, &xy_type);
-    MPI_Type_free(&x_type);
+
     //................................................
     // do z type
     bidx_t   count_z  = (end[2] - start[2]);
@@ -101,11 +108,13 @@ inline void ToMPIDatatype(const bidx_t start[3], const bidx_t end[3], const bidx
     m_assert(count_z >= 0, "we at least need to take 1 element");
     m_assert(count_z <= stride, "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_z / scale, 1, (MPI_Aint)(stride_z * scale), xy_type, xyz_type);
-    MPI_Type_free(&xy_type);
     //................................................
     // finally commit the type so it's ready to use
     MPI_Type_commit(xyz_type);
-    //-------------------------------------------------------------------------
+    MPI_Type_free(&x_type);
+    MPI_Type_free(&xy_type);
+
+    //--------------------------------------------------------------------------
     m_end;
 };
 
