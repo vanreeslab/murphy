@@ -42,14 +42,13 @@ class m_Ptr {
     }
 };
 
-
-// @ TG 
-// I think that the mem_layout should stay the base class for a '*Block' object. 
-// In most of the case, the stride and the gs of all the field contained in the block 
-// will be the same. We could then have a function sending directly the m_Data, based on 
-// the `*Block` information (since the block has the map of m_Ptr). 
-// On the other hand, we could add a m_Span structure gathering the end and the 
-// start index 
+// @ TG
+// I think that the mem_layout should stay the base class for a '*Block' object.
+// In most of the case, the stride and the gs of all the field contained in the block
+// will be the same. We could then have a function sending directly the m_Data, based on
+// the `*Block` information (since the block has the map of m_Ptr).
+// On the other hand, we could add a m_Span structure gathering the end and the
+// start index
 
 struct m_Layout {
     // we could store the number of dimensions, but I would keep the gs size to 3
@@ -58,20 +57,20 @@ struct m_Layout {
     size_t gs[3]  = {0, 0, 0};
 };
 
-struct m_Span { 
-    lid_t start_[3] = {0, 0, 0};  //!< starting index for the region of interest
-    lid_t end_[3]   = {0, 0, 0};  //!< ending index for the region of interest 
-    
-    /** @brief Default, parameterless constructor of the structure */
-    m_Span(){};
+struct m_Span {
+    lid_t start[3] = {0, 0, 0};  //!< starting index for the region of interest
+    lid_t end[3]   = {0, 0, 0};  //!< ending index for the region of interest
 
-    m_Span(lid_t start[3], lid_t end[3]){
-        for(lid_t i = 0; i < 3 ; i++){
-            start_[i] = start[i];
-            end_[i]   = end[i];
+    explicit m_Span(){};
+
+    m_Span(lid_t in_start[3], lid_t in_end[3]) {
+#pragma unroll
+        for (lid_t i = 0; i < 3; i++) {
+            start[i] = in_start[i];
+            end[i]   = in_end[i];
         }
     }
-}
+};
 
 // defines a function that takes 3 arguments and returns an offset
 using accessor_t = std::function<bidx_t(const bidx_t, const bidx_t, const bidx_t, const bidx_t)>;
