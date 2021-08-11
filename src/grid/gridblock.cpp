@@ -32,6 +32,11 @@ constexpr real_t CoarseHGrid(const real_t len) {
     return len / (real_t)(M_NHALF);
 }
 
+
+
+
+
+
 /**
  * @brief constructs a new GridBlock given a 3D length and a position
  * 
@@ -930,7 +935,7 @@ void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet
         for (auto* const gblock : ghost_sibling_) {
             const MPI_Aint   disp_src  = gblock->data_src();
             const rank_t     disp_rank = gblock->rank();
-            const MemLayout* block_trg = gblock;
+            const MemSpan* block_trg = gblock;
             // copy the information
             interp->GetRma(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, disp_src, block_trg, data_trg, disp_rank, mirrors_window);
         }
@@ -1229,6 +1234,7 @@ void GridBlock::GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet
     }
     //-------------------------------------------------------------------------
 }
+
 
 // /**
 //  * @brief Downsample the block and re-evaluate the boundary conditions on the coarse version

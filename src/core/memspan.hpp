@@ -4,6 +4,10 @@
 #include "core/types.hpp"
 #include "core/macros.hpp"
 
+typedef enum m_layout_t {
+    M_LAYOUT_BLOCK = 3
+} m_layout_type_t;
+
 struct MemLayout {
     size_t gs;         //!< number of ghost points in front of the block
     size_t shift;      //!< the shift to apply to the fastest rotating dimension to have the 0 aligned
@@ -12,7 +16,11 @@ struct MemLayout {
     size_t n_elem;  //!< number of elements in the memory layout (= minimal allocation size)
 
     explicit MemLayout() = delete;
-    explicit MemLayout(const lda_t n_dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept;
+    explicit MemLayout(const m_layout_t layout, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept;
+
+    __attribute__((always_inline)) inline bidx_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+        return shift + (gs+i0) + stride[0] * ((gs+i1) + stride[1] * (gs+i2));
+    };
 };
 
 struct MemSpan {
@@ -25,63 +33,34 @@ struct MemSpan {
 };
 
 /**
- * @brief convert a pair (MemSpan , MemLayout) into a MPI datatype equivalent
+ * @brief Translate the ghost limits from one block to another
  * 
- * @warning we are unable to take the initial displacement into account, so you need to point the memory to the start location while using it!
- * @note see exemple 4.13, page 123 of the MPI standard 3.1
+ * if the current index is in a ghost region (the front one or the back one), returns the limit of the new ghost region
+ * if the current index is in the block, return the index scaled to the new length of the block
  * 
- * @param span the MemSpan to convert
- * @param layout the MemLayout to convert
- * @param scale the scale coefficient (1 or 2). If 2, we take one points out of 2 in each direction
- * @param xyz_type the corresponding datattype
+ * @warning if the new index is NOT an integer, we ceil it! (sometimes we use an index of 1 because we want to visit the index 0, we should preserve that)
+ * 
+ * @param c_id current index in the current reference
+ * @param c_core the number of points inside the current block (typically M_N)
+ * @param n_front the number of ghost points in front of the block in the new block
+ * @param n_core the number of points inside the new block
+ * @param n_back the number of ghost points at the back of the block in the new block
+ * @return bidx_t the new ghost index
  */
-void ToMPIDatatype(const MemSpan& span, const MemLayout& layout, const bidx_t scale, MPI_Datatype* xyz_type) {
-    m_begin;
-    m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
-    m_assert(span.start[0] <= span.end[0], "the end = %d is smaller than the start = %d", span.end[0], span.start[0]);
-    m_assert(span.start[1] <= span.end[1], "the end = %d is smaller than the start = %d", span.end[1], span.start[1]);
-    m_assert(span.start[2] <= span.end[2], "the end = %d is smaller than the start = %d", span.end[2], span.start[2]);
-    //--------------------------------------------------------------------------
-    // get how much is one real (in bytes)
-    MPI_Aint stride_x = sizeof(real_t);
-#ifndef NDEBUG
-    {
-        MPI_Aint stride_lb, trash_lb;
-        MPI_Type_get_extent(M_MPI_REAL, &trash_lb, &stride_lb);
-        m_assert(stride_x == stride_lb, "the two strides should be the same... I am confused here: %ld vs %ld", stride_lb, stride_x);
-    }
-#endif
+static bidx_t TranslateBlockLimits(const bidx_t c_id, const bidx_t c_core,
+                                   const bidx_t n_front, const bidx_t n_core, const bidx_t n_back) {
+    // if ratio > 1, we scale up, if ratio < 1, we scale down
+    const real_t ratio = static_cast<real_t>(c_core) / static_cast<real_t>(n_core);
+    // get where we are (in front, in the block or at the back)
+    const bidx_t b = (c_id + c_core);
+    const bidx_t c = (b / c_core) + static_cast<bidx_t>(c_id > c_core);
+    // compute every possibility
+    const bidx_t res[4] = {-n_front, static_cast<bidx_t>(ceil(c_id / ratio)), n_core, n_core + n_back};
+    // check that we didn't screw up the indexes
+    // m_assert(!(c == 1 && !m_fequal(static_cast<real_t>(c_id) / ratio, res[1])), "we cannot translate the id %d from a core of %d to a core of %d: %f == %d", c_id, c_core, n_core, static_cast<real_t>(c_id) / ratio, res[1]);
+    // return the correct choice
+    return res[c];
+}
 
-    MPI_Datatype x_type, xy_type;
-    //................................................
-    // do x type as a simple vector
-    bidx_t count_x = (span.end[0] - span.start[0]);
-    m_assert(count_x >= 0, "we at least need to take 1 element");
-    m_assert(count_x <= layout.stride[0], "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_x / scale, 1, (MPI_Aint)(stride_x * scale), M_MPI_REAL, &x_type);
-    //................................................
-    // do y type
-    bidx_t   count_y  = (span.end[1] - span.start[1]);
-    MPI_Aint stride_y = stride_x * layout.stride[0];
-    m_assert(count_y >= 0, "we at least need to take 1 element");
-    m_assert(count_y <= layout.stride[1], "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_y / scale, 1, (MPI_Aint)(stride_y * scale), x_type, &xy_type);
-
-    //................................................
-    // do z type
-    bidx_t   count_z  = (span.end[2] - span.start[2]);
-    MPI_Aint stride_z = stride_y * layout.stride[1];
-    m_assert(count_z >= 0, "we at least need to take 1 element");
-    m_assert(count_z <= layout.stride[1], "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_z / scale, 1, (MPI_Aint)(stride_z * scale), xy_type, xyz_type);
-    //................................................
-    // finally commit the type so it's ready to use
-    MPI_Type_commit(xyz_type);
-    MPI_Type_free(&x_type);
-    MPI_Type_free(&xy_type);
-
-    //--------------------------------------------------------------------------
-    m_end;
-};
 
 #endif

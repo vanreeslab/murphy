@@ -3,6 +3,37 @@
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
+#include "core/memspan.hpp"
+
+template <class T>
+inline void for_loop(T& kern, const bidx_t s0, const bidx_t e0, const bidx_t s1, const bidx_t e1, const bidx_t s2, const bidx_t e2) {
+    //-------------------------------------------------------------------------
+    const bidx_t n0   = (e0 - s0);
+    const bidx_t n01  = (e1 - s1) * n0;
+    const bidx_t n012 = (e2 - s2) * n01;
+
+    for (bidx_t i012 = 0; i012 < n012; ++i012) {
+        const bidx_t i12 = (i012 % n01);
+        const bidx_t i2  = s2 + (i012 / n01);
+        const bidx_t i1  = s1 + (i12 / n0);
+        const bidx_t i0  = s0 + (i12 % n0);
+
+        kern(i0, i1, i2);
+    }
+    //-------------------------------------------------------------------------
+};
+
+template <class T>
+inline void for_loop(T& kern, const MemSpan& span) {
+    //-------------------------------------------------------------------------
+    for_loop(kern, span.start[0], span.end[0], span.start[1], span.end[1], span.start[2], span.end[2]);
+    //-------------------------------------------------------------------------
+};
+
+//==============================================================================
+// this ones underneath should go!
+//==============================================================================
+
 
 template <bidx_t S0, bidx_t E0, bidx_t S1 = S0, bidx_t E1 = E0, bidx_t S2 = S0, bidx_t E2 = E0, class T>
 inline void for_loop(T* core) {

@@ -11,7 +11,7 @@ static size_t MemPadSize(const size_t size, const size_t size_type) {
     //--------------------------------------------------------------------------
 };
 
-MemLayout::MemLayout(const lda_t dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept {
+MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept {
     //--------------------------------------------------------------------------
     // we want to ensure that the offset is aligned in memory.
     // the offset is given by

@@ -125,6 +125,8 @@ class GridBlock : public CartBlock {
     void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
     void GhostFreeLists();
 
+    
+
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
