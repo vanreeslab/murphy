@@ -28,9 +28,10 @@ struct MemPtr {
 class MemData {
    private:
     real_t* const data_;
-    size_t const  stride_[2];
+    const size_t  stride_[2];
 
    public:
+    explicit MemData() = delete;
     explicit MemData(const MemPtr& ptr, const MemLayout& layout) noexcept
         : stride_{layout.stride[0], layout.stride[1]},
           data_(ptr.ptr + layout.shift +
@@ -45,6 +46,32 @@ class MemData {
         return data_;
     }
     real_t* Write(const lda_t ida = 0) const {
+        return data_;
+    }
+    const real_t* Read(const lda_t ida = 0) const {
+        return data_;
+    }
+
+    [[nodiscard]] __attribute__((always_inline)) inline bidx_t Accessor(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+        return i0 + stride_[0] * (i1 + stride_[1] * i2);
+    }
+};
+
+class ConstMemData {
+   private:
+    const real_t* const data_;
+    const size_t        stride_[2];
+
+   public:
+    explicit ConstMemData() = delete;
+    explicit ConstMemData(const MemPtr& ptr, const MemLayout& layout) noexcept
+        : stride_{layout.stride[0], layout.stride[1]},
+          data_(ptr.ptr + layout.shift +
+                (layout.gs + layout.stride[0] * (layout.gs + layout.stride[1] * layout.gs))) {
+        m_assert(m_isaligned(data_), "the value of data must be aligned!");
+    };
+
+    __restrict const real_t* RRead(const lda_t ida = 0) const {
         return data_;
     }
     const real_t* Read(const lda_t ida = 0) const {
