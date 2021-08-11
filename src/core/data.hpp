@@ -25,12 +25,12 @@ struct MemPtr {
 };
 
 struct MemLayout {
-    size_t n_block = 0;  //!< the number of relevant points
-    size_t n_g_frt = 0;  //!< the number of ghost point in front
-    size_t n_g_bck = 0;  //!< the number of ghost point at the back
+    size_t stride[2];  //!< the strides of the data: fastest rotating stride in [0], user stride in [1]
+    size_t gs[2];      //!< the front ghost sizes: fastest rotating ghost size in [0], user size in [1]
+    size_t n_elem;     //!< the total number of elements in the memory layout
 
     explicit MemLayout() = delete;
-    explicit MemLayout(const bidx_t in_n_gs_front, const bidx_t in_n_block, const bidx_t in_n_gs_back = -1) noexcept;
+    explicit MemLayout(const lda_t n_dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept;
 };
 
 struct MemSpan {
@@ -47,11 +47,17 @@ using accessor_t = std::function<bidx_t(const bidx_t, const bidx_t, const bidx_t
 
 class MemData {
    private:
-    real_t* data_;
-    size_t  stride_[2];
+    real_t* const data_;
+    size_t const  stride_[2];
 
    public:
-    explicit MemData(const MemLayout& layout, const MemPtr& ptr) noexcept;
+    explicit MemData(const MemLayout& layout, const MemPtr& ptr) noexcept
+        : stride_{layout.stride[0], layout.stride[1]},
+          data_(ptr.ptr +
+                (layout.gs[0] + layout.stride[0] *
+                                    (layout.gs[1] + layout.stride[1] * layout.gs[1]))) {
+        m_assert(m_isaligned(data_), "the value of data must be aligned!");
+    };
 
     // get now the fancy read, write, etc
     __restrict real_t* RWrite(const lda_t ida = 0) const {
@@ -69,8 +75,7 @@ class MemData {
         return data_;
     }
 
-    [[nodiscard]] __attribute__((always_inline)) \
-    inline bidx_t Accessor(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0) const noexcept {
+    [[nodiscard]] __attribute__((always_inline)) inline bidx_t Accessor(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t ida = 0) const noexcept {
         return i0 + stride_[0] * (i1 + stride_[1] * (i2 + stride_[1] * ida));
     }
 };
