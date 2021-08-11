@@ -6,8 +6,9 @@
 #include <string>
 
 
-#include "core/memlayout.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
+#include "core/memspan.hpp"
+#include "core/memdata.hpp"
 #include "core/types.hpp"
 #include "grid/field.hpp"
 
@@ -46,13 +47,13 @@ constexpr real_t CartBlockHGrid(const real_t length) {
  * @warning no ghosting is available for that block
  * 
  */
-class CartBlock : public MemLayout {
+class CartBlock{
    protected:
     level_t level_    = -1;               //!< the level of the block
     real_t  xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
     real_t  hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
 
-    std::map<std::string, mem_ptr> mem_map_;  //<! a map of the pointers to the actual data
+    std::map<std::string, MemPtr> mem_map_;  //<! a map of the pointers to the actual data
 
    public:
     explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level);
@@ -92,10 +93,8 @@ class CartBlock : public MemLayout {
      * @name datamap access
      * @{
      */
-    // data_ptr data(const std::string name)const ;
-    // data_ptr data(const std::string name, const sid_t ida);
-    data_ptr data(const Field* const fid, const lda_t ida = 0) const noexcept;
-    mem_ptr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
+    MemData data(const Field* const fid, const lda_t ida = 0) const noexcept;
+    MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 
     /**
@@ -117,7 +116,7 @@ class CartBlock : public MemLayout {
  * @param data the initial data
  * @param temp the temporary data (of size @ref CartBlockMemNum(1))
  */
-inline void ToTempMemory(MemLayout* const  layout, const const_data_ptr& data, const data_ptr& temp) {
+inline void ToTempMemory(MemLayout* const  layout, const ConstMemData& data, const MemData& temp) {
     m_begin;
     //-------------------------------------------------------------------------
     // reset the memory size to 0

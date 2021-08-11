@@ -4,7 +4,6 @@
 #include <type_traits>
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/forestgrid.hpp"
 #include "grid/gridblock.hpp"

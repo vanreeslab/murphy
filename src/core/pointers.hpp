@@ -2,7 +2,6 @@
 #define SRC_CORE_POINTERS_HPP_
 
 #include "core/macros.hpp"
-#include "core/memlayout.hpp"
 #include "core/types.hpp"
 
 /**

@@ -7,7 +7,7 @@
 #include <p8est_extended.h>
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 
 /**

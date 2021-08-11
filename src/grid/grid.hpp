@@ -9,7 +9,7 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/field.hpp"
 #include "grid/ghost.hpp"

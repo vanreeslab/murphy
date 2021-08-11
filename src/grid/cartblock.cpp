@@ -69,29 +69,29 @@ data_ptr CartBlock::data(const Field* const fid, const lda_t ida) const noexcept
 //     //-------------------------------------------------------------------------
 // }
 
-/**
- * @brief returns the m_ptr that corresponds to the actual data pointer
- * 
- * @warning do not confuse with @ref data() function
- * 
- * @param fid the field
- * @param ida the required dimension (default = 0)
- * @return mem_ptr the memory pointer
- */
-mem_ptr CartBlock::pointer(const Field* const fid, const lda_t ida) const noexcept {
-#ifndef NDEBUG
-    // check the field validity
-    auto it = mem_map_.find(fid->name());
-    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    // m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
-    mem_ptr ptr = it->second.shift_dim(ida, this);
-    return ptr;
-#else
-    auto    it  = mem_map_.at(fid->name());
-    mem_ptr ptr = it.shift_dim(ida, this);
-    return ptr;
-#endif
-}
+// /**
+//  * @brief returns the MemPtr that corresponds to the actual data pointer
+//  * 
+//  * @warning do not confuse with @ref data() function
+//  * 
+//  * @param fid the field
+//  * @param ida the required dimension (default = 0)
+//  * @return mem_ptr the memory pointer
+//  */
+// MemPtr CartBlock::pointer(const Field* const fid, const lda_t ida) const noexcept {
+// #ifndef NDEBUG
+//     // check the field validity
+//     auto it = mem_map_.find(fid->name());
+//     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+//     // m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
+//     MemPtr ptr = it->second.shift_dim(ida, this);
+//     return ptr;
+// #else
+//     auto   it  = mem_map_.at(fid->name());
+//     MemPtr ptr = it.shift_dim(ida, this);
+//     return ptr;
+// #endif
+// }
 
 /**
  * @brief adds a field to the block if it doesn't exist already
@@ -106,6 +106,7 @@ void CartBlock::AddField(const Field* const  fid) {
     // if not found, create it
     if (it == mem_map_.end()) {
         m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid->lda());
+        
         mem_map_[name] = mem_ptr();
         auto it        = mem_map_.find(name);
         it->second.Calloc(CartBlockMemNum(fid->lda()));

@@ -2,7 +2,6 @@
 #define SRC_TIME_RKFUNCTOR_HPP
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
 #include "grid/grid.hpp"
 
 /**

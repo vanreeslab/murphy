@@ -4,8 +4,7 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/memlayout.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
 #include "subblock.hpp"

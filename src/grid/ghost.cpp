@@ -5,7 +5,7 @@
 
 #include "core/doop.hpp"
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/boundary.hpp"
 #include "omp.h"

@@ -3,7 +3,7 @@
 
 #include "core/forloop.hpp"
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "operator/stencil.hpp"
 #include "time/rkfunctor.hpp"

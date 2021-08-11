@@ -6,7 +6,7 @@
 #include <list>
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/cartblock.hpp"
 #include "grid/forestgrid.hpp"
