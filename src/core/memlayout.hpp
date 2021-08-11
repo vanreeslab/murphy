@@ -7,51 +7,51 @@
 
 #include <cstring>
 
-/**
- * @brief descibe a fundamental 3D memory layout and a region of interest (start-end)
- * 
- * WARNING: we consider a cell-decentered information,
- * 
- * In 2D, a memory layout can be represented as:
- *  (with "x" meaning a ghost point and "o" a block point)
- * ```
- *                                 stride
- *          <--------------------------------------------------->
- *          +-------+----------------------------------+---------+
- *          |  gs   |                                  |    gs   |
- *          |<----->|                                  |<------->|
- *          +-------x----------------------------------+---------+
- *          |       |                                  |         |
- *          |       |                      end         |         |
- *          |       o    +------------------+          |         |
- *          |       |    |                  |          |         |
- *          |       o    |   region         |          |         |
- *          |       |    |      of          |          |         |
- *          |       o    |    interest      |          |         |
- *          |       |    |                  |          |         |
- *          |       o    +------------------+          |         |
- *          |       |  start                           |         |
- *          |       o    o    o    o    o    o    o    x    x    |
- *          |       |(0,0,0)                           |         |
- *          +-------o----o----o----o----o----o----o----x----x----|
- *          |       |                                  |         |
- *  y       |       |                                  |         |
- *  ^       +-------+----------------------------------+---------+
- *  |    (-gs,-gs)
- *  |
- *  +-------> x = memory access
- * ```
- * 
- */
-class MemLayout {
-   public:
-    virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
-    virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
-    virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
-    virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
+// /**
+//  * @brief descibe a fundamental 3D memory layout and a region of interest (start-end)
+//  * 
+//  * WARNING: we consider a cell-decentered information,
+//  * 
+//  * In 2D, a memory layout can be represented as:
+//  *  (with "x" meaning a ghost point and "o" a block point)
+//  * ```
+//  *                                 stride
+//  *          <--------------------------------------------------->
+//  *          +-------+----------------------------------+---------+
+//  *          |  gs   |                                  |    gs   |
+//  *          |<----->|                                  |<------->|
+//  *          +-------x----------------------------------+---------+
+//  *          |       |                                  |         |
+//  *          |       |                      end         |         |
+//  *          |       o    +------------------+          |         |
+//  *          |       |    |                  |          |         |
+//  *          |       o    |   region         |          |         |
+//  *          |       |    |      of          |          |         |
+//  *          |       o    |    interest      |          |         |
+//  *          |       |    |                  |          |         |
+//  *          |       o    +------------------+          |         |
+//  *          |       |  start                           |         |
+//  *          |       o    o    o    o    o    o    o    x    x    |
+//  *          |       |(0,0,0)                           |         |
+//  *          +-------o----o----o----o----o----o----o----x----x----|
+//  *          |       |                                  |         |
+//  *  y       |       |                                  |         |
+//  *  ^       +-------+----------------------------------+---------+
+//  *  |    (-gs,-gs)
+//  *  |
+//  *  +-------> x = memory access
+//  * ```
+//  * 
+//  */
+// class MemLayout {
+//    public:
+//     virtual bidx_t gs() const                   = 0;  //!< the ghost point size (in front of the block )
+//     virtual bidx_t stride() const               = 0;  //!< the stride in memory, i.e. = gs + N + gs
+//     virtual bidx_t start(const lda_t ida) const = 0;  //!< the starting point for the region of interest
+//     virtual bidx_t end(const lda_t ida) const   = 0;  //!< the end point of the region of interest
 
-    virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
-};
+//     virtual ~MemLayout(){};  //!< declare the constructor as virtual to ensure destruction
+// };
 
 /**
  * @brief convert a 3D Memory layout into a MPI datatype equivalent

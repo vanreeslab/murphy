@@ -21,6 +21,9 @@ using short_t  = short;             //!< short integer, only used when nothing e
 using long_t   = long;              //!< long integer (for global quantities)
 /**@}*/
 
+// defines a function that takes 3 arguments and returns an offset
+using accessor_t = std::function<bidx_t(const bidx_t, const bidx_t, const bidx_t, const bidx_t)>;
+
 //-------------------------------------------------------------------------
 /**
  * @brief id of a quadrant
