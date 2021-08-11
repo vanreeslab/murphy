@@ -8,6 +8,7 @@
 #include "clients/flow_abc.hpp"
 #include "clients/navier_stokes.hpp"
 #include "clients/simple_advection.hpp"
+#include "clients/convergence_weno.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -45,16 +46,19 @@ void WriteInfo(int argc, char** argv) {
 
 TestCase* MurphyInit(int argc, char** argv) {
     //-------------------------------------------------------------------------
-    int provided;
-    // set MPI_THREAD_SERIALIZED
-    int requested = MPI_THREAD_SERIALIZED;
     MPI_Init(&argc, &argv);
     MPI_Comm comm = MPI_COMM_WORLD;
 
-    // sc_init(comm, 1, 1, NULL, SC_LP_SILENT);
-    sc_init(comm, 1, 1, NULL, SC_LP_INFO);
+    sc_init(comm,0,0,NULL,SC_LP_SILENT);
     p4est_init(NULL, SC_LP_SILENT);
-    // p4est_init(NULL, SC_LP_INFO);
+
+    // set some properties on the COMM_WORLD
+    MPI_Info info;
+    MPI_Info_create(&info);
+    MPI_Info_set(info,"mpi_assert_exact_length","true");
+    MPI_Info_set(info,"mpi_assert_allow_overtaking","true");
+    MPI_Comm_set_info(MPI_COMM_WORLD,info);
+    MPI_Info_free(&info);
 
     // so dome checks for the aligment, the constants etc
     m_assert((M_N % 2) == 0, "the number of points must be odd");
@@ -89,6 +93,10 @@ TestCase* MurphyInit(int argc, char** argv) {
         return testcase;
     } else if (argument.do_debug_lifting) {
         testcase = new DebugLifting();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else if (argument.do_conv_weno) {
+        testcase = new ConvergenceWeno();
         testcase->InitParam(&argument);
         return testcase;
     } else {

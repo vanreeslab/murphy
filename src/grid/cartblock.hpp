@@ -4,7 +4,7 @@
 #include <list>
 #include <map>
 #include <string>
-#include <functional>
+
 
 #include "core/memlayout.hpp"
 #include "core/pointers.hpp"
@@ -61,10 +61,11 @@ class CartBlock : public MemLayout {
      * @name Memory Layout functions
      * 
      * @{ */
-    inline bidx_t gs() const override { return M_GS; }
-    inline bidx_t stride() const override { return (M_N + 2 * M_GS); }
-    inline bidx_t start(const lda_t ida) const override { return 0; }
-    inline bidx_t end(const lda_t ida) const override { return M_N; }
+    inline bidx_t gs() const override final { return M_GS; }
+    inline bidx_t core() const override final { return M_N; }
+    inline bidx_t stride() const override final { return (M_N + 2 * M_GS); }
+    inline bidx_t start(const lda_t ida) const override final { return 0; }
+    inline bidx_t end(const lda_t ida) const override final { return M_N; }
     /** @} */
 
     /**
@@ -93,8 +94,8 @@ class CartBlock : public MemLayout {
      */
     // data_ptr data(const std::string name)const ;
     // data_ptr data(const std::string name, const sid_t ida);
-    data_ptr data(const Field* const  fid, const lda_t ida = 0) const;
-    mem_ptr  pointer(const Field* const  fid, const lda_t ida = 0) const;
+    data_ptr data(const Field* const fid, const lda_t ida = 0) const noexcept;
+    mem_ptr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 
     /**
@@ -102,9 +103,9 @@ class CartBlock : public MemLayout {
      * 
      * @{
      */
-    void AddField(const Field* const  fid);
-    void DeleteField(const Field* const  fid);
-    void AddFields(const std::map<std::string, Field*  >* fields);
+    void AddField(const Field* const fid);
+    void DeleteField(const Field* const fid);
+    void AddFields(const std::map<std::string, Field*>* fields);
     bool IsFieldOwned(const std::string name) const;
     /** @} */
 };
@@ -137,7 +138,7 @@ inline void ToTempMemory(MemLayout* const  layout, const const_data_ptr& data, c
 
 //-------------------------------------------------------------------------
 // defines code-wide usefull lambda functions
-using lambda_i3_t      = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2)>;
-using lambda_i3block_t = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block)>;
+// using lambda_i3_t      = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2)>;
+// using lambda_i3block_t = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block)>;
 
 #endif  //  SRC_GRID_CARTBLOCK_HPP_

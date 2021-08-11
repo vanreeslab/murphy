@@ -12,21 +12,20 @@ class SimpleAdvection : public TestCase {
     bool no_adapt_;
     bool grid_on_sol_;
     int  weno_;
+    bool fix_weno_;
 
     real_t tstart_ = 0.0;
     real_t tfinal_ = 0.0;
+
+    real_t cfl_ = 0.0;
 
     level_t level_min_ = 0;
     level_t level_max_ = P8EST_QMAXLEVEL;
 
     Field*  vel_;
     Field*  scal_;
-    Field*  sol_;
     Grid*   grid_;
     Prof*   prof_;
-
-    SetScalarRing*  ring_;
-    SetPolynom*     vel_field_;
 
     std::string folder_diag_ = "data";
 

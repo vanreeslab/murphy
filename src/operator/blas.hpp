@@ -5,8 +5,8 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "doop.hpp"
-#include "gridblock.hpp"
 #include "forestgrid.hpp"
+#include "gridblock.hpp"
 
 /**
  * @brief perform the dset operation on a block
@@ -18,11 +18,11 @@ class Dset : public BlockOperator {
     real_t value_ = 0.0;
 
    public:
-    explicit Dset();
-    explicit Dset(const Wavelet*  interp);
+    explicit Dset() noexcept;
+    explicit Dset(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid*  grid, const real_t value, Field*  fid_x);
-    void ComputeDsetGridBlock(const qid_t*  qid, const GridBlock*  block, Field*  fid_x);
+    void operator()(const ForestGrid* grid, const real_t value, Field* fid_x);
+    void ComputeDsetGridBlock(const qid_t* qid, const GridBlock* block, Field* fid_x);
 };
 
 /**
@@ -33,11 +33,11 @@ class Dset : public BlockOperator {
  */
 class Dcopy : public BlockOperator {
    public:
-    explicit Dcopy();
-    explicit Dcopy(const Wavelet*  interp);
+    explicit Dcopy() noexcept;
+    explicit Dcopy(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid*  grid, const Field*  fid_x, Field*  fid_y);
-    void ComputeDcopyGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x, Field*  fid_y);
+    void operator()(const ForestGrid* grid, const Field* fid_x, Field* fid_y);
+    void ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, const Field* fid_x, Field* fid_y);
 };
 
 /**
@@ -51,11 +51,11 @@ class Daxpy : public BlockOperator {
     real_t alpha_ = 0.0;
 
    public:
-    explicit Daxpy();
-    explicit Daxpy(const Wavelet*  interp);
+    explicit Daxpy() noexcept;
+    explicit Daxpy(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid*  grid, const real_t alpha, const Field*  fid_x, const Field*  fid_y, Field*  fid_z);
-    void ComputeDaxpyGridBlock(const qid_t*  qid, const GridBlock*  block, const Field*  fid_x, const Field*  fid_y, Field*  fid_z) ;
+    void operator()(const ForestGrid* grid, const real_t alpha, const Field* fid_x, const Field* fid_y, Field* fid_z);
+    void ComputeDaxpyGridBlock(const qid_t* qid, const GridBlock* block, const Field* fid_x, const Field* fid_y, Field* fid_z);
 };
 
 /**
@@ -69,11 +69,11 @@ class Dscale : public BlockOperator {
     real_t alpha_ = 0.0;
 
    public:
-    explicit Dscale();
-    explicit Dscale(const Wavelet*  interp);
+    explicit Dscale() noexcept;
+    explicit Dscale(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid*  grid, const real_t alpha, Field*  fid_x);
-    void ComputeDscaleGridBlock(const qid_t*  qid, GridBlock*  block, Field*  fid_x);
+    void operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x);
+    void ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x);
 };
 
 #endif  // SRC_BLAS_HPP_

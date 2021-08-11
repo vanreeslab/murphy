@@ -17,20 +17,21 @@
  * 
  */
 class RK3_TVD {
-    Grid*       grid_    = nullptr;
-    Field*      field_u_ = nullptr;
-    RKFunctor*  f_       = nullptr;
-    Prof*       prof_    = nullptr;
+    real_t     cfl_max_ = 1.0;
+    Grid*      grid_    = nullptr;
+    Field*     field_u_ = nullptr;
+    RKFunctor* f_       = nullptr;
+    Prof*      prof_    = nullptr;
 
     Field* field_y1_ = nullptr;
     Field* field_y2_ = nullptr;
 
    public:
-    explicit RK3_TVD(Grid*  grid, Field*  state, RKFunctor*  f, Prof*  prof);
+    explicit RK3_TVD(Grid* grid, Field* state, RKFunctor* f, Prof* prof, const real_t cfl_max = 1.0);
     virtual ~RK3_TVD();
 
-    void DoDt(const real_t dt, real_t* time);
+    void DoDt(const real_t dt, real_t* time) const;
 
-    real_t ComputeDt(const RKFunctor*  rhs, const Field*  velocity) const;
+    real_t ComputeDt(const RKFunctor* rhs, const Field* velocity) const;
 };
 #endif

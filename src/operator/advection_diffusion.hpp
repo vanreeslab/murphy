@@ -25,10 +25,13 @@ class AdvectionDiffusion : public Stencil {
         for (lda_t i = 0; i < 3; ++i) {
             u_stream_[i] = u_stream[i];
         }
+
+        ghost_len_need_[0] = m_max(length_advection / 2, length_diffusion / 2);
+        ghost_len_need_[1] = m_max(length_advection / 2, length_diffusion / 2);
         //-------------------------------------------------------------------------
     }
 
-    virtual lid_t NGhost() const override { return m_max(length_advection / 2, length_diffusion / 2); };
+    // virtual lid_t NGhost() const override { return m_max(length_advection / 2, length_diffusion / 2); };
 
    protected:
     void DoMagic(const qid_t*  qid, GridBlock*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const override;

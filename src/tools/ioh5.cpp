@@ -108,13 +108,17 @@ void IOH5::operator()(ForestGrid* grid, const Field* field, const string name) {
 void IOH5::operator()(ForestGrid* grid, const Field* field, const string name, const lid_t index) {
     m_begin;
     //-------------------------------------------------------------------------
-    m_assert(field->ghost_status(), "the field <%s> has outdated ghosts, please update them, even if dump ghost is false",field->name().c_str());
     m_log("dumping field %s to disk (ghost = %d)", name.c_str(), dump_ghost_);
     // get the field name
     rank_t mpirank = grid->mpirank();
     rank_t rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     m_assert(mpirank == rank, "The rank from the forest does not correspond to the world one, this is not expected: %d vs %d", mpirank, rank);
+
+    //................................................
+    // make sure we have this one ghost needed at the end of the field
+    const bidx_t ghost_len[2] = {0,1};
+    m_assert(field->ghost_status(ghost_len), "the field <%s> has outdated ghosts, please update them, even if dump ghost is false",field->name().c_str());
 
     //................................................
     // get the filename

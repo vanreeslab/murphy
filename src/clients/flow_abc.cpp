@@ -11,14 +11,14 @@ using std::to_string;
 
 FlowABC::~FlowABC() {
     //-------------------------------------------------------------------------
+    delete (vel_);
+    delete (scal_);
+    delete (grid_);
+
     if (prof_ != nullptr) {
         prof_->Disp();
         delete (prof_);
     }
-
-    delete (vel_);
-    delete (scal_);
-    delete (grid_);
 
     m_log("Navier Stokes is dead");
     //-------------------------------------------------------------------------
@@ -55,7 +55,13 @@ void FlowABC::InitParam(ParserArguments* param) {
     vel_->is_temp(true);
 
     // setup the flow ring
-    SetScalarTube flow_ring(param->vr_normal, param->vr_center, param->vr_sigma, param->vr_radius, grid_->interp());
+    lambda_setvalue_t lambda_init = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        block->data(fid, 0).Write(i0, i1, i2)[0] = scalar_ring(pos, param->vr_center, param->vr_radius, param->vr_sigma, param->vr_normal);
+    };
+    const bidx_t ghost_len[2] = {grid_->interp()->nghost_front(), grid_->interp()->nghost_back()};
+    SetValue     flow_ring(lambda_init, ghost_len);
     flow_ring.Profile(prof_);
     flow_ring(grid_, scal_);
 
@@ -74,7 +80,23 @@ void FlowABC::Run() {
     real_t t_final = 1000.0;
     real_t t       = 0.0;
 
-    SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
+    // SetABSVelocity flow_vel(1.0, 0.5, 0.25, grid_->interp());
+    // setup the flow ring
+    const real_t      a          = 1.0;
+    const real_t b = 0.5;
+    const real_t c = 0.25;
+    lambda_setvalue_t lambda_abs = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+        real_t pos[3];
+        block->pos(i0, i1, i2, pos);
+        const real_t x                           = pos[0];
+        const real_t y                           = pos[1];
+        const real_t z                           = pos[2];
+        block->data(fid, 0).Write(i0, i1, i2)[0] = a * sin(2.0 * M_PI * z) + c * cos(2.0 * M_PI * y);
+        block->data(fid, 1).Write(i0, i1, i2)[0] = b * sin(2.0 * M_PI * x) + a * cos(2.0 * M_PI * z);
+        block->data(fid, 2).Write(i0, i1, i2)[0] = c * sin(2.0 * M_PI * y) + b * cos(2.0 * M_PI * x);
+    };
+    const bidx_t ghost_len[2] = {grid_->interp()->nghost_front(),grid_->interp()->nghost_back()};
+    SetValue flow_vel(lambda_abs, ghost_len);
 
     Advection<M_WENO_Z, 3> adv(vel_);
     RK3_TVD                rk3(grid_, scal_, &adv, prof_);
@@ -94,7 +116,7 @@ void FlowABC::Run() {
 
             // reset the velocity
             flow_vel(grid_, vel_);
-            m_assert(vel_->ghost_status(), "the velocity ghosts must have been computed");
+            m_assert(vel_->ghost_status(ghost_len), "the velocity ghosts must have been computed");
         }
         // we run the first diagnostic
         if (iter == 0) {
@@ -173,7 +195,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
     if (iter % iter_dump() == 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
-        grid_->GhostPull(scal_);
+        grid_->GhostPull(scal_,ghost_len_ioh5);
         // grid_->GhostPull(vel_);
         dump(grid_, scal_, iter);
         // dump(grid_(), vel_(), iter);
@@ -185,7 +207,7 @@ void FlowABC::Diagnostics(const real_t time, const real_t dt, const lid_t iter) 
             grid_->AddField(&details);
             grid_->StoreDetails(scal_, &details);
 
-            grid_->GhostPull(&details);
+            grid_->GhostPull(&details,ghost_len_ioh5);
             // IOH5 dump("data");
             dump(grid_, &details, iter);
 

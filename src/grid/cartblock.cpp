@@ -28,7 +28,10 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
  * @param ida the required dimension
  * @return data_ptr the data_ptr corresponding to the point in the block, i.e. (0,0,0), for the given dimension.
  */
-data_ptr CartBlock::data(const Field* const  fid, const lda_t ida) const {
+data_ptr CartBlock::data(const Field* const fid, const lda_t ida) const noexcept {
+    // warning, from cpp reference
+    // Non-throwing functions are permitted to call potentially-throwing functions.
+    // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
     //-------------------------------------------------------------------------
 #ifndef NDEBUG
     // check the field validity
@@ -74,7 +77,7 @@ data_ptr CartBlock::data(const Field* const  fid, const lda_t ida) const {
  * @param ida the required dimension (default = 0)
  * @return mem_ptr the memory pointer
  */
-mem_ptr CartBlock::pointer(const Field* const  fid, const lda_t ida) const {
+mem_ptr CartBlock::pointer(const Field* const fid, const lda_t ida) const noexcept {
 #ifndef NDEBUG
     // check the field validity
     auto it = mem_map_.find(fid->name());
@@ -83,7 +86,9 @@ mem_ptr CartBlock::pointer(const Field* const  fid, const lda_t ida) const {
     mem_ptr ptr = it->second.shift_dim(ida, this);
     return ptr;
 #else
-    return mem_map_.at(fid->name());
+    auto    it  = mem_map_.at(fid->name());
+    mem_ptr ptr = it.shift_dim(ida, this);
+    return ptr;
 #endif
 }
 

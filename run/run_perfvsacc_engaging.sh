@@ -4,37 +4,37 @@
 SCRATCH=/nobackup1/tgillis/perf_vs_acc
 rm -rf ${SCRATCH}
 
-# produce the different exec
-# 2.0
-make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=2 -DWAVELET_NT=0 -DBLOCK_GS=2"
-mv murphy murphy20
-# 2.2
-make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=4"
-mv murphy murphy22
+## produce the different exec
+## 2.0
+#make destroy
+#ARCH_FILE=make_arch/make.engaging make -j12 OPTS="-DWAVELET_N=2 -DWAVELET_NT=0 -DBLOCK_GS=2"
+#mv murphy murphy20
+## 2.2
+#make destroy
+#ARCH_FILE=make_arch/make.engaging make -j12 OPTS="-DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=4"
+#mv murphy murphy22
 # 4.0
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
+ARCH_FILE=make_arch/make.engaging make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
 mv murphy murphy40
 # 4.2
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
+ARCH_FILE=make_arch/make.engaging make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
 mv murphy murphy42
-#
+# 6.0
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
+ARCH_FILE=make_arch/make.engaging make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
 mv murphy murphy60
-#
+# 6.2
 make destroy
-ARCH_FILE=make_arch/make.engaging make -j OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
+ARCH_FILE=make_arch/make.engaging make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
 mv murphy murphy62
 
 
-NCPUS=216
+NCPUS=144
 
 # let's go for the adaptive simulations
-i=0
+i=1
 while [ $i -le 7 ]
 do
 	
@@ -47,16 +47,18 @@ do
 	
 	# do not not-adapt
 	export NO_ADAPT=""
-	export ILEVEL=5
+	export ILEVEL=3
 	
 	# submit
 	#bash ./run/run_perfvsacc_kern_engaging.sh
+	#export MNAME=murphy20
+	#sbatch --ntasks=${NCPUS} --job-name=murphy20_${i} ./run/run_perfvsacc_kern_engaging.sh
+	#export MNAME=murphy22
+	#sbatch --ntasks=${NCPUS} --job-name=murphy22_${i} ./run/run_perfvsacc_kern_engaging.sh
 	export MNAME=murphy40
 	sbatch --ntasks=${NCPUS} --job-name=murphy40_${i} ./run/run_perfvsacc_kern_engaging.sh
 	export MNAME=murphy42
 	sbatch --ntasks=${NCPUS} --job-name=murphy42_${i} ./run/run_perfvsacc_kern_engaging.sh
-	export MNAME=murphy44
-	sbatch --ntasks=${NCPUS} --job-name=murphy44_${i} ./run/run_perfvsacc_kern_engaging.sh
 	export MNAME=murphy60
 	sbatch --ntasks=${NCPUS} --job-name=murphy60_${i} ./run/run_perfvsacc_kern_engaging.sh
 	export MNAME=murphy62

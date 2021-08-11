@@ -138,12 +138,12 @@ static struct argp_option options[] = {
     {"iter-diag", 3010, "int", 0, "run the diagnostics every x iterations"},
     {"iter-adapt", 3011, "int", 0, "adapt the grid every x iterations"},
     {"iter-dump", 3012, "int", 0, "dump the field every x iterations"},
-    // {"no-weno", 3013, 0, OPTION_ARG_OPTIONAL, "disable the weno adaptation and uses a regular upwind-downwind stencil"},
-    {"grid-on-sol", 3014, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution"},
-    // {"weno-5", 3015, 0, OPTION_ARG_OPTIONAL, "uses the 5th order WENO stencil"},
-    {"weno", 3015, "value", 0, "order of the weno scheme for the advection, can be 3 or 5"},
-    {"eps-start", 3016, "value", 0, "start epsilon (epsilon test)"},
-    {"delta-eps", 3017, "value", 0, "factor from one epsilon to another (epsilon test)"},
+    {"weno", 3013, "value", 0, "order of the weno scheme for the advection, can be 3 or 5"},
+    {"fix-weno", 3014, 0, OPTION_ARG_OPTIONAL, "fix the weno coefficient which falls back on conservative FD"},
+    {"grid-on-sol", 3015, 0, OPTION_ARG_OPTIONAL, "adapt the grid based on the solution"},
+    {"eps-start", 3016, "double", 0, "start epsilon (epsilon test)"},
+    {"delta-eps", 3017, "double", 0, "factor from one epsilon to another (epsilon test)"},
+    {"cfl-max", 3018, "double", 0, "The max CLF number"},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients/testcases:", 4},
@@ -161,6 +161,8 @@ static struct argp_option options[] = {
     // simple advection
     {"dbg-lifting", 4004, 0, OPTION_ARG_OPTIONAL, "Debug lifting"},
     {"eps", 0, 0, OPTION_ALIAS, 0},
+    // simple advection
+    {"conv-weno", 4005, 0, OPTION_ARG_OPTIONAL, "convergence weno"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -317,20 +319,25 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("iter dump: %d", myint[0]);
             return err;
         }
+        case 3013: { /* weno */
+            int* order = &arguments->weno;
+            error_t err = atoi_list(1, arg, order);
+            m_log("weno order: %d", order[0]);
+            return 0;
+        }
+        case 3014: { /* fix weno */
+            arguments->fix_weno = true;
+            m_log("weno fixed = conservative finite differences");
+            return 0;
+        }
         // case 3013: { /* no-weno */
         //     arguments->no_weno = true;
         //     m_log("no-weno");
         //     return 0;
         // }
-        case 3014: { /* grid-on-sol */
+        case 3015: { /* grid-on-sol */
             arguments->grid_on_sol = true;
             m_log("grid adaptation based on the solution");
-            return 0;
-        }
-        case 3015: { /* weno */
-            int* order = &arguments->weno;
-            error_t err = atoi_list(1, arg, order);
-            m_log("weno order: %d", order[0]);
             return 0;
         }
         case 3016: { /* rtol */
@@ -343,6 +350,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             real_t* tol = &arguments->delta_eps;
             error_t err = atof_list(1, arg, tol);
             m_log("delta epsilon: %f", tol[0]);
+            return err;
+        }
+        case 3018: { /* cfl-max */
+            real_t* cfl = &arguments->cfl_max;
+            error_t err = atof_list(1, arg, cfl);
+            m_log("CFL max: %f", cfl[0]);
             return err;
         }
         //................................................
@@ -369,6 +382,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4004: { /* simple advection */
             m_log("Debug Lifting selected");
             arguments->do_debug_lifting = true;
+            return 0;
+        }
+        case 4005: { /* convergence weno */
+            m_log("convergence weno selected");
+            arguments->do_conv_weno = true;
             return 0;
         }
         

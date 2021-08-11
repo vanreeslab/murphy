@@ -2,8 +2,9 @@
 #define SRC_CORE_TYPES_HPP_
 
 #include <p8est.h>
+#include <functional>
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 /**
  * @name typename for standard variables
  * @{
@@ -21,10 +22,21 @@ using short_t  = short;             //!< short integer, only used when nothing e
 using long_t   = long;              //!< long integer (for global quantities)
 /**@}*/
 
+//-------------------------------------------------------------------------
+template<typename R,typename... T>
+using lambda_t = std::function<R(T...)>;
+
+/**
+ * @brief definition of the lambda functions
+ */
+template <typename R, typename... T>
+using lambda_i3_t = lambda_t<R, const bidx_t, const bidx_t, const bidx_t, T...>;
+// using lambda_i3block_t = std::function<R(const bidx_t i0, const bidx_t i1, const bidx_t i2, T...)>;
+
 // defines a function that takes 3 arguments and returns an offset
 using accessor_t = std::function<bidx_t(const bidx_t, const bidx_t, const bidx_t, const bidx_t)>;
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 /**
  * @brief id of a quadrant
  * 
@@ -40,7 +52,7 @@ typedef struct qid_t {
     };
 } qid_t;
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 /**
  * @brief defines the different supported boundary conditions, the order is driven by M_WAVELET_N
  */
