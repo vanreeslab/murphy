@@ -56,7 +56,7 @@ void AdvectionDiffusion<length_advection, length_diffusion>::DoMagic(const qid_t
     constexpr real_t four_third = 4.0 / 3.0;
     constexpr real_t five_half  = 5.0 / 2.0;
 
-    auto op = [=, &data_trg, *this](const lid_t i0, const lid_t i1, const lid_t i2) -> void {
+    auto op = [=, &data_trg, *this](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         // get the data pointer in front of the row for every cache line
         real_p       trg  = data_trg + m_idx(i0, i1, i2);                // cache line for writting
         const real_p src  = data_src + m_idx(i0, i1, i2);                // cache line for reading

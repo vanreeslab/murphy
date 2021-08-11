@@ -145,7 +145,7 @@ class NeighborBlock : public GhostBlock {
     // return arguments
     [[nodiscard]] short_t      dlvl() const { return dlvl_; }
     [[nodiscard]] bidx_t       shift(const int id) const { return shift_[id]; }
-    [[nodiscard]] const lid_t* shift() const { return shift_; }
+    [[nodiscard]] const bidx_t* shift() const { return shift_; }
     [[nodiscard]] rank_t       rank() const { return rank_rma_; }
     [[nodiscard]] iblock_t     cum_block_id() const { return cum_block_id_; };
     [[nodiscard]] iface_t      ibidule() const { return ibidule_; };

@@ -30,8 +30,8 @@ class Partitioner {
     bool  destructive_ = false;  //!< false if the oldblocks belongs to an existing grid
     lda_t n_lda_       = 0;      //!< the total number of dimension accross all the fields
 
-    lid_t n_send_request_ = 0;  //!< the number of send requests
-    lid_t n_recv_request_ = 0;  //!< the number of receive requests
+    irank_t n_send_request_ = 0;  //!< the number of send requests
+    irank_t n_recv_request_ = 0;  //!< the number of receive requests
 
     MPI_Request* for_send_request_  = nullptr;  //!< forward partition - the send requests
     MPI_Request* for_recv_request_  = nullptr;  //!< forward partition - the receive requests

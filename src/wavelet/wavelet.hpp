@@ -93,11 +93,11 @@ class Wavelet {
     * @{
     */
    public:
-    void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
-    void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, MPI_Aint disp_src, const MemLayout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
-    void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    void Copy(const level_t dlvl, const bidx_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const bidx_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
+    void Interpolate(const level_t dlvl, const bidx_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    void GetRma(const level_t dlvl, const bidx_t shift[3], const MemLayout*  block_src, MPI_Aint disp_src, const MemLayout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
+    void PutRma(const level_t dlvl, const bidx_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
     real_t Criterion(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
                      /* target */ const MemLayout* const  detail_block) const;
@@ -262,7 +262,7 @@ class Wavelet {
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
      */
-    const lid_t nghost_front_criterion_smooth() const {
+    const bidx_t nghost_front_criterion_smooth() const {
         // // this is the last detail I will ever need, already takes into account that we are in the front
         // const bidx_t max_detail = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
         // const bidx_t offset     = 1 * (max_detail == 0);  // we must remove 1 if max_detail ==0
@@ -277,7 +277,7 @@ class Wavelet {
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
      */
-    const lid_t nghost_back_criterion_smooth() const {
+    const bidx_t nghost_back_criterion_smooth() const {
         const bidx_t last_pt = m_max(ndetail_citerion_extend_back(), ndetail_smooth_extend_back());
         // compute the max between computing the last point and the point just before
         const bidx_t lim_scaling = m_max(last_pt + (len_ha() / 2), last_pt - 1 + (len_ga() / 2));
@@ -388,7 +388,7 @@ class Wavelet {
      * @name Interpolation functions, to be implemented
      * @{
      */
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
     virtual void Coarsen_(const interp_ctx_t* const  ctx) const = 0;
     virtual void RefineZeroDetails_(const interp_ctx_t* const  ctx) const  = 0;

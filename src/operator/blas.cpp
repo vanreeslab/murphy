@@ -87,8 +87,9 @@ void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, const GridBlock* block, cons
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     m_assert(fid_y->lda() == fid_z->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
-    const sid_t lda = fid_x->lda();
-    for (sid_t ida = 0; ida < lda; ida++) {
+    const lda_t lda = fid_x->lda();
+    for (lda_t ida = 0; ida < lda; ++ida) {
+#pragma unroll
         // get the data pointers
         const real_t* data_x = block->data(fid_x, ida).Read();
         const real_t* data_y = block->data(fid_y, ida).Read();
@@ -124,8 +125,9 @@ void Dscale::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x
 void Dscale::ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x) {
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must have enough valid ghost points", fid_x->name().c_str());
     //-------------------------------------------------------------------------
-    const sid_t lda = fid_x->lda();
-    for (sid_t ida = 0; ida < lda; ida++) {
+    const lda_t lda = fid_x->lda();
+    for (lda_t ida = 0; ida < lda; ++ida) {
+#pragma unroll
         // get the data pointers
         real_t* data_x = block->data(fid_x, ida).Write();
         m_assume_aligned(data_x);

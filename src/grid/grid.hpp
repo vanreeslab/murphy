@@ -32,10 +32,10 @@ class Grid : public ForestGrid {
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     Wavelet* interp_ = nullptr;  //!< the Wavelet to use for all the multilevel operations
 
-    bool   recursive_adapt_ = false;   //!< recursive adaptation or not
-    real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
-    real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
-    lid_t  n_quad_to_adapt_ = 0;
+    bool   recursive_adapt_    = false;   //!< recursive adaptation or not
+    real_t rtol_               = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
+    real_t ctol_               = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    iblock_t  n_quad_to_adapt_ = 0;
 
     level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the mesh
     level_t level_limit_min_ = 0;                //!< min level of a quadrant
@@ -73,7 +73,7 @@ class Grid : public ForestGrid {
      * 
      * @{
      */
-    [[nodiscard]] lid_t NField() const { return static_cast<lid_t>(fields_.size()); }
+    [[nodiscard]] bidx_t NField() const { return static_cast<bidx_t>(fields_.size()); }
 
     [[nodiscard]] auto FieldBegin() const { return fields_.cbegin(); }
     [[nodiscard]] auto FieldEnd() const { return fields_.cend(); }
@@ -122,7 +122,7 @@ class Grid : public ForestGrid {
     [[nodiscard]] void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
     [[nodiscard]] void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
-    [[nodiscard]] lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
+    [[nodiscard]] iblock_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
     void                AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
     void                AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
 

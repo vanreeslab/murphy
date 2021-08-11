@@ -9,7 +9,8 @@ void Error::ErrorOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Fi
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
-    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
+    for (lda_t ida = 0; ida < fid->lda(); ++ida) {
+#pragma unroll
         // get the data pointers
         const real_t* data_field = ptr_field.Read(ida);
         const real_t* data_sol   = ptr_sol.Read(ida);
@@ -44,7 +45,8 @@ void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, con
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
-    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
+    for (lda_t ida = 0; ida < fid->lda(); ++ida) {
+#pragma unroll
         // get the data pointers
         const real_t* data_field = ptr_field.Read(ida);
         const real_t* data_sol   = ptr_sol.Read(ida);
@@ -80,7 +82,8 @@ void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block,
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
-    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
+    for (lda_t ida = 0; ida < fid->lda(); ++ida) {
+#pragma unroll
         // get the data pointers
         const real_t* data_field = ptr_field.Read(ida);
 
@@ -116,7 +119,8 @@ void Error::ErrorFieldOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* b
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
-    for (sid_t ida = 0; ida < fid->lda(); ++ida) {
+    for (lda_t ida = 0; ida < fid->lda(); ++ida) {
+#pragma unroll
         // get the data pointers
         const real_t* data_field = ptr_field.Read(ida);
         real_t*       data_error = ptr_error.Write(ida);

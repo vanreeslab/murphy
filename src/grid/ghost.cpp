@@ -149,7 +149,7 @@ void Ghost::InitList_() {
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
     iblock_t    active_mirror_count = 0;
-    const lid_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
+    const bidx_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
     // get the base address
     // fill the displacement
     for (iblock_t im = 0; im < nmlocal; im++) {
@@ -614,8 +614,8 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
     // m_assume_aligned(data);
 
     for (auto* gblock : (*block->ghost_children())) {
-        const lid_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
-        const lid_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
+        const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
+        const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
 
         real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block->stride());
         real_t* data_trg = data.Write(start[0], start[1], start[2],0);
@@ -644,10 +644,10 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, const Field* field) {
     // get the grid info
     p8est_t*       forest  = grid_->p4est_forest();
     p8est_ghost_t* ghost   = grid_->p4est_ghost();
-    const lid_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
+    const iblock_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
 
     //#pragma omp parallel for
-    for (lid_t bid = 0; bid < nqlocal; bid++) {
+    for (iblock_t bid = 0; bid < nqlocal; ++bid) {
         // get the mirror quad, this is an empty quad (just a piggy3 struct)
         // p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, local_to_mirrors[bid]);
         p8est_quadrant_t* mirror = p8est_quadrant_array_index(&ghost->mirrors, bid);

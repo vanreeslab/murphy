@@ -324,9 +324,9 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
 
             //get the start adress of the source, we need to shift by one backward if we are odd (see the filter loop)
-            const lid_t i0_s = (i0 - odd_x) / 2;
-            const lid_t i1_s = (i1 - odd_y) / 2;
-            const lid_t i2_s = (i2 - odd_z) / 2;
+            const bidx_t i0_s = (i0 - odd_x) / 2;
+            const bidx_t i1_s = (i1 - odd_y) / 2;
+            const bidx_t i2_s = (i2 - odd_z) / 2;
             m_assert((i0_s * 2) <= i0, "if not, we made something wrong...: source = %d, target = %d", i0_s, i0);
             m_assert((i1_s * 2) <= i1, "if not, we made something wrong...: source = %d, target = %d", i1_s, i1);
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
@@ -370,8 +370,8 @@ class InterpolatingWavelet : public Wavelet {
             tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
@@ -460,8 +460,8 @@ class InterpolatingWavelet : public Wavelet {
             tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // count = 1: dx, dy and dz
         count = 1;
         for_loop(&op, start, end);
@@ -565,8 +565,8 @@ class InterpolatingWavelet : public Wavelet {
         // reset the detail max (to be sure)
         *details_max = 0.0;
         // let's go
-        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         for_loop(&op, start, end);
     };
 
@@ -634,8 +634,8 @@ class InterpolatingWavelet : public Wavelet {
         *details_max = 0.0;
 
         // compute the start and end indexes, we need more details than the number of scalings
-        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         for_loop(&op, start, end);
     };
 
@@ -712,8 +712,8 @@ class InterpolatingWavelet : public Wavelet {
             // }
         };
 
-        const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         for_loop(&op, start, end);
     };
 

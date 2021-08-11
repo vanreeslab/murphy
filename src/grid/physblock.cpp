@@ -17,7 +17,8 @@ PhysBlock::PhysBlock(const bidx_t (*const ghost_len)[2],
     m_assert(0 <= iface && iface < 6, "iface must be 0<= iface < 6");
     //-------------------------------------------------------------------------
     // get the start and end index in all direction
-    for (lda_t id = 0; id < 3; id++) {
+    for (lda_t id = 0; id < 3; ++id) {
+#pragma unroll
         // set the start and end
         start_[id] = block->start(id);
         end_[id]   = block->end(id);

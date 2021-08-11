@@ -29,7 +29,7 @@ MemLayout::MemLayout(const lda_t dim, const bidx_t n_gs_front, const bidx_t n_bl
     stride[0]               = MemPadSize(stride_usr, sizeof(real_t));
     stride[1]               = stride_usr;
 
-    // compute the number of elements as the product of the respective stides + the shift
+    // compute the number of elements as the product of the respective strides + the shift
     n_elem = 1;
     for (lda_t ida = 0; ida < (dim - 1); ++ida) {
         n_elem = stride[1] * n_elem;
