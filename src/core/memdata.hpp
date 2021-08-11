@@ -37,18 +37,19 @@ class MemData {
           data_(ptr.ptr + layout.shift +
                 (layout.gs + layout.stride[0] * (layout.gs + layout.stride[1] * layout.gs))) {
         m_assert(m_isaligned(data_), "the value of data must be aligned!");
+        m_assert(ptr.size >= layout.n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr.size, layout.n_elem);
     };
 
-    __restrict real_t* RWrite(const lda_t ida = 0) const {
+    __restrict real_t* RWrite(const lda_t ida = 0) const noexcept {
         return data_;
     }
-    __restrict const real_t* RRead(const lda_t ida = 0) const {
+    __restrict const real_t* RRead(const lda_t ida = 0) const noexcept {
         return data_;
     }
-    real_t* Write(const lda_t ida = 0) const {
+    real_t* Write(const lda_t ida = 0) const noexcept {
         return data_;
     }
-    const real_t* Read(const lda_t ida = 0) const {
+    const real_t* Read(const lda_t ida = 0) const noexcept {
         return data_;
     }
 
@@ -69,12 +70,13 @@ class ConstMemData {
           data_(ptr.ptr + layout.shift +
                 (layout.gs + layout.stride[0] * (layout.gs + layout.stride[1] * layout.gs))) {
         m_assert(m_isaligned(data_), "the value of data must be aligned!");
+        m_assert(ptr.size >= layout.n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr.size, layout.n_elem);
     };
 
-    __restrict const real_t* RRead(const lda_t ida = 0) const {
+    __restrict const real_t* RRead(const lda_t ida = 0) const noexcept {
         return data_;
     }
-    const real_t* Read(const lda_t ida = 0) const {
+    const real_t* Read(const lda_t ida = 0) const noexcept {
         return data_;
     }
 
