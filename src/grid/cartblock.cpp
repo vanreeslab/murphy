@@ -29,7 +29,7 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
  * @param ida the required dimension
  * @return data_ptr the data_ptr corresponding to the point in the block, i.e. (0,0,0), for the given dimension.
  */
-data_ptr CartBlock::data(const Field* const fid, const lda_t ida) const noexcept {
+MemData CartBlock::data(const Field* const fid, const lda_t ida) const noexcept {
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
@@ -38,11 +38,13 @@ data_ptr CartBlock::data(const Field* const fid, const lda_t ida) const noexcept
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    data_ptr data = it->second(ida, this);
-    return data;
+    MemLayout myself(fid->lda(), M_GS, M_N);
+    MemData data_out(it->second, myself);
 #else
-    return mem_map_.at(fid->name())(ida, this);
+    MemLayout myself(fid->lda(), M_GS, M_N);
+    MemData data_out(mem_map_[fid->name()], myself);
 #endif
+    return data_out;
     //-------------------------------------------------------------------------
 }
 

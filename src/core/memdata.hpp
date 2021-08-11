@@ -30,7 +30,7 @@ class MemData {
     real_t* const data_;
     const size_t  stride_[2];
 
-    [[nodiscard]] __attribute__((always_inline)) inline bidx_t Boffset_(const lda_t ida) const noexcept { return stride_[0] * stride_[1] * stride_[1] * ida; };
+    [[nodiscard]] __attribute__((always_inline)) inline bidx_t offset_(const lda_t ida) const noexcept { return stride_[0] * stride_[1] * stride_[1] * ida; };
 
    public:
     explicit MemData() = delete;
@@ -43,16 +43,16 @@ class MemData {
     };
 
     __restrict real_t* RWrite(const lda_t ida = 0) const noexcept {
-        return data_ + Boffset_(ida);
+        return data_ + offset_(ida);
     }
     __restrict const real_t* RRead(const lda_t ida = 0) const noexcept {
-        return data_ + Boffset_(ida);
+        return data_ + offset_(ida);
     }
     real_t* Write(const lda_t ida = 0) const noexcept {
-        return data_ + Boffset_(ida);
+        return data_ + offset_(ida);
     }
     const real_t* Read(const lda_t ida = 0) const noexcept {
-        return data_ + Boffset_(ida);
+        return data_ + offset_(ida);
     }
 
     [[nodiscard]] __attribute__((always_inline)) inline bidx_t Accessor(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
@@ -65,7 +65,7 @@ class ConstMemData {
     const real_t* const data_;
     const size_t        stride_[2];
     
-    [[nodiscard]] __attribute__((always_inline)) inline bidx_t Boffset_(const lda_t ida) const noexcept { return stride_[0] * stride_[1] * stride_[1] * ida; };
+    [[nodiscard]] __attribute__((always_inline)) inline bidx_t offset_(const lda_t ida) const noexcept { return stride_[0] * stride_[1] * stride_[1] * ida; };
 
    public:
     explicit ConstMemData() = delete;
@@ -78,10 +78,10 @@ class ConstMemData {
     };
 
     __restrict const real_t* RRead(const lda_t ida = 0) const noexcept {
-        return data_ + Boffset_(ida);
+        return data_ + offset_(ida);
     }
     const real_t* Read(const lda_t ida = 0) const noexcept {
-        return data_ + Boffset_(ida);
+        return data_ + offset_(ida);
     }
 
     [[nodiscard]] __attribute__((always_inline)) inline bidx_t Accessor(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {

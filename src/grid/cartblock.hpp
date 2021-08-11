@@ -94,7 +94,7 @@ class CartBlock{
      * @{
      */
     MemData data(const Field* const fid, const lda_t ida = 0) const noexcept;
-    MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
+    // MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 
     /**
