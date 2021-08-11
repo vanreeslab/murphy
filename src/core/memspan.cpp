@@ -1,6 +1,16 @@
 #include "core/memspan.hpp"
+#include "macros.hpp"
 
-//==============================================================================
+static size_t MemPadSize(const size_t size, const size_t size_type) {
+    m_assert((M_ALIGNMENT % size_type) == 0, "the alignement must be a mutiple of %d", size_type);
+    //--------------------------------------------------------------------------
+    const size_t chunk = M_ALIGNMENT / size_type;  //alignement in terms of T
+    const size_t mod   = (size % chunk);
+    // pad and return
+    return size - mod + (mod > 0) * chunk;
+    //--------------------------------------------------------------------------
+};
+
 MemLayout::MemLayout(const lda_t dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept {
     //--------------------------------------------------------------------------
     // we want to ensure that the offset is aligned in memory.
@@ -8,9 +18,10 @@ MemLayout::MemLayout(const lda_t dim, const bidx_t n_gs_front, const bidx_t n_bl
     //      gs_front[0] + stride[0] *(....)
     // as the raw pointer is aligned, we must have gs_front and stride aligned!
 
-    // 1. get the ghost sizes, only the front one matters here!
-    gs[0] = MemPadSize(n_gs_front, sizeof(real_t));
-    gs[1] = n_gs_front;
+    // 1. get the ghost sizes and the shift to apply
+    gs    = n_gs_front;
+    shift = MemPadSize(gs, sizeof(real_t)) - gs;
+    m_assert(MemPadSize(gs, sizeof(real_t)) >= gs, "the padded size %ld must be >= the actual size %ld", MemPadSize(gs, sizeof(real_t)), gs);
 
     // 2. get the strides
     const bidx_t gs_back    = (n_gs_back > -1) ? n_gs_back : n_gs_front;
@@ -18,16 +29,13 @@ MemLayout::MemLayout(const lda_t dim, const bidx_t n_gs_front, const bidx_t n_bl
     stride[0]               = MemPadSize(stride_usr, sizeof(real_t));
     stride[1]               = stride_usr;
 
-    // compute the number of elements as the maximum offset that will be used + 1
-    // the offset is given by
-    //      (gs[0] + id) + stride[0] * ((gs[1] + id) + stride[1] * (gs[1] + id))
-    // where id = (n_block + gs_back)-1
-    n_elem = 0;
+    // compute the number of elements as the product of the respective stides + the shift
+    n_elem = 1;
     for (lda_t ida = 0; ida < (dim - 1); ++ida) {
-        n_elem = (stride[1]-1) + stride[1] * n_elem ;
+        n_elem = stride[1] * n_elem;
     }
-    // the last dimension
-    n_elem = (gs[0]+n_block+gs_back) + stride[0] * n_elem;
+    // fastest dimension
+    n_elem = shift + stride[0] * n_elem;
     //--------------------------------------------------------------------------
 }
 

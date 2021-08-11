@@ -109,23 +109,6 @@ class data_ptr : public m_ptr<real_t> {
     
     using m_ptr<real_t>::operator();  // inheritates the operator()
 
-<<<<<<< HEAD
-    // /** @brief copy operator */
-    // data_ptr& operator=(const data_ptr& other) {
-    //     return data_ptr(other(), other.stride(), other.gs());
-    // };
-
-    inline bidx_t stride() const {return stride_;};
-    inline bidx_t gs() const {return gs_;};
-
-    real_t* Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0) const;
-    // real_t* Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) const;
-    real_t* Write(const lda_t ida) const;
-
-    const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0) const;
-    // const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) const;
-    const real_t* Read(const lda_t ida) const;
-=======
     real_t* __restrict__ Write(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const noexcept;
     real_t* __restrict__ Write(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
     real_t* __restrict__ Write(const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
@@ -134,7 +117,6 @@ class data_ptr : public m_ptr<real_t> {
     const real_t* __restrict__ Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const noexcept;
     const real_t* __restrict__ Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
     const real_t* __restrict__ Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
->>>>>>> develop
 };
 
 /** @brief data pointer type = root of the data, i.e. the adress of (0,0,0)
@@ -163,15 +145,9 @@ class const_data_ptr : public m_ptr<const real_t> {
     inline bidx_t stride() const {return stride_;};
     inline bidx_t gs() const {return gs_;};
 
-<<<<<<< HEAD
-    const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0) const;
-    // const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;
-    const real_t* Read(const lda_t ida) const;
-=======
     const real_t* __restrict__ Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const noexcept;
     const real_t* __restrict__ Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
     const real_t* __restrict__ Read(const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
->>>>>>> develop
 };
 
 
@@ -211,15 +187,9 @@ class mem_ptr : public m_ptr<real_t> {
         data_     = nullptr;
     }
 
-<<<<<<< HEAD
-    data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const;
-    data_ptr operator()(const lda_t ida, const MemLayout* const layout) const;
-    mem_ptr  shift_dim(const lda_t ida, const MemLayout* const layout) const;
-=======
     data_ptr operator()(const lda_t ida, const bidx_t gs = M_GS, const bidx_t stride = M_STRIDE) const noexcept;
     data_ptr operator()(const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
     mem_ptr  shift_dim(const lda_t ida, const m_ptr<const MemLayout>& layout) const noexcept;
->>>>>>> develop
 };
 /**@}*/
 
