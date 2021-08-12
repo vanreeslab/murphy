@@ -9,11 +9,11 @@ typedef enum m_layout_t {
 } m_layout_type_t;
 
 struct MemLayout {
-    size_t gs;         //!< number of ghost points in front of the block
-    size_t shift;      //!< the shift to apply to the fastest rotating dimension to have the 0 aligned
-    size_t stride[2];  //!< the strides of the data: fastest rotating stride in [0], user stride in [1]
-
-    size_t n_elem;  //!< number of elements in the memory layout (= minimal allocation size)
+    bidx_t gs;         //!< number of ghost points in front of the block
+    bidx_t shift;      //!< the shift to apply to the fastest rotating dimension to have the 0 aligned
+    bidx_t stride[2];  //!< the strides of the data: fastest rotating stride in [0], user stride in [1]
+    
+    bidx_t n_elem;  //!< number of elements in the memory layout (= minimal allocation size)
 
     explicit MemLayout() = delete;
     explicit MemLayout(const m_layout_t layout, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept;

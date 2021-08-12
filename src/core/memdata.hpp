@@ -24,7 +24,7 @@ struct MemPtr {
     explicit MemPtr() noexcept {};
     ~MemPtr();
 
-    void Allocate(const size_t element_size);
+    void Allocate(const bidx_t element_size);
     void Free();
 };
 
@@ -40,7 +40,7 @@ class RestrictData {
     //--------------------------------------------------------------------------
    private:
     T* __restrict const data_;
-    size_t const stride_[2];
+    bidx_t const stride_[2];
 
     //--------------------------------------------------------------------------
     // every class that is like me but with a const type is my friend
