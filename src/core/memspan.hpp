@@ -13,13 +13,27 @@ struct MemLayout {
     bidx_t shift;      //!< the shift to apply to the fastest rotating dimension to have the 0 aligned
     bidx_t stride[2];  //!< the strides of the data: fastest rotating stride in [0], user stride in [1]
     
-    bidx_t n_elem;  //!< number of elements in the memory layout (= minimal allocation size)
+    size_t n_elem;  //!< number of elements in the memory layout (= minimal allocation size, can be large and always >= 0)
 
     explicit MemLayout() = delete;
     explicit MemLayout(const m_layout_t layout, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept;
 
-    __attribute__((always_inline)) inline bidx_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
-        return shift + (gs+i0) + stride[0] * ((gs+i1) + stride[1] * (gs+i2));
+    /**
+     * @brief returns the offset of the position (0,0,0) of a given dimension from the RAW pointer expressed as a # of elements (>=0 number)
+     */
+    __attribute__((always_inline)) inline size_t offset(const lda_t ida = 0) const noexcept {
+        m_assert(0 <= ida, "ida = %d cannot be <0", ida);
+        return shift + gs + stride[0] * (gs + stride[1] * (gs + stride[1] * ida));
+    };
+
+    /**
+     * @brief returns the offset of the position (i0,i1,i2) from the RAW pointer expressed as a # of elements (>=0 number)
+     */
+    __attribute__((always_inline)) inline size_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+        m_assert(0 <= (gs + i0) && (gs + i0) < stride[1], "we cannot be <0 or > stride from the user");
+        m_assert(0 <= (gs + i1) && (gs + i1) < stride[1], "we cannot be <0 or > stride from the user");
+        m_assert(0 <= (gs + i2) && (gs + i2) < stride[1], "we cannot be <0 or > stride from the user");
+        return shift + (gs + i0) + stride[0] * ((gs + i1) + stride[1] * (gs + i2));
     };
 };
 
