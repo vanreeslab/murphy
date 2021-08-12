@@ -13,7 +13,7 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
     m_begin;
     //-------------------------------------------------------------------------
     level_ = level;
-#pragma unroll 3    
+#pragma unroll 3
     for (lda_t id = 0; id < 3; ++id) {
         xyz_[id]   = xyz[id];
         hgrid_[id] = CartBlockHGrid(length);  // length / (M_N - 1);
@@ -29,16 +29,16 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
  * @param ida the required dimension
  * @return data_ptr the data_ptr corresponding to the point in the block, i.e. (0,0,0), for the given dimension.
  */
-MemData CartBlock::data(const Field* const fid, const lda_t ida) const noexcept {
+MemData CartBlock::data(const Field& fid, const lda_t ida) const noexcept {
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
     //-------------------------------------------------------------------------
-    MemLayout myself(fid->lda(), M_GS, M_N);
+    MemLayout myself(M_LAYOUT_BLOCK, M_GS, M_N);
 #ifndef NDEBUG
     // check the field validity
-    auto it = mem_map_.find(fid->name());
-    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+    auto it = mem_map_.find(fid.name());
+    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid.name().c_str());
     MemData data_out(it->second, myself);
 #else
     MemData data_out(mem_map_[fid->name()], myself);
@@ -72,9 +72,9 @@ MemData CartBlock::data(const Field* const fid, const lda_t ida) const noexcept 
 
 // /**
 //  * @brief returns the MemPtr that corresponds to the actual data pointer
-//  * 
+//  *
 //  * @warning do not confuse with @ref data() function
-//  * 
+//  *
 //  * @param fid the field
 //  * @param ida the required dimension (default = 0)
 //  * @return mem_ptr the memory pointer
@@ -99,18 +99,23 @@ MemData CartBlock::data(const Field* const fid, const lda_t ida) const noexcept 
  * 
  * @param fid the pointer to the field to add
  */
-void CartBlock::AddField(const Field* const  fid) {
+void CartBlock::AddField(const Field& fid) {
     //-------------------------------------------------------------------------
-    string name = fid->name();
+    string name = fid.name();
     // try to find the field
     auto it = mem_map_.find(name);
+
     // if not found, create it
-    if (it == mem_map_.end()) {
+    if (it == mem_map_.end()) [[likely]] {
+        // create an empty pointer, a copy is happening here!
+        mem_map_[name] = MemPtr();
+
+        // allocate the pointer, the one in the map, not the one created
+        MemLayout myself(M_LAYOUT_BLOCK, M_GS, M_N);
+        auto      it = mem_map_.find(name);
+        it->second.Allocate(myself.n_elem * fid.lda());
+
         m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid->lda());
-        
-        mem_map_[name] = mem_ptr();
-        auto it        = mem_map_.find(name);
-        it->second.Calloc(CartBlockMemNum(fid->lda()));
     } else {
         m_verb("field <%s> already in the block (dim=%d)", name.c_str(), fid->lda());
     }
@@ -122,10 +127,10 @@ void CartBlock::AddField(const Field* const  fid) {
  * 
  * @param fields 
  */
-void CartBlock::AddFields(const std::map<string, Field*  >* fields) {
+void CartBlock::AddFields(const std::map<string, Field&>& fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
-    for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
+    for (auto iter = fields.cbegin(); iter != fields.cend(); iter++) {
         AddField(iter->second);
     }
     //-------------------------------------------------------------------------
@@ -137,7 +142,7 @@ void CartBlock::AddFields(const std::map<string, Field*  >* fields) {
  * @param name The name of the requested field
  */
 
-bool CartBlock::IsFieldOwned(const std::string name) const {
+bool CartBlock::IsFieldOwned(const string& name) const {
     return (mem_map_.find(name) != mem_map_.end());
 }
 
@@ -146,9 +151,9 @@ bool CartBlock::IsFieldOwned(const std::string name) const {
  * 
  * @param fid the field to remove
  */
-void CartBlock::DeleteField(const Field* const  fid) {
+void CartBlock::DeleteField(const Field& fid) {
     //-------------------------------------------------------------------------
-    string name = fid->name();
+    string name = fid.name();
 
     // try to find the field
     auto it = mem_map_.find(name);

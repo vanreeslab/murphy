@@ -12,16 +12,16 @@
 #include "core/types.hpp"
 #include "grid/field.hpp"
 
-/**
- * @brief returns the memory size (in # of elements) of a cartesian block
- * 
- * @param ida 
- * @return size_t 
- */
-constexpr size_t CartBlockMemNum(const lda_t ida) {
-    size_t stride = (M_N + 2 * M_GS);
-    return ida * stride * stride * stride;
-}
+// /**
+//  * @brief returns the memory size (in # of elements) of a cartesian block
+//  * 
+//  * @param ida 
+//  * @return size_t 
+//  */
+// constexpr size_t CartBlockMemNum(const lda_t ida) {
+//     size_t stride = (M_N + 2 * M_GS);
+//     return ida * stride * stride * stride;
+// }
 
 constexpr real_t CartBlockHGrid(const real_t length) {
     // return length / (M_N - 1);
@@ -93,7 +93,7 @@ class CartBlock{
      * @name datamap access
      * @{
      */
-    MemData data(const Field* const fid, const lda_t ida = 0) const noexcept;
+    MemData data(const Field& fid, const lda_t ida = 0) const noexcept;
     // MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 
@@ -102,38 +102,42 @@ class CartBlock{
      * 
      * @{
      */
-    void AddField(const Field* const fid);
-    void DeleteField(const Field* const fid);
-    void AddFields(const std::map<std::string, Field*>* fields);
-    bool IsFieldOwned(const std::string name) const;
+    void AddField(const Field& fid);
+    void DeleteField(const Field& fid);
+    void AddFields(const std::map<std::string, Field&>& fields);
+    bool IsFieldOwned(const std::string& name) const;
     /** @} */
 };
 
-/**
- * @brief copy the values of a given CartBlock to the temp array
- * 
- * @param layout the layout to be copied, everything outside the layout is set to 0
- * @param data the initial data
- * @param temp the temporary data (of size @ref CartBlockMemNum(1))
- */
-inline void ToTempMemory(MemLayout* const  layout, const ConstMemData& data, const MemData& temp) {
-    m_begin;
-    //-------------------------------------------------------------------------
-    // reset the memory size to 0
-    std::memset(temp(), 0, sizeof(real_t) * CartBlockMemNum(1));
+// /**
+//  * @brief copy the values of a given CartBlock to the temp array
+//  * 
+//  * @param layout the layout to be copied, everything outside the layout is set to 0
+//  * @param data the initial data
+//  * @param temp the temporary data (of size @ref CartBlockMemNum(1))
+//  */
+// inline void ToTempMemory(const MemSpan& span, const ConstMemData& data, const MemPtr& temp) {
+//     m_begin;
+//     //-------------------------------------------------------------------------
+//     // reset the whole temp memory size to 0
+//     std::memset(temp.ptr, 0,  temp.size * sizeof(real_t));
 
-    const real_t* sdata = data.Read();
-    real_t*       tdata = temp.Write();
+//     // const real_t* sdata = data.Read();
+//     // real_t*       tdata = temp.Write();
 
-    for (bidx_t i2 = layout->start(2); i2 < layout->end(2); ++i2) {
-        for (bidx_t i1 = layout->start(1); i1 < layout->end(1); ++i1) {
-            bidx_t idx = m_idx(0, i1, i2, 0, layout->stride());
-            std::memcpy(tdata + idx, sdata + idx, sizeof(real_t) * (layout->end(0) - layout->start(0)));
-        }
-    }
-    //-------------------------------------------------------------------------
-    m_end;
-}
+//     // for (bidx_t i2 = layout->start(2); i2 < layout->end(2); ++i2) {
+//     //     for (bidx_t i1 = layout->start(1); i1 < layout->end(1); ++i1) {
+//     //         bidx_t idx = m_idx(0, i1, i2, 0, layout->stride());
+//     //         std::memcpy(tdata + idx, sdata + idx, sizeof(real_t) * (layout->end(0) - layout->start(0)));
+//     //     }
+//     // }
+//     auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void{
+
+//     };
+//     for_loop(op,span);
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
 
 //-------------------------------------------------------------------------
 // defines code-wide usefull lambda functions
