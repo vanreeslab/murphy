@@ -20,7 +20,7 @@ void Dset::operator()(const ForestGrid* grid, const real_t value, Field* fid_x) 
 void Dset::ComputeDsetGridBlock(const qid_t* qid, const GridBlock* block, Field* fid_x) {
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
-#pragma unroll    
+
     for (sid_t ida = 0; ida < lda; ++ida) {
         const MemData& data = block->data(fid_x, ida);
 
@@ -50,7 +50,7 @@ void Dcopy::ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, const Fiel
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
-#pragma unroll
+
     for (sid_t ida = 0; ida < lda; ++ida) {
         const ConstMemData& data_x = block->data(fid_x, ida);
         const MemData&      data_y = block->data(fid_y, ida);
@@ -85,7 +85,7 @@ void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, const GridBlock* block, cons
     m_assert(fid_y->lda() == fid_z->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
     const lda_t lda = fid_x->lda();
-#pragma unroll
+
     for (lda_t ida = 0; ida < lda; ++ida) {
         const ConstMemData& data_x = block->data(fid_x, ida);
         const ConstMemData& data_y = block->data(fid_y, ida);
@@ -119,7 +119,7 @@ void Dscale::ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field* f
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must have enough valid ghost points", fid_x->name().c_str());
     //-------------------------------------------------------------------------
     const lda_t lda = fid_x->lda();
-#pragma unroll
+
     for (lda_t ida = 0; ida < lda; ++ida) {
         const MemData& data_x = block->data(fid_x, ida);
         

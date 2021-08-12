@@ -41,7 +41,7 @@ static void DoMagic_Flux(/* param */ const bidx_t                    nghost,
         const real_t* src    = data_src + m_idx(i0, i1, i2);
 
         // loop on the faces
-        #pragma GCC unroll 3
+#pragma unroll 3
         for (lda_t ida = 0; ida < 3; ++ida) {
             // as we are on the face +1/2, apply the flux on the:
             // -> left only if we are >0

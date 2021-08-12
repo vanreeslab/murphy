@@ -42,7 +42,7 @@ MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t
 //==============================================================================
 MemSpan::MemSpan(const bidx_t in_start, const bidx_t in_end) noexcept {
     //--------------------------------------------------------------------------
-#pragma unroll
+#pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
         start[ida] = in_start;
         end[ida]   = in_end;
@@ -52,7 +52,7 @@ MemSpan::MemSpan(const bidx_t in_start, const bidx_t in_end) noexcept {
 
 MemSpan::MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept {
     //--------------------------------------------------------------------------
-#pragma unroll
+#pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
         start[ida] = in_start[ida];
         end[ida]   = in_end[ida];

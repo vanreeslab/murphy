@@ -7,7 +7,6 @@ void Error::ErrorOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Fi
     real_t e2 = 0.0;
     real_t ei = 0.0;
     
-    #pragma unroll
     for (lda_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
         const ConstMemData& data_field = block->data(fid,ida);
@@ -40,7 +39,6 @@ void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, con
     real_t e2 = 0.0;
     real_t ei = 0.0;
 
-    #pragma unroll
     for (lda_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
         const ConstMemData& data_field = block->data(fid, ida);
@@ -76,7 +74,6 @@ void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block,
     real_t e2 = 0.0;
     real_t ei = 0.0;
 
-    #pragma unroll
     for (lda_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
         const ConstMemData& data_field = block->data(fid, ida);
@@ -113,7 +110,7 @@ void Error::ErrorFieldOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* b
 
     real_t e2 = 0.0;
     real_t ei = 0.0;
-#pragma unroll
+
     for (lda_t ida = 0; ida < fid->lda(); ++ida) {
         // get the data pointers
         const ConstMemData& data_field = block->data(fid, ida);

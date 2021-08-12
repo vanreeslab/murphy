@@ -28,7 +28,6 @@ real_t BMax::operator()(const ForestGrid* grid, const Field* fid_x) const {
 void BMax::ComputeBMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, real_t* max)const {
     //-------------------------------------------------------------------------
     // get the data for each direction
-#pragma unroll
     for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
         // for the current ida
         real_t        local_max  = 0.0;
@@ -56,7 +55,6 @@ void BMinMax::operator()(const ForestGrid* grid, const Field* fid_x, real_t* min
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
     //-------------------------------------------------------------------------
     // go on the blocks, for each dim separately
-#pragma unroll
     for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
         real_t res[2] = {std::numeric_limits<real_t>::min(),
                          std::numeric_limits<real_t>::max()};
@@ -114,7 +112,6 @@ void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* m
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
     //-------------------------------------------------------------------------
     // go on the blocks, for each dim separately
-#pragma unroll
     for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
         // reset the moments
         real_t moments[4] = {0.0,0.0,0.0,0.0};
@@ -181,7 +178,6 @@ void BAvg::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_gl
     // reset the sum
     real_t sum_local = 0.0;
     // go on the blocks, for each dim separately
-#pragma unroll
     for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
         DoOpMesh(this, &BAvg::ComputeBAvgGridBlock, grid, fid_x, ida, &sum_local);
     }
