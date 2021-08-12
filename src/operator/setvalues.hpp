@@ -54,7 +54,7 @@ class SetValue : public BlockOperator {
             this->expr_(i0, i1, i2, block, fid);
         };
         // run the forloop on it
-        for_loop(&op, start_, end_);
+        for_loop(op, start_, end_);
         //-------------------------------------------------------------------------
     };
 };

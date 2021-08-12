@@ -50,9 +50,9 @@ class RestrictData {
     //--------------------------------------------------------------------------
    public:
     explicit RestrictData() = delete;
-    explicit RestrictData(const MemPtr& ptr, const MemLayout& layout) noexcept
+    explicit RestrictData(const MemPtr& ptr, const MemLayout& layout, const lda_t ida = 0) noexcept
         : stride_{layout.stride[0], layout.stride[1]},
-          data_(ptr.ptr + layout.offset(0, 0, 0)) {
+          data_(ptr.ptr + layout.offset(0, 0, 0) + stride_[0]*stride_[1]*stride_[1]*ida) {
         // do alignement asserts
         m_assert(m_isaligned(data_), "the value of data must be aligned!");
         m_assert(ptr.size >= layout.n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr.size, layout.n_elem);
@@ -81,9 +81,18 @@ class RestrictData {
     __attribute__((always_inline)) inline T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
         return data_[i0 + stride_[0] * (i1 + stride_[1] * i2)];
     }
+
+    __attribute__((always_inline)) inline T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset) const noexcept {
+        return data_[offset + i0 + stride_[0] * (i1 + stride_[1] * i2)];
+    }
+
     __attribute__((always_inline)) inline T* __restrict ptr(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
         return data_ + (i0 + stride_[0] * (i1 + stride_[1] * i2));
     }
+
+     __attribute__((always_inline)) inline bidx_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+        return (i0 + stride_[0] * (i1 + stride_[1] * i2));
+    };
 };
 
 using MemData      = RestrictData<real_t>;

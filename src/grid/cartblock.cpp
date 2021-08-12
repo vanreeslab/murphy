@@ -34,14 +34,13 @@ MemData CartBlock::data(const Field* const fid, const lda_t ida) const noexcept 
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
     //-------------------------------------------------------------------------
+    MemLayout myself(fid->lda(), M_GS, M_N);
 #ifndef NDEBUG
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    MemLayout myself(fid->lda(), M_GS, M_N);
     MemData data_out(it->second, myself);
 #else
-    MemLayout myself(fid->lda(), M_GS, M_N);
     MemData data_out(mem_map_[fid->name()], myself);
 #endif
     return data_out;

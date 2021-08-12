@@ -62,11 +62,11 @@ class CartBlock{
      * @name Memory Layout functions
      * 
      * @{ */
-    inline bidx_t gs() const override final { return M_GS; }
-    inline bidx_t core() const override final { return M_N; }
-    inline bidx_t stride() const override final { return (M_N + 2 * M_GS); }
-    inline bidx_t start(const lda_t ida) const override final { return 0; }
-    inline bidx_t end(const lda_t ida) const override final { return M_N; }
+    inline bidx_t gs() const { return M_GS; }
+    inline bidx_t core() const { return M_N; }
+    inline bidx_t stride() const { return (M_N + 2 * M_GS); }
+    inline bidx_t start(const lda_t ida) const { return 0; }
+    inline bidx_t end(const lda_t ida) const { return M_N; }
     /** @} */
 
     /**

@@ -6,7 +6,7 @@
 #include "grid/subblock.hpp"
 #include "wavelet/wavelet.hpp"
 
-class GhostBlock : public SubBlock {
+class GhostBlock{
    protected:
     // indexing stuffs
     bool scale_dir_start_[3] = {false};   //!< indicate if we have to scale in a given direction at the start index (faces scale in 1 direction, edges in 2 and )
@@ -18,10 +18,10 @@ class GhostBlock : public SubBlock {
     GhostBlock(const bidx_t gs, const bidx_t stride, const bidx_t (*const ghost_len)[2]) : SubBlock(gs, stride),
                                                                                            ghost_len_{ghost_len} {};
 
-    [[nodiscard]] bidx_t start(const lda_t ida) const override final {
+    [[nodiscard]] bidx_t start(const lda_t ida) const{
         return start_[ida] - static_cast<bidx_t>(scale_dir_start_[ida]) * (*ghost_len_)[0];
     };
-    [[nodiscard]] bidx_t end(const lda_t ida) const override final {
+    [[nodiscard]] bidx_t end(const lda_t ida) const{
         return end_[ida] + static_cast<bidx_t>(scale_dir_end_[ida]) * (*ghost_len_)[1];
     };
 
