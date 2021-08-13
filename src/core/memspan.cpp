@@ -11,7 +11,7 @@ static bidx_t MemPadSize(const bidx_t size, const bidx_t size_type) {
     //--------------------------------------------------------------------------
 };
 
-MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept {
+MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back) noexcept {
     //--------------------------------------------------------------------------
     // we want to ensure that the offset is aligned in memory.
     // the offset is given by
@@ -21,7 +21,7 @@ MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t
     // 1. get the ghost sizes and the shift to apply
     gs    = n_gs_front;
     shift = MemPadSize(gs, sizeof(real_t)) - gs;
-    m_assert(MemPadSize(gs, sizeof(real_t)) >= gs, "the padded size %ld must be >= the actual size %ld", MemPadSize(gs, sizeof(real_t)), gs);
+    m_assert(MemPadSize(gs, sizeof(real_t)) >= gs, "the padded size %d must be >= the actual size %d", MemPadSize(gs, sizeof(real_t)), gs);
 
     // 2. get the strides
     const bidx_t gs_back    = (n_gs_back > -1) ? n_gs_back : n_gs_front;
@@ -71,14 +71,14 @@ MemSpan::MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept {
  * @warning if the new index is NOT an integer, we ceil it! (sometimes we use an index of 1 because we want to visit the index 0, we should preserve that)
  * 
  * @param new_layout 
- * @param id 
+ * @param id index in the current reference 
  * @return bidx_t 
  */
-bidx_t MemSpan::TranslateLimit(const MemLayout& new_layout, const bidx_t id) const noexcept {
+bidx_t MemLayout::TranslateLimit(const MemLayout& new_layout, const bidx_t c_id) const noexcept {
     //--------------------------------------------------------------------------
     const bidx_t n_front = new_layout.gs;
     const bidx_t n_core  = new_layout.block;
-    const bidx_t n_back  = new_layout.stride[1] - (newlayout.block + new_layout.gs);
+    const bidx_t n_back  = new_layout.stride[1] - (new_layout.block + new_layout.gs);
     const bidx_t c_core  = block;
 
     // let's go for some dark magic
