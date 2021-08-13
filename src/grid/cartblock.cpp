@@ -41,7 +41,7 @@ MemData CartBlock::data(const Field& fid, const lda_t ida) const noexcept {
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid.name().c_str());
     MemData data_out(it->second, myself);
 #else
-    MemData data_out(mem_map_[fid->name()], myself);
+    MemData data_out(mem_map_[fid.name()], myself);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -115,9 +115,9 @@ void CartBlock::AddField(const Field& fid) {
         auto      it = mem_map_.find(name);
         it->second.Allocate(myself.n_elem * fid.lda());
 
-        m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid->lda());
+        m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid.lda());
     } else {
-        m_verb("field <%s> already in the block (dim=%d)", name.c_str(), fid->lda());
+        m_verb("field <%s> already in the block (dim=%d)", name.c_str(), fid.lda());
     }
     //-------------------------------------------------------------------------
 }
