@@ -20,11 +20,11 @@ Stencil::Stencil() : BlockOperator(nullptr){};
  * @param field_trg 
  * @param grid
  */
-void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
+void Stencil::operator()(const Grid* grid, Field& field_src, Field& field_trg) {
     m_begin;
     m_assert(!(grid == nullptr), "the grid cannot be null");
-    m_assert(!(field_src == nullptr), "the source field cannot be null");
-    m_assert(!(field_trg == nullptr), "the source field cannot be null");
+    // m_assert(!(field_src == nullptr), "the source field cannot be null");
+    // m_assert(!(field_trg == nullptr), "the source field cannot be null");
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
     m_assert((ghost_len_res_[0] == 0) && (ghost_len_res_[1] == 0), "the ghost_len_res must be 0 0 instead of %d %d", ghost_len_res_[0], ghost_len_res_[1]);
     // m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostFront(), this->NGhost());
@@ -44,10 +44,10 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
 
         // compute the stencil on the outer side
         m_profStart(prof_, "inner");
-        if (!(field_trg == nullptr)) {
+        // if (!(field_trg == nullptr)) {
             ida_ = ida;
             DoOpMesh(this, &Stencil::DoMagic, grid, false, field_src, field_trg);
-        }
+        // }
         m_profStop(prof_, "inner");
 
         // get the coarse representation back
@@ -67,10 +67,10 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
     // we might have not ghosted the field as we already has some up-to-date information
     const bidx_t ghost_len_actual[2] = {m_max(ghost_len[0], field_src->get_ghost_len(0)),
                                         m_max(ghost_len[1], field_src->get_ghost_len(1))};
-    field_src->ghost_len(ghost_len_actual);
+    field_src.ghost_len(ghost_len_actual);
 
     // the trg has been overwritten anyway
-    field_trg->ghost_len(ghost_len_res_);
+    field_trg.ghost_len(ghost_len_res_);
     //-------------------------------------------------------------------------
     m_end;
 }

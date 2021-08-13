@@ -8,7 +8,7 @@
 #include "operator/blockoperator.hpp"
 #include "wavelet/wavelet.hpp"
 
-using lambda_error_t = lambda_i3_t<real_t, const CartBlock* const>;
+using lambda_error_t = lambda_i3_t<real_t, const CartBlock& >;
 
 /**
  * @brief Computes the error of a field against the given solution.
@@ -24,34 +24,34 @@ class Error : public BlockOperator {
     explicit Error(const bidx_t* ghost_len) : BlockOperator(ghost_len){};
 
     template <class Sol>
-    void Normi(const Grid* grid, const Field* field, const Sol* sol, real_t* norm_i) {
+    void Normi(const Grid* grid, const Field& field, const Sol& sol, real_t* norm_i) {
         Norms(grid, field, sol, nullptr, norm_i);
     };
 
     template <class Sol>
-    void Norm2(const Grid* grid, const Field* field, const Sol* sol, real_t* norm_2) {
+    void Norm2(const Grid* grid, const Field& field, const Sol& sol, real_t* norm_2) {
         Norms(grid, field, sol, norm_2, nullptr);
     };
 
     template <class Sol>
-    void Norms(const Grid* grid, const Field* field, const Sol* sol, real_t* norm_2, real_t* norm_i) {
+    void Norms(const Grid* grid, const Field& field, const Sol& sol, real_t* norm_2, real_t* norm_i) {
         Norms(grid, -1, field, sol, nullptr, norm_2, norm_i);
     };
 
     template <class Sol>
-    void Norms(const Grid* grid, const level_t level, const Field* field, const Sol* sol, real_t* norm_2, real_t* norm_i) {
+    void Norms(const Grid* grid, const level_t level, const Field& field, const Sol& sol, real_t* norm_2, real_t* norm_i) {
         Norms(grid, level, field, sol, nullptr, norm_2, norm_i);
     };
 
     template <class Sol>
-    void Norms(const Grid* grid, const Field* field, const Sol* sol, Field* error, real_t* norm_2, real_t* norm_i) {
+    void Norms(const Grid* grid, const Field& field, const Sol& sol, Field& error, real_t* norm_2, real_t* norm_i) {
         Norms(grid, -1, field, sol, error, norm_2, norm_i);
     };
 
     template <class Sol>
-    void Norms(const Grid* grid, const level_t level, const Field* field, const Sol* sol, Field* error, real_t* norm_2, real_t* norm_i) {
+    void Norms(const Grid* grid, const level_t level, const Field& field, const Sol& sol, Field& error, real_t* norm_2, real_t* norm_i) {
         m_begin;
-        m_assert(!(DoGhost() && (!field->ghost_status(ghost_len_need_))), "we cannot compute the ghost, please get the ghost before for field <%s>", field->name().c_str());
+        m_assert(!(DoGhost() && (!field.ghost_status(ghost_len_need_))), "we cannot compute the ghost, please get the ghost before for field <%s>", field.name().c_str());
         //-------------------------------------------------------------------------
         error_2_ = 0.0;
         error_i_ = 0.0;
@@ -93,14 +93,14 @@ class Error : public BlockOperator {
     };
 
     template <class Sol>
-    void ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const Field* fid, const Sol* sol) {
+    void ErrorOnGridBlock(const qid_t* qid, GridBlock* block, const Field& fid, const Sol& sol) {
         //-------------------------------------------------------------------------
         m_assert(false, "Function needs to be specialized: sol");
         //-------------------------------------------------------------------------
     };
 
     template <class Sol>
-    void ErrorFieldOnGridBlock(const qid_t* qid, GridBlock* block, const Field* fid, const Sol* sol, const Field* error) {
+    void ErrorFieldOnGridBlock(const qid_t* qid, GridBlock* block, const Field& fid, const Sol& sol, const Field& error) {
         //-------------------------------------------------------------------------
         m_assert(false, "Function needs to be specialized");
         //-------------------------------------------------------------------------
@@ -109,13 +109,13 @@ class Error : public BlockOperator {
 
 // declare the specialization, implement them in the cpp
 template <>
-void Error::ErrorOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol);
+void Error::ErrorOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field& fid, const Field& sol);
 template <>
-void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field* fid, const Field* sol, const Field* error);
+void Error::ErrorFieldOnGridBlock<Field>(const qid_t* qid, GridBlock* block, const Field& fid, const Field& sol, const Field& error);
 
 template <>
-void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_error_t* sol);
+void Error::ErrorOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field& fid, const lambda_error_t& sol);
 template <>
-void Error::ErrorFieldOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field* fid, const lambda_error_t* sol, const Field* error);
+void Error::ErrorFieldOnGridBlock<lambda_error_t>(const qid_t* qid, GridBlock* block, const Field& fid, const lambda_error_t& sol, const Field& error);
 
 #endif  // SRC_ERROR_HPP

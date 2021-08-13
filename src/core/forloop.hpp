@@ -24,13 +24,6 @@ inline void for_loop(T& kern, const bidx_t s0, const bidx_t e0, const bidx_t s1,
 };
 
 template <class T>
-inline void for_loop(T& kern, const bidx_t start, const bidx_t end) {
-    //-------------------------------------------------------------------------
-    for_loop(kern, start, end, start, end, start, end);
-    //-------------------------------------------------------------------------
-};
-
-template <class T>
 inline void for_loop(T& kern, const MemSpan& span) {
     //-------------------------------------------------------------------------
     for_loop(kern, span.start[0], span.end[0], span.start[1], span.end[1], span.start[2], span.end[2]);
