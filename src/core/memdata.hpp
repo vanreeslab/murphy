@@ -16,10 +16,10 @@
  */
 struct MemPtr {
 #ifndef NDEBUG
-    size_t size         = 0;
-    bool   is_allocated = false;
+    bool is_allocated = false;
 #endif
-    real_t* ptr = nullptr;
+    size_t  size = 0;
+    real_t* ptr  = nullptr;
 
     explicit MemPtr() noexcept {};
     ~MemPtr();
@@ -90,7 +90,7 @@ class RestrictData {
      * 
      */
     __attribute__((always_inline)) inline T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
-        return data_[offset + i0 + stride_[0] * (i1 + stride_[1] * i2)];
+        return data_[offset_ref + i0 + stride_[0] * (i1 + stride_[1] * i2)];
     }
 
     /**
@@ -98,7 +98,7 @@ class RestrictData {
      * 
      */
     __attribute__((always_inline)) inline T* __restrict ptr(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
-        return data_ + offset + (i0 + stride_[0] * (i1 + stride_[1] * i2));
+        return data_ + offset_ref + (i0 + stride_[0] * (i1 + stride_[1] * i2));
     }
 };
 

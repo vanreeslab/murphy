@@ -39,13 +39,13 @@ class GridBlock : public CartBlock {
     short_t     n_dependency_active_        = 0;             //!< list of dependency = how to create my information after refinement/coarsening
     GridBlock*  dependency_[P8EST_CHILDREN] = {nullptr};     //!< the pointer to the dependency block
 
-    mem_ptr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
+    MemPtr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
 
     // list of ghosting
     std::list<NeighborBlock<GridBlock*>*> local_sibling_;         //<! local neighbors at my resolution
     std::list<NeighborBlock<GridBlock*>*> local_parent_;          //!< local neighbors coarser (neighbor to me)
     std::list<NeighborBlock<GridBlock*>*> local_children_;        //!< local neighbors finer
-    std::list<NeighborBlock<GridBlock*>*> local_parent_reverse_;  //!< local neighbors coarser (me to neighbors)
+    std::list<NeighborBlock<GridBlock*>*> local_parent_reverse_;  //!< local neighbors coarser (me gto neighbors)
     std::list<NeighborBlock<MPI_Aint>*>   ghost_sibling_;         //<! ghost neighbors at my resolution
     std::list<NeighborBlock<MPI_Aint>*>   ghost_parent_;          //!< ghost neighbors coarser (neighbor to me)
     std::list<NeighborBlock<MPI_Aint>*>   ghost_children_;        //!< ghost neighbors coarser (neighbor to me)
