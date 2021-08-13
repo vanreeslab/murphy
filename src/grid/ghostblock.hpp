@@ -20,13 +20,12 @@ class GhostBlock : protected MemSpan {
 
    public:
     GhostBlock() = delete;
-    GhostBlock(const bidx_t (*const ghost_len)[2] ) : ghost_len_{ghost_len} {};
+    GhostBlock(const bidx_t (*const ghost_len)[2]) : ghost_len_{ghost_len} {};
 
-    MemSpan GhostBlock::GetSpan();
+    MemSpan GetSpan() const;
 
-    void GetCoarseLength(const MemLayout& layout, const MemLayout& layout_coarse);
-    void GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan& span_coarse);
-
+    void GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan& span_coarse) const;
+    void GetCoarseLength(const MemLayout& layout, const MemLayout& layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const;
 
     // [[nodiscard]] bidx_t start(const lda_t ida) const{
     //     return start[ida] - static_cast<bidx_t>(scale_dir_start_[ida]) * (*ghost_len_)[0];
@@ -37,10 +36,10 @@ class GhostBlock : protected MemSpan {
 
     // /**
     //  * @brief transforms indexes to a coarse layout
-    //  * 
-    //  * @param interp 
-    //  * @param id_fine 
-    //  * @param id_coarse 
+    //  *
+    //  * @param interp
+    //  * @param id_fine
+    //  * @param id_coarse
     //  */
     // void ToCoarse(const Wavelet* interp, const bidx_t id_fine[3], bidx_t id_coarse[3]) {
     //     // get the coarse ghost sizes

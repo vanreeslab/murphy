@@ -38,7 +38,7 @@
  * 
  * @return MemSpan the CURRENT region covered by the ghosts
  */
-MemSpan GhostBlock::GetSpan() {
+MemSpan GhostBlock::GetSpan() const {
     // create an empty Span
     MemSpan me;
     // populate is given the current ghost size
@@ -50,18 +50,28 @@ MemSpan GhostBlock::GetSpan() {
     return me;
 }
 
-void GhostBlock::GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse,
-                               MemSpan& span_coarse) {
+void GhostBlock::GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan& span_coarse) const {
     // get the current span (warning cannot be the start or end arrays)
     MemSpan me = GetSpan();
 
     // we assume that the new layout contains the new desired ghost sizes!
 #pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
-        // span_coarse.start[ida] = TranslateBlockLimits(me.start[ida], layout.block, layout_coarse.gs_front(), layout_coarse.block, layout_coarse.gs_back());
-        // span_coarse, end[ida] = TranslateBlockLimits(me.end[ida], layout.block, layout_coarse.gs_front(), layout_coarse.block, layout_coarse.gs_back());
         span_coarse.start[ida] = layout.TranslateLimit(layout_coarse, me.start[ida]);
         span_coarse.end[ida]   = layout.TranslateLimit(layout_coarse, me.end[ida]);
+    }
+
+    // // get the coarse ghost sizes
+    // const bidx_t coarse_gs[2] = {interp->CoarseNGhostFront((*ghost_len_)[0]),
+    //                              interp->CoarseNGhostBack((*ghost_len_)[1])};
+    // this->Resize(coarse_gs, M_NHALF, block_coarse);
+}
+
+void GhostBlock::GetCoarseLength(const MemLayout& layout, const MemLayout& layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const {
+    // we assume that the new layout contains the new desired ghost sizes!
+#pragma unroll 3
+    for (lda_t ida = 0; ida < 3; ++ida) {
+        coarse_len[ida] = layout.TranslateLimit(layout_coarse, fine_len[ida]);
     }
 
     // // get the coarse ghost sizes
