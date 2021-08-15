@@ -11,12 +11,12 @@
 #include "grid/forestgrid.hpp"
 #include "grid/ghostblock.hpp"
 #include "grid/gridblock.hpp"
-#include "prof.hpp"
+#include "tools/prof.hpp"
 #include "wavelet/wavelet.hpp"
 
 // alias boring names
-using GBLocal      = NeighborBlock<GridBlock *>;
-using GBMirror     = NeighborBlock<MPI_Aint>;
+// using GBLocal      = NeighborBlock<GridBlock *>;
+// using GBMirror     = NeighborBlock<MPI_Aint>;
 using GBPhysic     = PhysBlock;
 using ListGBLocal  = std::list<GBLocal *>;
 using ListGBMirror = std::list<GBMirror *>;

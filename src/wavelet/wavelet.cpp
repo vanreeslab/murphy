@@ -13,8 +13,8 @@
  * @param data_trg target MemData
  */
 void Wavelet::Copy(const level_t dlvl, const bidx_t shift[3],
-                   const MemSpan& span_src, ConstMemData& data_src,
-                   const MemSpan& span_trg, MemData& data_trg) const {
+                   const MemSpan& span_src,const ConstMemData& data_src,
+                   const MemSpan& span_trg,const MemData& data_trg) const {
     //-------------------------------------------------------------------------
     m_assert(dlvl == 0 || dlvl == 1, "only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
@@ -36,8 +36,8 @@ void Wavelet::Copy(const level_t dlvl, const bidx_t shift[3],
  * @param data_trg target MemData
  */
 void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3],
-                          const MemSpan& span_src, ConstMemData& data_src,
-                          const MemSpan& span_trg, MemData& data_trg) const {
+                          const MemSpan& span_src, const ConstMemData& data_src,
+                          const MemSpan& span_trg, const MemData& data_trg) const {
     //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, 0.0, span_src, data_src, span_trg, data_trg);
@@ -85,8 +85,8 @@ void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3],
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
 void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t shift[3], const real_t alpha,
-                       const MemSpan& span_src, ConstMemData& data_src,
-                       const MemSpan& span_trg, MemData& data_trg) const {
+                       const MemSpan& span_src, const ConstMemData& data_src,
+                       const MemSpan& span_trg, const MemData& data_trg) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
     //-------------------------------------------------------------------------

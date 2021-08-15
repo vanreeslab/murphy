@@ -123,8 +123,8 @@ class NeighborBlock : public GhostBlock {
      * @param block_id the cummulative id of the underlying neighboring block (used to access the data)
      * @param rank the rank where to find the underlying neighboring block (-1 if local)
      */
-    NeighborBlock(const bidx_t gs, const bidx_t stride, const bidx_t (*const ghost_len)[2],
-                  const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : GhostBlock(gs, stride, ghost_len),
+    NeighborBlock(const bidx_t (*const ghost_len)[2],
+                  const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : GhostBlock(ghost_len),
                                                                                             ibidule_(ibidule),
                                                                                             cum_block_id_(block_id),
                                                                                             rank_rma_(rank) {
@@ -143,55 +143,30 @@ class NeighborBlock : public GhostBlock {
     }
 
     // return arguments
-    [[nodiscard]] short_t      dlvl() const { return dlvl_; }
-    [[nodiscard]] bidx_t       shift(const int id) const { return shift_[id]; }
-    [[nodiscard]] const bidx_t* shift() const { return shift_; }
-    [[nodiscard]] rank_t       rank() const { return rank_rma_; }
-    [[nodiscard]] iblock_t     cum_block_id() const { return cum_block_id_; };
-    [[nodiscard]] iface_t      ibidule() const { return ibidule_; };
+    M_INLINE short_t       dlvl() const { return dlvl_; }
+    M_INLINE bidx_t        shift(const int id) const { return shift_[id]; }
+    M_INLINE const bidx_t* shift() const { return shift_; }
+    M_INLINE rank_t        rank() const { return rank_rma_; }
+    M_INLINE iblock_t      cum_block_id() const { return cum_block_id_; };
+    M_INLINE iface_t       ibidule() const { return ibidule_; };
 
-    [[nodiscard]] T data_src() {
+    M_INLINE T data_src() const noexcept {
         return data_src_;
     }
-    [[nodiscard]] T* data_src_ptr() {
+    M_INLINE T* data_src_ptr() noexcept {
         return &data_src_;
     }
-    void data_src(T data) {
+    M_INLINE void data_src(T data) {
         data_src_ = data;
     }
-
-    // MemLayout return functions
-    // [[nodiscard]] bidx_t gs() const override {
-    //     return gs_;
-    // };
-    // [[nodiscard]] bidx_t stride() const override {
-    //     return stride_;
-    // };
-    // [[nodiscard]] bidx_t start(const lda_t ida) const override final {
-    //     return start_[ida] - scale_dir_start_[ida] * ghost_len_[0];
-    // };
-    // [[nodiscard]] bidx_t end(const lda_t ida) const override final {
-    //     return start_[ida] + scale_dir_end_[ida] * ghost_len_[1];
-    // };
-    // [[nodiscard]] const bidx_t* ghost_len() const { return ghost_len_; };
-
-    // /**
-    //  * @brief transforms indexes to a coarse layout
-    //  *
-    //  * @param interp
-    //  * @param id_fine
-    //  * @param id_coarse
-    //  */
-    // void ToCoarse(const Wavelet* interp, const bidx_t id_fine[3], bidx_t id_coarse[3]) {
-    //     // get the coarse ghost sizes
-    //     const bidx_t n_front = interp->CoarseNGhostFront(ghost_len_[0]);
-    //     const bidx_t n_back  = interp->CoarseNGhostBack(ghost_len_[1]);
-
-    //     // compute the coarse indexes
-    //     for (bidx_t id = 0; id < 3; ++id) {
-    //         id_coarse[id] = TranslateBlockLimits(id_fine[id], M_N, n_front, M_NHALF, n_back);
-    //     }
-    // }
+    M_INLINE MemSpan SourceSpan() const noexcept {
+        m_assert("this function should never be called, see the specialization instead");
+        return MemSpan();
+    }
+    M_INLINE MemLayout SourceLayout() const noexcept {
+        m_assert("this function should never be called, see the specialization instead");
+        return MemLayout(M_LAYOUT_BLOCK, 0, 0);
+    }
 
     /**
     * @brief Computes the ghost region as the intersection between two blocks
@@ -261,5 +236,30 @@ class NeighborBlock : public GhostBlock {
         //---------------------------------------------------------------------
     }
 };
+
+// defines some shortcuts for convenience
+using GBLocal  = NeighborBlock<GridBlock*>;
+using GBMirror = NeighborBlock<MPI_Aint>;
+
+// specify for GBLocal
+template <>
+M_INLINE MemSpan GBLocal::SourceSpan() const noexcept {
+    return data_src_->BlockSpan();
+}
+template <>
+M_INLINE MemLayout GBLocal::SourceLayout() const noexcept {
+    return data_src_->BlockLayout();
+}
+
+// specify the function for the BlockSpan function
+template <>
+M_INLINE MemSpan GBMirror::SourceSpan() const noexcept {
+    return MemSpan(0, M_N);
+}
+// specify the function for the BlockSpan function
+template <>
+M_INLINE MemLayout GBMirror::SourceLayout() const noexcept {
+    return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
+}
 
 #endif  // SRC_GHOST_BLOCK_HPP_

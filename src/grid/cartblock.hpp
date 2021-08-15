@@ -47,7 +47,7 @@ constexpr real_t CartBlockHGrid(const real_t length) {
  * @warning no ghosting is available for that block
  * 
  */
-class CartBlock{
+class CartBlock {
    protected:
     level_t level_    = -1;               //!< the level of the block
     real_t  xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
@@ -56,7 +56,8 @@ class CartBlock{
     std::map<std::string, MemPtr> mem_map_;  //<! a map of the pointers to the actual data
 
    public:
-    explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level);
+    explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level) noexcept;
+    ~CartBlock();
 
     /**
      * @name Memory Layout functions
@@ -69,10 +70,17 @@ class CartBlock{
     // inline bidx_t end(const lda_t ida) const { return M_N; }
     /** @} */
 
+    __attribute__((always_inline)) inline MemLayout BlockLayout() const {
+        return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
+    }
+    __attribute__((always_inline)) inline MemSpan BlockSpan() const {
+        return MemSpan(0, M_N);
+    }
+
     /**
      * @brief returns the position of a given points (i0, i1, i2)
      */
-    inline void pos(const bidx_t i0, const bidx_t i1, const bidx_t i2, real_t m_pos[3]) const {
+    __attribute__((always_inline)) inline void pos(const bidx_t i0, const bidx_t i1, const bidx_t i2, real_t m_pos[3]) const {
         m_pos[0] = i0 * hgrid_[0] + xyz_[0];
         m_pos[1] = i1 * hgrid_[1] + xyz_[1];
         m_pos[2] = i2 * hgrid_[2] + xyz_[2];
@@ -93,7 +101,8 @@ class CartBlock{
      * @name datamap access
      * @{
      */
-    MemData data(const Field& fid, const lda_t ida = 0) const noexcept;
+    MemData data(const Field& fid, const lda_t ida) const noexcept;
+    // MemData data(const Field& fid, const lda_t ida = 0) const noexcept;
     // MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 

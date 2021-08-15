@@ -26,6 +26,8 @@ struct MemPtr {
 
     void Allocate(const size_t element_size);
     void Free();
+
+    void MemSetZero();
 };
 
 /**

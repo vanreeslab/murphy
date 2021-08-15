@@ -26,7 +26,7 @@
  */
 class Grid : public ForestGrid {
    protected:
-    std::map<std::string, Field*  > fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
 
     Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field

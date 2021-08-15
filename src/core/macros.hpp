@@ -67,6 +67,9 @@
 // // static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
 // /** @} */
 
+
+#define M_INLINE __attribute__((always_inline)) inline
+
 /**
  * @name memory management
  * @{

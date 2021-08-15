@@ -18,8 +18,17 @@ CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t lev
         xyz_[id]   = xyz[id];
         hgrid_[id] = CartBlockHGrid(length);  // length / (M_N - 1);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
+}
+
+CartBlock::~CartBlock() {
+    //--------------------------------------------------------------------------
+    // Free the blocks in the mapping
+    for (auto it = mem_map_.begin(); it != mem_map_.end(); ++it) {
+        it->second.Free();
+    }
+    //--------------------------------------------------------------------------
 }
 
 /**
@@ -34,7 +43,7 @@ MemData CartBlock::data(const Field& fid, const lda_t ida) const noexcept {
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
     //-------------------------------------------------------------------------
-    MemLayout myself(M_LAYOUT_BLOCK, M_GS, M_N);
+    MemLayout myself = BlockLayout();
 #ifndef NDEBUG
     // check the field validity
     auto it = mem_map_.find(fid.name());
@@ -111,7 +120,7 @@ void CartBlock::AddField(const Field& fid) {
         mem_map_[name] = MemPtr();
 
         // allocate the pointer, the one in the map, not the one created
-        MemLayout myself(M_LAYOUT_BLOCK, M_GS, M_N);
+        MemLayout myself = BlockLayout();
         auto      it = mem_map_.find(name);
         it->second.Allocate(myself.n_elem * fid.lda());
 

@@ -50,15 +50,15 @@ MemSpan GhostBlock::GetSpan() const {
     return me;
 }
 
-void GhostBlock::GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan& span_coarse) const {
+void GhostBlock::GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan* span_coarse) const {
     // get the current span (warning cannot be the start or end arrays)
     MemSpan me = GetSpan();
 
     // we assume that the new layout contains the new desired ghost sizes!
 #pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
-        span_coarse.start[ida] = layout.TranslateLimit(layout_coarse, me.start[ida]);
-        span_coarse.end[ida]   = layout.TranslateLimit(layout_coarse, me.end[ida]);
+        span_coarse->start[ida] = layout.TranslateLimit(layout_coarse, me.start[ida]);
+        span_coarse->end[ida]   = layout.TranslateLimit(layout_coarse, me.end[ida]);
     }
 
     // // get the coarse ghost sizes

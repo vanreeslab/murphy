@@ -57,11 +57,11 @@ class Wavelet {
     * @{
     */
     void Copy(const level_t dlvl, const bidx_t shift[3],
-              const MemSpan& span_src, ConstMemData& data_src,
-              const MemSpan& span_trg, MemData& data_trg) const;
+              const MemSpan& span_src, const ConstMemData& data_src,
+              const MemSpan& span_trg, const MemData& data_trg) const;
     void Interpolate(const level_t dlvl, const bidx_t shift[3],
-                     const MemSpan& span_src, ConstMemData& data_src,
-                     const MemSpan& span_trg, MemData& data_trg) const;
+                     const MemSpan& span_src, const ConstMemData& data_src,
+                     const MemSpan& span_trg, const MemData& data_trg) const;
     // void Interpolate(const level_t dlvl, const bidx_t shift[3],
     // const MemSpan&  span_src, ConstMemData& data_src,
     // const MemSpan&  span_trg, MemData& data_trg, const real_t alpha, ConstMemData& data_cst) const;
@@ -93,8 +93,8 @@ class Wavelet {
     */
    protected:
     virtual void DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t shift[3], const real_t alpha,
-                          const MemSpan& span_src, ConstMemData& data_src,
-                          const MemSpan& span_trg, MemData& data_trg) const;
+                          const MemSpan& span_src,const ConstMemData& data_src,
+                          const MemSpan& span_trg,const MemData& data_trg) const;
     virtual void CopyMagic_(const level_t dlvl, const InterpCtx& ctx) const;
 
     // to be overwritten functions
