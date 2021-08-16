@@ -243,37 +243,44 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Coarsen_(const interp_ctx_t* const  ctx) const override {
+    void Coarsen_(const interp_ctx_t& ctx) const override {
         //-------------------------------------------------------------------------
         // filter crap
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
         const real_t* const ha     = ha_<TN, TNT> + ha_lim;
 
         // get pointers
-        real_t* const       tdata = ctx->tdata.Write();
-        const real_t* const sdata = ctx->sdata.Read();
+        // real_t* const       tdata = ctx->tdata.Write();
+        // const real_t* const sdata = ctx->sdata.Read();
+        const MemData      tdata = ctx.tdata;
+        const ConstMemData sdata = ctx.sdata;
 
         // define the lambda, only tdata is changed
-        auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // do some checks on the bounds
-            m_assert(((2 * i0 - ha_lim) >= (ctx->srcstart[0])) && ((2 * i0 + ha_lim) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", 2 * i0 - ha_lim, ctx->srcstart[0], 2 * i0 + ha_lim, ctx->srcend[0]);
-            m_assert(((2 * i1 - ha_lim) >= (ctx->srcstart[1])) && ((2 * i1 + ha_lim) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", 2 * i1 - ha_lim, ctx->srcstart[1], 2 * i1 + ha_lim, ctx->srcend[1]);
-            m_assert(((2 * i2 - ha_lim) >= (ctx->srcstart[2])) && ((2 * i2 + ha_lim) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx->srcstart[2], 2 * i2 + ha_lim, ctx->srcend[2]);
+            m_assert(((2 * i0 - ha_lim) >= (ctx.span.start[0])) && ((2 * i0 + ha_lim) < ctx.span.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", 2 * i0 - ha_lim, ctx.span.start[0], 2 * i0 + ha_lim, ctx.span.end[0]);
+            m_assert(((2 * i1 - ha_lim) >= (ctx.span.start[1])) && ((2 * i1 + ha_lim) < ctx.span.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", 2 * i1 - ha_lim, ctx.span.start[1], 2 * i1 + ha_lim, ctx.span.end[1]);
+            m_assert(((2 * i2 - ha_lim) >= (ctx.span.start[2])) && ((2 * i2 + ha_lim) < ctx.span.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx.span.start[2], 2 * i2 + ha_lim, ctx.span.end[2]);
 
             //get the local adress of the source, which is twice finer compared to the target
-            const real_t* const lsdata = sdata + m_idx(2 * i0, 2 * i1, 2 * i2, 0, ctx->sdata.stride());
+            // const real_t* const lsdata = sdata + m_idx(2 * i0, 2 * i1, 2 * i2, 0, ctx->sdata.stride());
+            const ConstMemData lsdata(sdata, sdata.ptr(2 * i0, 2 * i1, 2 * i2));
 
             // apply the filter
             real_t value = 0.0;
+#pragma unroll
             for (short_t id2 = -ha_lim; id2 <= ha_lim; ++id2) {
+#pragma unroll
                 for (short_t id1 = -ha_lim; id1 <= ha_lim; ++id1) {
+#pragma unroll
                     for (short_t id0 = -ha_lim; id0 <= ha_lim; ++id0) {
                         // add the info
                         const real_t fact = ha[id0] * ha[id1] * ha[id2];
-                        value += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+                        value += fact * lsdata(id0, id1, id2);
+                        // value += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
 
                         // check for nan's
-                        m_assert(std::isfinite(lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())]), "nan detected -- i0 = %d ; i1 = %d i2 =%d", id0, i1, i2);
+                        m_assert(std::isfinite(lsdata(id0, id1, id2)), "nan detected -- i0 = %d ; i1 = %d i2 =%d", id0, id1, id2);
                         m_assert(std::isfinite(fact), "nan detected");
                     }
                 }
@@ -281,15 +288,17 @@ class InterpolatingWavelet : public Wavelet {
             // check for nan's
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
 
-            tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
+            tdata(i0, i1, i2) = value;
+            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        // get the start and end
-        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        for_loop(op, ctx.tspan);
+        // // get the start and end
+        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
-        // run that shit
-        for_loop(&op, start, end);
+        // // run that shit
+        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     }
 
@@ -310,11 +319,13 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const js     = js_<TN, TNT> + js_lim;
 
         // get the pointers
-        real_t* const       tdata = ctx->tdata.Write();
-        const real_t* const sdata = ctx->sdata.Read();
+        // real_t* const       tdata = ctx->tdata.Write();
+        // const real_t* const sdata = ctx->sdata.Read();
+        const MemData      tdata = ctx.tdata;
+        const ConstMemData sdata = ctx.sdata;
 
         // define the lambda, only tdata is changed
-        auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get if we are odd or even in the current location
             const short_t odd_x = m_sign(i0) * (i0 % 2);
             const short_t odd_y = m_sign(i1) * (i1 % 2);
@@ -331,7 +342,8 @@ class InterpolatingWavelet : public Wavelet {
             m_assert((i1_s * 2) <= i1, "if not, we made something wrong...: source = %d, target = %d", i1_s, i1);
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
 
-            const real_t* const lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->sdata.stride());
+            const ConstMemData lsdata(sdata, sdata.ptr(i0_s, i1_s, i2_s));
+            // const real_t* const lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->sdata.stride());
 
             // get the filter, depending on if I am odd or even
             const real_t* const ks_x = (odd_x) ? (ks) : (js);
@@ -346,9 +358,9 @@ class InterpolatingWavelet : public Wavelet {
                 (odd_y) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2)),
                 (odd_z) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2))};
 
-            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->srcstart[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx->srcstart[0], (i0_s + (lim[0] + 1) / 2), ctx->srcend[0]);
-            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->srcstart[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx->srcstart[1], (i1_s + (lim[1] + 1) / 2), ctx->srcend[1]);
-            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx->srcstart[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2_s + (-lim[2] + 1) / 2), ctx->srcstart[2], (i2_s + (lim[2] + 1) / 2), ctx->srcend[2]);
+            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx.sspan.start[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx.sspan.start[0], (i0_s + (lim[0] + 1) / 2), ctx.sspan.end[0]);
+            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx.sspan.start[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx.sspan.start[1], (i1_s + (lim[1] + 1) / 2), ctx.sspan.end[1]);
+            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx.sspan.start[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2_s + (-lim[2] + 1) / 2), ctx.sspan.start[2], (i2_s + (lim[2] + 1) / 2), ctx.sspan.end[2]);
 
             // if we are a detail, we never pass by the index 0 as we start from an odd number
             // the source is taken as (i+1)/2 so that when i=-1, we access the position 0 and when i=1, we access the position 1
@@ -357,7 +369,8 @@ class InterpolatingWavelet : public Wavelet {
                 for (bidx_t id1 = -lim[1]; id1 <= lim[1]; id1 += 2) {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; id0 += 2) {
                         const real_t fact   = ks_x[id0] * ks_y[id1] * ks_z[id2];
-                        const real_t svalue = lsdata[m_idx((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2, 0, ctx->sdata.stride())];
+                        const real_t svalue = lsdata((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2);
+                        // const real_t svalue = lsdata[m_idx((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2, 0, ctx->sdata.stride())];
                         value += fact * svalue;
 
                         // check for nan's
@@ -367,12 +380,14 @@ class InterpolatingWavelet : public Wavelet {
                 }
             }
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
-            tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
+            tdata(i0, i1, i2) = value;
+            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
+        for_loop(op, ctx.tspan);
 
-        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        for_loop(&op, start, end);
+        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
 
@@ -396,8 +411,10 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const iga    = ga;  // + ga_lim;
 
         // get the pointers
-        real_t* const       tdata = ctx->tdata.Write();
-        const real_t* const sdata = ctx->sdata.Read();
+        // real_t* const       tdata = ctx->tdata.Write();
+        // const real_t* const sdata = ctx->sdata.Read();
+        const MemData      tdata = ctx.tdata;
+        const ConstMemData sdata = ctx.sdata;
 
         // count tracks how many dimension is done at the same time.
         // if count = 1, we do the dx, dy, dz
@@ -406,7 +423,7 @@ class InterpolatingWavelet : public Wavelet {
         short_t count = 0;
 
         // define the lambda, only tdata is changed and count must be taken by ref (the copy always has count = 0)
-        auto op = [=, &tdata, &count](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=, &count](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get if we are odd or even in the current location
             const short_t odd_x = m_sign(i0) * (i0 % 2);
             const short_t odd_y = m_sign(i1) * (i1 % 2);
@@ -432,11 +449,12 @@ class InterpolatingWavelet : public Wavelet {
                 (odd_y) ? m_max(0, ga_lim) : 0,
                 (odd_z) ? m_max(0, ga_lim) : 0};
 
-            m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 - lim[0]), ctx->srcstart[0], (i0 + lim[0]), ctx->srcend[0]);
-            m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 - lim[1]), ctx->srcstart[1], (i1 + lim[1]), ctx->srcend[1]);
-            m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 - lim[2]), ctx->srcstart[2], (i2 + lim[2]), ctx->srcend[2]);
+            m_assert(((i0 - lim[0]) >= ctx.sspan.start[0]) && ((i0 + lim[0]) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 - lim[0]), ctx.sspan.start[0], (i0 + lim[0]), ctx.sspan.end[0]);
+            m_assert(((i1 - lim[1]) >= ctx.sspan.start[1]) && ((i1 + lim[1]) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 - lim[1]), ctx.sspan.start[1], (i1 + lim[1]), ctx.sspan.end[1]);
+            m_assert(((i2 - lim[2]) >= ctx.sspan.start[2]) && ((i2 + lim[2]) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 - lim[2]), ctx.sspan.start[2], (i2 + lim[2]), ctx.sspan.end[2]);
 
-            const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
+            const ConstMemData lsdata(sdata, sdata.ptr(i0, i1, i2));
+            // const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
             real_t              value  = 0.0;
 
             for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
@@ -446,7 +464,8 @@ class InterpolatingWavelet : public Wavelet {
                         const bool to_skip = (fabs(id0) + fabs(id1) + fabs(id2)) == 0.0;
                         // minus to inverse the dual lifting
                         const real_t fact   = -(iga_x[id0] * iga_y[id1] * iga_z[id2]) * (!to_skip);
-                        const real_t svalue = lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+                        const real_t svalue = lsdata(id0, id1, id2);
+                        // const real_t svalue = lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
                         // sum-up
                         value += fact * svalue;
 
@@ -457,20 +476,24 @@ class InterpolatingWavelet : public Wavelet {
                 }
             }
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
-            tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
+            tdata(i0, i1, i2) = value;
+            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // count = 1: dx, dy and dz
         count = 1;
-        for_loop(&op, start, end);
+        for_loop(op, ctx.tspan);
+        // for_loop(&op, start, end);
         // count = 2: dxy, dxz and dyz
         count = 2;
-        for_loop(&op, start, end);
+        for_loop(op, ctx.tspan);
+        // for_loop(&op, start, end);
         // count = 3: dxyz
         count = 3;
-        for_loop(&op, start, end);
+        for_loop(op, ctx.tspan);
+        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
 
@@ -497,7 +520,8 @@ class InterpolatingWavelet : public Wavelet {
         bool          store         = !(ctx->tdata.IsEmpty());
         bool          store_on_mask = (ctx->alpha < 0.0) && store;
         real_t        temp          = 0.0;
-        real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
+        real_t* const tdata         = (store) ? (ctx.tdata.ptr(0, 0, 0)) : (&temp);
+        // real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
 
         // m_log("store? %d, store on mask? %d", store, store_on_mask);
         // m_log("computing details using %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2],
@@ -506,7 +530,8 @@ class InterpolatingWavelet : public Wavelet {
         //       ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
 
         // get the source pointer
-        const real_t* const sdata = ctx->sdata.Read();
+        // const real_t* const sdata = ctx->sdata.Read();
+        const ConstMemData sdata = ctx.sdata;
 
         // go
         auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -518,7 +543,8 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
             m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
 
-            const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
+            // const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
+            const ConstMemData lsdata(sdata, sdata.ptr(i0, i1, i2));
 
             // get the filters
             const real_t* const f_x = (odd_x == 1) ? (ga) : (ha);
@@ -532,18 +558,22 @@ class InterpolatingWavelet : public Wavelet {
                 (is_scaling) ? (-1) : ((odd_y) ? (ga_lim) : (ha_lim)),
                 (is_scaling) ? (-1) : ((odd_z) ? (ga_lim) : (ha_lim))};
 
-            m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
-            m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
-            m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
+            m_assert(((i0 - lim[0]) >= ctx.sspan.start[0]) && ((i0 + lim[0]) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx.sspan.start[0], i0 + lim[0], ctx.sspan.end[0]);
+            m_assert(((i1 - lim[1]) >= ctx.sspan.start[1]) && ((i1 + lim[1]) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx.sspan.start[1], i1 + lim[1], ctx.sspan.end[1]);
+            m_assert(((i2 - lim[2]) >= ctx.sspan.start[2]) && ((i2 + lim[2]) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx.sspan.start[2], i2 + lim[2], ctx.sspan.end[2]);
 
             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
             // if one dim is odd, id = 1, -> we loop on gs, business as usual
             real_t detail = 0.0;
+#pragma unroll
             for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
+#pragma unroll
                 for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
+#pragma unroll
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
                         const real_t fact = f_x[id0] * f_y[id1] * f_z[id2];
-                        detail += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+                        detail += fact * lsdata(id0, id1, id2);
+                        // detail += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
                     }
                 }
             }
@@ -553,7 +583,8 @@ class InterpolatingWavelet : public Wavelet {
             (*details_max) = m_max(fabs(detail), (*details_max));
 
             // store if needed, the index is 0 if not store
-            const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->tdata.stride());
+            // const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->tdata.stride());
+            const bidx_t store_id = store * ctx.tdata.offset(i0, i1, i2);
             const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
             tdata[store_id]       = value;
 
@@ -565,79 +596,80 @@ class InterpolatingWavelet : public Wavelet {
         // reset the detail max (to be sure)
         *details_max = 0.0;
         // let's go
-        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        for_loop(&op, start, end);
+        for_loop(op, ctx.tspan);
+        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        // for_loop(&op, start, end);
     };
 
-    void ForwardWaveletTransform_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
-        m_assert(*details_max == 0.0, "the value must be 0.0");
-        //-------------------------------------------------------------------------
-        constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
-        constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
-        const real_t* const ha     = ha_<TN, TNT> + ha_lim;
-        const real_t* const ga     = ga_<TN, TNT> + ga_lim;
+    // void ForwardWaveletTransform_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
+    //     m_assert(*details_max == 0.0, "the value must be 0.0");
+    //     //-------------------------------------------------------------------------
+    //     constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
+    //     constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
+    //     const real_t* const ha     = ha_<TN, TNT> + ha_lim;
+    //     const real_t* const ga     = ga_<TN, TNT> + ga_lim;
 
-        // check if we need to store some value -> get the target pointer
+    //     // check if we need to store some value -> get the target pointer
 
-        // get the source pointer
-        const real_t* const sdata = ctx->sdata.Read();
-        real_t* const       tdata = ctx->tdata.Write();
+    //     // get the source pointer
+    //     const real_t* const sdata = ctx->sdata.Read();
+    //     real_t* const       tdata = ctx->tdata.Write();
 
-        // go
-        auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            // get if we are odd or even in the current location
-            const short_t odd_x = m_sign(i0) * (i0 % 2);
-            const short_t odd_y = m_sign(i1) * (i1 % 2);
-            const short_t odd_z = m_sign(i2) * (i2 % 2);
-            m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
-            m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
-            m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
+    //     // go
+    //     auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //         // get if we are odd or even in the current location
+    //         const short_t odd_x = m_sign(i0) * (i0 % 2);
+    //         const short_t odd_y = m_sign(i1) * (i1 % 2);
+    //         const short_t odd_z = m_sign(i2) * (i2 % 2);
+    //         m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
+    //         m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
+    //         m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
 
-            const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
+    //         const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
 
-            // get the filters
-            const real_t* const f_x = (odd_x == 1) ? (ga) : (ha);
-            const real_t* const f_y = (odd_y == 1) ? (ga) : (ha);
-            const real_t* const f_z = (odd_z == 1) ? (ga) : (ha);
+    //         // get the filters
+    //         const real_t* const f_x = (odd_x == 1) ? (ga) : (ha);
+    //         const real_t* const f_y = (odd_y == 1) ? (ga) : (ha);
+    //         const real_t* const f_z = (odd_z == 1) ? (ga) : (ha);
 
-            // get the limits of this
-            const bidx_t lim[3] = {((odd_x) ? (ga_lim) : (ha_lim)),
-                                   ((odd_y) ? (ga_lim) : (ha_lim)),
-                                   ((odd_z) ? (ga_lim) : (ha_lim))};
+    //         // get the limits of this
+    //         const bidx_t lim[3] = {((odd_x) ? (ga_lim) : (ha_lim)),
+    //                                ((odd_y) ? (ga_lim) : (ha_lim)),
+    //                                ((odd_z) ? (ga_lim) : (ha_lim))};
 
-            m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
-            m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
-            m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
+    //         m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
+    //         m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
+    //         m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
 
-            real_t wave_data = 0.0;
-            for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
-                for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
-                    for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
-                        const real_t fact = f_x[id0] * f_y[id1] * f_z[id2];
-                        wave_data += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
-                    }
-                }
-            }
-            m_assert(std::isfinite(wave_data), "the data in %d %d %d is nan %e", i0, i1, i2, wave_data);
+    //         real_t wave_data = 0.0;
+    //         for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
+    //             for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
+    //                 for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
+    //                     const real_t fact = f_x[id0] * f_y[id1] * f_z[id2];
+    //                     wave_data += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+    //                 }
+    //             }
+    //         }
+    //         m_assert(std::isfinite(wave_data), "the data in %d %d %d is nan %e", i0, i1, i2, wave_data);
 
-            // store the value
-            tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = wave_data;
+    //         // store the value
+    //         tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = wave_data;
 
-            // Store the max if we are a detail
-            const bool   is_scaling = (!odd_x) && (!odd_y) && (!odd_z);
-            const real_t detail     = (is_scaling) ? 0.0 : wave_data;
-            (*details_max)          = m_max(fabs(detail), (*details_max));
-        };
+    //         // Store the max if we are a detail
+    //         const bool   is_scaling = (!odd_x) && (!odd_y) && (!odd_z);
+    //         const real_t detail     = (is_scaling) ? 0.0 : wave_data;
+    //         (*details_max)          = m_max(fabs(detail), (*details_max));
+    //     };
 
-        // reset the detail max (to be sure)
-        *details_max = 0.0;
+    //     // reset the detail max (to be sure)
+    //     *details_max = 0.0;
 
-        // compute the start and end indexes, we need more details than the number of scalings
-        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        for_loop(&op, start, end);
-    };
+    //     // compute the start and end indexes, we need more details than the number of scalings
+    //     const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    //     const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+    //     for_loop(&op, start, end);
+    // };
 
     /**
      * @brief Remove from the target the non-zero detail coefficients using the inverse wavelet transform
@@ -656,11 +688,13 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const ks     = ks_<TN, TNT> + ks_lim;
 
         // get the pointers
-        real_t* const       tdata = ctx->tdata.Write();
-        const real_t* const ddata = ctx->sdata.Read();
+        // real_t* const       tdata = ctx->tdata.Write();
+        // const real_t* const ddata = ctx->sdata.Read();
+        const MemData      tdata = ctx.tdata;
+        const ConstMemData sdata = ctx.sdata;
 
         // go, only tada is changed
-        auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get 0 if odd, 1 if even (even if negative!!)
             const bool odd_x = m_sign(i0) * (i0 % 2);
             const bool odd_y = m_sign(i1) * (i1 % 2);
@@ -685,8 +719,10 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
 
             // get the local datassss
-            real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->tdata.stride());
-            const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
+            // real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->tdata.stride());
+            // const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
+            // const MemData      ltdata(tdata.ptr(i0, i1, i2), tdata);
+            const ConstMemData lddata(ddata.ptr(i0, i1, i2), ddata);
 
             // let's go tocard
             real_t corr = 0.0;
@@ -694,9 +730,10 @@ class InterpolatingWavelet : public Wavelet {
                 for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
                         const real_t fact = (f_x[id0]) * (f_y[id1]) * (f_z[id2]);
-                        corr += fact * lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+                        corr += fact * lddata(id0, id1, id2);
+                        // corr += fact * lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
                         // sanity check
-                        m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())]) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())], i0 + id0, i1 + id1, i2 + id2);
+                        m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata(id0, id1, id2)) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata(id0, id1, id2), i0 + id0, i1 + id1, i2 + id2);
                     }
                 }
             }
@@ -705,7 +742,7 @@ class InterpolatingWavelet : public Wavelet {
             //     m_log("@ %d %d %d : smoothed %e -> %e", i0, i1, i2, ltdata[0], ltdata[0] - corr);
             // }
             m_assert(std::isfinite(corr), "the data in %d %d %d is nan %e", i0, i1, i2, corr);
-            ltdata[0] -= corr;
+            tdata(i0,i1,i2) -= corr;
 
             // if (fabs(corr) > 1e-3) {
             //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
@@ -717,64 +754,64 @@ class InterpolatingWavelet : public Wavelet {
         for_loop(&op, start, end);
     };
 
-    /**
-     * @brief Overwrites from the target all non-zero detail coefficients
-     * 
-     * The simply overwrite makes sure that no small un-wanted detail coefficients have been created
-     * 
-     * @param ctx the interpolation context
-     */
-    void Clear_(const interp_ctx_t* const  ctx) const override{
-        // //-------------------------------------------------------------------------
-        // // filters, need the forward ones
-        // constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
-        // constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
-        // const real_t* const ha     = ha_<TN, TNT> + ha_lim;
-        // const real_t* const ga     = ga_<TN, TNT> + ga_lim;
+    // /**
+    //  * @brief Overwrites from the target all non-zero detail coefficients
+    //  * 
+    //  * The simply overwrite makes sure that no small un-wanted detail coefficients have been created
+    //  * 
+    //  * @param ctx the interpolation context
+    //  */
+    // void Clear_(const interp_ctx_t* const  ctx) const override{
+    //     // //-------------------------------------------------------------------------
+    //     // // filters, need the forward ones
+    //     // constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
+    //     // constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
+    //     // const real_t* const ha     = ha_<TN, TNT> + ha_lim;
+    //     // const real_t* const ga     = ga_<TN, TNT> + ga_lim;
 
-        // // get the pointers
-        // real_t* const       tdata = ctx->tdata.Write();
-        // const real_t* const ddata = ctx->sdata.Read();
+    //     // // get the pointers
+    //     // real_t* const       tdata = ctx->tdata.Write();
+    //     // const real_t* const ddata = ctx->sdata.Read();
 
-        // // go, only tada is changed
-        // auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        //     // get 0 if odd, 1 if even (even if negative!!)
-        //     const bool odd_x = m_sign(i0) * (i0 % 2);
-        //     const bool odd_y = m_sign(i1) * (i1 % 2);
-        //     const bool odd_z = m_sign(i2) * (i2 % 2);
-        //     m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
-        //     m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
-        //     m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
+    //     // // go, only tada is changed
+    //     // auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //     //     // get 0 if odd, 1 if even (even if negative!!)
+    //     //     const bool odd_x = m_sign(i0) * (i0 % 2);
+    //     //     const bool odd_y = m_sign(i1) * (i1 % 2);
+    //     //     const bool odd_z = m_sign(i2) * (i2 % 2);
+    //     //     m_assert(odd_x == 0 || odd_x == 1, "this are the two possible values");
+    //     //     m_assert(odd_y == 0 || odd_y == 1, "this are the two possible values");
+    //     //     m_assert(odd_z == 0 || odd_z == 1, "this are the two possible values");
 
-        //     // get the filters: ga for details, ha for scalings
-        //     const real_t* const f_x = (odd_x) ? (ga) : (ha);
-        //     const real_t* const f_y = (odd_y) ? (ga) : (ha);
-        //     const real_t* const f_z = (odd_z) ? (ga) : (ha);
+    //     //     // get the filters: ga for details, ha for scalings
+    //     //     const real_t* const f_x = (odd_x) ? (ga) : (ha);
+    //     //     const real_t* const f_y = (odd_y) ? (ga) : (ha);
+    //     //     const real_t* const f_z = (odd_z) ? (ga) : (ha);
 
-        //     const real_t fact = f_x[0] * f_y[0] * fz[0];
+    //     //     const real_t fact = f_x[0] * f_y[0] * fz[0];
 
-        //     m_assert((i0 >= ctx->srcstart[0]) && (i0 < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0, ctx->srcstart[0], i0, ctx->srcend[0]);
-        //     m_assert((i1 >= ctx->srcstart[1]) && (i1 < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1, ctx->srcstart[1], i1, ctx->srcend[1]);
-        //     m_assert((i2 >= ctx->srcstart[2]) && (i2 < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2, ctx->srcstart[2], i2, ctx->srcend[2]);
+    //     //     m_assert((i0 >= ctx->srcstart[0]) && (i0 < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0, ctx->srcstart[0], i0, ctx->srcend[0]);
+    //     //     m_assert((i1 >= ctx->srcstart[1]) && (i1 < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1, ctx->srcstart[1], i1, ctx->srcend[1]);
+    //     //     m_assert((i2 >= ctx->srcstart[2]) && (i2 < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2, ctx->srcstart[2], i2, ctx->srcend[2]);
 
-        //     // get the local datassss
-        //     real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
-        //     const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->srcstr);
+    //     //     // get the local datassss
+    //     //     real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);
+    //     //     const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->srcstr);
 
-        //     // let's go tocard
-        //     real_t corr = fact * lddata[0];
-        //     ltdata[0] -= corr;
-        //     m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
+    //     //     // let's go tocard
+    //     //     real_t corr = fact * lddata[0];
+    //     //     ltdata[0] -= corr;
+    //     //     m_assert(corr == corr, "the data in %d %d %d is nan %e", i0, i1, i2, corr);
 
-        //     // if (fabs(corr) > 1e-3) {
-        //     //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
-        //     // }
-        // };
+    //     //     // if (fabs(corr) > 1e-3) {
+    //     //     //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
+    //     //     // }
+    //     // };
 
-        // const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        // const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        // for_loop(&op, start, end);
-    };
+    //     // const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    //     // const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+    //     // for_loop(&op, start, end);
+    // };
 };
 
 #endif  // SRC_INTERPOLATING_WAVELET_HPP_

@@ -3,7 +3,7 @@
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "ghostblock.hpp"
+#include "grid/ghostblock.hpp"
 
 constexpr void face_sign(const bool mask, const iface_t iface, iface_t* face_dir, real_t sign[3]) {
     //-------------------------------------------------------------------------
@@ -129,8 +129,8 @@ class NeighborBlock : public GhostBlock {
                                                                                             cum_block_id_(block_id),
                                                                                             rank_rma_(rank) {
         //---------------------------------------------------------------------
-        m_assert(this->core() == M_N, "the core = %d should be %d", this->core(), M_N);
-        m_assert(this->gs(0) == M_GS && this->gs(1) == M_GS, "the gs = %d %d should be %d", this->gs(0), this->gs(1), M_GS);
+        // m_assert(this->core() == M_N, "the core = %d should be %d", this->core(), M_N);
+        // m_assert(this->gs(0) == M_GS && this->gs(1) == M_GS, "the gs = %d %d should be %d", this->gs(0), this->gs(1), M_GS);
         // given the ibidule, determine if I have to scale and in which direction
         // real_t sign[3];
         // GhostGetSign(ibidule, sign);
@@ -160,12 +160,10 @@ class NeighborBlock : public GhostBlock {
         data_src_ = data;
     }
     M_INLINE MemSpan SourceSpan() const noexcept {
-        m_assert("this function should never be called, see the specialization instead");
-        return MemSpan();
+        return data_src_->BlockSpan();
     }
     M_INLINE MemLayout SourceLayout() const noexcept {
-        m_assert("this function should never be called, see the specialization instead");
-        return MemLayout(M_LAYOUT_BLOCK, 0, 0);
+        return data_src_->BlockLayout();
     }
 
     /**
@@ -227,38 +225,24 @@ class NeighborBlock : public GhostBlock {
             scale_dir_end_[id]   = (end_idx == trg_max);
 
             // if yes, register the closest block boundary instead
-            start_[id] = scale_dir_start_[id] ? 0 : start_idx;
-            end_[id]   = scale_dir_end_[id] ? trg_core : end_idx;
+            start[id] = scale_dir_start_[id] ? 0 : start_idx;
+            end[id]   = scale_dir_end_[id] ? trg_core : end_idx;
         }
-        m_assert(start_[0] <= end_[0], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[0], end_[0], shift_[0], src_pos[0], trg_pos[0]);
-        m_assert(start_[1] <= end_[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[1], end_[1], shift_[1], src_pos[1], trg_pos[1]);
-        m_assert(start_[2] <= end_[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
+        m_assert(start[0] <= end[0], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[0], end[0], shift_[0], src_pos[0], trg_pos[0]);
+        m_assert(start[1] <= end[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[1], end[1], shift_[1], src_pos[1], trg_pos[1]);
+        m_assert(start[2] <= end[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[2], end[2], shift_[2], src_pos[2], trg_pos[2]);
         //---------------------------------------------------------------------
     }
 };
 
-// defines some shortcuts for convenience
-using GBLocal  = NeighborBlock<GridBlock*>;
-using GBMirror = NeighborBlock<MPI_Aint>;
-
-// specify for GBLocal
+// specify the functions when we have a MPI_Aint
 template <>
-M_INLINE MemSpan GBLocal::SourceSpan() const noexcept {
-    return data_src_->BlockSpan();
-}
-template <>
-M_INLINE MemLayout GBLocal::SourceLayout() const noexcept {
-    return data_src_->BlockLayout();
-}
-
-// specify the function for the BlockSpan function
-template <>
-M_INLINE MemSpan GBMirror::SourceSpan() const noexcept {
+M_INLINE MemSpan NeighborBlock<MPI_Aint>::SourceSpan() const noexcept {
     return MemSpan(0, M_N);
 }
 // specify the function for the BlockSpan function
 template <>
-M_INLINE MemLayout GBMirror::SourceLayout() const noexcept {
+M_INLINE MemLayout NeighborBlock<MPI_Aint>::SourceLayout() const noexcept {
     return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
 }
 

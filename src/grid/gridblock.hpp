@@ -6,7 +6,6 @@
 #include <list>
 
 #include "core/macros.hpp"
-// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/cartblock.hpp"
 #include "grid/forestgrid.hpp"
@@ -27,6 +26,9 @@ typedef enum StatusAdapt {
     M_ADAPT_NEW_FINE
 } StatusAdapt;
 
+// using GBLocal      = NeighborBlock<GridBlock*>;
+using GBLocal      = NeighborBlock<CartBlock*>;
+using GBMirror     = NeighborBlock<MPI_Aint>;
 using GBPhysic     = PhysBlock;
 using ListGBLocal  = std::list<GBLocal*>;
 using ListGBMirror = std::list<GBMirror*>;
@@ -64,6 +66,12 @@ class GridBlock : public CartBlock {
     __attribute__((always_inline)) inline MemLayout CoarseLayout(const Wavelet& interp) const {
         return MemLayout(M_LAYOUT_BLOCK, interp.CoarseNGhostFront(ghost_len_[0]), M_NHALF, interp.CoarseNGhostFront(ghost_len_[1]));
     }
+    __attribute__((always_inline)) inline MemSpan CoarseSpan() const {
+        return MemSpan(0, M_NHALF);
+    }
+    __attribute__((always_inline)) inline MemSpan ExtendedSpan() const {
+        return MemSpan(- ghost_len_[0], M_N +ghost_len_[1]);
+    }
 
     /**
      * @name Status level management
@@ -94,7 +102,7 @@ class GridBlock : public CartBlock {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(const Wavelet&  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
+    void       SolveDependency(const Wavelet&  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end);//, Prof*  profiler);
     void       SmoothResolutionJump(const Wavelet& interp, std::map<std::string, Field*>::const_iterator field_start, 
                                                             std::map<std::string, Field*>::const_iterator field_end);
     // void       ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);

@@ -101,9 +101,10 @@ class Wavelet {
     virtual void Coarsen_(const InterpCtx& ctx) const                           = 0;
     virtual void RefineZeroDetails_(const InterpCtx& ctx) const                 = 0;
     virtual void OverwriteDetailsDualLifting_(const InterpCtx& ctx) const       = 0;
-    virtual void Smooth_(const InterpCtx& ctx) const                            = 0;
-    virtual void Clear_(const InterpCtx& ctx) const                             = 0;
     virtual void Detail_(const InterpCtx& ctx, real_t* const details_max) const = 0;
+    virtual void Smooth_(const InterpCtx& ctx) const                            = 0;
+    // virtual void Clear_(const InterpCtx& ctx) const                             = 0;
+    
     /** @} */
 
     //==========================================================================
