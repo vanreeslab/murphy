@@ -22,7 +22,7 @@ void Dset::ComputeDsetGridBlock(const qid_t* qid, const GridBlock* block, Field&
     const sid_t lda = fid_x.lda();
 
     for (sid_t ida = 0; ida < lda; ++ida) {
-        const MemData& data = block->data(fid_x, ida);
+        const MemData data = block->data(fid_x, ida);
 
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             data(i0, i1, i2) = value_;
@@ -52,8 +52,8 @@ void Dcopy::ComputeDcopyGridBlock(const qid_t& qid, GridBlock* block, const Fiel
     const sid_t lda = fid_x.lda();
 
     for (sid_t ida = 0; ida < lda; ++ida) {
-        const ConstMemData& data_x = block->data(fid_x, ida);
-        const MemData&      data_y = block->data(fid_y, ida);
+        const ConstMemData data_x = block->data(fid_x, ida);
+        const MemData      data_y = block->data(fid_y, ida);
 
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             data_y(i0, i1, i2)      = data_x(i0, i1, i2);
@@ -87,9 +87,9 @@ void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, const GridBlock* block, cons
     const lda_t lda = fid_x.lda();
 
     for (lda_t ida = 0; ida < lda; ++ida) {
-        const ConstMemData& data_x = block->data(fid_x, ida);
-        const ConstMemData& data_y = block->data(fid_y, ida);
-        const MemData&      data_z = block->data(fid_z, ida);
+        const ConstMemData data_x = block->data(fid_x, ida);
+        const ConstMemData data_y = block->data(fid_y, ida);
+        const MemData      data_z = block->data(fid_z, ida);
 
         // get the correct place given the current thread and the dimension
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -121,7 +121,7 @@ void Dscale::ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field& f
     const lda_t lda = fid_x.lda();
 
     for (lda_t ida = 0; ida < lda; ++ida) {
-        const MemData& data_x = block->data(fid_x, ida);
+        const MemData data_x = block->data(fid_x, ida);
         
         // m_assume_aligned(data_x);
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {

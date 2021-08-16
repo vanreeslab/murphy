@@ -10,11 +10,11 @@
 #include "grid/field.hpp"
 #include "grid/forestgrid.hpp"
 #include "operator/blockoperator.hpp"
-#include "tools/prof.hpp"
+// #include "tools/prof.hpp"
 
 // using lambda_setvalue_scalar_pos_t = lambda_t<void, const real_t*, real_t*>;
 // using lambda_setvalue_vector_pos_t = lambda_t<void, const real_t*, real_t**>;
-using lambda_setvalue_t = lambda_i3_t<void, const CartBlock* const, const Field* const>;
+using lambda_setvalue_t = lambda_i3_t<void, const CartBlock&, const Field&>;
 
 //=====================================================================================================
 /**
@@ -37,24 +37,25 @@ class SetValue : public BlockOperator {
      * @param grid 
      * @param field 
      */
-    void operator()(const ForestGrid* grid, Field* const field) const {
+    void operator()(const ForestGrid& grid, Field& field) const {
         m_begin;
         //-------------------------------------------------------------------------
         // go for it
         DoOpMesh(this, &SetValue::FillGridBlock, grid, field);
         // update the ghost status
-        field->ghost_len(ghost_len_res_);
+        field.ghost_len(ghost_len_res_);
         //-------------------------------------------------------------------------
         m_end;
     };
-    void FillGridBlock(const qid_t* qid, CartBlock* block, const Field* const fid) const {
+    void FillGridBlock(const qid_t& qid, CartBlock& block, const Field& fid) const {
         //-------------------------------------------------------------------------
         // translate the expr into a know pattern for the forloop
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             this->expr_(i0, i1, i2, block, fid);
         };
         // run the forloop on it
-        for_loop(op, start_, end_);
+        for_loop(op,block.BlockSpan());
+        // for_loop(op, start_, end_);
         //-------------------------------------------------------------------------
     };
 };
