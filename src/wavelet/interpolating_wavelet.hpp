@@ -569,11 +569,8 @@ class InterpolatingWavelet : public Wavelet {
             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
             // if one dim is odd, id = 1, -> we loop on gs, business as usual
             real_t detail = 0.0;
-#pragma unroll
             for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
-#pragma unroll
                 for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
-#pragma unroll
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
                         const real_t fact = f_x[id0] * f_y[id1] * f_z[id2];
                         detail += fact * lsdata(id0, id1, id2);

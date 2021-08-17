@@ -92,7 +92,7 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t s
     //-------------------------------------------------------------------------
     // get the shifted memory for the source
     const real_t* __restrict src_ptr = data_src->ptr(shift[0], shift[1], shift[2]);
-    ConstMemData sdata(data_src, src_ptr);
+    ConstMemData sdata(*data_src, src_ptr);
 
     // get the interpolation context
     InterpCtx ctx(alpha, span_src, &sdata, span_trg, data_trg);
@@ -395,11 +395,11 @@ void Wavelet::SmoothOnMask(/* source */ const MemSpan* span_src,
     //.........................................................................
     // get the details
     real_t to_trash = 0.0;
-    const ConstMemData data_src(data);
+    const ConstMemData data_src(*data);
     Details(span_src, &data_src, detail_block, detail_mask, -1.0, &to_trash);
 
     // smooth based on the mask newly computed
-    const ConstMemData mask(detail_mask);
+    const ConstMemData mask(*detail_mask);
     InterpCtx ctx(0.0, detail_block, &mask, span_trg, data);
     Smooth_(&ctx);
 
@@ -449,7 +449,7 @@ void Wavelet::OverwriteDetails(/* source */ const MemSpan* span_src,
                                /* target */ const MemSpan* span_trg, const MemData* data) const {
     //-------------------------------------------------------------------------
     //.........................................................................
-    const ConstMemData data_src(data);
+    const ConstMemData data_src(*data);
     InterpCtx ctx(0.0, span_src, &data_src, span_trg, data);
     OverwriteDetailsDualLifting_(&ctx);
     //     for (lda_t id = 0; id < 3; id++) {

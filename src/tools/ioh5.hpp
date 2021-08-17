@@ -34,8 +34,8 @@ static const bidx_t ghost_len_ioh5[2] = {0,1};
 class IOH5 {
    protected:
     bool   dump_ghost_    = false;  //!< true if we io the ghost points with us
-    size_t  block_stride_  = 0;      //!< the stride of one block, depends on dump_ghost_
-    size_t  block_shift_   = 0;      //!< the shift in memory to apply on the block ptr, depends on dump_ghost_
+    bidx_t  block_stride_  = 0;      //!< the stride of one block, depends on dump_ghost_
+    bidx_t  block_shift_   = 0;      //!< the shift in memory to apply on the block ptr, depends on dump_ghost_
     size_t block_offset_  = 0;      //!< the offset in the xdmf file for the current rank
     size_t stride_global_ = 0;      //!< total length of the hdf5 dataset, must be indicated in the xdmf of every block.
 
@@ -77,7 +77,7 @@ class IOH5 {
 
 
    protected:
-    size_t xmf_core_(const std::string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const size_t stride, const size_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg);
+    size_t xmf_core_(const std::string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const bidx_t stride, const size_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg);
 };
 
 #endif

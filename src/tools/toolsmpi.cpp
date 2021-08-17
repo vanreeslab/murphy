@@ -1,4 +1,4 @@
-#include "tools/toolsmpi.hpp"
+#include "toolsmpi.hpp"
 
 #include "core/macros.hpp"
 
@@ -60,7 +60,7 @@ void ToMPIDatatype(const MemSpan* span, const MemLayout* layout, const bidx_t sc
 
     //--------------------------------------------------------------------------
     m_end;
-};
+}
 
 void GetRma(const level_t dlvl, const bidx_t shift[3],
             const MemLayout* layout_src, const MemSpan* span_src, const MPI_Aint disp_src, rank_t src_rank,
@@ -72,7 +72,7 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
     //................................................
     // get the corresponding MPI_Datatype for the target
     MPI_Datatype dtype_trg;
-    ToMPIDatatype(layout_trg, span_trg, 1, &dtype_trg);
+    ToMPIDatatype(layout_trg, span_trg, (bidx_t)1, &dtype_trg);
 
     //................................................
     // get the corresponding MPI_Datatype for the source

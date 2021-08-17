@@ -289,7 +289,7 @@ void IOH5::hdf5_write_block_(const qid_t* qid, GridBlock* block, const Field* fi
         m_assert(status >= 0, "error while creating the file hyperslab");
 
         // do the writting for the data, we need to shift it by hand since memoffset cannot be < 0
-        real_p data = block->pointer(fid, ida)();
+        real_t* data = block->RawPointer(fid, ida);
         status      = H5Dwrite(hdf5_dataset_, H5T_NATIVE_DOUBLE, hdf5_memspace_, hdf5_dataspace_, H5P_DEFAULT, data);
         m_assert(status >= 0, "error while creating the file hyperslab");
     }
@@ -449,7 +449,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     //
 }
 
-size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const size_t stride, const size_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg) {
+size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t* xyz, const p4est_topidx_t tid, const p4est_locidx_t qid, const rank_t rank, const bidx_t stride, const size_t n_gs, const lda_t lda, const hsize_t offset, const hsize_t stride_global, const level_t level, char* msg) {
     //-------------------------------------------------------------------------
     // we need an extra space for the final character
     char line[256];
