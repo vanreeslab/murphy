@@ -71,7 +71,7 @@ class Boundary {
      * @param data the data
      */
     // virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const gblock, const data_ptr data) const {
-    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const MemSpan& gblock, const MemData sdata) const {
+    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const MemSpan* gblock, const MemData sdata) const {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
         // m_assert(block->stride() == gblock->stride(), "the two strides must be the same");
@@ -152,7 +152,7 @@ class Boundary {
         // const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
         // const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
         // for_loop(&op, start, end);
-        for_loop(&op,gblock.start, gblock.end);
+        for_loop(&op,gblock->start, gblock->end);
     }
     //-------------------------------------------------------------------------
 };

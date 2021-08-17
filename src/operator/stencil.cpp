@@ -20,7 +20,7 @@ Stencil::Stencil() : BlockOperator(nullptr){};
  * @param field_trg 
  * @param grid
  */
-void Stencil::operator()(const Grid* grid, Field& field_src, Field& field_trg) {
+void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
     m_begin;
     m_assert(!(grid == nullptr), "the grid cannot be null");
     // m_assert(!(field_src == nullptr), "the source field cannot be null");

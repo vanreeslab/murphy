@@ -13,8 +13,8 @@ class BMax : public BlockOperator {
     explicit BMax() noexcept;
     explicit BMax(const bidx_t* ghost_len) noexcept;
 
-    real_t operator()(const ForestGrid& grid, const Field& fid_x) const;
-    void   ComputeBMaxGridBlock(/* in */ const qid_t& qid, const CartBlock& block, const Field& fid_x,
+    real_t operator()(const ForestGrid* grid, const Field* fid_x) const;
+    void   ComputeBMaxGridBlock(/* in */ const qid_t* qid, const CartBlock* block, const Field* fid_x,
                               /* out */ real_t* max) const;
 };
 
@@ -23,8 +23,8 @@ class BMinMax : public BlockOperator {
     explicit BMinMax() noexcept;
     explicit BMinMax(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid& grid, const Field& fid_x, real_t* min, real_t* max) const;
-    void ComputeBMinMaxGridBlock(const qid_t& qid, const CartBlock& block, const Field& fid_x, const lda_t ida, real_t res[2]) const;
+    void operator()(const ForestGrid* grid, const Field* fid_x, real_t* min, real_t* max) const;
+    void ComputeBMinMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t res[2]) const;
 };
 
 class BMoment : public BlockOperator {
@@ -32,8 +32,8 @@ class BMoment : public BlockOperator {
     explicit BMoment() noexcept;
     explicit BMoment(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid& grid, const Field& fid_x, real_t* moment0, real_t* moment1) const;
-    void ComputeBMomentGridBlock(const qid_t& qid, const CartBlock& block, const Field& fid_x, const lda_t ida, real_t moments[4]) const;
+    void operator()(const ForestGrid* grid, const Field* fid_x, real_t* moment0, real_t* moment1) const;
+    void ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const;
 };
 
 class BAvg : public BlockOperator {
@@ -41,8 +41,8 @@ class BAvg : public BlockOperator {
     explicit BAvg() noexcept;
     explicit BAvg(const bidx_t* ghost_len) noexcept;
 
-    void operator()(const ForestGrid& grid, const Field& fid_x, real_t* sum) const;
-    void ComputeBAvgGridBlock(const qid_t& qid, const CartBlock& block, const Field& fid_x, const lda_t ida, real_t* sum) const;
+    void operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum) const;
+    void ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const;
 };
 
 // class BDiscreteMoment : public BlockOperator {

@@ -52,12 +52,12 @@ class RestrictData {
     //--------------------------------------------------------------------------
    public:
     explicit RestrictData() = delete;
-    explicit RestrictData(const MemPtr& ptr, const MemLayout& layout, const lda_t ida=0) noexcept
-        : stride_{layout.stride[0], layout.stride[1]},
-          data_(ptr.ptr + layout.offset(ida)) {
+    explicit RestrictData(const MemPtr* ptr, const MemLayout* layout, const lda_t ida=0) noexcept
+        : stride_{layout->stride[0], layout->stride[1]},
+          data_(ptr->ptr + layout->offset(ida)) {
         // do alignement asserts
         m_assert(m_isaligned(data_), "the value of data must be aligned!");
-        m_assert(ptr.size >= layout.n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr.size, layout.n_elem);
+        m_assert(ptr->size >= layout->n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr->size, layout->n_elem);
     };
 
     // allow creation of a nullData
@@ -68,11 +68,15 @@ class RestrictData {
     // note 2: will not compile if T2 is not T or const T (cfr the friendship above)
     template <typename T2>
     RestrictData(const RestrictData<T2>& other) : data_(other.data_), stride_{other.stride_[0], other.stride_[1]} {};
+    template <typename T2>
+    RestrictData(const RestrictData<T2>* other) : data_(other->data_), stride_{other->stride_[0], other->stride_[1]} {};
 
     // same but with a custom user-given raw address
     // note: will compile whatever T2 is (if it's convertible to T)
     template <typename T2>
     explicit RestrictData(const RestrictData<T2>& other, T2* const data) : data_(data), stride_{other.stride_[0], other.stride_[1]} {};
+    template <typename T2>
+    explicit RestrictData(const RestrictData<T2>* other, T2* const data) : data_(data), stride_{other->stride_[0], other->stride_[1]} {};
 
     //--------------------------------------------------------------------------
     // this is convenient and a bit ugly

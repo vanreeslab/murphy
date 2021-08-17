@@ -19,15 +19,15 @@
 struct InterpCtx {
     const real_t alpha;
 
-    const MemSpan&      sspan;  //!< source memory span
-    const MemSpan&      tspan;  //!< target memory span
-    const ConstMemData& sdata;  //!< refers the (0,0,0) location of the source memory, in the source memory layout
-    const MemData&      tdata;  //!< refers the (0,0,0) location of the target memory
+    const MemSpan*      sspan;  //!< source memory span
+    const MemSpan*      tspan;  //!< target memory span
+    const ConstMemData* sdata;  //!< refers the (0,0,0) location of the source memory, in the source memory layout
+    const MemData*      tdata;  //!< refers the (0,0,0) location of the target memory
 
     explicit InterpCtx() = delete;
     explicit InterpCtx(const real_t   in_alpha,
-                       const MemSpan& src_span, const ConstMemData& src_data,
-                       const MemSpan& trg_span, const MemData& trg_data)
+                       const MemSpan* src_span, const ConstMemData* src_data,
+                       const MemSpan* trg_span, const MemData* trg_data)
         : sspan(src_span), tspan(trg_span), sdata(src_data), tdata(trg_data), alpha{in_alpha} {};
 };
 
@@ -57,33 +57,33 @@ class Wavelet {
     * @{
     */
     void Copy(const level_t dlvl, const bidx_t shift[3],
-              const MemSpan& span_src, const ConstMemData& data_src,
-              const MemSpan& span_trg, const MemData& data_trg) const;
+              const MemSpan* span_src, const ConstMemData* data_src,
+              const MemSpan* span_trg, const MemData* data_trg) const;
     void Interpolate(const level_t dlvl, const bidx_t shift[3],
-                     const MemSpan& span_src, const ConstMemData& data_src,
-                     const MemSpan& span_trg, const MemData& data_trg) const;
+                     const MemSpan* span_src, const ConstMemData* data_src,
+                     const MemSpan* span_trg, const MemData* data_trg) const;
     // void Interpolate(const level_t dlvl, const bidx_t shift[3],
-    // const MemSpan&  span_src, ConstMemData& data_src,
-    // const MemSpan&  span_trg, MemData& data_trg, const real_t alpha, ConstMemData& data_cst) const;
+    // const MemSpan*  span_src, ConstMemData* data_src,
+    // const MemSpan*  span_trg, MemData* data_trg, const real_t alpha, ConstMemData* data_cst) const;
     // void GetRma(const level_t dlvl, const bidx_t shift[3],
-    //             const MemSpan& span_src, MPI_Aint disp_src,
-    //             const MemSpan& span_trg, MemData& data_trg, rank_t src_rank, MPI_Win win) const;
+    //             const MemSpan* span_src, MPI_Aint disp_src,
+    //             const MemSpan* span_trg, MemData* data_trg, rank_t src_rank, MPI_Win win) const;
     // void PutRma(const level_t dlvl, const bidx_t shift[3],
-    //             const MemSpan& span_src, ConstMemData& data_src,
-    //             const MemSpan& span_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    //             const MemSpan* span_src, ConstMemData* data_src,
+    //             const MemSpan* span_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(/* source */ const MemSpan& span_src, const ConstMemData& data,
-                     /* target */ const MemSpan& span_detail) const;
-    void   Details(/* source */ const MemSpan& span_src, const ConstMemData& data,
-                 /* target */ const MemSpan& span_detail, const MemData& detail, const real_t tol,
+    real_t Criterion(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                     /* target */ const MemSpan* span_detail) const;
+    void   Details(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                 /* target */ const MemSpan* span_detail, const MemData* detail, const real_t tol,
                  /* output*/ real_t* details_max) const;
-    void   SmoothOnMask(/* source */ const MemSpan& span_src,
-                      /* target */ const MemSpan& span_trg, const MemData& data,
-                      /* detail */ const MemSpan& detail_block, const MemData& detail_mask) const;
-    void   OverwriteDetails(/* source */ const MemSpan& span_src,
-                          /* target */ const MemSpan& span_trg, const MemData& data) const;
-    void   StoreDetails(/* source */ const MemSpan& span_src, const ConstMemData& data,
-                      /* target */ const MemSpan& block_detail, const MemData& detail) const;
+    void   SmoothOnMask(/* source */ const MemSpan* span_src,
+                      /* target */ const MemSpan* span_trg, const MemData* data,
+                      /* detail */ const MemSpan* detail_block, const MemData* detail_mask) const;
+    void   OverwriteDetails(/* source */ const MemSpan* span_src,
+                          /* target */ const MemSpan* span_trg, const MemData* data) const;
+    void   StoreDetails(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                      /* target */ const MemSpan* block_detail, const MemData* detail) const;
     /** @} */
 
     //==========================================================================
@@ -93,17 +93,17 @@ class Wavelet {
     */
    protected:
     virtual void DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t shift[3], const real_t alpha,
-                          const MemSpan& span_src,const ConstMemData& data_src,
-                          const MemSpan& span_trg,const MemData& data_trg) const;
-    virtual void CopyMagic_(const level_t dlvl, const InterpCtx& ctx) const;
+                          const MemSpan* span_src,const ConstMemData* data_src,
+                          const MemSpan* span_trg,const MemData* data_trg) const;
+    virtual void CopyMagic_(const level_t dlvl, const InterpCtx* ctx) const;
 
     // to be overwritten functions
-    virtual void Coarsen_(const InterpCtx& ctx) const                           = 0;
-    virtual void RefineZeroDetails_(const InterpCtx& ctx) const                 = 0;
-    virtual void OverwriteDetailsDualLifting_(const InterpCtx& ctx) const       = 0;
-    virtual void Detail_(const InterpCtx& ctx, real_t* const details_max) const = 0;
-    virtual void Smooth_(const InterpCtx& ctx) const                            = 0;
-    // virtual void Clear_(const InterpCtx& ctx) const                             = 0;
+    virtual void Coarsen_(const InterpCtx* ctx) const                           = 0;
+    virtual void RefineZeroDetails_(const InterpCtx* ctx) const                 = 0;
+    virtual void OverwriteDetailsDualLifting_(const InterpCtx* ctx) const       = 0;
+    virtual void Detail_(const InterpCtx* ctx, real_t* const details_max) const = 0;
+    virtual void Smooth_(const InterpCtx* ctx) const                            = 0;
+    // virtual void Clear_(const InterpCtx* ctx) const                             = 0;
     
     /** @} */
 
@@ -360,7 +360,7 @@ class Wavelet {
     //     // return the correct choice
     //     return res[c];
     // }
-    // inline void CoarseFromFine(const MemSpan& block_fine, SubBlock* block_coarse) const {
+    // inline void CoarseFromFine(const MemSpan* block_fine, SubBlock* block_coarse) const {
     //     bidx_t coarse_start[3], coarse_end[3];
     //     for (bidx_t id = 0; id < 3; ++id) {
     //         coarse_start[id] = CoarseFromBlock(block_fine->start(id));

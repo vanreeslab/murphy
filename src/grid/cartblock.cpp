@@ -38,7 +38,7 @@ CartBlock::~CartBlock() {
  * @param ida the required dimension
  * @return data_ptr the data_ptr corresponding to the point in the block, i.e. (0,0,0), for the given dimension.
  */
-MemData CartBlock::data(const Field& fid, const lda_t ida) const noexcept {
+MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
@@ -46,11 +46,29 @@ MemData CartBlock::data(const Field& fid, const lda_t ida) const noexcept {
     MemLayout myself = BlockLayout();
 #ifndef NDEBUG
     // check the field validity
-    auto it = mem_map_.find(fid.name());
-    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid.name().c_str());
-    MemData data_out(it->second, myself);
+    auto it = mem_map_.find(fid->name());
+    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+    MemData data_out(&it->second, &myself);
 #else
-    MemData data_out(mem_map_[fid.name()], myself);
+    MemData data_out(&mem_map_[fid->name()],&myself);
+#endif
+    return data_out;
+    //-------------------------------------------------------------------------
+}
+
+ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexcept {
+    // warning, from cpp reference
+    // Non-throwing functions are permitted to call potentially-throwing functions.
+    // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
+    //-------------------------------------------------------------------------
+    MemLayout myself = BlockLayout();
+#ifndef NDEBUG
+    // check the field validity
+    auto it = mem_map_.find(fid->name());
+    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+    ConstMemData data_out(&it->second, &myself);
+#else
+    MemDConstMemDataata data_out(&mem_map_[fid->name()], &myself);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -108,7 +126,7 @@ MemData CartBlock::data(const Field& fid, const lda_t ida) const noexcept {
  * 
  * @param fid the pointer to the field to add
  */
-void CartBlock::AddField(const Field& fid) {
+void CartBlock::AddField(const Field* fid) {
     //-------------------------------------------------------------------------
     string name = fid.name();
     // try to find the field
@@ -136,7 +154,7 @@ void CartBlock::AddField(const Field& fid) {
  * 
  * @param fields 
  */
-void CartBlock::AddFields(const std::map<string, Field&>& fields) {
+void CartBlock::AddFields(const std::map<string, Field*>& fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
     for (auto iter = fields.cbegin(); iter != fields.cend(); iter++) {
@@ -151,7 +169,7 @@ void CartBlock::AddFields(const std::map<string, Field&>& fields) {
  * @param name The name of the requested field
  */
 
-bool CartBlock::IsFieldOwned(const string& name) const {
+bool CartBlock::IsFieldOwned(const string* name) const {
     return (mem_map_.find(name) != mem_map_.end());
 }
 
@@ -160,7 +178,7 @@ bool CartBlock::IsFieldOwned(const string& name) const {
  * 
  * @param fid the field to remove
  */
-void CartBlock::DeleteField(const Field& fid) {
+void CartBlock::DeleteField(const Field* fid) {
     //-------------------------------------------------------------------------
     string name = fid.name();
 

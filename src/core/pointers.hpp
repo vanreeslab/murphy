@@ -42,7 +42,7 @@
 //     // additional usefull constructors
 
 //     /** @brief nullptr constructor: any pointer can be initialized to nullptr */
-//     m_ptr(const std::nullptr_t& ptr) noexcept : data_(ptr){};
+//     m_ptr(const std::nullptr_t* ptr) noexcept : data_(ptr){};
 
 //     /** @brief pointer constructor: copy the adress from ptr*/
 //     m_ptr(T* ptr) noexcept : data_(ptr){};
@@ -55,7 +55,7 @@
 //     //-------------------------------------------------------------------------
 //     // /** @brief allocate a new pointer and forward the arguments to the constructor */
 //     // template <typename... U>
-//     // void Alloc(U&&... u) {
+//     // void Alloc(U*&... u) {
 //     //     data_     = new T(std::forward<U>(u)...);
 //     // };
 
@@ -74,13 +74,13 @@
 //     T* operator()() const { return data_; }
 
 //     // /** @brief operator *, return the associated object */
-//     // T& operator*() const { return *data_; }
+//     // T* operator*() const { return *data_; }
 
 //     // /** @brief operator ->, return the contained pointer */
 //     // T* operator->() const { return data_; }
 
 //     // /** @brief operator *, return the associated object */
-//     // T& operator[](const int idx) const { return data_[idx]; }
+//     // T* operator[](const int idx) const { return data_[idx]; }
 // };
 
 
@@ -97,14 +97,14 @@
 //     explicit data_ptr() = default;
 //     explicit data_ptr(const bidx_t stride, const bidx_t gs) : m_ptr<real_t>(), stride_(stride), gs_(gs) {};
 //     explicit data_ptr(m_ptr<real_t> ptr, const bidx_t stride, const bidx_t gs) : m_ptr<real_t>(ptr), stride_(stride), gs_(gs) {};
-//     explicit data_ptr(const data_ptr& other, const bidx_t stride) : m_ptr<real_t>(other()), stride_(stride), gs_(0) {};
-//     // explicit data_ptr(const data_ptr& other, const bidx_t stride, const bidx_t gs) : m_ptr<real_t>(other()), stride_(stride), gs_(gs) {};
+//     explicit data_ptr(const data_ptr* other, const bidx_t stride) : m_ptr<real_t>(other()), stride_(stride), gs_(0) {};
+//     // explicit data_ptr(const data_ptr* other, const bidx_t stride, const bidx_t gs) : m_ptr<real_t>(other()), stride_(stride), gs_(gs) {};
     
 //     /** @brief copy constructor: copy the adress */
-//     data_ptr(const data_ptr& ptr) noexcept : m_ptr<real_t>(ptr()), stride_(ptr.stride()), gs_(ptr.gs()) {};
+//     data_ptr(const data_ptr* ptr) noexcept : m_ptr<real_t>(ptr()), stride_(ptr.stride()), gs_(ptr.gs()) {};
     
 //     /** @brief nullptr constructor: any pointer can be initialized to nullptr */
-//     explicit data_ptr(const std::nullptr_t& ptr) noexcept : m_ptr<real_t>(ptr), stride_(0), gs_(0){};
+//     explicit data_ptr(const std::nullptr_t* ptr) noexcept : m_ptr<real_t>(ptr), stride_(0), gs_(0){};
     
 //     using m_ptr<real_t>::operator();  // inheritates the operator()
 
@@ -131,13 +131,13 @@
 //     explicit const_data_ptr() : m_ptr<const real_t>(), stride_(0), gs_(0) {};
 //     explicit const_data_ptr(const bidx_t stride, const bidx_t gs) : m_ptr<const real_t>(), stride_(stride), gs_(gs) {};
 //     explicit const_data_ptr(m_ptr<const real_t> ptr, const bidx_t stride, const bidx_t gs) : m_ptr<const real_t>(ptr), stride_(stride), gs_(gs) {};
-//     explicit const_data_ptr(const const_data_ptr& other, const bidx_t stride) : m_ptr<const real_t>(other()), stride_(stride), gs_(0) {};
+//     explicit const_data_ptr(const const_data_ptr* other, const bidx_t stride) : m_ptr<const real_t>(other()), stride_(stride), gs_(0) {};
     
 //     // Conversion from data_ptr to const_data_ptr
-//     const_data_ptr(const data_ptr& ptr) : m_ptr<const real_t>(ptr()), stride_(ptr.stride()), gs_(ptr.gs()){};
+//     const_data_ptr(const data_ptr* ptr) : m_ptr<const real_t>(ptr()), stride_(ptr.stride()), gs_(ptr.gs()){};
     
 //     /** @brief nullptr constructor: any pointer can be initialized to nullptr */
-//     const_data_ptr(const std::nullptr_t& ptr) noexcept : m_ptr<const real_t>(ptr), stride_(0), gs_(0){};
+//     const_data_ptr(const std::nullptr_t* ptr) noexcept : m_ptr<const real_t>(ptr), stride_(0), gs_(0){};
 
 //     using m_ptr<const real_t>::operator();  // inheritates the operators
     
@@ -161,7 +161,7 @@
 //     explicit mem_ptr() : m_ptr<real_t>(){};                                           // inheritates the constructor:
 //     explicit mem_ptr(real_t* ptr) : m_ptr<real_t>(ptr){};       // inheritates the constructor:
 //    /** @brief nullptr constructor: any pointer can be initialized to nullptr */
-//     mem_ptr(const std::nullptr_t& ptr) noexcept : m_ptr<real_t>(ptr){};
+//     mem_ptr(const std::nullptr_t* ptr) noexcept : m_ptr<real_t>(ptr){};
 
 //     using m_ptr<real_t>::operator();  // inheritates the operators:
 

@@ -164,7 +164,7 @@ size_t Grid::LocalMemSize() const {
     memsize += sizeof(prof_);
     // memsize += ghost_->LocalMemSize();
     // memsize += interp_->LocalMemSize();
-    for (const auto& fid : fields_) {
+    for (const auto* fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
     //-------------------------------------------------------------------------
@@ -389,7 +389,7 @@ void Grid::Refine(Field* field) {
     // get the ghost length
     const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto& fid : fields_) {
+    for (auto* fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field, ghost_len);
@@ -416,7 +416,7 @@ void Grid::Coarsen(Field* field) {
     // // get the ghost length
     // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto& fid : fields_) {
+    // for (auto* fid : fields_) {
     //     Field* cur_field = fid.second;
     //     if (!cur_field->is_temp()) {
     //         GhostPull(cur_field, ghost_len);
@@ -699,7 +699,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
-            for (auto& fid : fields_) {
+            for (auto* fid : fields_) {
                 m_log("changing ghost status of <%s>", fid.second->name().c_str());
                 const bidx_t ghost_len[2] = {0, 0};
                 fid.second->ghost_len(ghost_len);

@@ -19,7 +19,7 @@ struct MemLayout {
     explicit MemLayout() = delete;
     explicit MemLayout(const m_layout_t layout, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back = -1) noexcept;
 
-    bidx_t TranslateLimit(const MemLayout& new_layout, const bidx_t id) const noexcept;
+    bidx_t TranslateLimit(const MemLayout* new_layout, const bidx_t id) const noexcept;
 
     /**
      * @brief returns the offset of the position (0,0,0) of a given dimension from the RAW pointer expressed as a # of elements (>=0 number)
@@ -49,7 +49,7 @@ struct MemSpan {
     explicit MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept;
 };
 
-void Translate(const MemLayout& old_layout, const MemSpan& old_span,
-               const MemLayout& new_layout, MemSpan& new_span);
+void Translate(const MemLayout* old_layout, const MemSpan* old_span,
+               const MemLayout* new_layout, MemSpan* new_span);
 
 #endif

@@ -24,8 +24,8 @@ class GhostBlock : protected MemSpan {
 
     MemSpan GetSpan() const;
 
-    void GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan* span_coarse) const;
-    void GetCoarseLength(const MemLayout& layout, const MemLayout& layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const;
+    void GetCoarseSpan(const MemLayout* layout, const MemLayout* layout_coarse, MemSpan* span_coarse) const;
+    void GetCoarseLength(const MemLayout* layout, const MemLayout* layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const;
 
     // [[nodiscard]] bidx_t start(const lda_t ida) const{
     //     return start[ida] - static_cast<bidx_t>(scale_dir_start_[ida]) * (*ghost_len_)[0];

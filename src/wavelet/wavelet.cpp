@@ -13,8 +13,8 @@
  * @param data_trg target MemData
  */
 void Wavelet::Copy(const level_t dlvl, const bidx_t shift[3],
-                   const MemSpan& span_src,const ConstMemData& data_src,
-                   const MemSpan& span_trg,const MemData& data_trg) const {
+                   const MemSpan* span_src,const ConstMemData* data_src,
+                   const MemSpan* span_trg,const MemData* data_trg) const {
     //-------------------------------------------------------------------------
     m_assert(dlvl == 0 || dlvl == 1, "only a difference of 0 or 1 is accepted, see the 2:1 constrain");
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
@@ -36,8 +36,8 @@ void Wavelet::Copy(const level_t dlvl, const bidx_t shift[3],
  * @param data_trg target MemData
  */
 void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3],
-                          const MemSpan& span_src, const ConstMemData& data_src,
-                          const MemSpan& span_trg, const MemData& data_trg) const {
+                          const MemSpan* span_src, const ConstMemData* data_src,
+                          const MemSpan* span_trg, const MemData* data_trg) const {
     //-------------------------------------------------------------------------
     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
     DoMagic_(dlvl, false, shift, 0.0, span_src, data_src, span_trg, data_trg);
@@ -60,7 +60,7 @@ void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3],
 //  * @param data_cst the 0-position of the constant memory, which follows the same layout as the target: block_trg
 //  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
 //  */
-// void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3], const MemSpan&  block_src, ConstMemData& data_src, const MemSpan&  block_trg, MemData& data_trg, const real_t alpha, ConstMemData& data_cst) const {
+// void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3], const MemSpan*  block_src, ConstMemData* data_src, const MemSpan*  block_trg, MemData* data_trg, const real_t alpha, ConstMemData* data_cst) const {
 //     //-------------------------------------------------------------------------
 //     // if not constant field, the target becomes its own constant field and the multiplication factor is 0.0
 //     DoMagic_(dlvl, false, shift,0.0, block_src, data_src, block_trg, data_trg);
@@ -85,26 +85,26 @@ void Wavelet::Interpolate(const level_t dlvl, const bidx_t shift[3],
  * @param normal integers indicating the normal of the ghost layer. if not ghost, might be nullptr
  */
 void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t shift[3], const real_t alpha,
-                       const MemSpan& span_src, const ConstMemData& data_src,
-                       const MemSpan& span_trg, const MemData& data_trg) const {
+                       const MemSpan* span_src, const ConstMemData* data_src,
+                       const MemSpan* span_trg, const MemData* data_trg) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= -1, "we cannot handle a level too coarse ");
     //-------------------------------------------------------------------------
     // get the shifted memory for the source
-    const real_t* __restrict src_ptr = data_src.ptr(shift[0], shift[1], shift[2]);
+    const real_t* __restrict src_ptr = data_src->ptr(shift[0], shift[1], shift[2]);
     ConstMemData sdata(data_src, src_ptr);
 
     // get the interpolation context
-    InterpCtx ctx(alpha, span_src, sdata, span_trg, data_trg);
+    InterpCtx ctx(alpha, span_src, &sdata, span_trg, data_trg);
 
     // call the correct function
     if (dlvl == 0 || force_copy) {
         m_assert(dlvl >= 0, "the copy cannot be called with a negative dlvl argument, dlvl = %d, force copy = %d", dlvl, force_copy);
-        CopyMagic_(dlvl, ctx);
+        CopyMagic_(dlvl, &ctx);
     } else if (dlvl == -1) {
-        RefineZeroDetails_(ctx);
+        RefineZeroDetails_(&ctx);
     } else if (dlvl > 0) {
-        Coarsen_(ctx);
+        Coarsen_(&ctx);
     }
     //-------------------------------------------------------------------------
 }
@@ -115,30 +115,30 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t s
  * @param dlvl the difference of level between the source and the target
  * @param ctx the interpolation context
  */
-void Wavelet::CopyMagic_(const level_t dlvl, const InterpCtx& ctx) const {
+void Wavelet::CopyMagic_(const level_t dlvl, const InterpCtx* ctx) const {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     //-------------------------------------------------------------------------
     const bidx_t        scaling = pow(2, dlvl);
-    const MemData&      tdata   = ctx.tdata;
-    const ConstMemData& sdata   = ctx.sdata;
+    const MemData*      tdata   = ctx->tdata;
+    const ConstMemData* sdata   = ctx->sdata;
 
     auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        tdata(i0, i1, i2) = sdata(scaling * i0, scaling * i1, scaling * i2);
+        (*tdata)(i0, i1, i2) = (*sdata)(scaling * i0, scaling * i1, scaling * i2);
 
         // check memory consistency
-        m_assert(tdata(i0, i1, i2) == tdata(i0, i1, i2), "cannot be nan");
-        m_assert(sdata(scaling * i0, scaling * i1, scaling * i2) == sdata(scaling * i0, scaling * i1, scaling * i2), "cannot be nan");
+        m_assert((*tdata)(i0, i1, i2) == (*tdata)(i0, i1, i2), "cannot be nan");
+        m_assert((*sdata)(scaling * i0, scaling * i1, scaling * i2) == (*sdata)(scaling * i0, scaling * i1, scaling * i2), "cannot be nan");
         // check the accesses
-        m_assert(((scaling * i0) >= ctx.sspan.start[0]) && ((scaling * i0) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx.sspan.start[0], i0, ctx.sspan.end[0]);
-        m_assert(((scaling * i1) >= ctx.sspan.start[1]) && ((scaling * i1) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx.sspan.start[1], i1, ctx.sspan.end[1]);
-        m_assert(((scaling * i2) >= ctx.sspan.start[2]) && ((scaling * i2) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx.sspan.start[2], i2, ctx.sspan.end[2]);
-        m_assert(((i0) >= ctx.tspan.start[0]) && ((i0) < ctx.tspan.end[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx.tspan.start[0], i0, ctx.tspan.end[0]);
-        m_assert(((i1) >= ctx.tspan.start[1]) && ((i1) < ctx.tspan.end[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx.tspan.start[1], i1, ctx.tspan.end[1]);
-        m_assert(((i2) >= ctx.tspan.start[2]) && ((i2) < ctx.tspan.end[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx.tspan.start[2], i2, ctx.tspan.end[2]);
+        m_assert(((scaling * i0) >= ctx->sspan->start[0]) && ((scaling * i0) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx->sspan->start[0], i0, ctx->sspan->end[0]);
+        m_assert(((scaling * i1) >= ctx->sspan->start[1]) && ((scaling * i1) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx->sspan->start[1], i1, ctx->sspan->end[1]);
+        m_assert(((scaling * i2) >= ctx->sspan->start[2]) && ((scaling * i2) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx->sspan->start[2], i2, ctx->sspan->end[2]);
+        m_assert(((i0) >= ctx->tspan->start[0]) && ((i0) < ctx->tspan->end[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx->tspan->start[0], i0, ctx->tspan->end[0]);
+        m_assert(((i1) >= ctx->tspan->start[1]) && ((i1) < ctx->tspan->end[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx->tspan->start[1], i1, ctx->tspan->end[1]);
+        m_assert(((i2) >= ctx->tspan->start[2]) && ((i2) < ctx->tspan->end[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx->tspan->start[2], i2, ctx->tspan->end[2]);
     };
 
-    for_loop(op, ctx.tspan);
+    for_loop(&op, ctx->tspan);
     //-------------------------------------------------------------------------
 }
 
@@ -155,8 +155,8 @@ void Wavelet::CopyMagic_(const level_t dlvl, const InterpCtx& ctx) const {
 //  * @param win the window to use for the RMA calls
 //  */
 // void Wavelet::GetRma(const level_t dlvl, const bidx_t shift[3],
-// const MemSpan&  block_src, MPI_Aint disp_src,
-// const MemSpan&  block_trg, MemData& data_trg, rank_t src_rank, MPI_Win win) const {
+// const MemSpan*  block_src, MPI_Aint disp_src,
+// const MemSpan*  block_trg, MemData* data_trg, rank_t src_rank, MPI_Win win) const {
 //     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
 //     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
 //     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
@@ -212,13 +212,13 @@ void Wavelet::CopyMagic_(const level_t dlvl, const InterpCtx& ctx) const {
  * @param smooth 
  * @return real_t the infinite norm of the max detail coefficient in the extended regio 
  */
-real_t Wavelet::Criterion(/* source */ const MemSpan& span_src, const ConstMemData& data,
-                          /* target */ const MemSpan& span_detail) const {
+real_t Wavelet::Criterion(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                          /* target */ const MemSpan* span_detail) const {
     //-------------------------------------------------------------------------
     // get the detail coefficients
     MemData detail_data(nullptr);
     real_t  details_max = 0.0;
-    Details(span_src, data, span_detail, detail_data, 0.0, &details_max);
+    Details(span_src, data, span_detail, &detail_data, 0.0, &details_max);
 
     return details_max;
     //-------------------------------------------------------------------------
@@ -235,9 +235,9 @@ real_t Wavelet::Criterion(/* source */ const MemSpan& span_src, const ConstMemDa
 //  * @param data_tmp the memory used as a copy (size @ref m_blockmemsize(1) )
 //  * @return real_t
 //  */
-// real_t  Wavelet::FWT(const MemSpan&  block, const MemData& data, const mem_ptr& tmp) const {
+// real_t  Wavelet::FWT(const MemSpan*  block, const MemData* data, const mem_ptr* tmp) const {
 //     //-------------------------------------------------------------------------
-//     MemData& data_tmp = tmp(0,block);
+//     MemData* data_tmp = tmp(0,block);
 
 //     // copy the block
 //     ToTempMemory(block, data, data_tmp);
@@ -259,16 +259,16 @@ real_t Wavelet::Criterion(/* source */ const MemSpan& span_src, const ConstMemDa
 //     InterpCtx ctx;
 //     for (sid_t id = 0; id < 3; id++) {
 // #ifndef NDEBUG
-//         ctx.srcstart[id] = block->start(id) - nghost_front();
-//         ctx.srcend[id]   = block->end(id) + nghost_back();
+//         ctx->srcstart[id] = block->start(id) - nghost_front();
+//         ctx->srcend[id]   = block->end(id) + nghost_back();
 // #endif
-//         ctx.trgstart[id] = block->start(id);
-//         ctx.trgend[id]   = block->end(id);
+//         ctx->trgstart[id] = block->start(id);
+//         ctx->trgend[id]   = block->end(id);
 //     }
-//     ctx.srcstr = block->stride();
-//     ctx.trgstr = block->stride();
-//     ctx.sdata = data_tmp; // we use data_tmp to get the scaling
-//     ctx.tdata = data;
+//     ctx->srcstr = block->stride();
+//     ctx->trgstr = block->stride();
+//     ctx->sdata = data_tmp; // we use data_tmp to get the scaling
+//     ctx->tdata = data;
 
 //     Coarsen_(&ctx)
 
@@ -276,7 +276,7 @@ real_t Wavelet::Criterion(/* source */ const MemSpan& span_src, const ConstMemDa
 //     //-------------------------------------------------------------------------
 // }
 
-// real_t Wavelet::CriterionAndSmooth(const MemSpan&  block, const MemData& data, const mem_ptr& detail, const real_t tol) const {
+// real_t Wavelet::CriterionAndSmooth(const MemSpan*  block, const MemData* data, const mem_ptr* detail, const real_t tol) const {
 //     //-------------------------------------------------------------------------
 // // get the extended memory layout
 // lid_t start[3];
@@ -289,7 +289,7 @@ real_t Wavelet::Criterion(/* source */ const MemSpan& span_src, const ConstMemDa
 
 // // reset the detail array
 // // memset(detail(),0,m_blockmemsize(1)*sizeof(real_t));
-// MemData& detail_data = detail(0,block);
+// MemData* detail_data = detail(0,block);
 
 // // get the detail coefficients
 // real_t details_max = 0.0;
@@ -312,29 +312,29 @@ real_t Wavelet::Criterion(/* source */ const MemSpan& span_src, const ConstMemDa
  * @param tol if > 0, used to decide wether a detail must be stored cfr @ref Detail_ for storing policy
  * @param details_max the max of the infinite norm on the details
  */
-void Wavelet::Details(/* source */ const MemSpan& span_src, const ConstMemData& data,
-                      /* target */ const MemSpan& span_detail, const MemData& detail, const real_t tol,
+void Wavelet::Details(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                      /* target */ const MemSpan* span_detail, const MemData* detail, const real_t tol,
                       /* output*/ real_t* details_max) const {
     //-------------------------------------------------------------------------
     InterpCtx ctx(tol, span_src, data, span_detail, detail);
-    Detail_(ctx, details_max);
+    Detail_(&ctx, details_max);
 
     // get memory details
     //     InterpCtx ctx;
     //     for (lda_t id = 0; id < 3; id++) {
     // #ifndef NDEBUG
-    //         ctx.srcstart[id] = block_src->start(id);
-    //         ctx.srcend[id]   = block_src->end(id);
+    //         ctx->srcstart[id] = block_src->start(id);
+    //         ctx->srcend[id]   = block_src->end(id);
     // #endif
-    //         ctx.trgstart[id] = detail_block->start(id);
-    //         ctx.trgend[id]   = detail_block->end(id);
+    //         ctx->trgstart[id] = detail_block->start(id);
+    //         ctx->trgend[id]   = detail_block->end(id);
     //     }
-    //     ctx.srcstr = block_src->stride();
-    //     ctx.sdata  = data;
-    //     ctx.trgstr = detail_block->stride();
-    //     ctx.tdata  = detail;
+    //     ctx->srcstr = block_src->stride();
+    //     ctx->sdata  = data;
+    //     ctx->trgstr = detail_block->stride();
+    //     ctx->tdata  = detail;
     //     // we do not neeed to store
-    //     ctx.alpha = tol;
+    //     ctx->alpha = tol;
 
     //     bidx_t trgstart[3] = {detail_block->start(0), detail_block->start(1), detail_block->start(2)};
     //     bidx_t trgend[3]   = {detail_block->end(0), detail_block->end(1), detail_block->end(2)};
@@ -351,24 +351,24 @@ void Wavelet::Details(/* source */ const MemSpan& span_src, const ConstMemData& 
     //-------------------------------------------------------------------------
 }
 
-// void Wavelet::Scalings(const MemSpan&  detail_block, const ConstMemData& data, const MemData& detail, const real_t tol, real_t*  details_max) const {
+// void Wavelet::Scalings(const MemSpan*  detail_block, const ConstMemData* data, const MemData* detail, const real_t tol, real_t*  details_max) const {
 //     //-------------------------------------------------------------------------
 //     // get memory details
 //     InterpCtx ctx;
 //     for (lda_t id = 0; id < 3; id++) {
 // #ifndef NDEBUG
-//         ctx.srcstart[id] = 0 - nghost_front();
-//         ctx.srcend[id]   = M_N + nghost_back();
+//         ctx->srcstart[id] = 0 - nghost_front();
+//         ctx->srcend[id]   = M_N + nghost_back();
 // #endif
-//         ctx.trgstart[id] = detail_block->start(id);
-//         ctx.trgend[id]   = detail_block->end(id);
+//         ctx->trgstart[id] = detail_block->start(id);
+//         ctx->trgend[id]   = detail_block->end(id);
 //     }
-//     ctx.srcstr = detail_block->stride();
-//     ctx.sdata  = data;
-//     ctx.trgstr = detail_block->stride();
-//     ctx.tdata  = detail;
+//     ctx->srcstr = detail_block->stride();
+//     ctx->sdata  = data;
+//     ctx->trgstr = detail_block->stride();
+//     ctx->tdata  = detail;
 //     // we do not neeed to store
-//     ctx.alpha = tol;
+//     ctx->alpha = tol;
 
 //     // m_log("tol = %e", tol);
 //     // we go for the two norm over the block
@@ -388,18 +388,20 @@ void Wavelet::Details(/* source */ const MemSpan& span_src, const ConstMemData& 
  * @param detail_block the region of details that need to be computed
  * @param detail_mask the mask on the details to compute (1.0 means we remove the detail)
  */
-void Wavelet::SmoothOnMask(/* source */ const MemSpan& span_src,
-                           /* target */ const MemSpan& span_trg, const MemData& data,
-                           /* detail */ const MemSpan& detail_block, const MemData& detail_mask) const {
+void Wavelet::SmoothOnMask(/* source */ const MemSpan* span_src,
+                           /* target */ const MemSpan* span_trg, const MemData* data,
+                           /* detail */ const MemSpan* detail_block, const MemData* detail_mask) const {
     //-------------------------------------------------------------------------
     //.........................................................................
     // get the details
     real_t to_trash = 0.0;
-    Details(span_src, data, detail_block, detail_mask, -1.0, &to_trash);
+    const ConstMemData data_src(data);
+    Details(span_src, &data_src, detail_block, detail_mask, -1.0, &to_trash);
 
     // smooth based on the mask newly computed
-    InterpCtx ctx(0.0, detail_block, detail_mask, span_trg, data);
-    Smooth_(ctx);
+    const ConstMemData mask(detail_mask);
+    InterpCtx ctx(0.0, detail_block, &mask, span_trg, data);
+    Smooth_(&ctx);
 
     //.........................................................................
     // smooth them
@@ -408,16 +410,16 @@ void Wavelet::SmoothOnMask(/* source */ const MemSpan& span_src,
     //     for (lda_t id = 0; id < 3; id++) {
     // #ifndef NDEBUG
     //         // detail block is too small as we need more points that are 0.0 so use the full block_src... bad, I knooow
-    //         ctx.srcstart[id] = block_src->start(id);
-    //         ctx.srcend[id]   = block_src->end(id);
+    //         ctx->srcstart[id] = block_src->start(id);
+    //         ctx->srcend[id]   = block_src->end(id);
     // #endif
-    //         ctx.trgstart[id] = block_trg->start(id);
-    //         ctx.trgend[id]   = block_trg->end(id);
+    //         ctx->trgstart[id] = block_trg->start(id);
+    //         ctx->trgend[id]   = block_trg->end(id);
     //     }
-    //     ctx.srcstr = detail_block->stride();
-    //     ctx.sdata  = detail_mask;  // this are the details
-    //     ctx.trgstr = block_trg->stride();
-    //     ctx.tdata  = data;  // this is the block
+    //     ctx->srcstr = detail_block->stride();
+    //     ctx->sdata  = detail_mask;  // this are the details
+    //     ctx->trgstr = block_trg->stride();
+    //     ctx->tdata  = data;  // this is the block
 
     //     bidx_t trgstart[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     //     bidx_t trgend[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
@@ -443,25 +445,26 @@ void Wavelet::SmoothOnMask(/* source */ const MemSpan& span_src,
  * @param block_trg the region where the details must be overwritten
  * @param data the modified data
  */
-void Wavelet::OverwriteDetails(/* source */ const MemSpan& span_src,
-                               /* target */ const MemSpan& span_trg, const MemData& data) const {
+void Wavelet::OverwriteDetails(/* source */ const MemSpan* span_src,
+                               /* target */ const MemSpan* span_trg, const MemData* data) const {
     //-------------------------------------------------------------------------
     //.........................................................................
-    InterpCtx ctx(0.0, span_src, data, span_trg, data);
-    OverwriteDetailsDualLifting_(ctx);
+    const ConstMemData data_src(data);
+    InterpCtx ctx(0.0, span_src, &data_src, span_trg, data);
+    OverwriteDetailsDualLifting_(&ctx);
     //     for (lda_t id = 0; id < 3; id++) {
     // #ifndef NDEBUG
-    //         ctx.srcstart[id] = block_src->start(id);
-    //         ctx.srcend[id]   = block_src->end(id);
+    //         ctx->srcstart[id] = block_src->start(id);
+    //         ctx->srcend[id]   = block_src->end(id);
     // #endif
-    //         ctx.trgstart[id] = block_trg->start(id);
-    //         ctx.trgend[id]   = block_trg->end(id);
+    //         ctx->trgstart[id] = block_trg->start(id);
+    //         ctx->trgend[id]   = block_trg->end(id);
     //     }
     //     // source and target data are the same!!
-    //     ctx.srcstr = block_trg->stride();
-    //     ctx.sdata  = data;
-    //     ctx.trgstr = block_trg->stride();
-    //     ctx.tdata  = data;
+    //     ctx->srcstr = block_trg->stride();
+    //     ctx->sdata  = data;
+    //     ctx->trgstr = block_trg->stride();
+    //     ctx->tdata  = data;
 
     //     bidx_t trgstart[3] = {block_trg->start(0), block_trg->start(1), block_trg->start(2)};
     //     bidx_t trgend[3]   = {block_trg->end(0), block_trg->end(1), block_trg->end(2)};
@@ -480,31 +483,31 @@ void Wavelet::OverwriteDetails(/* source */ const MemSpan& span_src,
 /**
  * @brief Compute and store the details in the data_trg field
  */
-void Wavelet::StoreDetails(/* source */ const MemSpan& span_src, const ConstMemData& data,
-                           /* target */ const MemSpan& span_detail, const MemData& detail) const {
+void Wavelet::StoreDetails(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                           /* target */ const MemSpan* span_detail, const MemData* detail) const {
     //-------------------------------------------------------------------------
     // compute
     const real_t alpha    = std::numeric_limits<real_t>::max();
     real_t       to_trash = 0.0;  // -> will be discarded
     InterpCtx    ctx(alpha, span_src, data, span_detail, detail);
-    Detail_(ctx, &to_trash);
+    Detail_(&ctx, &to_trash);
 
     //     // get memory details
     // //     InterpCtx ctx;
     // //     for (lda_t id = 0; id < 3; id++) {
     // // #ifndef NDEBUG
-    // //         ctx.srcstart[id] = block_src->start(id);
-    // //         ctx.srcend[id]   = block_src->end(id);
+    // //         ctx->srcstart[id] = block_src->start(id);
+    // //         ctx->srcend[id]   = block_src->end(id);
     // // #endif
-    // //         ctx.trgstart[id] = block_detail->start(id);
-    // //         ctx.trgend[id]   = block_detail->end(id);
+    // //         ctx->trgstart[id] = block_detail->start(id);
+    // //         ctx->trgend[id]   = block_detail->end(id);
     // //     }
-    // //     ctx.srcstr = block_src->stride();
-    // //     ctx.trgstr = block_detail->stride();
-    // //     ctx.sdata  = data;
-    // //     ctx.tdata  = detail;
+    // //     ctx->srcstr = block_src->stride();
+    // //     ctx->trgstr = block_detail->stride();
+    // //     ctx->sdata  = data;
+    // //     ctx->tdata  = detail;
     // //     // set alpha to a huuge value, will store everything beneath it
-    // //     ctx.alpha = std::numeric_limits<real_t>::max();
+    // //     ctx->alpha = std::numeric_limits<real_t>::max();
 
     //     bidx_t trgstart[3] = {block_detail->start(0), block_detail->start(1), block_detail->start(2)};
     //     bidx_t trgend[3]   = {block_detail->end(0), block_detail->end(1), block_detail->end(2)};

@@ -46,7 +46,7 @@
 //     // additional usefull constructors
 
 //     /** @brief nullptr constructor: any pointer can be initialized to nullptr, no ownership */
-//     m_ptr(const std::nullptr_t& ptr) noexcept : data_(ptr), is_owned_(false){};
+//     m_ptr(const std::nullptr_t* ptr) noexcept : data_(ptr), is_owned_(false){};
 
 //     /** @brief pointer constructor: copy the adress from ptr, no ownership */
 //     m_ptr(T* ptr) noexcept : data_(ptr), is_owned_(false){};
@@ -66,7 +66,7 @@
 //     //-------------------------------------------------------------------------
 //     /** @brief allocate a new pointer and forward the arguments to the constructor */
 //     template <typename... U>
-//     void Alloc(U&&... u) {
+//     void Alloc(U*&... u) {
 //         data_     = new T(std::forward<U>(u)...);
 //         is_owned_ = true;
 //     };
@@ -91,7 +91,7 @@
 //     T* operator()() const { return data_; }
 
 //     /** @brief operator *, return the associated object */
-//     T& operator*() const { return *data_; }
+//     T* operator*() const { return *data_; }
 
 //     /** @brief operator ->, return the contained pointer */
 //     T* operator->() const { return data_; }
@@ -126,7 +126,7 @@
 //     using m_ptr<const real_t>::operator();  // inheritates the operators
 
 //     /** @brief build a const_data_ptr from a data_ptr: copy */
-//     const_data_ptr(const data_ptr& ptr) : m_ptr<const real_t>(ptr){};
+//     const_data_ptr(const data_ptr* ptr) : m_ptr<const real_t>(ptr){};
 
 //     const real_t* Read(const bidx_t i0 = 0, const bidx_t i1 = 0, const bidx_t i2 = 0, const lda_t ida = 0, const bidx_t stride = M_STRIDE) const;
 //     const real_t* Read(const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida, const m_ptr<const MemLayout>& layout) const;

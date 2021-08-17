@@ -416,6 +416,9 @@ class InterpolatingWavelet : public Wavelet {
         const MemData      tdata = ctx.tdata;
         const ConstMemData sdata = ctx.sdata;
 
+        // assert that the pointers are the same, this is expected
+        // the count prevents us from overwritting the same parts
+        m_assert(tdata.ptr(0,0,0) == sdata.ptr(0,0,0),"the two pointers MUST be the same");
         // count tracks how many dimension is done at the same time.
         // if count = 1, we do the dx, dy, dz
         // if count = 2, we do the dxy, dyz and dxz
@@ -733,7 +736,7 @@ class InterpolatingWavelet : public Wavelet {
                         corr += fact * lddata(id0, id1, id2);
                         // corr += fact * lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
                         // sanity check
-                        m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata(id0, id1, id2)) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata(id0, id1, id2), i0 + id0, i1 + id1, i2 + id2);
+                        m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata(id0, id1, id2)) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())], i0 + id0, i1 + id1, i2 + id2);
                     }
                 }
             }

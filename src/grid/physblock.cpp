@@ -10,7 +10,7 @@
  * @param block the block on which we act
  */
 PhysBlock::PhysBlock(const bidx_t (*const ghost_len)[2],
-                     const iface_t iface, const MemSpan& block) : GhostBlock(ghost_len),
+                     const iface_t iface, const MemSpan* block) : GhostBlock(ghost_len),
                                                                   iface_(iface) {
     // m_assert(block.gs() == M_GS, "the ghost size %d must be %d", block.gs(), M_GS);
     // m_assert(block.stride() == M_STRIDE, "the ghost size %d must be %d", block.stride(), M_STRIDE);

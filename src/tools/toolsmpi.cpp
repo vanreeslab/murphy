@@ -13,7 +13,7 @@
  * @param scale the scale coefficient (1 or 2). If 2, we take one points out of 2 in each direction
  * @param xyz_type the corresponding datattype
  */
-void ToMPIDatatype(const MemSpan& span, const MemLayout& layout, const bidx_t scale, MPI_Datatype* xyz_type) {
+void ToMPIDatatype(const MemSpan* span, const MemLayout* layout, const bidx_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
     m_assert(span.start[0] <= span.end[0], "the end = %d is smaller than the start = %d", span.end[0], span.start[0]);
@@ -63,8 +63,8 @@ void ToMPIDatatype(const MemSpan& span, const MemLayout& layout, const bidx_t sc
 };
 
 void GetRma(const level_t dlvl, const bidx_t shift[3],
-            const MemLayout& layout_src, const MemSpan& span_src, const MPI_Aint disp_src, rank_t src_rank,
-            const MemLayout& layout_trg, const MemSpan& span_trg, const MemData& data_trg, MPI_Win win) {
+            const MemLayout* layout_src, const MemSpan* span_src, const MPI_Aint disp_src, rank_t src_rank,
+            const MemLayout* layout_trg, const MemSpan* span_trg, const MemData* data_trg, MPI_Win win) {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_src >= 0, "the displacement is not positive: %ld", disp_src);
@@ -115,8 +115,8 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
  * @param win the window to use for the RMA calls
  */
 void PutRma(const level_t dlvl, const bidx_t shift[3],
-            const MemLayout& layout_src, const MemSpan& span_src,const ConstMemData& data_src,
-            const MemLayout& layout_trg, const MemSpan& span_trg,const MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) {
+            const MemLayout* layout_src, const MemSpan* span_src,const ConstMemData* data_src,
+            const MemLayout* layout_trg, const MemSpan* span_trg,const MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);

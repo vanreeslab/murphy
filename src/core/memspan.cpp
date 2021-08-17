@@ -74,11 +74,11 @@ MemSpan::MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept {
  * @param id index in the current reference 
  * @return bidx_t 
  */
-bidx_t MemLayout::TranslateLimit(const MemLayout& new_layout, const bidx_t c_id) const noexcept {
+bidx_t MemLayout::TranslateLimit(const MemLayout* new_layout, const bidx_t c_id) const noexcept {
     //--------------------------------------------------------------------------
-    const bidx_t n_front = new_layout.gs;
-    const bidx_t n_core  = new_layout.block;
-    const bidx_t n_back  = new_layout.stride[1] - (new_layout.block + new_layout.gs);
+    const bidx_t n_front = new_layout->gs;
+    const bidx_t n_core  = new_layout->block;
+    const bidx_t n_back  = new_layout->stride[1] - (new_layout->block + new_layout->gs);
     const bidx_t c_core  = block;
 
     // let's go for some dark magic

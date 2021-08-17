@@ -50,7 +50,7 @@ MemSpan GhostBlock::GetSpan() const {
     return me;
 }
 
-void GhostBlock::GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_coarse, MemSpan* span_coarse) const {
+void GhostBlock::GetCoarseSpan(const MemLayout* layout, const MemLayout* layout_coarse, MemSpan* span_coarse) const {
     // get the current span (warning cannot be the start or end arrays)
     MemSpan me = GetSpan();
 
@@ -67,7 +67,7 @@ void GhostBlock::GetCoarseSpan(const MemLayout& layout, const MemLayout& layout_
     // this->Resize(coarse_gs, M_NHALF, block_coarse);
 }
 
-void GhostBlock::GetCoarseLength(const MemLayout& layout, const MemLayout& layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const {
+void GhostBlock::GetCoarseLength(const MemLayout* layout, const MemLayout* layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const {
     // we assume that the new layout contains the new desired ghost sizes!
 #pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {

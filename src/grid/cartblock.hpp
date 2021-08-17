@@ -101,8 +101,9 @@ class CartBlock {
      * @name datamap access
      * @{
      */
-    MemData data(const Field& fid, const lda_t ida) const noexcept;
-    // MemData data(const Field& fid, const lda_t ida = 0) const noexcept;
+    MemData data(const Field* fid, const lda_t ida) const noexcept;
+    ConstMemData ConstData(const Field* fid, const lda_t ida) const noexcept ;
+    // MemData data(const Field* fid, const lda_t ida = 0) const noexcept;
     // MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
 
@@ -111,10 +112,10 @@ class CartBlock {
      * 
      * @{
      */
-    void AddField(const Field& fid);
-    void DeleteField(const Field& fid);
-    void AddFields(const std::map<std::string, Field&>& fields);
-    bool IsFieldOwned(const std::string& name) const;
+    void AddField(const Field* fid);
+    void DeleteField(const Field* fid);
+    void AddFields(const std::map<std::string, Field*>& fields);
+    bool IsFieldOwned(const std::string* name) const;
     /** @} */
 };
 
@@ -125,7 +126,7 @@ class CartBlock {
 //  * @param data the initial data
 //  * @param temp the temporary data (of size @ref CartBlockMemNum(1))
 //  */
-// inline void ToTempMemory(const MemSpan& span, const ConstMemData& data, const MemPtr& temp) {
+// inline void ToTempMemory(const MemSpan* span, const ConstMemData* data, const MemPtr* temp) {
 //     m_begin;
 //     //-------------------------------------------------------------------------
 //     // reset the whole temp memory size to 0

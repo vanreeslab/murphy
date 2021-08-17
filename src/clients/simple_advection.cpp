@@ -21,9 +21,9 @@ static const real_t velocity[3] = {0.0, 0.0, 1.0};
 
 static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
     m_assert(fid->lda() == 3, "the velocity field must be a vector");
-    block->data(fid, 0).Write(i0, i1, i2)[0] = velocity[0];
-    block->data(fid, 1).Write(i0, i1, i2)[0] = velocity[1];
-    block->data(fid, 2).Write(i0, i1, i2)[0] = velocity[2];
+    block->data(fid, 0)(i0, i1, i2) = velocity[0];
+    block->data(fid, 1)(i0, i1, i2) = velocity[1];
+    block->data(fid, 2)(i0, i1, i2) = velocity[2];
 };
 
 SimpleAdvection::~SimpleAdvection() {
@@ -84,7 +84,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
         // block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
-        block->data(fid).Write(i0, i1, i2)[0] = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
+        block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
     };
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
                                         m_max(grid_->interp()->nghost_back(), 3)};

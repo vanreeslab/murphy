@@ -6,7 +6,7 @@
 #include "core/memspan.hpp"
 
 template <class T>
-inline void for_loop(T& kern, const bidx_t s0, const bidx_t e0, const bidx_t s1, const bidx_t e1, const bidx_t s2, const bidx_t e2) {
+inline void for_loop(const T* kern, const bidx_t s0, const bidx_t e0, const bidx_t s1, const bidx_t e1, const bidx_t s2, const bidx_t e2) {
     //-------------------------------------------------------------------------
     const bidx_t n0   = (e0 - s0);
     const bidx_t n01  = (e1 - s1) * n0;
@@ -18,13 +18,20 @@ inline void for_loop(T& kern, const bidx_t s0, const bidx_t e0, const bidx_t s1,
         const bidx_t i1  = s1 + (i12 / n0);
         const bidx_t i0  = s0 + (i12 % n0);
 
-        kern(i0, i1, i2);
+        (*kern)(i0, i1, i2);
     }
     //-------------------------------------------------------------------------
 };
 
 template <class T>
-inline void for_loop(T& kern, const MemSpan& span) {
+inline void for_loop(const T* kern, const MemSpan* const span) {
+    //-------------------------------------------------------------------------
+    for_loop(kern, span->start[0], span->end[0], span->start[1], span->end[1], span->start[2], span->end[2]);
+    //-------------------------------------------------------------------------
+};
+
+template <class T>
+inline void for_loop(const T* kern, const MemSpan& span) {
     //-------------------------------------------------------------------------
     for_loop(kern, span.start[0], span.end[0], span.start[1], span.end[1], span.start[2], span.end[2]);
     //-------------------------------------------------------------------------

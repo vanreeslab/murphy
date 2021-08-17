@@ -50,10 +50,9 @@ static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, 
     // get the position
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
-    real_t* data = block->data(fid).Write(i0, i1, i2);
     // set value
     // data[0] = scalar_exp(pos, center, sigma);
-    data[0] = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
 };
 static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     // get the position
@@ -116,9 +115,9 @@ void ConvergenceWeno::Run() {
         {
             grid.AddField(&vel);
             lambda_setvalue_t lambda_vel = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
-                block->data(fid, 0).Write(i0, i1, i2)[0] = rand_vel[0];
-                block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
-                block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
+                block->data(fid, 0)(i0, i1, i2) = rand_vel[0];
+                block->data(fid, 1)(i0, i1, i2) = rand_vel[1];
+                block->data(fid, 2)(i0, i1, i2) = rand_vel[2];
             };
             const bidx_t ghost_len[2] = {3, 3};
             SetValue     vel_init(lambda_vel, ghost_len);
