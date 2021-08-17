@@ -38,8 +38,8 @@ class Partitioner {
     MPI_Request* back_send_request_ = nullptr;  //!< backward partition - the send requests
     MPI_Request* back_recv_request_ = nullptr;  //!< backward partition - the receive requests
 
-    mem_ptr send_buf_ = nullptr;  //<! the send buffer, since the memory is not continuous accross the blocks
-    mem_ptr recv_buf_ = nullptr;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
+    MemPtr send_buf_ = nullptr;  //<! the send buffer, since the memory is not continuous accross the blocks
+    MemPtr recv_buf_ = nullptr;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
 
     // int*   send_status_count_   = nullptr;  //<! count to send the status of the old blocks
     // int*   send_status_cum_sum_ = nullptr;  //<! cummulative sum to send the status of the old blocks

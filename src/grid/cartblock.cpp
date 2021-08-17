@@ -9,7 +9,7 @@ using std::string;
  * @param xyz the position of the origin, i.e. the left,bottom corner, (x,y,z)
  * @param level the level of the block
  */
-CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t level) {
+CartBlock::CartBlock(const real_t length, const real_t xyz[3], const level_t level) noexcept {
     m_begin;
     //-------------------------------------------------------------------------
     level_ = level;
@@ -128,7 +128,7 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
  */
 void CartBlock::AddField(const Field* fid) {
     //-------------------------------------------------------------------------
-    string name = fid.name();
+    string name = fid->name();
     // try to find the field
     auto it = mem_map_.find(name);
 
@@ -140,7 +140,7 @@ void CartBlock::AddField(const Field* fid) {
         // allocate the pointer, the one in the map, not the one created
         MemLayout myself = BlockLayout();
         auto      it = mem_map_.find(name);
-        it->second.Allocate(myself.n_elem * fid.lda());
+        it->second.Allocate(myself.n_elem * fid->lda());
 
         m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid.lda());
     } else {
@@ -169,7 +169,7 @@ void CartBlock::AddFields(const std::map<string, Field*>& fields) {
  * @param name The name of the requested field
  */
 
-bool CartBlock::IsFieldOwned(const string* name) const {
+bool CartBlock::IsFieldOwned(const string& name) const {
     return (mem_map_.find(name) != mem_map_.end());
 }
 
@@ -180,7 +180,7 @@ bool CartBlock::IsFieldOwned(const string* name) const {
  */
 void CartBlock::DeleteField(const Field* fid) {
     //-------------------------------------------------------------------------
-    string name = fid.name();
+    string name = fid->name();
 
     // try to find the field
     auto it = mem_map_.find(name);

@@ -68,15 +68,11 @@ class RestrictData {
     // note 2: will not compile if T2 is not T or const T (cfr the friendship above)
     template <typename T2>
     RestrictData(const RestrictData<T2>& other) : data_(other.data_), stride_{other.stride_[0], other.stride_[1]} {};
-    template <typename T2>
-    RestrictData(const RestrictData<T2>* other) : data_(other->data_), stride_{other->stride_[0], other->stride_[1]} {};
 
     // same but with a custom user-given raw address
     // note: will compile whatever T2 is (if it's convertible to T)
     template <typename T2>
     explicit RestrictData(const RestrictData<T2>& other, T2* const data) : data_(data), stride_{other.stride_[0], other.stride_[1]} {};
-    template <typename T2>
-    explicit RestrictData(const RestrictData<T2>* other, T2* const data) : data_(data), stride_{other->stride_[0], other->stride_[1]} {};
 
     //--------------------------------------------------------------------------
     // this is convenient and a bit ugly

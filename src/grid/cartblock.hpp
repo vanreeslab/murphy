@@ -101,8 +101,8 @@ class CartBlock {
      * @name datamap access
      * @{
      */
-    MemData data(const Field* fid, const lda_t ida) const noexcept;
-    ConstMemData ConstData(const Field* fid, const lda_t ida) const noexcept ;
+    MemData      data(const Field* fid, const lda_t ida) const noexcept;
+    ConstMemData ConstData(const Field* fid, const lda_t ida) const noexcept;
     // MemData data(const Field* fid, const lda_t ida = 0) const noexcept;
     // MemPtr  pointer(const Field* const fid, const lda_t ida = 0) const noexcept;
     /** @} */
@@ -115,7 +115,7 @@ class CartBlock {
     void AddField(const Field* fid);
     void DeleteField(const Field* fid);
     void AddFields(const std::map<std::string, Field*>& fields);
-    bool IsFieldOwned(const std::string* name) const;
+    bool IsFieldOwned(const std::string& name) const;
     /** @} */
 };
 
