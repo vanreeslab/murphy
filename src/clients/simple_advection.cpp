@@ -83,7 +83,6 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-        // block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
         block->data(fid).Write(i0, i1, i2)[0] = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
     };
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
@@ -147,8 +146,7 @@ void SimpleAdvection::Run() {
         m_log("--------------------------------------------------------------------------------");
         //................................................
         // adapt the mesh
-        if (iter % iter_adapt() == 0) {
-            if (!no_adapt_) {
+        if ((iter % iter_adapt() == 0) && (!no_adapt_)) {
                 m_log("---- adapt mesh");
                 m_profStart(prof_, "adapt");
                 if (!grid_on_sol_) {
@@ -176,7 +174,6 @@ void SimpleAdvection::Run() {
                 set_velocity(grid_, vel_);
                 m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
                 m_profStop(prof_, "set velocity");
-            }
         }
         // we run the first diagnostic if not done yet
         if (iter == 0) {
@@ -270,8 +267,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-
-        return scalar_ring(pos, new_center, radius, sigma, ring_normal);
+        return scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
     };
     // compute the error
     real_t err2, erri;
@@ -287,6 +283,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     level_t min_level       = grid_->MinLevel();
     level_t max_level       = grid_->MaxLevel();
     long    global_num_quad = grid_->global_num_quadrants();
+    m_log("iter = %6.6d time = %e: levels = (%d , %d), errors = (%e , %e)", iter, time, min_level, max_level, err2, erri);
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max

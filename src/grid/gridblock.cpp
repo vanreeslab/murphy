@@ -101,7 +101,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
     // prevent coarsening if we have finer neighbors
     const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0);
     const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL);
-    const bool is_over           = forbid_coarsening || forbid_refinement || (status_lvl_ > M_ADAPT_SAME);
+    const bool is_over           = (forbid_coarsening && forbid_refinement) || (status_lvl_ > M_ADAPT_SAME);
 
     // if no decision has been made, go for the computation
     if (!is_over) {
@@ -111,9 +111,9 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
         const real_t   norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
-        if (norm > rtol) {  // refine
+        if ((norm > rtol) && (!forbid_refinement)) {  // refine
             status_lvl_ = M_ADAPT_FINER;
-        } else if (norm < ctol) {  // coarsen
+        } else if ((norm < ctol) && (!forbid_coarsening)) {  // coarsen
             status_lvl_ = M_ADAPT_COARSER;
         }
     }

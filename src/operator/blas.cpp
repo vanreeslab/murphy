@@ -97,7 +97,7 @@ void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, const GridBlock* block, cons
         // m_assume_aligned(data_y);
         // m_assume_aligned(data_z);
         // get the correct place given the current thread and the dimension
-        auto op = [=, &data_y](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=, &data_z](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             const bidx_t idx = m_idx(i0, i1, i2);
             data_z[idx]      = alpha_ * data_x[idx] + data_y[idx];
         };
