@@ -467,6 +467,10 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+
+    // apply the operator to get the starting value
+    // it gets rid of whatever smoothing has been done
+    (*expr)(this, field);
     //-------------------------------------------------------------------------
     m_end;
 }
