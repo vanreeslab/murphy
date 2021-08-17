@@ -585,7 +585,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
                 // compute the criterion on the previous dimension
                 m_profStart(prof_, "criterion");
                 const lda_t criterion_dim = ida - 1;
-                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail, prof_);
+                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail);
                 m_profStop(prof_, "criterion");
 
                 // finish the ghost for the current dimension
@@ -596,7 +596,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             // finally, compute on the last dimension of the field
             const lda_t criterion_dim = field_detail->lda() - 1;
             m_profStart(prof_, "criterion");
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail, prof_);
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail);
             m_profStop(prof_, "criterion");
             // register the computed ghosts
             field_detail->ghost_len(ghost_len);
@@ -612,7 +612,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         if (!(patches == nullptr)) {
             // get the patches processed
             m_profStart(prof_, "patch");
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches);
             m_profStop(prof_, "patch");
         }
 
@@ -728,7 +728,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     const level_t min_level   = this->MinLevel();
     const level_t max_level   = this->MaxLevel();
-    const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * CartBlockMemNum(1) * sizeof(real_t) / 1.0e+9;
+    const MemLayout block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
+    const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
 
     m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);

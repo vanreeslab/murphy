@@ -82,7 +82,7 @@ class GridBlock : public CartBlock {
     void        ResetStatus() { status_lvl_ = M_ADAPT_NONE; };
 
     void UpdateStatusFromCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, const lda_t ida);
-    void UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>& patch_list);
+    void UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>* patch_list);
     void UpdateStatusFromPolicy();
 
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);

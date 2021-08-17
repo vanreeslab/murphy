@@ -4,8 +4,8 @@
 #include "core/forloop.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "gridblock.hpp"
-#include "wavelet.hpp"
+#include "grid/gridblock.hpp"
+#include "wavelet/wavelet.hpp"
 
 template <lda_t N, lda_t NT>
 static constexpr short_t len_ha_ = 0;  //!< length of the Ha filter
@@ -243,7 +243,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Coarsen_(const interp_ctx_t& ctx) const override {
+    void Coarsen_(const InterpCtx* const ctx) const override {
         //-------------------------------------------------------------------------
         // filter crap
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
@@ -252,15 +252,16 @@ class InterpolatingWavelet : public Wavelet {
         // get pointers
         // real_t* const       tdata = ctx->tdata.Write();
         // const real_t* const sdata = ctx->sdata.Read();
-        const MemData      tdata = ctx.tdata;
-        const ConstMemData sdata = ctx.sdata;
+        // copy the data objects
+        const MemData      tdata = ctx->tdata[0];
+        const ConstMemData sdata = ctx->sdata[0];
 
         // define the lambda, only tdata is changed
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // do some checks on the bounds
-            m_assert(((2 * i0 - ha_lim) >= (ctx.span.start[0])) && ((2 * i0 + ha_lim) < ctx.span.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", 2 * i0 - ha_lim, ctx.span.start[0], 2 * i0 + ha_lim, ctx.span.end[0]);
-            m_assert(((2 * i1 - ha_lim) >= (ctx.span.start[1])) && ((2 * i1 + ha_lim) < ctx.span.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", 2 * i1 - ha_lim, ctx.span.start[1], 2 * i1 + ha_lim, ctx.span.end[1]);
-            m_assert(((2 * i2 - ha_lim) >= (ctx.span.start[2])) && ((2 * i2 + ha_lim) < ctx.span.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx.span.start[2], 2 * i2 + ha_lim, ctx.span.end[2]);
+            m_assert(((2 * i0 - ha_lim) >= (ctx->sspan->start[0])) && ((2 * i0 + ha_lim) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", 2 * i0 - ha_lim, ctx->sspan->start[0], 2 * i0 + ha_lim, ctx->sspan->end[0]);
+            m_assert(((2 * i1 - ha_lim) >= (ctx->sspan->start[1])) && ((2 * i1 + ha_lim) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", 2 * i1 - ha_lim, ctx->sspan->start[1], 2 * i1 + ha_lim, ctx->sspan->end[1]);
+            m_assert(((2 * i2 - ha_lim) >= (ctx->sspan->start[2])) && ((2 * i2 + ha_lim) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx->sspan->start[2], 2 * i2 + ha_lim, ctx->sspan->end[2]);
 
             //get the local adress of the source, which is twice finer compared to the target
             // const real_t* const lsdata = sdata + m_idx(2 * i0, 2 * i1, 2 * i2, 0, ctx->sdata.stride());
@@ -292,7 +293,7 @@ class InterpolatingWavelet : public Wavelet {
             // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        for_loop(op, ctx.tspan);
+        for_loop(op, ctx->tspan);
         // // get the start and end
         // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
@@ -310,7 +311,7 @@ class InterpolatingWavelet : public Wavelet {
      *
      * @param ctx the interpolation context
      */
-    void RefineZeroDetails_(const interp_ctx_t* const  ctx) const override {
+    void RefineZeroDetails_(const InterpCtx* const ctx) const override {
         m_assert(ctx->alpha == 0.0, "the alpha = %e must be = 0.0", ctx->alpha);
         //-------------------------------------------------------------------------
         constexpr short_t   ks_lim = len_ks_<TN, TNT> / 2;
@@ -321,8 +322,8 @@ class InterpolatingWavelet : public Wavelet {
         // get the pointers
         // real_t* const       tdata = ctx->tdata.Write();
         // const real_t* const sdata = ctx->sdata.Read();
-        const MemData      tdata = ctx.tdata;
-        const ConstMemData sdata = ctx.sdata;
+        const MemData      tdata = ctx->tdata[0];
+        const ConstMemData sdata = ctx->sdata[0];
 
         // define the lambda, only tdata is changed
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -358,9 +359,9 @@ class InterpolatingWavelet : public Wavelet {
                 (odd_y) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2)),
                 (odd_z) ? m_max(0, ks_lim - (1 - (ks_lim % 2))) : m_max(0, js_lim - (js_lim % 2))};
 
-            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx.sspan.start[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx.sspan.start[0], (i0_s + (lim[0] + 1) / 2), ctx.sspan.end[0]);
-            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx.sspan.start[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx.sspan.start[1], (i1_s + (lim[1] + 1) / 2), ctx.sspan.end[1]);
-            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx.sspan.start[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2_s + (-lim[2] + 1) / 2), ctx.sspan.start[2], (i2_s + (lim[2] + 1) / 2), ctx.sspan.end[2]);
+            m_assert(((i0_s + (-lim[0] + 1) / 2) >= ctx->sspan->start[0]) && ((i0_s + (lim[0] + 1) / 2) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0_s + (-lim[0] + 1) / 2), ctx->sspan->start[0], (i0_s + (lim[0] + 1) / 2), ctx->sspan->end[0]);
+            m_assert(((i1_s + (-lim[1] + 1) / 2) >= ctx->sspan->start[1]) && ((i1_s + (lim[1] + 1) / 2) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1_s + (-lim[1] + 1) / 2), ctx->sspan->start[1], (i1_s + (lim[1] + 1) / 2), ctx->sspan->end[1]);
+            m_assert(((i2_s + (-lim[2] + 1) / 2) >= ctx->sspan->start[2]) && ((i2_s + (lim[2] + 1) / 2) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2_s + (-lim[2] + 1) / 2), ctx->sspan->start[2], (i2_s + (lim[2] + 1) / 2), ctx->sspan->end[2]);
 
             // if we are a detail, we never pass by the index 0 as we start from an odd number
             // the source is taken as (i+1)/2 so that when i=-1, we access the position 0 and when i=1, we access the position 1
@@ -383,7 +384,7 @@ class InterpolatingWavelet : public Wavelet {
             tdata(i0, i1, i2) = value;
             // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
-        for_loop(op, ctx.tspan);
+        for_loop(op, ctx->tspan);
 
         // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
@@ -399,7 +400,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx 
      */
-    void OverwriteDetailsDualLifting_(const interp_ctx_t* const  ctx) const override {
+    void OverwriteDetailsDualLifting_(const InterpCtx* const ctx) const override {
         m_assert(ctx->alpha == 0.0, "the alpha = %e must be = 0.0", ctx->alpha);
         m_assert((len_ga_<TN, TNT> % 2) == 1, "the filter size must be odd");
         //-------------------------------------------------------------------------
@@ -413,12 +414,12 @@ class InterpolatingWavelet : public Wavelet {
         // get the pointers
         // real_t* const       tdata = ctx->tdata.Write();
         // const real_t* const sdata = ctx->sdata.Read();
-        const MemData      tdata = ctx.tdata;
-        const ConstMemData sdata = ctx.sdata;
+        const MemData      tdata = ctx->tdata[0];
+        const ConstMemData sdata = ctx->sdata[0];
 
         // assert that the pointers are the same, this is expected
         // the count prevents us from overwritting the same parts
-        m_assert(tdata.ptr(0,0,0) == sdata.ptr(0,0,0),"the two pointers MUST be the same");
+        m_assert(tdata.ptr(0, 0, 0) == sdata.ptr(0, 0, 0), "the two pointers MUST be the same");
         // count tracks how many dimension is done at the same time.
         // if count = 1, we do the dx, dy, dz
         // if count = 2, we do the dxy, dyz and dxz
@@ -452,13 +453,13 @@ class InterpolatingWavelet : public Wavelet {
                 (odd_y) ? m_max(0, ga_lim) : 0,
                 (odd_z) ? m_max(0, ga_lim) : 0};
 
-            m_assert(((i0 - lim[0]) >= ctx.sspan.start[0]) && ((i0 + lim[0]) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 - lim[0]), ctx.sspan.start[0], (i0 + lim[0]), ctx.sspan.end[0]);
-            m_assert(((i1 - lim[1]) >= ctx.sspan.start[1]) && ((i1 + lim[1]) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 - lim[1]), ctx.sspan.start[1], (i1 + lim[1]), ctx.sspan.end[1]);
-            m_assert(((i2 - lim[2]) >= ctx.sspan.start[2]) && ((i2 + lim[2]) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 - lim[2]), ctx.sspan.start[2], (i2 + lim[2]), ctx.sspan.end[2]);
+            m_assert(((i0 - lim[0]) >= ctx->sspan->start[0]) && ((i0 + lim[0]) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", (i0 - lim[0]), ctx->sspan->start[0], (i0 + lim[0]), ctx->sspan->end[0]);
+            m_assert(((i1 - lim[1]) >= ctx->sspan->start[1]) && ((i1 + lim[1]) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", (i1 - lim[1]), ctx->sspan->start[1], (i1 + lim[1]), ctx->sspan->end[1]);
+            m_assert(((i2 - lim[2]) >= ctx->sspan->start[2]) && ((i2 + lim[2]) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", (i2 - lim[2]), ctx->sspan->start[2], (i2 + lim[2]), ctx->sspan->end[2]);
 
             const ConstMemData lsdata(sdata, sdata.ptr(i0, i1, i2));
             // const real_t* const lsdata = sdata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
-            real_t              value  = 0.0;
+            real_t value = 0.0;
 
             for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
                 for (bidx_t id1 = -lim[1]; id1 <= lim[1]; ++id1) {
@@ -487,15 +488,15 @@ class InterpolatingWavelet : public Wavelet {
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // count = 1: dx, dy and dz
         count = 1;
-        for_loop(op, ctx.tspan);
+        for_loop(op, ctx->tspan);
         // for_loop(&op, start, end);
         // count = 2: dxy, dxz and dyz
         count = 2;
-        for_loop(op, ctx.tspan);
+        for_loop(op, ctx->tspan);
         // for_loop(&op, start, end);
         // count = 3: dxyz
         count = 3;
-        for_loop(op, ctx.tspan);
+        for_loop(op, ctx->tspan);
         // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
@@ -503,15 +504,15 @@ class InterpolatingWavelet : public Wavelet {
     /**
      * @brief compute the details over a memory block and store the maximum infinite norm of the details
      * 
-     * Depending on the values of @ref interp_ctx_t::tdata and @ref interp_ctx_t::alpha, the detail coefficients are stored.
-     *     - if the @ref interp_ctx_t::tdata is empty, nothing is stored
-     *     - if the @ref interp_ctx_t::tdata is not empty and @ref interp_ctx_t::alpha >= 0, the value is stored if the abs(detail) < ctx->alpha
-     *     - if the @ref interp_ctx_t::tdata is not empty and @ref interp_ctx_t::alpha < 0, the value is stored as tdata * detail
+     * Depending on the values of @ref InterpCtx::tdata and @ref InterpCtx::alpha, the detail coefficients are stored.
+     *     - if the @ref InterpCtx::tdata is empty, nothing is stored
+     *     - if the @ref InterpCtx::tdata is not empty and @ref InterpCtx::alpha >= 0, the value is stored if the abs(detail) < ctx->alpha
+     *     - if the @ref InterpCtx::tdata is not empty and @ref InterpCtx::alpha < 0, the value is stored as tdata * detail
      * 
      * @param ctx the interpolation context
      * @param details_max the maximum of the local detail coefficients
      */
-    void Detail_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
+    void Detail_(const InterpCtx* const ctx, real_t* const details_max) const override {
         m_assert(details_max[0] == 0.0, "the value must be 0.0");
         //-------------------------------------------------------------------------
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
@@ -523,18 +524,18 @@ class InterpolatingWavelet : public Wavelet {
         bool          store         = !(ctx->tdata.IsEmpty());
         bool          store_on_mask = (ctx->alpha < 0.0) && store;
         real_t        temp          = 0.0;
-        real_t* const tdata         = (store) ? (ctx.tdata.ptr(0, 0, 0)) : (&temp);
+        real_t* const tdata         = (store) ? (ctx->tdata->ptr(0, 0, 0)) : (&temp);
         // real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
 
         // m_log("store? %d, store on mask? %d", store, store_on_mask);
-        // m_log("computing details using %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2],
-        //       ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
+        // m_log("computing details using %d %d %d to %d %d %d", ctx->sspan->start[0], ctx->sspan->start[1], ctx->sspan->start[2],
+        //       ctx->sspan->end[0], ctx->sspan->end[1], ctx->sspan->end[2]);
         // m_log("and computing details from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2],
         //       ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
 
         // get the source pointer
         // const real_t* const sdata = ctx->sdata.Read();
-        const ConstMemData sdata = ctx.sdata;
+        const ConstMemData sdata = ctx->sdata[0];
 
         // go
         auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -561,9 +562,9 @@ class InterpolatingWavelet : public Wavelet {
                 (is_scaling) ? (-1) : ((odd_y) ? (ga_lim) : (ha_lim)),
                 (is_scaling) ? (-1) : ((odd_z) ? (ga_lim) : (ha_lim))};
 
-            m_assert(((i0 - lim[0]) >= ctx.sspan.start[0]) && ((i0 + lim[0]) < ctx.sspan.end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx.sspan.start[0], i0 + lim[0], ctx.sspan.end[0]);
-            m_assert(((i1 - lim[1]) >= ctx.sspan.start[1]) && ((i1 + lim[1]) < ctx.sspan.end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx.sspan.start[1], i1 + lim[1], ctx.sspan.end[1]);
-            m_assert(((i2 - lim[2]) >= ctx.sspan.start[2]) && ((i2 + lim[2]) < ctx.sspan.end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx.sspan.start[2], i2 + lim[2], ctx.sspan.end[2]);
+            m_assert(((i0 - lim[0]) >= ctx->sspan->start[0]) && ((i0 + lim[0]) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->sspan->start[0], i0 + lim[0], ctx->sspan->end[0]);
+            m_assert(((i1 - lim[1]) >= ctx->sspan->start[1]) && ((i1 + lim[1]) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->sspan->start[1], i1 + lim[1], ctx->sspan->end[1]);
+            m_assert(((i2 - lim[2]) >= ctx->sspan->start[2]) && ((i2 + lim[2]) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->sspan->start[2], i2 + lim[2], ctx->sspan->end[2]);
 
             // if one dim is even, id = 0, -> gs[0] = 1 and that's it
             // if one dim is odd, id = 1, -> we loop on gs, business as usual
@@ -587,7 +588,7 @@ class InterpolatingWavelet : public Wavelet {
 
             // store if needed, the index is 0 if not store
             // const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->tdata.stride());
-            const bidx_t store_id = store * ctx.tdata.offset(i0, i1, i2);
+            const bidx_t store_id = store * ctx->tdata->offset(i0, i1, i2);
             const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
             tdata[store_id]       = value;
 
@@ -599,13 +600,13 @@ class InterpolatingWavelet : public Wavelet {
         // reset the detail max (to be sure)
         *details_max = 0.0;
         // let's go
-        for_loop(op, ctx.tspan);
+        for_loop(op, ctx->tspan);
         // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // for_loop(&op, start, end);
     };
 
-    // void ForwardWaveletTransform_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
+    // void ForwardWaveletTransform_(const InterpCtx* const  ctx, real_t* const  details_max) const override {
     //     m_assert(*details_max == 0.0, "the value must be 0.0");
     //     //-------------------------------------------------------------------------
     //     constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
@@ -641,9 +642,9 @@ class InterpolatingWavelet : public Wavelet {
     //                                ((odd_y) ? (ga_lim) : (ha_lim)),
     //                                ((odd_z) ? (ga_lim) : (ha_lim))};
 
-    //         m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
-    //         m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
-    //         m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
+    //         m_assert(((i0 - lim[0]) >= ctx->sspan->start[0]) && ((i0 + lim[0]) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->sspan->start[0], i0 + lim[0], ctx->sspan->end[0]);
+    //         m_assert(((i1 - lim[1]) >= ctx->sspan->start[1]) && ((i1 + lim[1]) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->sspan->start[1], i1 + lim[1], ctx->sspan->end[1]);
+    //         m_assert(((i2 - lim[2]) >= ctx->sspan->start[2]) && ((i2 + lim[2]) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->sspan->start[2], i2 + lim[2], ctx->sspan->end[2]);
 
     //         real_t wave_data = 0.0;
     //         for (bidx_t id2 = -lim[2]; id2 <= lim[2]; ++id2) {
@@ -682,7 +683,7 @@ class InterpolatingWavelet : public Wavelet {
      * 
      * @param ctx the interpolation context
      */
-    void Smooth_(const interp_ctx_t* const  ctx) const override {
+    void Smooth_(const InterpCtx* const ctx) const override {
         //-------------------------------------------------------------------------
         // filters
         constexpr short_t   js_lim = len_js_<TN, TNT> / 2;
@@ -693,8 +694,8 @@ class InterpolatingWavelet : public Wavelet {
         // get the pointers
         // real_t* const       tdata = ctx->tdata.Write();
         // const real_t* const ddata = ctx->sdata.Read();
-        const MemData      tdata = ctx.tdata;
-        const ConstMemData sdata = ctx.sdata;
+        const MemData      tdata = ctx->tdata[0];
+        const ConstMemData sdata = ctx->sdata[0];
 
         // go, only tada is changed
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -717,9 +718,9 @@ class InterpolatingWavelet : public Wavelet {
                 (js_lim) * (!odd_y) + (ks_lim) * (odd_y),
                 (js_lim) * (!odd_z) + (ks_lim) * (odd_z)};
 
-            m_assert(((i0 - lim[0]) >= ctx->srcstart[0]) && ((i0 + lim[0]) < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->srcstart[0], i0 + lim[0], ctx->srcend[0]);
-            m_assert(((i1 - lim[1]) >= ctx->srcstart[1]) && ((i1 + lim[1]) < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->srcstart[1], i1 + lim[1], ctx->srcend[1]);
-            m_assert(((i2 - lim[2]) >= ctx->srcstart[2]) && ((i2 + lim[2]) < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->srcstart[2], i2 + lim[2], ctx->srcend[2]);
+            m_assert(((i0 - lim[0]) >= ctx->sspan->start[0]) && ((i0 + lim[0]) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0 - lim[0], ctx->sspan->start[0], i0 + lim[0], ctx->sspan->end[0]);
+            m_assert(((i1 - lim[1]) >= ctx->sspan->start[1]) && ((i1 + lim[1]) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1 - lim[1], ctx->sspan->start[1], i1 + lim[1], ctx->sspan->end[1]);
+            m_assert(((i2 - lim[2]) >= ctx->sspan->start[2]) && ((i2 + lim[2]) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2 - lim[2], ctx->sspan->start[2], i2 + lim[2], ctx->sspan->end[2]);
 
             // get the local datassss
             // real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->tdata.stride());
@@ -745,7 +746,7 @@ class InterpolatingWavelet : public Wavelet {
             //     m_log("@ %d %d %d : smoothed %e -> %e", i0, i1, i2, ltdata[0], ltdata[0] - corr);
             // }
             m_assert(std::isfinite(corr), "the data in %d %d %d is nan %e", i0, i1, i2, corr);
-            tdata(i0,i1,i2) -= corr;
+            tdata(i0, i1, i2) -= corr;
 
             // if (fabs(corr) > 1e-3) {
             //     m_log("correction is %e at %d %d %d", corr, i0, i1, i2);
@@ -759,12 +760,12 @@ class InterpolatingWavelet : public Wavelet {
 
     // /**
     //  * @brief Overwrites from the target all non-zero detail coefficients
-    //  * 
+    //  *
     //  * The simply overwrite makes sure that no small un-wanted detail coefficients have been created
-    //  * 
+    //  *
     //  * @param ctx the interpolation context
     //  */
-    // void Clear_(const interp_ctx_t* const  ctx) const override{
+    // void Clear_(const InterpCtx* const  ctx) const override{
     //     // //-------------------------------------------------------------------------
     //     // // filters, need the forward ones
     //     // constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
@@ -793,9 +794,9 @@ class InterpolatingWavelet : public Wavelet {
 
     //     //     const real_t fact = f_x[0] * f_y[0] * fz[0];
 
-    //     //     m_assert((i0 >= ctx->srcstart[0]) && (i0 < ctx->srcend[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0, ctx->srcstart[0], i0, ctx->srcend[0]);
-    //     //     m_assert((i1 >= ctx->srcstart[1]) && (i1 < ctx->srcend[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1, ctx->srcstart[1], i1, ctx->srcend[1]);
-    //     //     m_assert((i2 >= ctx->srcstart[2]) && (i2 < ctx->srcend[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2, ctx->srcstart[2], i2, ctx->srcend[2]);
+    //     //     m_assert((i0 >= ctx->sspan->start[0]) && (i0 < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d < %d", i0, ctx->sspan->start[0], i0, ctx->sspan->end[0]);
+    //     //     m_assert((i1 >= ctx->sspan->start[1]) && (i1 < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d < %d", i1, ctx->sspan->start[1], i1, ctx->sspan->end[1]);
+    //     //     m_assert((i2 >= ctx->sspan->start[2]) && (i2 < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", i2, ctx->sspan->start[2], i2, ctx->sspan->end[2]);
 
     //     //     // get the local datassss
     //     //     real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->trgstr);

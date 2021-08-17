@@ -139,7 +139,7 @@ class Grid : public ForestGrid {
     void Adapt(std::list<Patch>* patches);
 
     // void AdaptMagic(Field*  field, list<Patch*  > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);
-    void AdaptMagic(/* criterion */ Field* field_detail, std::list<Patch>* patches,
+    void AdaptMagic(/* criterion */ Field* field_detail, std::list<Patch>& patches,
                     /* p4est coarsen/refine */ cback_coarsen_citerion_t coarsen_cback, cback_refine_criterion_t refine_cback, void* coarseref_cback_ptr,
                     /* p4est interpolate */ cback_interpolate_t interpolate_fct, void* interpolate_ptr);
 

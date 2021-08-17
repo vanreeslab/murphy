@@ -71,7 +71,7 @@ class Boundary {
      * @param data the data
      */
     // virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const gblock, const data_ptr data) const {
-    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const MemSpan* gblock, const MemData sdata) const {
+    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const MemSpan* gblock, const MemData* sdata) const {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
         // m_assert(block->stride() == gblock->stride(), "the two strides must be the same");
@@ -95,7 +95,7 @@ class Boundary {
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get the local information
             // real_t* ldata = sdata + m_idx(i0, i1, i2, 0, b_stride);
-            const MemData ldata(sdata, sdata.ptr(i0, i1, i2));
+            const MemData ldata(*sdata, sdata->ptr(i0, i1, i2));
 
             // get the distance between me and the face
             // the face_start is given as M_N, so if I am positive signed, I need add 1 to reach the last element of the block

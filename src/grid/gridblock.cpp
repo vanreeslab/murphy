@@ -120,7 +120,7 @@ void GridBlock::UpdateStatusFromCriterion(const Wavelet* interp, const real_t rt
     //-------------------------------------------------------------------------
 }
 
-void GridBlock::UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>& patch_list) {
+void GridBlock::UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>* patch_list) {
     //-------------------------------------------------------------------------
     m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
     //-------------------------------------------------------------------------
@@ -136,7 +136,7 @@ void GridBlock::UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>&
     real_t len = p4est_QuadLen(this->level());
 
     // loop over the patches and determine if I am in it or not
-    for (auto patch = patch_list.cbegin(); patch != patch_list.cend(); ++patch) {
+    for (auto patch = patch_list->cbegin(); patch != patch_list->cend(); ++patch) {
         // if we already have the correct level or a higher one, we skip the patch
         if (this->level() > patch->level()) {
             // if not, we have a coarser block and we might want to refine if the location matches
