@@ -660,7 +660,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
         }
         m_profStart(prof_, "solve dependency");
-        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "solve dependency");
 
         //................................................
@@ -688,7 +688,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // solve resolution jump if needed
         m_verb("solve jump resolution");
         m_profStart(prof_, "smooth jump");
-        DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "smooth jump");
 
         //................................................

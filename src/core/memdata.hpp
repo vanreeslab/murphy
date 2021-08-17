@@ -76,7 +76,7 @@ class RestrictData {
 
     //--------------------------------------------------------------------------
     // this is convenient and a bit ugly
-    [[nodiscard]] inline bool is_null() { return data_ == nullptr; };
+    [[nodiscard]] inline bool is_null() const { return data_ == nullptr; };
 
     //--------------------------------------------------------------------------
     // force the inline! hopefully will do it

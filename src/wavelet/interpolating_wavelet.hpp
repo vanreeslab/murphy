@@ -293,9 +293,9 @@ class InterpolatingWavelet : public Wavelet {
             // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        for_loop(op, ctx->tspan);
+        for_loop(&op, ctx->tspan);
         // // get the start and end
-        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
 
         // // run that shit
@@ -384,9 +384,9 @@ class InterpolatingWavelet : public Wavelet {
             tdata(i0, i1, i2) = value;
             // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
-        for_loop(op, ctx->tspan);
+        for_loop(&op, ctx->tspan);
 
-        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
@@ -484,19 +484,19 @@ class InterpolatingWavelet : public Wavelet {
             // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
 
-        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // count = 1: dx, dy and dz
         count = 1;
-        for_loop(op, ctx->tspan);
+        for_loop(&op, ctx->tspan);
         // for_loop(&op, start, end);
         // count = 2: dxy, dxz and dyz
         count = 2;
-        for_loop(op, ctx->tspan);
+        for_loop(&op, ctx->tspan);
         // for_loop(&op, start, end);
         // count = 3: dxyz
         count = 3;
-        for_loop(op, ctx->tspan);
+        for_loop(&op, ctx->tspan);
         // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
@@ -521,7 +521,7 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const ga     = ga_<TN, TNT> + ga_lim;
 
         // check if we need to store some value -> get the target pointer
-        bool          store         = !(ctx->tdata.IsEmpty());
+        bool          store         = !(ctx->tdata->is_null());
         bool          store_on_mask = (ctx->alpha < 0.0) && store;
         real_t        temp          = 0.0;
         real_t* const tdata         = (store) ? (ctx->tdata->ptr(0, 0, 0)) : (&temp);
@@ -530,7 +530,7 @@ class InterpolatingWavelet : public Wavelet {
         // m_log("store? %d, store on mask? %d", store, store_on_mask);
         // m_log("computing details using %d %d %d to %d %d %d", ctx->sspan->start[0], ctx->sspan->start[1], ctx->sspan->start[2],
         //       ctx->sspan->end[0], ctx->sspan->end[1], ctx->sspan->end[2]);
-        // m_log("and computing details from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2],
+        // m_log("and computing details from %d %d %d to %d %d %d", ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2],
         //       ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
 
         // get the source pointer
@@ -600,8 +600,8 @@ class InterpolatingWavelet : public Wavelet {
         // reset the detail max (to be sure)
         *details_max = 0.0;
         // let's go
-        for_loop(op, ctx->tspan);
-        // const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+        for_loop(&op, ctx->tspan);
+        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
         // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // for_loop(&op, start, end);
     };
@@ -670,7 +670,7 @@ class InterpolatingWavelet : public Wavelet {
     //     *details_max = 0.0;
 
     //     // compute the start and end indexes, we need more details than the number of scalings
-    //     const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    //     const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
     //     const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
     //     for_loop(&op, start, end);
     // };
@@ -695,7 +695,7 @@ class InterpolatingWavelet : public Wavelet {
         // real_t* const       tdata = ctx->tdata.Write();
         // const real_t* const ddata = ctx->sdata.Read();
         const MemData      tdata = ctx->tdata[0];
-        const ConstMemData sdata = ctx->sdata[0];
+        const ConstMemData ddata = ctx->sdata[0];
 
         // go, only tada is changed
         auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
@@ -726,7 +726,7 @@ class InterpolatingWavelet : public Wavelet {
             // real_t* const       ltdata = tdata + m_idx(i0, i1, i2, 0, ctx->tdata.stride());
             // const real_t* const lddata = ddata + m_idx(i0, i1, i2, 0, ctx->sdata.stride());
             // const MemData      ltdata(tdata.ptr(i0, i1, i2), tdata);
-            const ConstMemData lddata(ddata.ptr(i0, i1, i2), ddata);
+            const ConstMemData lddata(ddata, ddata.ptr(i0, i1, i2));
 
             // let's go tocard
             real_t corr = 0.0;
@@ -737,7 +737,7 @@ class InterpolatingWavelet : public Wavelet {
                         corr += fact * lddata(id0, id1, id2);
                         // corr += fact * lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
                         // sanity check
-                        m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata(id0, id1, id2)) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())], i0 + id0, i1 + id1, i2 + id2);
+                        m_assert(!((id0 + i0) % 2 == 0 && (id1 + i1) % 2 == 0 && (id2 + i2) % 2 == 0 && fabs(lddata(id0, id1, id2)) > 1e-16), "detail is wrong: %e, it should be null at even locations: %d %d %d", lddata(id0, id1, id2), i0 + id0, i1 + id1, i2 + id2);
                     }
                 }
             }
@@ -753,9 +753,9 @@ class InterpolatingWavelet : public Wavelet {
             // }
         };
 
-        const bidx_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
-        const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        for_loop(&op, start, end);
+        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
+        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
+        for_loop(&op, ctx->tspan);
     };
 
     // /**
@@ -812,7 +812,7 @@ class InterpolatingWavelet : public Wavelet {
     //     //     // }
     //     // };
 
-    //     // const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
+    //     // const lid_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
     //     // const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
     //     // for_loop(&op, start, end);
     // };
