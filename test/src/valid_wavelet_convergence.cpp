@@ -70,9 +70,9 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid).Write(i0, i1, i2)[0] = sin(2.0 * M_PI * freq[0] / sin_len[0] * pos[0]) +
-                                                        sin(2.0 * M_PI * freq[1] / sin_len[1] * pos[1]) +
-                                                        sin(2.0 * M_PI * freq[2] / sin_len[2] * pos[2]);
+                block->data(fid, 0)(i0, i1, i2) = sin(2.0 * M_PI * freq[0] / sin_len[0] * pos[0]) +
+                                                  sin(2.0 * M_PI * freq[1] / sin_len[1] * pos[1]) +
+                                                  sin(2.0 * M_PI * freq[2] / sin_len[2] * pos[2]);
             };
             SetValue field_init(sin_op);
             field_init(&grid, &test);
@@ -176,9 +176,9 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid).Write(i0, i1, i2)[0] = cos(2.0 * M_PI * freq[0] / cos_len[0] * pos[0]) +
-                                                        cos(2.0 * M_PI * freq[1] / cos_len[1] * pos[1]) +
-                                                        cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
+                block->data(fid, 0)(i0, i1, i2) = cos(2.0 * M_PI * freq[0] / cos_len[0] * pos[0]) +
+                                                  cos(2.0 * M_PI * freq[1] / cos_len[1] * pos[1]) +
+                                                  cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
             };
             SetValue field_init(cos_op);
             field_init(&grid, &test);
@@ -274,7 +274,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid).Write(i0, i1, i2)[0] = cos(2.0 * M_PI * freq[0] / cos_len[0] * pos[0]) +
+                block->data(fid,0)(i0, i1, i2) = cos(2.0 * M_PI * freq[0] / cos_len[0] * pos[0]) +
                                                         cos(2.0 * M_PI * freq[1] / cos_len[1] * pos[1]) +
                                                         cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
             };
@@ -448,8 +448,8 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                const short_t deg                     = M_WAVELET_N + 2;
-                block->data(fid).Write(i0, i1, i2)[0] = pow(L[id] / 2.0, deg) - pow(L[id] / 2.0 - pos[id], deg);
+                const short_t deg               = M_WAVELET_N + 2;
+                block->data(fid, 0)(i0, i1, i2) = pow(L[id] / 2.0, deg) - pow(L[id] / 2.0 - pos[id], deg);
             };
             SetValue field_init(pol_op);
             field_init(&grid, &test);
@@ -547,7 +547,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid).Write(i0, i1, i2)[0] = cos(2.0 * M_PI / L[id] * pos[id]);
+                block->data(fid,0)(i0, i1, i2) = cos(2.0 * M_PI / L[id] * pos[id]);
             };
             SetValue field_init(cos_op);
             field_init(&grid, &test);

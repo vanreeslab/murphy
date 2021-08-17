@@ -95,9 +95,9 @@ TEST_P(Adapt, weno_periodic_cosinus) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid, 0).Write(i0, i1, i2)[0] = rand_vel[0];
-                block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
-                block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
+                block->data(fid, 0)(i0, i1, i2) = rand_vel[0];
+                block->data(fid, 1)(i0, i1, i2) = rand_vel[1];
+                block->data(fid, 2)(i0, i1, i2) = rand_vel[2];
             };
             const bidx_t ghost_len[2] = {3, 3};
             SetValue     field_init(pol_op, ghost_len);
@@ -118,9 +118,9 @@ TEST_P(Adapt, weno_periodic_cosinus) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid).Write(i0, i1, i2)[0] = sin(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
-                                                        sin(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
-                                                        sin(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
+                block->data(fid, 0)(i0, i1, i2) = sin(2.0 * M_PI * 2.0 / ((real_t)L[0]) * pos[0]) +
+                                                  sin(2.0 * M_PI * 2.0 / ((real_t)L[1]) * pos[1]) +
+                                                  sin(2.0 * M_PI * 2.0 / ((real_t)L[2]) * pos[2]);
             };
             SetValue field_init(sin_op);
             field_init(&grid, &test);
@@ -285,9 +285,9 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid, 0).Write(i0, i1, i2)[0] = rand_vel[0];
-                block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
-                block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
+                block->data(fid, 0)(i0, i1, i2) = rand_vel[0];
+                block->data(fid, 1)(i0, i1, i2) = rand_vel[1];
+                block->data(fid, 2)(i0, i1, i2) = rand_vel[2];
             };
             const bidx_t ghost_len[2] = {3, 3};
             SetValue     field_init(pol_op, ghost_len);
@@ -308,9 +308,9 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
                 block->pos(i0, i1, i2, pos);
 
                 // call the function
-                block->data(fid).Write(i0, i1, i2)[0] = sin(4.0 * M_PI / ((real_t)L[0]) * pos[0]) +
-                                                        sin(4.0 * M_PI / ((real_t)L[1]) * pos[1]) +
-                                                        sin(4.0 * M_PI / ((real_t)L[2]) * pos[2]);
+                block->data(fid,0)(i0, i1, i2) = sin(4.0 * M_PI / ((real_t)L[0]) * pos[0]) +
+                                               sin(4.0 * M_PI / ((real_t)L[1]) * pos[1]) +
+                                               sin(4.0 * M_PI / ((real_t)L[2]) * pos[2]);
             };
             SetValue field_init(sin_op);
             field_init(&grid, &test);

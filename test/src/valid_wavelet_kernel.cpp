@@ -11,18 +11,18 @@
  * 
  */
 class valid_Wavelet_Kernel : public ::testing::Test {
-   protected:
-    SubBlock* block_coarse_;
-    SubBlock* block_fine_;
-    real_p    data_coarse_;
-    real_p    data_fine_;
-    real_t    hcoarse_;
-    real_t    hfine_;
+//    protected:
+//     SubBlock* block_coarse_;
+//     SubBlock* block_fine_;
+//     real_p    data_coarse_;
+//     real_p    data_fine_;
+//     real_t    hcoarse_;
+//     real_t    hfine_;
 
-    lid_t coarse_start_[3];
-    lid_t coarse_end_[3];
-    lid_t fine_start_[3];
-    lid_t fine_end_[3];
+//     lid_t coarse_start_[3];
+//     lid_t coarse_end_[3];
+//     lid_t fine_start_[3];
+//     lid_t fine_end_[3];
 
     void SetUp() override{};
     void TearDown() override{};

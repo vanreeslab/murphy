@@ -19,7 +19,7 @@ static real_t center[3] = {1.0, 1.0, 1.0};
 static lambda_setvalue_t exp_setvalue = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
-    block->data(fid).Write(i0, i1, i2)[0] = scalar_exp(pos, center, sigma);
+    block->data(fid, 0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
 };
 static lambda_error_t exp_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     real_t pos[3];
@@ -34,14 +34,14 @@ static lambda_setvalue_t flipflop_setvalue = [](const bidx_t i0, const bidx_t i1
     const real_t y = pos[1];
     const real_t z = pos[2];
 
-    real_t hfine                          = 0.5 / M_N * 2.0;
-    block->data(fid).Write(i0, i1, i2)[0] = (1.0) * sin(x * M_PI / hfine) +
-                                            (1.0) * sin(y * M_PI / hfine) +
-                                            (1.0) * sin(z * M_PI / hfine) +
-                                            (1.0) * sin(x * M_PI / hfine) * sin(y * M_PI / hfine) +
-                                            (1.0) * sin(y * M_PI / hfine) * sin(z * M_PI / hfine) +
-                                            (1.0) * sin(x * M_PI / hfine) * sin(z * M_PI / hfine) +
-                                            (1.0) * sin(x * M_PI / hfine) * sin(y * M_PI / hfine) * sin(z * M_PI / hfine);
+    real_t hfine                    = 0.5 / M_N * 2.0;
+    block->data(fid, 0)(i0, i1, i2) = (1.0) * sin(x * M_PI / hfine) +
+                                      (1.0) * sin(y * M_PI / hfine) +
+                                      (1.0) * sin(z * M_PI / hfine) +
+                                      (1.0) * sin(x * M_PI / hfine) * sin(y * M_PI / hfine) +
+                                      (1.0) * sin(y * M_PI / hfine) * sin(z * M_PI / hfine) +
+                                      (1.0) * sin(x * M_PI / hfine) * sin(z * M_PI / hfine) +
+                                      (1.0) * sin(x * M_PI / hfine) * sin(y * M_PI / hfine) * sin(z * M_PI / hfine);
 };
 static lambda_error_t flipflop_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     real_t pos[3];

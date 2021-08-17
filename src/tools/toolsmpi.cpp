@@ -13,7 +13,7 @@
  * @param scale the scale coefficient (1 or 2). If 2, we take one points out of 2 in each direction
  * @param xyz_type the corresponding datattype
  */
-void ToMPIDatatype(const MemSpan* span, const MemLayout* layout, const bidx_t scale, MPI_Datatype* xyz_type) {
+void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t scale, MPI_Datatype* xyz_type){
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
     m_assert(span->start[0] <= span->end[0], "the end = %d is smaller than the start = %d", span->end[0], span->start[0]);
