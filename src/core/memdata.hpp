@@ -59,7 +59,7 @@ class RestrictData {
         m_assert(m_isaligned(data_), "the value of data must be aligned!");
         m_assert(ptr->size >= layout->n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr->size, layout->n_elem);
     };
-    explicit RestrictData(const real_t* ptr, const MemLayout* layout, const lda_t ida = 0) noexcept
+    explicit RestrictData(const T* __restrict ptr, const MemLayout* layout, const lda_t ida = 0) noexcept
         : stride_{layout->stride[0], layout->stride[1]},
           data_(ptr + layout->offset(ida)) { m_assert(m_isaligned(data_), "the value of data must be aligned!"); };
 
@@ -72,6 +72,10 @@ class RestrictData {
     template <typename T2>
     RestrictData(const RestrictData<T2>& other) : data_(other.data_), stride_{other.stride_[0], other.stride_[1]} {};
 
+    template <typename T2>
+    RestrictData(const RestrictData<T2>& other, const bidx_t i0, const bidx_t i1, const bidx_t i2) noexcept
+        : data_(other.ptr(i0, i1, i2)), stride_{other.stride_[0], other.stride_[1]} {};
+
     // same but with a custom user-given raw address
     // note: will compile whatever T2 is (if it's convertible to T)
     template <typename T2>
@@ -80,6 +84,11 @@ class RestrictData {
     //--------------------------------------------------------------------------
     // this is convenient and a bit ugly
     [[nodiscard]] inline bool is_null() const { return data_ == nullptr; };
+
+    //--------------------------------------------------------------------------
+    RestrictData<T> shift(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept{
+        return RestrictData<T>(ptr(i0,i1,i2));
+    }
 
     //--------------------------------------------------------------------------
     // force the inline! hopefully will do it
@@ -96,6 +105,14 @@ class RestrictData {
      */
     __attribute__((always_inline)) inline T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
         return data_[offset_ref + i0 + stride_[0] * (i1 + stride_[1] * i2)];
+    }
+
+    /**
+     * @brief return the data located at (i * ida==0, i * ida==1, i * ida==2) position typically used in stencil operations
+     * 
+     */
+    __attribute__((always_inline)) inline T& Stencil(const bidx_t i, const lda_t ida) const noexcept {
+        return data_[(i * (ida == 0)) + stride_[0] * ((i * (ida == 1)) + stride_[1] * (i * (ida == 2)))];
     }
 
     /**
