@@ -48,9 +48,9 @@ MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    MemData data_out(&it->second, &myself);
+    MemData data_out(&it->second, &myself, ida);
 #else
-    MemData data_out(&mem_map_[fid->name()],&myself);
+    MemData data_out(&mem_map_[fid->name()],&myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -66,12 +66,38 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    ConstMemData data_out(&it->second, &myself);
+    ConstMemData data_out(&it->second, &myself, ida);
 #else
-    MemDConstMemDataata data_out(&mem_map_[fid->name()], &myself);
+    ConstMemData data_out(&mem_map_[fid->name()], &myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
+}
+
+
+/**
+ * @brief returns the raw pointer corresponding to a field
+ * 
+ * @param fid the field
+ * @param ida the required dimension
+ * 
+ * @return real_t* the raw pointer corresponding to the given field. 
+ *         usefull for partitionning and for the IO
+ *
+ * @warning Do not use this function unless you are sure about what you are doing 
+ * 
+ */
+real_t* __restrict CartBlock::RawPointer(const Field* fid, const lda_t ida) const noexcept { 
+    // warning, from cpp reference
+    // Non-throwing functions are permitted to call potentially-throwing functions.
+    // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
+    //-------------------------------------------------------------------------
+#ifndef NDEBUG
+    // check the field validity
+    auto it = mem_map_.find(fid->name());
+    m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+#endif
+    return mem_map_.at(fid->name()).ptr + BlockLayout().n_elem*ida;
 }
 
 // /**
@@ -154,11 +180,11 @@ void CartBlock::AddField(const Field* fid) {
  * 
  * @param fields 
  */
-void CartBlock::AddFields(const std::map<string, Field*>& fields) {
+void CartBlock::AddFields(const std::map<string, Field*>* fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
-    for (auto iter = fields.cbegin(); iter != fields.cend(); iter++) {
-        AddField(iter->second);
+    for (const auto fid : (*fields) ) {
+        AddField(fid.second);
     }
     //-------------------------------------------------------------------------
 }

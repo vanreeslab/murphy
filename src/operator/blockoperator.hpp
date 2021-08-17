@@ -15,9 +15,7 @@
  */
 class BlockOperator {
    protected:
-    // const bidx_t start_;                        //!< starting index for the loop
-    // const bidx_t end_;                          //!< ending index for the loop
-    const MemSpan span_;
+    const MemSpan span_;            //!< Span for the loop
     
     bidx_t       ghost_len_need_[2] = {0, 0};   //!< the number of ghost points needed by the operator
     bidx_t       ghost_len_res_[2]  = {0, 0};   //!< the number of ghost points actually visited by the operator and ok in the result

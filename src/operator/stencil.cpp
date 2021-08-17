@@ -67,10 +67,10 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
     // we might have not ghosted the field as we already has some up-to-date information
     const bidx_t ghost_len_actual[2] = {m_max(ghost_len[0], field_src->get_ghost_len(0)),
                                         m_max(ghost_len[1], field_src->get_ghost_len(1))};
-    field_src.ghost_len(ghost_len_actual);
+    field_src->ghost_len(ghost_len_actual);
 
     // the trg has been overwritten anyway
-    field_trg.ghost_len(ghost_len_res_);
+    field_trg->ghost_len(ghost_len_res_);
     //-------------------------------------------------------------------------
     m_end;
 }

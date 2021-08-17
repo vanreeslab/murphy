@@ -52,13 +52,16 @@ class RestrictData {
     //--------------------------------------------------------------------------
    public:
     explicit RestrictData() = delete;
-    explicit RestrictData(const MemPtr* ptr, const MemLayout* layout, const lda_t ida=0) noexcept
+    explicit RestrictData(const MemPtr* ptr, const MemLayout* layout, const lda_t ida = 0) noexcept
         : stride_{layout->stride[0], layout->stride[1]},
           data_(ptr->ptr + layout->offset(ida)) {
         // do alignement asserts
         m_assert(m_isaligned(data_), "the value of data must be aligned!");
         m_assert(ptr->size >= layout->n_elem, "the size of the pointer = %ld must be >= the layout nelem = %ld", ptr->size, layout->n_elem);
     };
+    explicit RestrictData(const real_t* ptr, const MemLayout* layout, const lda_t ida = 0) noexcept
+        : stride_{layout->stride[0], layout->stride[1]},
+          data_(ptr + layout->offset(ida)) { m_assert(m_isaligned(data_), "the value of data must be aligned!"); };
 
     // allow creation of a nullData
     explicit RestrictData(const std::nullptr_t) : data_{nullptr}, stride_{0, 0} {};
