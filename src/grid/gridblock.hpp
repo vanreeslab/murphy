@@ -19,12 +19,12 @@
 #define M_NNEIGHBORS 26
 
 typedef enum StatusAdapt {
+    M_ADAPT_NEW_COARSE,
+    M_ADAPT_NEW_FINE,
     M_ADAPT_NONE,
     M_ADAPT_SAME,
     M_ADAPT_COARSER,
-    M_ADAPT_FINER,
-    M_ADAPT_NEW_COARSE,
-    M_ADAPT_NEW_FINE
+    M_ADAPT_FINER
 } StatusAdapt;
 
 /**
@@ -62,7 +62,19 @@ class GridBlock : public CartBlock {
      * @{ */
     StatusAdapt status_level() const { return status_lvl_; };
     void        status_level(const StatusAdapt status) { status_lvl_ = status; };
-    void        ResetStatus() { status_lvl_ = M_ADAPT_NONE; };
+
+    /** @brief set the status to M_ADAPT_NONE*/
+    void StatusReset() { status_lvl_ = M_ADAPT_NONE; };
+
+    /** @brief set the status to M_ADAPT_NONE unless it is M_ADAPT_NEW_FINE/COARSE */
+    void StatusRememberPast() {
+        // will preserve the information "newly" refined/coarsed
+        status_lvl_ = m_min(M_ADAPT_NONE, status_lvl_);
+    };
+    /** @brief set the status to M_ADAPT_SAME if the status is from the past (i.e. M_ADAPT_NEW_FINE/COARSE) or if we still have M_ADAPT_NONE  */
+    void StatusForgetPast() {
+        status_lvl_ = m_max(M_ADAPT_SAME, status_lvl_);
+    };
 
     void UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
                                    /* prof */ Prof* profiler);

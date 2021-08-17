@@ -526,7 +526,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
-
     string msg = "--> grid adaptation started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
@@ -542,6 +541,11 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     cback_criterion_ptr_        = coarseref_cback_ptr;
     cback_interpolate_ptr_      = interpolate_ptr;
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+
+    // reset the status of everyblock to a neutral one
+    m_profStart(prof_, "reset");
+    DoOpMesh(nullptr, &GridBlock::StatusReset, this);
+    m_profStop(prof_, "reset");
 
     //................................................
     // coarsening, need to have the 8 children on the same rank
@@ -563,10 +567,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStop(prof_, "ghost for criterion");
         }
 
-        // while waiting, reset the status on the blocks
-        m_profStart(prof_, "reset");
-        DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
-        m_profStop(prof_, "reset");
+        // while waiting, reset the status on the blocks, while keeping in mind the past if necessary
+        if (recursive_adapt()) {
+            m_profStart(prof_, "status");
+            DoOpMesh(nullptr, &GridBlock::StatusRememberPast, this);
+            m_profStop(prof_, "status");
+        }
 
         if (!(field_detail == nullptr)) {
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
@@ -614,6 +620,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
             m_profStop(prof_, "patch");
         }
+
+        // the status should now be fully determined, erase the past
+        // and set M_ADAPT_SAME if M_ADAPT_NONE
+        m_profStart(prof_, "status");
+        DoOpMesh(nullptr, &GridBlock::StatusForgetPast, this);
+        m_profStop(prof_, "status");
 
         // synchronize the statuses and handle the neighbor policies
         m_profStart(prof_, "update status");
