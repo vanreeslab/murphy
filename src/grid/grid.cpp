@@ -252,11 +252,11 @@ void Grid::ResetFields(const std::map<string, Field*>* fields) {
     // clear the current map
     fields_.clear();
     // copy the new one
-    for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
-        fields_[iter->first] = iter->second;
+    for (auto fid : *fields) {
+        fields_[fid.first] = fid.second;
 
         // check if we satisfy the requirements on the key
-        m_assert(iter->first == iter->second->name(), "the key of the map must be the name of the field");
+        m_assert(fid.first == fid.second->name(), "the key of the map must be the name of the field");
     }
     //-------------------------------------------------------------------------
     m_end;

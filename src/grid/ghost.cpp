@@ -9,7 +9,8 @@
 #include "core/types.hpp"
 #include "grid/boundary.hpp"
 #include "omp.h"
-#include "toolsp4est.hpp"
+#include "tools/toolsmpi.hpp"
+#include "tools/toolsp4est.hpp"
 #include "wavelet/wavelet.hpp"
 
 #define M_NNEIGHBOR 26
@@ -152,9 +153,10 @@ void Ghost::InitList_() {
     const bidx_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
     // get the base address
     // fill the displacement
-    for (iblock_t im = 0; im < nmlocal; im++) {
-        qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
-        level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
+    for (iblock_t im = 0; im < nmlocal; im++) {    
+        qdrt_t* mirror               = p8est_quadrant_array_index(&ghost->mirrors, im);
+        level_t mirror_level         = p4est_GetQuadFromMirror(forest, mirror)->level;
+
         m_assert(mirror->level == mirror_level, "the two levels must be the same: %d vs %d", mirror->level, mirror_level);
         // update the counters if the mirror is admissible
         // we need to have called the function p4est_balance()!!
@@ -163,7 +165,8 @@ void Ghost::InitList_() {
             iblock_t local_id = mirror->p.piggy3.local_num;
             m_assert(local_id >= 0, "the address cannot be negative");
             m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
-            local2disp[local_id] = active_mirror_count * CartBlockMemNum(1);
+            const GridBlock* mirror_quad = p4est_GetGridBlock(mirror);
+            local2disp[local_id] = active_mirror_count * mirror_quad->BlockLayout().n_elem;
             active_mirror_count++;
             m_assert(active_mirror_count <= nmlocal, "the number of mirrors cannot be bigger than the local number:  %d vs %d", active_mirror_count, nmlocal);
         }
@@ -234,12 +237,14 @@ void Ghost::InitComm_() {
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
     iblock_t n_mirror_to_send = 0;
+    size_t   mirror_to_send_size = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
         level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
         // update the counters if the mirror is admissible (i.e. it satisfies the requirements)
         // we need to have called the function p4est_balance()!!
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
+            mirror_to_send_size += p4est_GetGridBlock(mirror)->BlockLayout().n_elem;
             n_mirror_to_send++;
         }
     }
@@ -247,7 +252,7 @@ void Ghost::InitComm_() {
 
     // allocate memory
     m_profStart(prof_, "allocate mem");
-    MPI_Aint win_mem_size = n_mirror_to_send * CartBlockMemNum(1) * sizeof(real_t);
+    MPI_Aint win_mem_size = mirror_to_send_size * sizeof(real_t);
     mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
     status_                      = static_cast<short_t*>(m_calloc(win_status_mem_size));
@@ -583,17 +588,19 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
  * @param qid the quarant id considered
  * @param block the grid block considered
  * @param fid the field ID
+ *
+ * @warning This implementation implicitly suppose that all the blocks have the same number of elem
  */
 void Ghost::PushToWindow4Block(const qid_t* qid, GridBlock* block, const Field* fid) const {
     m_assert(cur_ida_ >= 0, "the current working dimension has to be correct");
     m_assert(cur_ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    // recover the mirro spot using the mirror id
-    real_p  mirror = mirrors_ + qid->mid * CartBlockMemNum(1);
-    mem_ptr data   = block->pointer(fid, cur_ida_);
+    // recover the mirror spot using the mirror id
+    real_t* __restrict mirror = mirrors_ + qid->mid * block->BlockLayout().n_elem;
+    ConstMemData data         = block->ConstData(fid, cur_ida_);
     // m_assume_aligned(mirror);
     // m_assume_aligned(data);
-    memcpy(mirror, data(), CartBlockMemNum(1) * sizeof(real_t));
+    memcpy(mirror, data.ptr(0,0,0), block->BlockLayout().n_elem * sizeof(real_t));
     //-------------------------------------------------------------------------
 }
 
@@ -608,23 +615,24 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
     m_assert(cur_ida_ >= 0, "the current working dimension has to be correct");
     m_assert(cur_ida_ < fid->lda(), "the current working dimension has to be correct");
     //-------------------------------------------------------------------------
-    real_p   mirror = mirrors_ + qid->mid * CartBlockMemNum(1) + m_zeroidx(0, block);
-    data_ptr data   = block->data(fid, cur_ida_);
-    // m_assume_aligned(mirror);
-    // m_assume_aligned(data);
+    MemLayout mirror_layout   = block->BlockLayout();
+    real_t* __restrict mirror = mirrors_ + qid->mid * mirror_layout.n_elem + mirror_layout.offset(0);
+    MemData            data   = block->data(fid, cur_ida_);
+    
 
     for (auto* gblock : (*block->ghost_children())) {
-        const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
-        const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
+        const MemSpan src_span     = gblock->SourceSpan();
+        const MemLayout src_layout = gblock->SourceLayout();
 
-        real_t* data_src = mirror + m_idx(start[0], start[1], start[2], 0, block->stride());
-        real_t* data_trg = data.Write(start[0], start[1], start[2],0);
-        m_assert(data.gs() == block->gs() && data.stride() == block->stride(), "The layout and the memory must be the same.. ");
+        real_t* data_src = mirror + block->BlockLayout().offset(src_span.start[0], src_span.start[1], src_span.start[2]); // m_idx(start[0], start[1], start[2], 0, block->stride());
+        real_t* data_trg = data.ptr(src_span.start[0], src_span.start[1], src_span.start[2],0);
+
+        m_assert(src_layout.stride[0] == block->BlockLayout().stride[0] && src_layout.stride[1] == block->BlockLayout().stride[1], "The source block and the ghostblock must have the same stride ");
 
         // copy the value = sendrecv to myself to the correct spot
         MPI_Status   status;
         MPI_Datatype dtype;
-        ToMPIDatatype(start, end, block->stride(), 1, &dtype);
+        ToMPIDatatype(&src_layout, &src_span, 1, &dtype);
         MPI_Sendrecv(data_src, 1, dtype, 0, 0, data_trg, 1, dtype, 0, 0, MPI_COMM_SELF, &status);
         MPI_Type_free(&dtype);
     }
