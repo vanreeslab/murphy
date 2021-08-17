@@ -585,7 +585,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
                 // compute the criterion on the previous dimension
                 m_profStart(prof_, "criterion");
                 const lda_t criterion_dim = ida - 1;
-                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail);
+                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail,ida - 1);
                 m_profStop(prof_, "criterion");
 
                 // finish the ghost for the current dimension
@@ -596,7 +596,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             // finally, compute on the last dimension of the field
             const lda_t criterion_dim = field_detail->lda() - 1;
             m_profStart(prof_, "criterion");
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail);
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail,criterion_dim);
             m_profStop(prof_, "criterion");
             // register the computed ghosts
             field_detail->ghost_len(ghost_len);

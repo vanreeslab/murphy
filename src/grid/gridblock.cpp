@@ -97,10 +97,10 @@ void GridBlock::UpdateStatusFromCriterion(const Wavelet* interp, const real_t rt
         // const SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
         // const SubBlock block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
         // const real_t   norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
-        const MemSpan span_src(-interp->nghost_front(), M_N + interp->nghost_back());
-        const MemSpan span_detail(-interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
+        const MemSpan      span_src(-interp->nghost_front(), M_N + interp->nghost_back());
+        const MemSpan      span_detail(-interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
         const ConstMemData data_src = this->ConstData(field_citerion, ida);
-        const real_t  norm = interp->Criterion(&span_src, &data_src, &span_detail);
+        const real_t       norm     = interp->Criterion(&span_src, &data_src, &span_detail);
         //(&block_src, this->data(field_citerion, ida), &block_detail);
 
         // if the norm is bigger than the refinement tol, we must refine
