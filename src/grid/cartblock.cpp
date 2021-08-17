@@ -48,9 +48,9 @@ MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    MemData data_out(&it->second, &myself);
+    MemData data_out(&it->second, &myself, ida);
 #else
-    MemData data_out(&mem_map_[fid->name()],&myself);
+    MemData data_out(&mem_map_[fid->name()],&myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -66,9 +66,9 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
     // check the field validity
     auto it = mem_map_.find(fid->name());
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-    ConstMemData data_out(&it->second, &myself);
+    ConstMemData data_out(&it->second, &myself, ida);
 #else
-    ConstMemData data_out(&mem_map_[fid->name()], &myself);
+    ConstMemData data_out(&mem_map_[fid->name()], &myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -154,11 +154,11 @@ void CartBlock::AddField(const Field* fid) {
  * 
  * @param fields 
  */
-void CartBlock::AddFields(const std::map<string, Field*>& fields) {
+void CartBlock::AddFields(const std::map<string, Field*>* fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
-    for (auto iter = fields.cbegin(); iter != fields.cend(); iter++) {
-        AddField(iter->second);
+    for (const auto fid : (*fields) ) {
+        AddField(fid.second);
     }
     //-------------------------------------------------------------------------
 }

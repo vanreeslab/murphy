@@ -114,7 +114,7 @@ class CartBlock {
      */
     void AddField(const Field* fid);
     void DeleteField(const Field* fid);
-    void AddFields(const std::map<std::string, Field*>& fields);
+    void AddFields(const std::map<std::string, Field*>* fields);
     bool IsFieldOwned(const std::string& name) const;
     /** @} */
 };
