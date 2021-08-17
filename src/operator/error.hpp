@@ -3,6 +3,7 @@
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
+#include "grid/cartblock.hpp"
 #include "grid/field.hpp"
 #include "grid/forestgrid.hpp"
 #include "operator/blockoperator.hpp"

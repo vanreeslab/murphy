@@ -1,4 +1,5 @@
 #include "error.hpp"
+#include "core/forloop.hpp"
 
 // declare the specialization, implement them in the cpp
 template <>

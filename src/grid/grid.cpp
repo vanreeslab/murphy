@@ -164,7 +164,7 @@ size_t Grid::LocalMemSize() const {
     memsize += sizeof(prof_);
     // memsize += ghost_->LocalMemSize();
     // memsize += interp_->LocalMemSize();
-    for (const auto* fid : fields_) {
+    for (const auto fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
     //-------------------------------------------------------------------------
@@ -389,7 +389,7 @@ void Grid::Refine(Field* field) {
     // get the ghost length
     const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto* fid : fields_) {
+    for (auto fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field, ghost_len);
@@ -585,7 +585,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
                 // compute the criterion on the previous dimension
                 m_profStart(prof_, "criterion");
                 const lda_t criterion_dim = ida - 1;
-                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail);
+                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, criterion_dim);
                 m_profStop(prof_, "criterion");
 
                 // finish the ghost for the current dimension
@@ -596,7 +596,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             // finally, compute on the last dimension of the field
             const lda_t criterion_dim = field_detail->lda() - 1;
             m_profStart(prof_, "criterion");
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail);
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, criterion_dim);
             m_profStop(prof_, "criterion");
             // register the computed ghosts
             field_detail->ghost_len(ghost_len);
@@ -699,7 +699,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
-            for (auto* fid : fields_) {
+            for (auto fid : fields_) {
                 m_log("changing ghost status of <%s>", fid.second->name().c_str());
                 const bidx_t ghost_len[2] = {0, 0};
                 fid.second->ghost_len(ghost_len);

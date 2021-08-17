@@ -16,9 +16,9 @@
 void ToMPIDatatype(const MemSpan* span, const MemLayout* layout, const bidx_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
-    m_assert(span.start[0] <= span.end[0], "the end = %d is smaller than the start = %d", span.end[0], span.start[0]);
-    m_assert(span.start[1] <= span.end[1], "the end = %d is smaller than the start = %d", span.end[1], span.start[1]);
-    m_assert(span.start[2] <= span.end[2], "the end = %d is smaller than the start = %d", span.end[2], span.start[2]);
+    m_assert(span->start[0] <= span->end[0], "the end = %d is smaller than the start = %d", span->end[0], span->start[0]);
+    m_assert(span->start[1] <= span->end[1], "the end = %d is smaller than the start = %d", span->end[1], span->start[1]);
+    m_assert(span->start[2] <= span->end[2], "the end = %d is smaller than the start = %d", span->end[2], span->start[2]);
     //--------------------------------------------------------------------------
     // get how much is one real (in bytes)
     MPI_Aint stride_x = sizeof(real_t);
@@ -33,24 +33,24 @@ void ToMPIDatatype(const MemSpan* span, const MemLayout* layout, const bidx_t sc
     MPI_Datatype x_type, xy_type;
     //................................................
     // do x type as a simple vector
-    bidx_t count_x = (span.end[0] - span.start[0]);
+    bidx_t count_x = (span->end[0] - span->start[0]);
     m_assert(count_x >= 0, "we at least need to take 1 element");
-    m_assert(count_x <= layout.stride[0], "we cannot take more element than the stride");
+    m_assert(count_x <= layout->stride[0], "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_x / scale, 1, (MPI_Aint)(stride_x * scale), M_MPI_REAL, &x_type);
     //................................................
     // do y type
-    bidx_t   count_y  = (span.end[1] - span.start[1]);
-    MPI_Aint stride_y = stride_x * layout.stride[0];
+    bidx_t   count_y  = (span->end[1] - span->start[1]);
+    MPI_Aint stride_y = stride_x * layout->stride[0];
     m_assert(count_y >= 0, "we at least need to take 1 element");
-    m_assert(count_y <= layout.stride[1], "we cannot take more element than the stride");
+    m_assert(count_y <= layout->stride[1], "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_y / scale, 1, (MPI_Aint)(stride_y * scale), x_type, &xy_type);
 
     //................................................
     // do z type
-    bidx_t   count_z  = (span.end[2] - span.start[2]);
-    MPI_Aint stride_z = stride_y * layout.stride[1];
+    bidx_t   count_z  = (span->end[2] - span->start[2]);
+    MPI_Aint stride_z = stride_y * layout->stride[1];
     m_assert(count_z >= 0, "we at least need to take 1 element");
-    m_assert(count_z <= layout.stride[1], "we cannot take more element than the stride");
+    m_assert(count_z <= layout->stride[1], "we cannot take more element than the stride");
     MPI_Type_create_hvector(count_z / scale, 1, (MPI_Aint)(stride_z * scale), xy_type, xyz_type);
     //................................................
     // finally commit the type so it's ready to use
@@ -80,8 +80,8 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
     ToMPIDatatype(layout_src, span_src, (bidx_t)pow(2, dlvl), &dtype_src);
 
     //................................................
-    real_t*  local_trg = data_trg.ptr(span_trg.start[0], span_trg.start[1], span_trg.start[2]);
-    MPI_Aint disp      = disp_src + layout_src.offset(span_src.start[0], span_src.start[1], span_src.start[2]);
+    real_t*  local_trg = data_trg->ptr(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
+    MPI_Aint disp      = disp_src + layout_src->offset(span_src->start[0], span_src->start[1], span_src->start[2]);
 
     //..........................................................................
     int size_trg;
@@ -132,8 +132,8 @@ void PutRma(const level_t dlvl, const bidx_t shift[3],
     ToMPIDatatype(layout_src, span_src, (bidx_t)pow(2, dlvl), &dtype_src);
 
     //..........................................................................
-    const real_t* local_src = data_src.ptr(span_src.start[0], span_src.start[1], span_src.start[2]);
-    MPI_Aint      disp      = disp_trg + layout_trg.offset(span_trg.start[0], span_trg.start[1], span_trg.start[2]);
+    const real_t* local_src = data_src->ptr(span_src->start[0], span_src->start[1], span_src->start[2]);
+    MPI_Aint      disp      = disp_trg + layout_trg->offset(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
 
     //..........................................................................
     int size_trg;

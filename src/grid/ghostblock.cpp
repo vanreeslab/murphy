@@ -57,8 +57,8 @@ void GhostBlock::GetCoarseSpan(const MemLayout* layout, const MemLayout* layout_
     // we assume that the new layout contains the new desired ghost sizes!
 #pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
-        span_coarse->start[ida] = layout.TranslateLimit(layout_coarse, me.start[ida]);
-        span_coarse->end[ida]   = layout.TranslateLimit(layout_coarse, me.end[ida]);
+        span_coarse->start[ida] = layout->TranslateLimit(layout_coarse, me.start[ida]);
+        span_coarse->end[ida]   = layout->TranslateLimit(layout_coarse, me.end[ida]);
     }
 
     // // get the coarse ghost sizes
@@ -71,7 +71,7 @@ void GhostBlock::GetCoarseLength(const MemLayout* layout, const MemLayout* layou
     // we assume that the new layout contains the new desired ghost sizes!
 #pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
-        coarse_len[ida] = layout.TranslateLimit(layout_coarse, fine_len[ida]);
+        coarse_len[ida] = layout->TranslateLimit(layout_coarse, fine_len[ida]);
     }
 
     // // get the coarse ghost sizes

@@ -20,8 +20,8 @@ PhysBlock::PhysBlock(const bidx_t (*const ghost_len)[2],
 #pragma unroll 3
     for (lda_t id = 0; id < 3; ++id) {
         // set the start and end
-        start[id] = block.start[id];
-        end[id]   = block.end[id];
+        start[id] = block->start[id];
+        end[id]   = block->end[id];
 
         scale_dir_start_[id] = true;
         scale_dir_end_[id]   = true;

@@ -41,7 +41,7 @@ class TimerBlock {
     TimerBlock* AddChild(std::string child_name) noexcept;
 
     void SetParent(TimerBlock* parent);
-    void Disp(FILE* file, const int level, const real_t totalTime, const lda_t icol) const;
+    void Disp(FILE* file, const level_t level, const real_t totalTime, const lda_t icol) const;
 };
 
 /**
