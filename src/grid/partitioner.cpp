@@ -115,7 +115,6 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
     //     recv_status_count_   = reinterpret_cast<int *>(m_calloc((commsize) * sizeof(int)));
     //     recv_status_cum_sum_ = reinterpret_cast<int *>(m_calloc((commsize + 1) * sizeof(int)));
     // }
-
     //..........................................................................
     if (nqshipped > 0) {
         // get the NEW number of quads
@@ -141,6 +140,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
         if (opart_n > 0) {
             // the send buffer is used to copy the current blocks as they are not continuous to memory
             send_buf_.Allocate(opart_n * block_size);
+
             // if (destructive_) {
             //     // the status are only send if the partitioner is destructive
             //     send_status_buf_ = reinterpret_cast<short *>(m_calloc(opart_n * sizeof(short)));
@@ -380,8 +380,10 @@ Partitioner::~Partitioner() {
         MPI_Request_free(back_send_request_ + i);
     }
 
-    send_buf_.Free();
-    recv_buf_.Free();
+    if(n_send_request_ > 0){
+        send_buf_.Free();
+        recv_buf_.Free();
+    }
     m_free(for_send_request_);
     m_free(for_recv_request_);
     m_free(back_send_request_);

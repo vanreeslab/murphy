@@ -168,9 +168,9 @@ void CartBlock::AddField(const Field* fid) {
         auto      it = mem_map_.find(name);
         it->second.Allocate(myself.n_elem * fid->lda());
 
-        m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid.lda());
+        m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), fid->lda());
     } else {
-        m_verb("field <%s> already in the block (dim=%d)", name.c_str(), fid.lda());
+        m_verb("field <%s> already in the block (dim=%d)", name.c_str(), fid->lda());
     }
     //-------------------------------------------------------------------------
 }
