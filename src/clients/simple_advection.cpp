@@ -267,7 +267,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-        return scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
+        return scalar_compact_ring(pos, new_center, ring_normal, radius, sigma, beta, freq, amp);
     };
     // compute the error
     real_t err2, erri;
