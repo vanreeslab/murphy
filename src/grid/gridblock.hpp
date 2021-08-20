@@ -24,7 +24,8 @@ typedef enum StatusAdapt {
     M_ADAPT_NONE,
     M_ADAPT_SAME,
     M_ADAPT_COARSER,
-    M_ADAPT_FINER
+    M_ADAPT_FINER,
+    
 } StatusAdapt;
 
 /**
@@ -64,17 +65,26 @@ class GridBlock : public CartBlock {
     void        status_level(const StatusAdapt status) { status_lvl_ = status; };
 
     /** @brief set the status to M_ADAPT_NONE*/
-    void StatusReset() { status_lvl_ = M_ADAPT_NONE; };
+    void StatusReset() {
+        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
+        status_lvl_ = M_ADAPT_NONE;
+    };
+
+    // void StatusCleanup() { status_lvl_ = (status_lvl_ == M_ADAPT_NONE)? M_ADAPT_SAME : status_lvl_; };
 
     /** @brief set the status to M_ADAPT_NONE unless it is M_ADAPT_NEW_FINE/COARSE */
-    void StatusRememberPast() {
-        // will preserve the information "newly" refined/coarsed
-        status_lvl_ = m_min(M_ADAPT_NONE, status_lvl_);
-    };
-    /** @brief set the status to M_ADAPT_SAME if the status is from the past (i.e. M_ADAPT_NEW_FINE/COARSE) or if we still have M_ADAPT_NONE  */
-    void StatusForgetPast() {
-        status_lvl_ = m_max(M_ADAPT_SAME, status_lvl_);
-    };
+    // void StatusRememberPast() {
+    //     // will preserve the information "newly" refined/coarsed
+        
+    //     status_lvl_ = m_min(M_ADAPT_NONE, status_lvl_);
+    // };
+    // /** @brief set the status to M_ADAPT_SAME if the status is from the past (i.e. M_ADAPT_NEW_FINE/COARSE) or if we still have M_ADAPT_NONE  */
+    // void StatusForgetPast() {
+    //     m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE < M_ADAPT_SAME");
+    //     m_assert(M_ADAPT_SAME < M_ADAPT_COARSER && M_ADAPT_SAME < M_ADAPT_FINER, "please keep M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
+    //     m_assert(M_ADAPT_NONE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_FINER && M_ADAPT_NONE < M_ADAPT_COARSER, "please keep M_ADAPT_NONE < M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
+    //     status_lvl_ = m_max(M_ADAPT_SAME, status_lvl_);
+    // };
 
     void UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion,
                                    /* prof */ Prof* profiler);

@@ -572,11 +572,11 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
 
         // while waiting, reset the status on the blocks, while keeping in mind the past if necessary
-        if (recursive_adapt()) {
-            m_profStart(prof_, "status");
-            DoOpMesh(nullptr, &GridBlock::StatusRememberPast, this);
-            m_profStop(prof_, "status");
-        }
+        // if (recursive_adapt()) {
+        //     m_profStart(prof_, "status");
+        //     DoOpMesh(nullptr, &GridBlock::StatusRememberPast, this);
+        //     m_profStop(prof_, "status");
+        // }
 
         if (!(field_detail == nullptr)) {
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
@@ -627,9 +627,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         // the status should now be fully determined, erase the past
         // and set M_ADAPT_SAME if M_ADAPT_NONE
-        m_profStart(prof_, "status");
-        DoOpMesh(nullptr, &GridBlock::StatusForgetPast, this);
-        m_profStop(prof_, "status");
+        // m_profStart(prof_, "status");
+        // DoOpMesh(nullptr, &GridBlock::StatusForgetPast, this);
+        // m_profStop(prof_, "status");
 
         // synchronize the statuses and handle the neighbor policies
         m_profStart(prof_, "update status");
