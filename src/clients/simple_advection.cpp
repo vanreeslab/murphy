@@ -276,6 +276,10 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     error.Norms(grid_, scal_, &lambda_ring, &err2, &erri);
     m_profStop(prof_, "cmpt error");
 
+    real_t   density = 0.0;
+    BDensity dense;
+    dense(grid_, &density);
+
     // open the file
     m_profStart(prof_, "dump diag");
     FILE*   file_error;
@@ -283,7 +287,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     level_t min_level       = grid_->MinLevel();
     level_t max_level       = grid_->MaxLevel();
     long    global_num_quad = grid_->global_num_quadrants();
-    m_log("iter = %6.6d time = %e: levels = (%d , %d), errors = (%e , %e)", iter, time, min_level, max_level, err2, erri);
+    m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e)", iter, time, min_level, max_level, density, err2, erri);
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
         // iter, time, dt, total quad, level min, level max
@@ -293,6 +297,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         fprintf(file_diag, ";%e;%e", err2, erri);
         fprintf(file_diag, ";%e", mean_val);
         fprintf(file_diag, ";%e;%e;%e;%e", moment0, moment1[0], moment1[1], moment1[2]);
+        fprintf(file_diag, ";%e", density);
         // fprintf(file_diag, ";%e;%e;%e;%e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
         fprintf(file_diag, "\n");
         fclose(file_diag);

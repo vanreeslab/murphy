@@ -2,7 +2,7 @@
 #include "core/doop.hpp"
 #include "core/forloop.hpp"
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 BMax::BMax() noexcept : BlockOperator(nullptr){};
 BMax::BMax(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
 
@@ -12,7 +12,7 @@ BMax::BMax(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
 real_t BMax::operator()(const ForestGrid* grid, const Field* fid_x) const {
     m_begin;
     m_assert(fid_x->ghost_status(ghost_len_need_), "The field  <%s> must have enough valid GP for the refinement - required %d %d, known %d %d", fid_x->name().c_str(), ghost_len_need_[0], ghost_len_need_[1], fid_x->get_ghost_len(0), fid_x->get_ghost_len(1));
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     real_t max_grid = 0.0;
     // go on the blocks
     DoOpMesh(this, &BMax::ComputeBMaxGridBlock, grid, fid_x, &max_grid);
@@ -20,13 +20,13 @@ real_t BMax::operator()(const ForestGrid* grid, const Field* fid_x) const {
     // allreduce sync:
     real_t max_global = 0.0;
     MPI_Allreduce(&max_grid, &max_global, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
     return max_global;
 }
 
 void BMax::ComputeBMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, real_t* max)const {
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // get the data for each direction
     for (sid_t ida = 0; ida < fid_x->lda(); ida++) {
         // for the current ida
@@ -41,10 +41,10 @@ void BMax::ComputeBMaxGridBlock(const qid_t* qid, const CartBlock* block, const 
 
         max[0] = m_max(local_max, max[0]);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 BMinMax::BMinMax() noexcept : BlockOperator(nullptr){};
 BMinMax::BMinMax(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
 
@@ -54,7 +54,7 @@ BMinMax::BMinMax(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
 void BMinMax::operator()(const ForestGrid* grid, const Field* fid_x, real_t* min, real_t* max) const {
     m_begin;
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // go on the blocks, for each dim separately
     for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
         real_t res[2] = {std::numeric_limits<real_t>::min(),
@@ -68,12 +68,12 @@ void BMinMax::operator()(const ForestGrid* grid, const Field* fid_x, real_t* min
         MPI_Allreduce(res + 0, min + ida, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(res + 1, max + ida, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
 void BMinMax::ComputeBMinMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t res[2]) const {
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     const real_t* data = block->data(fid_x, ida).Read();
     m_assume_aligned(data);
 
@@ -84,22 +84,22 @@ void BMinMax::ComputeBMinMaxGridBlock(const qid_t* qid, const CartBlock* block, 
     };
 
     for_loop(&op, start_, end_);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 BMoment::BMoment() noexcept: BlockOperator(nullptr){
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // we need one more point at the back of the block
     ghost_len_need_[0] = ghost_len_res_[0];
     ghost_len_need_[1] = ghost_len_res_[1] + 1;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 };
 BMoment::BMoment(const bidx_t*  ghost_len) noexcept: BlockOperator(ghost_len){
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     ghost_len_need_[0] = ghost_len_res_[0];
     ghost_len_need_[1] = ghost_len_res_[1] + 1;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 };
 
 /**
@@ -111,7 +111,7 @@ BMoment::BMoment(const bidx_t*  ghost_len) noexcept: BlockOperator(ghost_len){
 void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* moment0, real_t* moment1) const {
     m_begin;
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // go on the blocks, for each dim separately
     for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
         // reset the moments
@@ -124,15 +124,15 @@ void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* m
         MPI_Allreduce(moments, moment0 + ida, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
         MPI_Allreduce(moments+1, moment1 + 3 * ida, 3, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
-void BMoment::ComputeBMomentGridBlock(const qid_t*  qid, const CartBlock*  block, const Field*  fid_x, const lda_t ida, real_t moments[4])const{
-    //-------------------------------------------------------------------------
+void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const {
+    //--------------------------------------------------------------------------
     // get the starting pointer:
-    const real_t* h    = block->hgrid();
-    const real_t* data = block->data(fid_x, ida).Read();
+    const real_t* __restrict h    = block->hgrid();
+    const real_t* __restrict data = block->data(fid_x, ida).Read();
 
     real_t lmoment0    = 0.0;
     real_t lmoment1[3] = {0.0, 0.0, 0.0};
@@ -143,9 +143,10 @@ void BMoment::ComputeBMomentGridBlock(const qid_t*  qid, const CartBlock*  block
         real_t origin[3];
         m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
 
-        constexpr real_t coef = 0.125;  //1.0 / 8.0;
-        const real_t*    f    = data + m_idx(i0, i1, i2);
+        constexpr real_t coef      = 0.125;  //1.0 / 8.0;
+        const real_t* __restrict f = data + m_idx(i0, i1, i2);
 
+#pragma unroll 8
         for (lda_t id = 0; id < 8; ++id) {
             const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
             const real_t value     = f[m_idx(is_dim[0], is_dim[1], is_dim[2])];
@@ -163,10 +164,10 @@ void BMoment::ComputeBMomentGridBlock(const qid_t*  qid, const CartBlock*  block
     moments[1] += vol * lmoment1[0];
     moments[2] += vol * lmoment1[1];
     moments[3] += vol * lmoment1[2];
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 BAvg::BAvg() noexcept : BlockOperator(nullptr){};
 BAvg::BAvg(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
 
@@ -175,7 +176,7 @@ BAvg::BAvg(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
  */
 void BAvg::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_global) const {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // reset the sum
     real_t sum_local = 0.0;
     // go on the blocks, for each dim separately
@@ -184,12 +185,12 @@ void BAvg::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_gl
     }
     // allreduce sync:
     MPI_Allreduce(&sum_local, sum_global, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
 void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const {
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // get the starting pointer:
     const real_t* h    = block->hgrid();
     const real_t* data = block->data(fid_x, ida).Read();
@@ -201,10 +202,40 @@ void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const 
     };
     for_loop(&op, start_, end_);
     sum[0] += sum_local * h[0] * h[1] * h[2];
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+BDensity::BDensity() noexcept : BlockOperator(nullptr){};
+BDensity::BDensity(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
+
+/**
+ * @brief compute the sum of the values on the grid
+ */
+void BDensity::operator()(const ForestGrid* grid, real_t* density_global) const {
+    m_begin;
+    //--------------------------------------------------------------------------
+    // reset the sum
+    real_t density_local = 0.0;
+    // go on the blocks, for each dim separately
+    DoOpMesh(this, &BDensity::ComputeBDensityGridBlock, grid, &density_local);
+    // allreduce sync:
+    MPI_Allreduce(&density_local, density_global, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+    density_global[0] = sqrt(density_global[0]);
+    //--------------------------------------------------------------------------
+    m_end;
+}
+
+void BDensity::ComputeBDensityGridBlock(const qid_t* qid, const CartBlock* block, real_t* density) const {
+    //--------------------------------------------------------------------------
+    // get the starting pointer:
+    const real_t level  = block->level();
+    const real_t length = block->length();
+    density[0] += (level * level) * (length * length * length);
+    //--------------------------------------------------------------------------
+}
+
+//------------------------------------------------------------------------------
 // BDiscreteMoment::BDiscreteMoment() noexcept : BlockOperator(nullptr){};
 // BDiscreteMoment::BDiscreteMoment(const Wavelet*  interp) noexcept : BlockOperator(interp){};
 
@@ -216,7 +247,7 @@ void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const 
 //  */
 // void BDiscreteMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* moment0, real_t* moment1) {
 //     m_begin;
-//     //-------------------------------------------------------------------------
+//     //--------------------------------------------------------------------------
 //     // go on the blocks, for each dim separately
 //     for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
 //         // reset the moments
@@ -234,7 +265,7 @@ void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const 
 //         MPI_Allreduce(&moment0_, moment0 + ida, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
 //         MPI_Allreduce(&moment1_, moment1 + 3 * ida, 3, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
 //     }
-//     //-------------------------------------------------------------------------
+//     //--------------------------------------------------------------------------
 //     m_end;
 // }
 
@@ -247,7 +278,7 @@ void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const 
 //  */
 // void BDiscreteMoment::ComputeBDiscreteMomentGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
 //     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);
-//     //-------------------------------------------------------------------------
+//     //--------------------------------------------------------------------------
 //     // get the starting pointer:
 //     const real_t* data = block->data(fid_x, ida_).Read();
 
@@ -279,5 +310,5 @@ void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const 
 //     moment1_[0] += vol * lmoment1[0];
 //     moment1_[1] += vol * lmoment1[1];
 //     moment1_[2] += vol * lmoment1[2];
-//     //-------------------------------------------------------------------------
+//     //--------------------------------------------------------------------------
 // }
