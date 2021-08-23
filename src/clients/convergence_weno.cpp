@@ -7,6 +7,7 @@
 #include "grid/grid.hpp"
 #include "operator/advection.hpp"
 #include "operator/error.hpp"
+#include "operator/xblas.hpp"
 
 using std::list;
 using std::string;
@@ -15,12 +16,12 @@ using std::to_string;
 #define N_PT 3
 
 ConvergenceWeno::~ConvergenceWeno() {
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
 void ConvergenceWeno::InitParam(ParserArguments* param) {
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // call the general testcase parameters
     this->TestCase::InitParam(param);
 
@@ -35,7 +36,7 @@ void ConvergenceWeno::InitParam(ParserArguments* param) {
 
     eps_start_ = param->eps_start;
     delta_eps_ = param->delta_eps;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
 static const real_t sigma     = 0.05;
@@ -65,7 +66,7 @@ static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const 
 
 void ConvergenceWeno::Run() {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // get a random velocity
     real_t rand_vel[3] = {0.0, 0.0, 0.0};
     rank_t rank;
@@ -175,10 +176,12 @@ void ConvergenceWeno::Run() {
         const level_t lmax            = grid.MaxLevel();
         const long    global_num_quad = grid.global_num_quadrants();
 
-        {
-            const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
-            grid.DumpLevels(id_counter, "data", id_name);
-        }
+        const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+        grid.DumpLevels(id_counter, "data", id_name);
+
+        real_t   density = 0.0;
+        BDensity dense;
+        dense(&grid, &density);
 
         {  // WENO 3
             if (fix_weno_) {
@@ -200,10 +203,10 @@ void ConvergenceWeno::Run() {
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld %e\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad, density);
                 fclose(file_diag);
             }
-            m_log("WENO-3: %e %e %e %e", hmin, hmax, err2, erri);
+            m_log("WENO-3: %e %e %e %e %e", hmin, hmax, err2, erri, density);
         }
         {  // WENO 5
             if (fix_weno_) {
@@ -224,10 +227,10 @@ void ConvergenceWeno::Run() {
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld %e\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad, density);
                 fclose(file_diag);
             }
-            m_log("WENO-5: %e %e %e %e", hmin, hmax, err2, erri);
+            m_log("WENO-5: %e %e %e %e %e", hmin, hmax, err2, erri, density);
         }
 
         grid.DeleteField(&vel);
@@ -238,6 +241,6 @@ void ConvergenceWeno::Run() {
         epsilon *= depsilon;
         id_counter += 1;
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
