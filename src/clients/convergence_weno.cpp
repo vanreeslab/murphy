@@ -78,7 +78,7 @@ void ConvergenceWeno::Run() {
     }
     MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     //......................................................................
-    real_t  depsilon   = (adapt_) ? delta_eps_ : 0.0;
+    real_t  depsilon   = delta_eps_;
     real_t  epsilon    = eps_start_;
     short_t id_counter = 0;
     m_log("starting with epsilon = %e", epsilon);
@@ -87,9 +87,10 @@ void ConvergenceWeno::Run() {
         m_log("epsilon = %e", epsilon);
         //......................................................................
         // create a grid
-        bool  period[3]   = {true, true, true};
-        lid_t grid_len[3] = {1, 1, 1};
-        Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
+        bool          period[3]   = {true, true, true};
+        lid_t         grid_len[3] = {1, 1, 1};
+        const level_t init_level  = level_start_ +( (!adapt_) ? id_counter : 0);
+        Grid          grid(init_level, period, grid_len, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
 
         //......................................................................
@@ -237,9 +238,14 @@ void ConvergenceWeno::Run() {
         grid.DeleteField(&test);
         grid.DeleteField(&dtest);
 
+        if ((!adapt_) && ((level_min_ + id_counter) == level_max_)) {
+            break;
+        }
+
         // get the new epsilon
         epsilon *= depsilon;
         id_counter += 1;
+
     }
     //--------------------------------------------------------------------------
     m_end;
