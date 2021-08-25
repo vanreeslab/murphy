@@ -434,7 +434,6 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
         const lid_t src_start[3] = {shift[0] - M_GS, shift[1] - M_GS, shift[2] - M_GS};
         const lid_t src_end[3]   = {shift[0] + M_NCENTER + M_GS, shift[1] + M_NCENTER + M_GS, shift[2] + M_NCENTER + M_GS};
         MemSpan     span_src(src_start, src_end);
-
         // for every field on my parent, interpolate it
         m_assert(mem_map_.empty(), "the block should be empty here");
         for (auto fid = field_start; fid != field_end; ++fid) {
@@ -889,7 +888,7 @@ void GridBlock::GhostGet_Cmpt(const Field* field, const lda_t ida, const Wavelet
             const MemData      data_trg  = this->data(field, ida);
             const ConstMemData data_src  = ngh_block->ConstData(field, ida);
             // copy the information
-            interp->Copy(gblock->dlvl(), gblock->shift(), &span_src,& data_src,& span_trg, &data_trg);
+            interp->Copy(gblock->dlvl(), gblock->shift(), &span_src, & data_src, & span_trg, &data_trg);
             // interp->Copy(gblock->dlvl(), gblock->shift(), &bsrc_neighbor, data_src, block_trg, data_trg);
         }
     }
@@ -914,14 +913,15 @@ void GridBlock::GhostGet_Cmpt(const Field* field, const lda_t ida, const Wavelet
             gblock->GetCoarseSpan(&block_layout, &coarse_layout, &span_coarse);
             const MemData data_coarse(&coarse_ptr_,&coarse_layout);
 
-            m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1");
             interp->Copy(gblock->dlvl() + 1, gblock->shift(), &span_ngh, &data_ngh, &span_coarse,& data_coarse);
         };
 
         for (auto* const gblock : local_sibling_){
+            m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1 --> dlvl == %d", (gblock->dlvl() + 1));
             copy_2_coarse(gblock);
         }
         for (auto* const gblock : local_parent_) {
+            m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 --> dlvl == %d", (gblock->dlvl() + 1));
             copy_2_coarse(gblock);
         }
 
@@ -1166,7 +1166,7 @@ void GridBlock::GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet
         {
             // get the coarse span = source
             const MemLayout    layout_coarse = this->CoarseLayout(interp);
-            const MemSpan      span_coarse   = this->CoarseSpan();
+            const MemSpan      span_coarse   = this->CoarseExtendedSpan(interp);
             const ConstMemData data_coarse(&coarse_ptr_, &layout_coarse);
             // fixed target quantities
             const MemData data_trg = this->data(field, ida);
@@ -1304,7 +1304,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
                 // SubBlock block_trg(this->gs(), this->stride(), smooth_start, smooth_end);
                 m_assert(ghost_len_[0] >= interp->nghost_front_overwrite(), "the ghost length does not support overwrite: %d vs %d", ghost_len_[0], interp->nghost_front_overwrite());
                 m_assert(ghost_len_[1] >= interp->nghost_back_overwrite(), "the ghost length does not support overwrite: %d vs %d", ghost_len_[1], interp->nghost_back_overwrite());
-                const MemSpan me       = BlockSpan();
+                const MemSpan me       = ExtendedSpan();
                 const MemData data_trg = this->data(field, ida);
                 interp->OverwriteDetails(&me, &smooth_span, &data_trg);
                 // interp->OverwriteDetails(&block_src, &block_trg, this->data(field, ida));

@@ -93,9 +93,10 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t s
     // get the shifted memory for the source
     const real_t* __restrict src_ptr = data_src->ptr(shift[0], shift[1], shift[2]);
     ConstMemData sdata(*data_src, src_ptr);
+    MemSpan shifted_sspan(span_src, shift);
 
     // get the interpolation context
-    InterpCtx ctx(alpha, span_src, &sdata, span_trg, data_trg);
+    InterpCtx ctx(alpha, &shifted_sspan, &sdata, span_trg, data_trg);
 
     // call the correct function
     if (dlvl == 0 || force_copy) {
@@ -130,9 +131,9 @@ void Wavelet::CopyMagic_(const level_t dlvl, const InterpCtx* ctx) const {
         m_assert((*tdata)(i0, i1, i2) == (*tdata)(i0, i1, i2), "cannot be nan");
         m_assert((*sdata)(scaling * i0, scaling * i1, scaling * i2) == (*sdata)(scaling * i0, scaling * i1, scaling * i2), "cannot be nan");
         // check the accesses
-        m_assert(((scaling * i0) >= ctx->sspan->start[0]) && ((scaling * i0) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx->sspan->start[0], i0, ctx->sspan->end[0]);
-        m_assert(((scaling * i1) >= ctx->sspan->start[1]) && ((scaling * i1) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx->sspan->start[1], i1, ctx->sspan->end[1]);
-        m_assert(((scaling * i2) >= ctx->sspan->start[2]) && ((scaling * i2) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx->sspan->start[2], i2, ctx->sspan->end[2]);
+        m_assert(((scaling * i0) >= ctx->sspan->start[0]) && ((scaling * i0) < ctx->sspan->end[0]), "the source domain is too small in dir 0: %d >= %d and %d<%d", (scaling * i0), ctx->sspan->start[0], (scaling * i0), ctx->sspan->end[0]);
+        m_assert(((scaling * i1) >= ctx->sspan->start[1]) && ((scaling * i1) < ctx->sspan->end[1]), "the source domain is too small in dir 1: %d >= %d and %d<%d", (scaling * i1), ctx->sspan->start[1], (scaling * i1), ctx->sspan->end[1]);
+        m_assert(((scaling * i2) >= ctx->sspan->start[2]) && ((scaling * i2) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d<%d", (scaling * i2), ctx->sspan->start[2], (scaling * i2), ctx->sspan->end[2]);
         m_assert(((i0) >= ctx->tspan->start[0]) && ((i0) < ctx->tspan->end[0]), "the target domain is too small in dir 0: %d >= %d and %d<%d", i0, ctx->tspan->start[0], i0, ctx->tspan->end[0]);
         m_assert(((i1) >= ctx->tspan->start[1]) && ((i1) < ctx->tspan->end[1]), "the target domain is too small in dir 1: %d >= %d and %d<%d", i1, ctx->tspan->start[1], i1, ctx->tspan->end[1]);
         m_assert(((i2) >= ctx->tspan->start[2]) && ((i2) < ctx->tspan->end[2]), "the target domain is too small in dir 2: %d >= %d and %d<%d", i2, ctx->tspan->start[2], i2, ctx->tspan->end[2]);
