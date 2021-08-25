@@ -115,9 +115,9 @@ void ConvergenceWeno::Run() {
             }
         }
 
-        IOH5 dump("data");
-        grid.GhostPull(&test,ghost_len_ioh5);
-        dump(&grid,&test,id_counter);
+        // IOH5 dump("data");
+        // grid.GhostPull(&test,ghost_len_ioh5);
+        // dump(&grid,&test,id_counter);
         
 
         // grid is now adapted!
@@ -194,6 +194,40 @@ void ConvergenceWeno::Run() {
         real_t   density = 0.0;
         BDensity dense;
         dense(&grid, &density);
+
+        // get the error in reconstruction of the error :-)
+        {
+            bidx_t ghost_len[2] = {3,3};
+            grid.GhostPull(&test, ghost_len);
+            Error  error(ghost_len);
+            real_t err2_ghost;
+            real_t erri_ghost;
+            error.Norms(&grid, &test, &lambda_error, &err2_ghost, &erri_ghost);
+            FILE* file_err2;
+            FILE* file_erri;
+            if (rank == 0) {
+                const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+                file_err2            = fopen(std::string("data/error2_ghosting_" + id_name + ".data").c_str(), "a+");
+                file_erri            = fopen(std::string("data/errori_ghosting_" + id_name + ".data").c_str(), "a+");
+                fprintf(file_err2, "%d %d %e %e", lmin, lmax, density, err2_ghost);
+                fprintf(file_erri, "%d %d %e %e", lmin, lmax, density, erri_ghost);
+            }
+            for (level_t il = 0; il < P8EST_MAXLEVEL; ++il) {
+                real_t erri_l = 0.0;
+                real_t err2_l = 0.0;
+                error.Norms(&grid, il, &test, &lambda_error, &err2_l, &erri_l);
+                if (rank == 0) {
+                    fprintf(file_erri, " %e", erri_l);
+                    fprintf(file_err2, " %e", err2_l);
+                }
+            }
+            if (rank == 0) {
+                fprintf(file_erri, "\n");
+                fclose(file_erri);
+                fprintf(file_err2, "\n");
+                fclose(file_err2);
+            }
+        }
 
         {  // WENO 3
             if (fix_weno_) {
