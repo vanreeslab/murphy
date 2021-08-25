@@ -8,6 +8,7 @@
 #include "operator/advection.hpp"
 #include "operator/error.hpp"
 #include "operator/xblas.hpp"
+#include "tools/ioh5.hpp"
 
 using std::list;
 using std::string;
@@ -84,12 +85,13 @@ void ConvergenceWeno::Run() {
     m_log("starting with epsilon = %e", epsilon);
     while (epsilon >= std::pow(2.0, -34)) {
         m_log("================================================================================");
-        m_log("epsilon = %e", epsilon);
+        m_log("epsilon = %e -> %e", epsilon, epsilon * depsilon);
         //......................................................................
         // create a grid
-        bool          period[3]   = {true, true, true};
+        // bool period[3] = {true, true, true};
+        bool          period[3]   = {false, false, false};
         lid_t         grid_len[3] = {1, 1, 1};
-        const level_t init_level  = level_start_ +( (!adapt_) ? id_counter : 0);
+        const level_t init_level  = level_start_ + ((!adapt_) ? id_counter : 0);
         Grid          grid(init_level, period, grid_len, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
 
@@ -106,11 +108,18 @@ void ConvergenceWeno::Run() {
 
             // adapt
             if (adapt_) {
-                grid.SetTol(epsilon, epsilon * 1e-2);
+                grid.SetTol(epsilon, epsilon * depsilon);
+                // grid.SetTol(epsilon, epsilon * 1e-2);
                 grid.SetRecursiveAdapt(1);
                 grid.Adapt(&test, &init);
             }
         }
+
+        IOH5 dump("data");
+        grid.GhostPull(&test,ghost_len_ioh5);
+        dump(&grid,&test,id_counter);
+        
+
         // grid is now adapted!
         //......................................................................
         // add the other fields
@@ -177,8 +186,10 @@ void ConvergenceWeno::Run() {
         const level_t lmax            = grid.MaxLevel();
         const long    global_num_quad = grid.global_num_quadrants();
 
-        const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
-        grid.DumpLevels(id_counter, "data", id_name);
+        {
+            const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+            grid.DumpLevels(id_counter, "data", id_name);
+        }
 
         real_t   density = 0.0;
         BDensity dense;
@@ -208,6 +219,33 @@ void ConvergenceWeno::Run() {
                 fclose(file_diag);
             }
             m_log("WENO-3: %e %e %e %e %e", hmin, hmax, err2, erri, density);
+
+            // get the level by leve error
+            {
+                FILE* file_err2;
+                FILE* file_erri;
+                if (rank == 0) {
+                    file_err2 = fopen(std::string("data/error2_levels_" + id_name + ".data").c_str(), "a+");
+                    file_erri = fopen(std::string("data/errori_levels_" + id_name + ".data").c_str(), "a+");
+                    fprintf(file_err2, "%d %d %e %e", lmin, lmax, density,err2);
+                    fprintf(file_erri, "%d %d %e %e", lmin, lmax, density,erri);
+                }
+                for (level_t il = 0; il < P8EST_MAXLEVEL; ++il) {
+                    real_t erri_l = 0.0;
+                    real_t err2_l = 0.0;
+                    error.Norms(&grid, il, &dtest, &lambda_sol, &err2_l, &erri_l);
+                    if (rank == 0) {
+                        fprintf(file_erri, " %e", erri_l);
+                        fprintf(file_err2, " %e", err2_l);
+                    }
+                }
+                if (rank == 0) {
+                    fprintf(file_erri, "\n");
+                    fclose(file_erri);
+                    fprintf(file_err2, "\n");
+                    fclose(file_err2);
+                }
+            }
         }
         {  // WENO 5
             if (fix_weno_) {
@@ -232,6 +270,33 @@ void ConvergenceWeno::Run() {
                 fclose(file_diag);
             }
             m_log("WENO-5: %e %e %e %e %e", hmin, hmax, err2, erri, density);
+
+            // get the level by leve error
+            {
+                FILE* file_err2;
+                FILE* file_erri;
+                if (rank == 0) {
+                    file_err2 = fopen(std::string("data/error2_levels_" + id_name + ".data").c_str(), "a+");
+                    file_erri = fopen(std::string("data/errori_levels_" + id_name + ".data").c_str(), "a+");
+                    fprintf(file_err2, "%d %d %e %e", lmin, lmax, density,err2);
+                    fprintf(file_erri, "%d %d %e %e", lmin, lmax, density,erri);
+                }
+                for (level_t il = 0; il < P8EST_MAXLEVEL; ++il) {
+                    real_t erri_l = 0.0;
+                    real_t err2_l = 0.0;
+                    error.Norms(&grid, il, &dtest, &lambda_sol, &err2_l, &erri_l);
+                    if (rank == 0) {
+                        fprintf(file_erri, " %e", erri_l);
+                        fprintf(file_err2, " %e", err2_l);
+                    }
+                }
+                if (rank == 0) {
+                    fprintf(file_erri, "\n");
+                    fclose(file_erri);
+                    fprintf(file_err2, "\n");
+                    fclose(file_err2);
+                }
+            }
         }
 
         grid.DeleteField(&vel);
@@ -245,7 +310,6 @@ void ConvergenceWeno::Run() {
         // get the new epsilon
         epsilon *= depsilon;
         id_counter += 1;
-
     }
     //--------------------------------------------------------------------------
     m_end;
