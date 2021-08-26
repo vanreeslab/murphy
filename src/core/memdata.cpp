@@ -20,7 +20,6 @@ void MemPtr::Allocate(const size_t element_size) {
 
 void MemPtr::Free() {
     //--------------------------------------------------------------------------
-
 #ifndef NDEBUG
     m_assert(is_allocated, "the memory must have been allocated before being free'ed");
     is_allocated = false;

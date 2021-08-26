@@ -76,12 +76,17 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
 
     //................................................
     // get the corresponding MPI_Datatype for the source
+    const bidx_t scale        = (bidx_t)pow(2, dlvl);
+    const lid_t  src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
+    const lid_t  src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
+    const MemSpan shifted_span_src(src_start, src_end);
+
     MPI_Datatype dtype_src;
-    ToMPIDatatype(layout_src, span_src, (bidx_t)pow(2, dlvl), &dtype_src);
+    ToMPIDatatype(layout_src, &shifted_span_src, scale, &dtype_src);
 
     //................................................
     real_t*  local_trg = data_trg->ptr(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
-    MPI_Aint disp      = disp_src + layout_src->offset(span_src->start[0], span_src->start[1], span_src->start[2]);
+    MPI_Aint disp      = disp_src + layout_src->offset(shifted_span_src.start[0], shifted_span_src.start[1], shifted_span_src.start[2]);
 
     //..........................................................................
     int size_trg;
@@ -128,11 +133,15 @@ void PutRma(const level_t dlvl, const bidx_t shift[3],
 
     //..........................................................................
     // get the corresponding MPI_Datatype for the source
+    const bidx_t scale        = (bidx_t)pow(2, dlvl);
+    const lid_t  src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
+    const lid_t  src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
+    const MemSpan shifted_span_src(src_start, src_end);
     MPI_Datatype dtype_src;
-    ToMPIDatatype(layout_src, span_src, (bidx_t)pow(2, dlvl), &dtype_src);
+    ToMPIDatatype(layout_src, &shifted_span_src, scale, &dtype_src);
 
     //..........................................................................
-    const real_t* local_src = data_src->ptr(span_src->start[0], span_src->start[1], span_src->start[2]);
+    const real_t* local_src = data_src->ptr(shifted_span_src.start[0], shifted_span_src.start[1], shifted_span_src.start[2]);
     MPI_Aint      disp      = disp_trg + layout_trg->offset(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
 
     //..........................................................................
