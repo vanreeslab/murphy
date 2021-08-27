@@ -92,6 +92,7 @@ class GridBlock : public CartBlock {
                                  /* prof */ Prof* profiler);
     void UpdateStatusFromPolicy();
 
+    void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
     void UpdateSmoothingMask(const Wavelet* const interp);
 

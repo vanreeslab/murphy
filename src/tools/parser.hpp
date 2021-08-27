@@ -31,7 +31,7 @@ struct ParserArguments {
     real_t time_start = 0.0;
     real_t time_final = 0.5;
 
-    real_t eps_start = 0.1;
+    real_t eps_start = 1.0;
     real_t delta_eps = 0.1;
 
     real_t cfl_max = 100.0;

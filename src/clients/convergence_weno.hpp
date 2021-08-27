@@ -8,7 +8,6 @@ class ConvergenceWeno : public TestCase {
     bool    fix_weno_;
     level_t ilevel_;
 
-    level_t level_start_;
     level_t level_min_;
     level_t level_max_;
 

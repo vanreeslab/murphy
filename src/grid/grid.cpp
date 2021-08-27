@@ -773,3 +773,24 @@ void Grid::StoreDetails(Field* criterion, Field* details) {
     //-------------------------------------------------------------------------
     m_end;
 }
+
+void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
+    //--------------------------------------------------------------------------
+    // get the ghosts values
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    this->GhostPull(criterion, ghost_len);
+
+    // get the minmax
+    real_t local_maxmin[2];
+    local_maxmin[0] = 0.0;
+    local_maxmin[1] = std::numeric_limits<real_t>::max();
+
+    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, local_maxmin);
+
+    // reduce is on the whole mesh
+    maxmin[0] = 0.0;
+    maxmin[1] = 0.0;
+    MPI_Allreduce(local_maxmin, maxmin, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(local_maxmin + 1, maxmin + 1, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
+    //--------------------------------------------------------------------------
+}

@@ -26,12 +26,11 @@ void ConvergenceWeno::InitParam(ParserArguments* param) {
     // call the general testcase parameters
     this->TestCase::InitParam(param);
 
-    ilevel_   = m_max(param->init_lvl, 0);
+    ilevel_   = param->init_lvl;
     adapt_    = !param->no_adapt;
     fix_weno_ = param->fix_weno;
 
     // get the level
-    level_start_ = param->init_lvl;
     level_min_   = param->level_min;
     level_max_   = param->level_max;
 
@@ -94,8 +93,9 @@ void ConvergenceWeno::Run() {
         // create a grid
         bool period[3] = {true, true, true};
         // bool          period[3]   = {false, false, false};
+
         lid_t         grid_len[3] = {1, 1, 1};
-        const level_t init_level  = level_start_ + ((!adapt_) ? id_counter : 0);
+        const level_t init_level  = (!adapt_) ? (level_min_ + id_counter) : (ilevel_);
         Grid          grid(init_level, period, grid_len, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
 
@@ -119,9 +119,9 @@ void ConvergenceWeno::Run() {
             }
         }
 
-        IOH5 dump("data");
-        grid.GhostPull(&test,ghost_len_ioh5);
-        dump(&grid,&test,id_counter);
+        // IOH5 dump("data");
+        // grid.GhostPull(&test,ghost_len_ioh5);
+        // dump(&grid,&test,id_counter);
         
 
         // grid is now adapted!
@@ -202,6 +202,9 @@ void ConvergenceWeno::Run() {
         BDensity dense;
         dense(&grid, &density);
 
+        real_t maxmin_details[2];
+        grid.MaxMinDetails(&test,maxmin_details);
+
         // get the error in reconstruction of the error :-)
         {
             bidx_t ghost_len[2] = {3,3};
@@ -256,7 +259,7 @@ void ConvergenceWeno::Run() {
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld %e\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad, density);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld %e %e %e\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad, density, maxmin_details[0], maxmin_details[1]);
                 fclose(file_diag);
             }
             m_log("WENO-3: %e %e %e %e %e", hmin, hmax, err2, erri, density);
@@ -307,7 +310,7 @@ void ConvergenceWeno::Run() {
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
-                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld %e\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad, density);
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld %e %e %e\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad, density, maxmin_details[0], maxmin_details[1]);
                 fclose(file_diag);
             }
             m_log("WENO-5: %e %e %e %e %e", hmin, hmax, err2, erri, density);

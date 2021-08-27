@@ -79,7 +79,7 @@ class Wavelet {
                      /* target */ const MemLayout* const  detail_block) const;
     void   Details(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
                  /* target */ const MemLayout* const  detail_block, const data_ptr& detail, const real_t tol,
-                 /* output*/ real_t*  details_max) const;
+                 /* output*/ real_t details_max[2]) const;
     void   SmoothOnMask(/* source */ const MemLayout* const  block_src,
                       /* target */ const MemLayout* const  block_trg, const data_ptr& data,
                       /* detail */ const MemLayout* const  detail_block, const data_ptr& detail_mask) const;
@@ -364,21 +364,21 @@ class Wavelet {
      * @name Interpolation functions, to be implemented
      * @{
      */
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const_data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
 
-    virtual void Coarsen_(const interp_ctx_t* const  ctx) const = 0;
-    virtual void RefineZeroDetails_(const interp_ctx_t* const  ctx) const  = 0;
-    virtual void OverwriteDetailsDualLifting_(const interp_ctx_t* const  ctx) const  = 0;
+    virtual void Coarsen_(const interp_ctx_t* const ctx) const                     = 0;
+    virtual void RefineZeroDetails_(const interp_ctx_t* const ctx) const           = 0;
+    virtual void OverwriteDetailsDualLifting_(const interp_ctx_t* const ctx) const = 0;
     // virtual void Scaling_(const interp_ctx_t* const  ctx) const                                                   = 0;
-    virtual void Detail_(const interp_ctx_t* const  ctx, real_t* const  details_max) const                  = 0;
-    virtual void ForwardWaveletTransform_(const interp_ctx_t* const  ctx, real_t* const  details_max) const = 0;
-    virtual void Smooth_(const interp_ctx_t* const  ctx) const                                                    = 0;
-    virtual void Clear_(const interp_ctx_t* const  ctx) const                                                     = 0;
+    virtual void Detail_(const interp_ctx_t* const ctx, real_t details[2]) const                          = 0;
+    virtual void ForwardWaveletTransform_(const interp_ctx_t* const ctx, real_t* const details_max) const = 0;
+    virtual void Smooth_(const interp_ctx_t* const ctx) const                                             = 0;
+    virtual void Clear_(const interp_ctx_t* const ctx) const                                              = 0;
     // virtual void WriteDetail_(const interp_ctx_t*  ctx) const                                     = 0;
     /** @} */
 
     // defined function -- might be overriden
-    virtual void Copy_(const level_t dlvl, const interp_ctx_t*  ctx) const;
+    virtual void Copy_(const level_t dlvl, const interp_ctx_t* ctx) const;
 };
 
 #endif  // SRC_WAVELET_HPP_

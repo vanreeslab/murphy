@@ -374,6 +374,28 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
 }
 
 /**
+ * @brief computes the Maximum and Minimun detail coefficient on the block
+ * 
+ * the function updates the ongoing maxmin array if needed (no initialization is performed in the function)
+ * 
+ * @param interp the Wavelet
+ * @param criterion the criterion field, must be scalar (for now)
+ * @param maxmin the minmax that is used to collect on the blocks
+ */
+void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]) {
+    m_assert(criterion->lda() == 1, "field must be a scalar");
+    //-------------------------------------------------------------------------
+    SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+
+    real_t block_maxmin[2] = {0.0, 0.0};
+    interp->Details(&block_src, this->data(criterion, 0), this, nullptr, 0.0, block_maxmin);
+
+    maxmin[0] = m_max(maxmin[0], block_maxmin[0]);
+    maxmin[1] = m_min(maxmin[1], block_maxmin[1]);
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief Compute the detail coefficient and store them in the field details
  * 
  * @param interp the wavelet object
@@ -391,6 +413,7 @@ void GridBlock::StoreDetails(const Wavelet* interp, const Field* criterion, cons
     }
     //-------------------------------------------------------------------------
 }
+
 
 /**
  * @brief resolve the dependency list created while adapting the mesh (see cback_UpdateDependency() ) by interpolating the needed blocks
