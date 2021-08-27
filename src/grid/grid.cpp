@@ -470,7 +470,7 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
 
     // apply the operator to get the starting value
     // it gets rid of whatever smoothing has been done
-    (*expr)(this, field);
+    // (*expr)(this, field);
     //-------------------------------------------------------------------------
     m_end;
 }
