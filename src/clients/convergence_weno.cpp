@@ -53,19 +53,17 @@ static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, 
     block->pos(i0, i1, i2, pos);
     real_t* data = block->data(fid).Write(i0, i1, i2);
     // set value
-    const real_t rhox = (pos[0] - center[0]) / sigma;
-    data[0]           = std::exp(-rhox * rhox);
     // data[0] = scalar_exp(pos, center, sigma);
-    // data[0] = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    data[0] = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
 };
 static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     // get the position
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
     // set value
-    const real_t rhox = (pos[0] - center[0]) / sigma;
-    return std::exp(-rhox * rhox);
-    // return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    // const real_t rhox = (pos[0] - center[0]) / sigma;
+    // return std::exp(-rhox * rhox);
+    return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
 };
 
 void ConvergenceWeno::Run() {
@@ -148,41 +146,41 @@ void ConvergenceWeno::Run() {
         // get the analytical solution
         const lda_t    normal     = 2;
         lambda_error_t lambda_sol = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
-            // get the position
+            // // get the position
             real_t pos[3];
             block->pos(i0, i1, i2, pos);
 
-            const real_t x = (pos[0] - center[0]);
-            return rand_vel[0]* 2.0 * x/(sigma*sigma) * std::exp(-x * x/(sigma*sigma));
+            // const real_t x = (pos[0] - center[0]);
+            // return rand_vel[0]* 2.0 * x/(sigma*sigma) * std::exp(-x * x/(sigma*sigma));
 
-            // const lda_t idx = (normal + 1) % 3;
-            // const lda_t idy = (normal + 2) % 3;
-            // const lda_t idz = normal;
+            const lda_t idx = (normal + 1) % 3;
+            const lda_t idy = (normal + 2) % 3;
+            const lda_t idz = normal;
 
-            // const real_t gamma  = beta * sigma;
-            // const real_t x      = pos[idx] - center[idx];
-            // const real_t y      = pos[idy] - center[idy];
-            // const real_t z      = pos[idz] - center[idz];
-            // const real_t sigma2 = sigma * sigma;
-            // const real_t gamma2 = gamma * gamma;
+            const real_t gamma  = beta * sigma;
+            const real_t x      = pos[idx] - center[idx];
+            const real_t y      = pos[idy] - center[idy];
+            const real_t z      = pos[idz] - center[idz];
+            const real_t sigma2 = sigma * sigma;
+            const real_t gamma2 = gamma * gamma;
 
-            // // compute the gaussian
-            // const real_t r_par = sqrt(pow(x, 2) + pow(y, 2)) - radius;
-            // const real_t r     = sqrt(pow(r_par, 2) + pow(z, 2));
-            // const real_t rho1  = r / sigma;
-            // const real_t rho2  = r / gamma;
+            // compute the gaussian
+            const real_t r_par = sqrt(pow(x, 2) + pow(y, 2)) - radius;
+            const real_t r     = sqrt(pow(r_par, 2) + pow(z, 2));
+            const real_t rho1  = r / sigma;
+            const real_t rho2  = r / gamma;
 
-            // if (1e-15 < r && r < gamma) {
-            //     const real_t exp_val  = exp(-pow(rho1, 2) / (1.0 - pow(rho2, 2)));
-            //     const real_t exp_fact = (-2.0 * r / sigma2) / (1.0 - pow(rho2, 2)) + (-2.0 * pow(r, 3) / sigma2) / (gamma2 * pow(1.0 - pow(r, 2) / gamma2, 2));
-            //     const real_t drdx     = (x * r_par) / ((r_par + radius) * r);
-            //     const real_t drdy     = (y * r_par) / ((r_par + radius) * r);
-            //     const real_t drdz     = (z / r);
+            if (1e-15 < r && r < gamma) {
+                const real_t exp_val  = exp(-pow(rho1, 2) / (1.0 - pow(rho2, 2)));
+                const real_t exp_fact = (-2.0 * r / sigma2) / (1.0 - pow(rho2, 2)) + (-2.0 * pow(r, 3) / sigma2) / (gamma2 * pow(1.0 - pow(r, 2) / gamma2, 2));
+                const real_t drdx     = (x * r_par) / ((r_par + radius) * r);
+                const real_t drdy     = (y * r_par) / ((r_par + radius) * r);
+                const real_t drdz     = (z / r);
 
-            //     return -exp_val * exp_fact * (rand_vel[idx] * drdx + rand_vel[idy] * drdy + rand_vel[idz] * drdz);
-            // } else {
-            //     return 0.0;
-            // }
+                return -exp_val * exp_fact * (rand_vel[idx] * drdx + rand_vel[idy] * drdy + rand_vel[idz] * drdz);
+            } else {
+                return 0.0;
+            }
         };
 
         rank_t rank;
