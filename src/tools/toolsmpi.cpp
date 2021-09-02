@@ -10,7 +10,7 @@
  * 
  * @param span the MemSpan to convert
  * @param layout the MemLayout to convert
- * @param scale the scale coefficient (1 or 2). If 2, we take one points out of 2 in each direction
+ * @param scale the scale coefficient (1 or 2). If 2, we take one points out of 2 in each direction, i.e. the stride is x2 and the number of elements is /2
  * @param xyz_type the corresponding datattype
  */
 void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t scale, MPI_Datatype* xyz_type){
@@ -61,7 +61,22 @@ void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t sc
     //--------------------------------------------------------------------------
     m_end;
 }
-
+/**
+ * @brief Perform an RMA GET operation on a given MPI Window
+ * 
+ * The source layout is REMOTE and is copied to the LOCAL target layout
+ * 
+ * @param dlvl the difference of levels, can be 0 or 1. if 1, we downsample at the source
+ * @param shift the shift, i.e. the position of the (0,0,0) of the target in the source framework (and resolution!)
+ * @param layout_src the source MemLayout describing the source memory
+ * @param span_src the source MemSpan
+ * @param disp_src the displacement in the window where to find the source (it's equivalent to the raw pointer!)
+ * @param src_rank the rank of the processor containing the source memory
+ * @param layout_trg the target layout
+ * @param span_trg the span of the target
+ * @param data_trg the local data of the target
+ * @param win the window that permits the RMA call
+ */
 void GetRma(const level_t dlvl, const bidx_t shift[3],
             const MemLayout* layout_src, const MemSpan* span_src, const MPI_Aint disp_src, rank_t src_rank,
             const MemLayout* layout_trg, const MemSpan* span_trg, const MemData* data_trg, MPI_Win win) {
@@ -73,20 +88,28 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
     // get the corresponding MPI_Datatype for the target
     MPI_Datatype dtype_trg;
     ToMPIDatatype(layout_trg, span_trg, (bidx_t)1, &dtype_trg);
+    // get the local pointer for the local target
+    real_t* local_trg = data_trg->ptr(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
 
     //................................................
-    // get the corresponding MPI_Datatype for the source
-    const bidx_t scale        = (bidx_t)pow(2, dlvl);
-    const lid_t  src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
-    const lid_t  src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
+    // get the memory span corresponding to the data that is required (span_trg) on the source layout
+    const bidx_t  scale        = (bidx_t)pow(2, dlvl);
+    const lid_t   src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
+    const lid_t   src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
     const MemSpan shifted_span_src(src_start, src_end);
 
+    m_assert(span_src->start[0] <= src_start[0] && src_start[0] < span_src->end[0], "the src_start must be in the block: %d <= %d < %d", span_src->start[0], src_start[0], span_src->end[0]);
+    m_assert(span_src->start[1] <= src_start[1] && src_start[1] < span_src->end[1], "the src_start must be in the block: %d <= %d < %d", span_src->start[1], src_start[1], span_src->end[1]);
+    m_assert(span_src->start[2] <= src_start[2] && src_start[2] < span_src->end[2], "the src_start must be in the block: %d <= %d < %d", span_src->start[2], src_start[2], span_src->end[2]);
+    m_assert(span_src->start[0] < src_end[0] && src_end[0] <= span_src->end[0], "the src_end must be in the block: %d <= %d < %d", span_src->start[0], src_end[0], span_src->end[0]);
+    m_assert(span_src->start[1] < src_end[1] && src_end[1] <= span_src->end[1], "the src_end must be in the block: %d <= %d < %d", span_src->start[1], src_end[1], span_src->end[1]);
+    m_assert(span_src->start[2] < src_end[2] && src_end[2] <= span_src->end[2], "the src_end must be in the block: %d <= %d < %d", span_src->start[2], src_end[2], span_src->end[2]);
+
+    // get the corresponding MPI_Datatype for the source (based on the shifted start/end!)
+    // the shift is irrelevant for the type and the scale is handeled inside the function
     MPI_Datatype dtype_src;
     ToMPIDatatype(layout_src, &shifted_span_src, scale, &dtype_src);
-
-    //................................................
-    real_t*  local_trg = data_trg->ptr(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
-    MPI_Aint disp      = disp_src + layout_src->offset(shifted_span_src.start[0], shifted_span_src.start[1], shifted_span_src.start[2]);
+    MPI_Aint disp = disp_src + layout_src->offset(src_start[0], src_start[1], src_start[2]);
 
     //..........................................................................
     int size_trg;
@@ -94,7 +117,7 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
 #ifndef NDEBUG
     int size_src;
     MPI_Type_size(dtype_src, &size_src);
-    m_assert(size_src == size_trg, "the two sizes must be the same: %d vs %d", size_src, size_trg);
+    m_assert(size_src == size_trg, "the two sizes must be the same: %d vs %d, scale = %d", size_src, size_trg, scale);
 #endif
     // only perform the call if we expect something
     if (size_trg > 0) [[likely]] {
@@ -108,20 +131,24 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
 }
 
 /**
- * @brief use the MPI RMA Put function to copy the data from the disp_src to data_trg
+ * @brief Perform an RMA PUT operation on a given MPI Window
  * 
- * @param dlvl the level gap = source level - target level (must be 0 or 1)
+ * The source layout is LOCAL and is copied to the REMOTE target layout
+ * 
+ * @param dlvl the difference of levels, can be 0 or 1. if 1, we downsample at the source
  * @param shift the shift, i.e. the position of the (0,0,0) of the target in the source framework (and resolution!)
- * @param block_src the memory layout corresponding to the source layout, only the ghost size and the stride are used
- * @param disp_src the displacement wrt to the target's window base pointer (the units are given by the disp_unit provided at the creation of the window on the target rank)
- * @param block_trg the memory layout corresponding to the target layout
- * @param data_trg the data memory pointer, i.e. the memory position of (0,0,0)
- * @param src_rank the rank of the source memory
- * @param win the window to use for the RMA calls
+ * @param layout_src 
+ * @param span_src 
+ * @param data_src 
+ * @param layout_trg 
+ * @param span_trg 
+ * @param disp_trg 
+ * @param trg_rank 
+ * @param win 
  */
 void PutRma(const level_t dlvl, const bidx_t shift[3],
-            const MemLayout* layout_src, const MemSpan* span_src,const ConstMemData* data_src,
-            const MemLayout* layout_trg, const MemSpan* span_trg,const MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) {
+            const MemLayout* layout_src, const MemSpan* span_src, const ConstMemData* data_src,
+            const MemLayout* layout_trg, const MemSpan* span_trg, const MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) {
     m_assert(dlvl <= 1, "we cannot handle a difference in level > 1");
     m_assert(dlvl >= 0, "we cannot handle a level coarse ");
     m_assert(disp_trg >= 0, "the displacement is not positive: %ld", disp_trg);
@@ -130,19 +157,28 @@ void PutRma(const level_t dlvl, const bidx_t shift[3],
     // get the corresponding MPI_Datatype for the target
     MPI_Datatype dtype_trg;
     ToMPIDatatype(layout_trg, span_trg, 1, &dtype_trg);
+    // get the displacement for the remote target
+    MPI_Aint disp = disp_trg + layout_trg->offset(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
 
     //..........................................................................
-    // get the corresponding MPI_Datatype for the source
-    const bidx_t scale        = (bidx_t)pow(2, dlvl);
-    const lid_t  src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
-    const lid_t  src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
+    const bidx_t scale = (bidx_t)pow(2, dlvl);
+    // get the actual address for the local memory source
+    const lid_t   src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
+    const lid_t   src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
     const MemSpan shifted_span_src(src_start, src_end);
+    
+    m_assert(span_src->start[0] <= src_start[0] && src_start[0] < span_src->end[0], "the src_start must be in the block: %d <= %d < %d", span_src->start[0], src_start[0], span_src->end[0]);
+    m_assert(span_src->start[1] <= src_start[1] && src_start[1] < span_src->end[1], "the src_start must be in the block: %d <= %d < %d", span_src->start[1], src_start[1], span_src->end[1]);
+    m_assert(span_src->start[2] <= src_start[2] && src_start[2] < span_src->end[2], "the src_start must be in the block: %d <= %d < %d", span_src->start[2], src_start[2], span_src->end[2]);
+    m_assert(span_src->start[0] < src_end[0] && src_end[0] <= span_src->end[0], "the src_end must be in the block: %d <= %d < %d", span_src->start[0], src_end[0], span_src->end[0]);
+    m_assert(span_src->start[1] < src_end[1] && src_end[1] <= span_src->end[1], "the src_end must be in the block: %d <= %d < %d", span_src->start[1], src_end[1], span_src->end[1]);
+    m_assert(span_src->start[2] < src_end[2] && src_end[2] <= span_src->end[2], "the src_end must be in the block: %d <= %d < %d", span_src->start[2], src_end[2], span_src->end[2]);
+    // get the corresponding MPI_Datatype for the source (based on the shifted span!)
+    // the shift is irrelevant for the type and the scale is handeled inside the function
     MPI_Datatype dtype_src;
     ToMPIDatatype(layout_src, &shifted_span_src, scale, &dtype_src);
-
-    //..........................................................................
-    const real_t* local_src = data_src->ptr(shifted_span_src.start[0], shifted_span_src.start[1], shifted_span_src.start[2]);
-    MPI_Aint      disp      = disp_trg + layout_trg->offset(span_trg->start[0], span_trg->start[1], span_trg->start[2]);
+    // get the local source pointer
+    const real_t* local_src = data_src->ptr(src_start[0], src_start[1], src_start[2]);
 
     //..........................................................................
     int size_trg;

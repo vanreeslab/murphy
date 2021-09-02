@@ -64,7 +64,7 @@ class GridBlock : public CartBlock {
     ~GridBlock();
 
     __attribute__((always_inline)) inline MemLayout CoarseLayout(const Wavelet* interp) const {
-        return MemLayout(M_LAYOUT_BLOCK, interp->CoarseNGhostFront(ghost_len_[0]), M_NHALF, interp->CoarseNGhostFront(ghost_len_[1]));
+        return MemLayout(M_LAYOUT_BLOCK, interp->CoarseNGhostFront(ghost_len_[0]), M_NHALF, interp->CoarseNGhostBack(ghost_len_[1]));
     }
     __attribute__((always_inline)) inline MemSpan CoarseSpan() const {
         return MemSpan(0, M_NHALF);
@@ -75,7 +75,7 @@ class GridBlock : public CartBlock {
     }
 
     __attribute__((always_inline)) inline MemSpan ExtendedSpan() const {
-        return MemSpan(- ghost_len_[0], M_N +ghost_len_[1]);
+        return MemSpan(-ghost_len_[0], M_N + ghost_len_[1]);
     }
 
     /**

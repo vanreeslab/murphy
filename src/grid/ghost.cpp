@@ -622,7 +622,7 @@ void Ghost::PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field
     // real_t* data_block = block->RawPointer(fid, cur_ida_);
 
     for (auto* gblock : (*block->ghost_children())) {
-        const MemSpan src_span     = gblock->SourceSpan();
+        const MemSpan   src_span   = gblock->GetSpan();
         const MemLayout src_layout = gblock->SourceLayout();
 
         // real_t* data_src = mirror + block->BlockLayout().offset(src_span.start[0], src_span.start[1], src_span.start[2]); // m_idx(start[0], start[1], start[2], 0, block->stride());

@@ -921,7 +921,7 @@ void GridBlock::GhostGet_Cmpt(const Field* field, const lda_t ida, const Wavelet
             copy_2_coarse(gblock);
         }
         for (auto* const gblock : local_parent_) {
-            m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 1 --> dlvl == %d", (gblock->dlvl() + 1));
+            m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 0 --> dlvl == %d", (gblock->dlvl() + 1));
             copy_2_coarse(gblock);
         }
 
@@ -990,7 +990,7 @@ void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet
             const MemLayout layout_trg = this->BlockLayout();
             const MemData   data_trg   = this->data(field, ida);
             // copy the information
-            GetRma(gblock->dlvl(), gblock->shift(), &layout_src, &span_src, disp_src, rank_src,& layout_trg,& span_trg,& data_trg,mirrors_window);
+            GetRma(gblock->dlvl(), gblock->shift(), &layout_src, &span_src, disp_src, rank_src, &layout_trg, &span_trg, &data_trg, mirrors_window);
             //     const MPI_Aint   disp_src  = gblock->data_src();
             //     const rank_t     disp_rank = gblock->rank();
             //     const MemSpan* block_trg = gblock;
@@ -1020,10 +1020,12 @@ void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet
         };
 
         for (auto* const gblock : ghost_sibling_) {
+            m_assert((gblock->dlvl() + 1) == 1, "the difference of level MUST be 1 --> dlvl == %d", (gblock->dlvl() + 1));
             rma_2_coarse(gblock);
         }
 
         for (auto* const gblock : ghost_parent_) {
+            m_assert((gblock->dlvl() + 1) == 0, "the difference of level MUST be 0 --> dlvl == %d", (gblock->dlvl() + 1));
             rma_2_coarse(gblock);
         }
 
@@ -1335,9 +1337,9 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
             // the source block is the ghost extended block
             const lid_t shift[3] = {0, 0, 0};
             // const SubBlock me_extended(M_GS, M_STRIDE, - ghost_len_[0], M_N + ghost_len_[1]);
-            const MemSpan ext_span = ExtendedSpan();
+            const MemSpan ext_span = this->ExtendedSpan();
             // interpolate, the level is 1 coarser and the shift is unchanged
-            const ConstMemData data_src = ConstData(field, ida);
+            const ConstMemData data_src = this->ConstData(field, ida);
             interp->Interpolate(1, shift, &ext_span, &data_src, &span_coarse, &data_coarse);
             // interp->Interpolate(1, shift, &me_extended, data(field, ida), &coarse_block, data_coarse);
             m_assert(ghost_len_[0] >= interp->nghost_front_coarsen() && ghost_len_[0] >= interp->nghost_back_coarsen(), "the ghost sizes %d %d must be >= %d %d", ghost_len_[0], ghost_len_[1], interp->nghost_front_coarsen(), interp->nghost_back_coarsen());
