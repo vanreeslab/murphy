@@ -11,12 +11,12 @@ using std::string;
 using std::to_string;
 
 static const lda_t  ring_normal = 2;
-static const real_t sigma       = 0.05;
-static const real_t radius      = 0.25;
+static const real_t sigma       = 0.10;
+static const real_t radius      = 1.0;
 static const real_t beta        = 3;
 static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
 static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
-static const real_t center[3]   = {0.5, 0.5, 0.25};
+static const real_t center[3]   = {1.5, 1.5, 0.5};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 
 static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
@@ -67,7 +67,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
 
     // setup the grid
-    grid_ = new Grid(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
+    bidx_t length[3] = {3, 3, 2};
+    grid_            = new Grid(param->init_lvl, param->period, length, MPI_COMM_WORLD, prof_);
 
     // set the min/max level
     grid_->level_limit(param->level_min, param->level_max);
@@ -147,8 +148,7 @@ void SimpleAdvection::Run() {
         m_log("--------------------------------------------------------------------------------");
         //................................................
         // adapt the mesh
-        if (iter % iter_adapt() == 0) {
-            if (!no_adapt_) {
+        if ((iter % iter_adapt() == 0) && (!no_adapt_)) {
                 m_log("---- adapt mesh");
                 m_profStart(prof_, "adapt");
                 if (!grid_on_sol_) {
@@ -176,7 +176,6 @@ void SimpleAdvection::Run() {
                 set_velocity(grid_, vel_);
                 m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
                 m_profStop(prof_, "set velocity");
-            }
         }
         // we run the first diagnostic if not done yet
         if (iter == 0) {
@@ -253,11 +252,11 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     moments(grid_, scal_, &moment0, moment1);
     m_profStop(prof_, "cmpt moments");
     //................................................
-    m_profStart(prof_, "cmpt mean");
-    real_t mean_val;
-    BAvg   mean;
-    mean(grid_, scal_, &mean_val);
-    m_profStop(prof_, "cmpt mean");
+    // m_profStart(prof_, "cmpt mean");
+    // real_t mean_val;
+    // BAvg   mean;
+    // mean(grid_, scal_, &mean_val);
+    // m_profStop(prof_, "cmpt mean");
 
     //................................................
     // get the solution at the given time
@@ -270,8 +269,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-
-        return scalar_ring(pos, new_center, radius, sigma, ring_normal);
+        return scalar_compact_ring(pos, new_center, ring_normal, radius, sigma, beta, freq, amp);
     };
     // compute the error
     real_t err2, erri;
@@ -280,6 +278,14 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     error.Norms(grid_, scal_, &lambda_ring, &err2, &erri);
     m_profStop(prof_, "cmpt error");
 
+    real_t   density = 0.0;
+    BDensity dense;
+    dense(grid_, &density);
+
+    // get the min and max detail coefficients
+    real_t maxmin_details[2];
+    grid_->MaxMinDetails(scal_, maxmin_details);
+
     // open the file
     m_profStart(prof_, "dump diag");
     FILE*   file_error;
@@ -287,16 +293,16 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     level_t min_level       = grid_->MinLevel();
     level_t max_level       = grid_->MaxLevel();
     long    global_num_quad = grid_->global_num_quadrants();
+    m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e)", iter, time, min_level, max_level, density, err2, erri);
     if (rank == 0) {
         file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
-        // iter, time, dt, total quad, level min, level max
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, global_num_quad, min_level, max_level);
         fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());
         fprintf(file_diag, ";%e;%e", err2, erri);
-        fprintf(file_diag, ";%e", mean_val);
+        fprintf(file_diag, ";%e;%e", maxmin_details[0], maxmin_details[1]);
+        fprintf(file_diag, ";%e", density);
         fprintf(file_diag, ";%e;%e;%e;%e", moment0, moment1[0], moment1[1], moment1[2]);
-        // fprintf(file_diag, ";%e;%e;%e;%e", dmoment0, dmoment1[0], dmoment1[1], dmoment1[2]);
         fprintf(file_diag, "\n");
         fclose(file_diag);
     }

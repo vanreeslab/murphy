@@ -49,6 +49,7 @@ constexpr real_t CartBlockHGrid(const real_t length) {
  */
 class CartBlock {
    protected:
+    real_t  length_   = 0.0;              //!< the size (length) of the block
     level_t level_    = -1;               //!< the level of the block
     real_t  xyz_[3]   = {0.0, 0.0, 0.0};  //!< the origin of the block
     real_t  hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
@@ -91,6 +92,7 @@ class CartBlock {
      * 
      * @{ */
     inline level_t level() const { return level_; }
+    inline real_t  length() const { return length_; }
     inline real_t  xyz(const int id) const { return xyz_[id]; }
     inline real_t  hgrid(const int id) const { return hgrid_[id]; }
     const real_t*  hgrid() const { return hgrid_; }

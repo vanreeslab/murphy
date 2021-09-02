@@ -76,7 +76,7 @@ class Wavelet {
                      /* target */ const MemSpan* span_detail) const;
     void   Details(/* source */ const MemSpan* span_src, const ConstMemData* data,
                  /* target */ const MemSpan* span_detail, const MemData* detail, const real_t tol,
-                 /* output*/ real_t* details_max) const;
+                 /* output*/ real_t details_maxmin[2]) const;
     void   SmoothOnMask(/* source */ const MemSpan* span_src,
                       /* target */ const MemSpan* span_trg, const MemData* data,
                       /* detail */ const MemSpan* detail_block, const MemData* detail_mask) const;
@@ -101,7 +101,7 @@ class Wavelet {
     virtual void Coarsen_(const InterpCtx* const ctx) const                           = 0;
     virtual void RefineZeroDetails_(const InterpCtx* const ctx) const                 = 0;
     virtual void OverwriteDetailsDualLifting_(const InterpCtx* const ctx) const       = 0;
-    virtual void Detail_(const InterpCtx* const ctx, real_t* const details_max) const = 0;
+    virtual void Detail_(const InterpCtx* const ctx, real_t details_max[2]) const = 0;
     virtual void Smooth_(const InterpCtx* const ctx) const                            = 0;
     // virtual void Clear_(const InterpCtx* ctx) const                             = 0;
 

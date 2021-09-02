@@ -79,19 +79,19 @@ void GridBlock::UpdateStatusFromCriterion(const Wavelet* interp, const real_t rt
     //-------------------------------------------------------------------------
     const bidx_t ghost_len_interp[2] = {interp->nghost_front(), interp->nghost_back()};
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
-    m_assert(status_lvl_ == M_ADAPT_NONE, "trying to update a status which is already updated");
-    // m_assert(field_citerion->ghost_status(ghost_len_interp), "the ghost of <%s> must be up-to-date", field_citerion->name().c_str());
-    m_assert(M_ADAPT_SAME < M_ADAPT_FINER && M_ADAPT_SAME < M_ADAPT_COARSER, "please keep M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
-    m_assert(M_ADAPT_NONE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_FINER && M_ADAPT_NONE < M_ADAPT_COARSER, "please keep M_ADAPT_NONE < M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
     //-------------------------------------------------------------------------
     // m_profStart(profiler, "criterion detail");
 
-    // prevent coarsening if we have finer neighbors
-    const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0);
-    const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL);
-    const bool is_over           = forbid_coarsening || forbid_refinement || (status_lvl_ > M_ADAPT_SAME);
+    // prevent coarsening of a block that has been refined and the opposite way around
+    // if the field is analytic, it doesn't make sense
+    // if the field is not, we would get 0 detail out of the new block and we don't want to coarsen
+    const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0) || (status_lvl_ == M_ADAPT_NEW_FINE);
+    const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL) || (status_lvl_ == M_ADAPT_NEW_COARSE);
+    // determine if I have already a decision done = no corsening + no refinement possible or other dimension decided to refine
+    // if another dimension has decided to coarsen, we can always change our mind
+    const bool is_over = (forbid_coarsening && forbid_refinement) || (status_lvl_ == M_ADAPT_FINER);
 
-    // if no decision has been made, go for the computation
+    // if no decision has been made, go for the computation in the current dimension
     if (!is_over) {
         // go to the computation
         // const SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
@@ -103,20 +103,30 @@ void GridBlock::UpdateStatusFromCriterion(const Wavelet* interp, const real_t rt
         const real_t       norm     = interp->Criterion(&span_src, &data_src, &span_detail);
         //(&block_src, this->data(field_citerion, ida), &block_detail);
 
-        // if the norm is bigger than the refinement tol, we must refine
-        if (norm > rtol) {  // refine
-            status_lvl_ = M_ADAPT_FINER;
-        } else if (norm < ctol) {  // coarsen
-            status_lvl_ = M_ADAPT_COARSER;
-        }
+        // get what we should do = what is safe to do considering this direction
+        const bool should_refine  = (norm > rtol) && (!forbid_refinement);
+        const bool should_coarsen = (norm < ctol) && (!forbid_coarsening);
+        const bool should_stay    = !(should_coarsen || should_refine);
+        m_assert((should_coarsen + should_refine + should_stay) == 1, "the sum of the three bools must be 1 = we must make our mind here");
+
+        //......................................................................
+        // 1. refinement?
+        // if we should refine, we always refine, whatever the other directions have said
+        status_lvl_ = (should_refine) ? (M_ADAPT_FINER) : (status_lvl_);
+        //......................................................................
+        // 2. shouldn't change?
+        // if we should stay and the previous directions have said we should coarsen, we cannot coarsen anymore
+        // if the status is FINER, we are false, if the status is SAME, no change needed, if the status is NONE, we can keep NONE
+        // if the status is NEW_FINE/NEW_COARSE, we shoud keep it for the next dimensions
+        status_lvl_ = (should_stay && status_lvl_ == M_ADAPT_COARSER) ? M_ADAPT_SAME : status_lvl_;
+        //......................................................................
+        // 3. coarsening
+        // if we should coarsen and the previous directions said stay the same (status is M_ADAPT_SAME, M_ADAPT_NONE, NEW_FINE or NEW_COARSE ) we coarsen
+        // N.B. the forbid coarsening will prevent me from being true if status is NEW_COARSE
+        status_lvl_ = (should_coarsen && status_lvl_ < M_ADAPT_SAME) ? M_ADAPT_COARSER : status_lvl_;
     }
-    // we get the max between not doing anything and the new status (might be FINER and/or coarser)
-    status_lvl_ = m_max(M_ADAPT_SAME, status_lvl_);
-    // m_profStop(profiler, "criterion detail");
-    // finito
-    m_assert(status_lvl_ > M_ADAPT_NONE, "the status of the block cannot be NONE");
-    m_assert(status_lvl_ <= m_max(M_ADAPT_COARSER, M_ADAPT_FINER), "the status of the block must be SAME, FINER or COARSER");
-    return;
+    // prevent the blocks to have a none-determined status
+    status_lvl_ = (status_lvl_ == M_ADAPT_NONE) ? M_ADAPT_SAME : status_lvl_;
     //-------------------------------------------------------------------------
 }
 
@@ -194,7 +204,7 @@ void GridBlock::UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>*
  * 
  */
 void GridBlock::UpdateStatusFromPolicy() {
-    m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_COARSER || status_lvl_ == M_ADAPT_FINER, "the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_COARSER, M_ADAPT_FINER, status_lvl_);
+    m_assert(status_lvl_ != M_ADAPT_NONE, "we should have made a decision here");
     //-------------------------------------------------------------------------
     const iblock_t n_status          = local_parent_.size() + ghost_parent_.size();
     bool           forbid_coarsening = false;
@@ -220,7 +230,7 @@ void GridBlock::UpdateStatusFromPolicy() {
  * @param coarsen_vec 
  */
 void GridBlock::SetNewByCoarsening(const qid_t* qid, short_t* const coarsen_vec) const {
-    // m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE,"the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
+    m_assert(status_lvl_ != M_ADAPT_NONE, "we should have made a decision here");
     //-------------------------------------------------------------------------
     coarsen_vec[qid->cid] = (short_t)status_lvl_;
     //-------------------------------------------------------------------------
@@ -260,7 +270,7 @@ void GridBlock::GetNewByCoarseningFromNeighbors(const short_t* const status_vec,
 
 void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, std::map<std::string, Field*>::const_iterator field_end) {
     // the status level has to be 0, otherwise it means that one of the block is not coarsened
-    m_assert(status_lvl_ == M_ADAPT_SAME || status_lvl_ == M_ADAPT_NEW_COARSE || status_lvl_ == M_ADAPT_NEW_FINE, "the current status must be %d or %d or %d but not %d", M_ADAPT_SAME, M_ADAPT_NEW_COARSE, M_ADAPT_NEW_FINE, status_lvl_);
+    m_assert(status_lvl_ != M_ADAPT_NONE, "we should have made a decision here");
     //-------------------------------------------------------------------------
     // m_profStart(profiler, "smooth jump");
     // reset the temp memory to 0.0
@@ -287,7 +297,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
         };
         // if the neighbor is a newly created block -> smooth
         if (status_ngh_[count] == M_ADAPT_NEW_COARSE) {
-            m_assert(this->status_level() == M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
+            m_assert(this->status_level() <= M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
 
             // get the sign of the ibidule
             real_t sign[3];
@@ -383,6 +393,33 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
 }
 
 /**
+ * @brief computes the Maximum and Minimun detail coefficient on the block
+ * 
+ * the function updates the ongoing maxmin array if needed (no initialization is performed in the function)
+ * 
+ * @param interp the Wavelet
+ * @param criterion the criterion field, must be scalar (for now)
+ * @param maxmin the minmax that is used to collect on the blocks
+ */
+void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]) {
+    m_assert(criterion->lda() == 1, "field must be a scalar");
+    //-------------------------------------------------------------------------
+    // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
+
+    real_t block_maxmin[2] = {0.0, 0.0};
+
+    const MemSpan span_src(-interp->nghost_front(), M_N + interp->nghost_back());
+    const MemSpan span_det = this->BlockSpan();
+    ConstMemData  data_src = this->ConstData(criterion, 0);
+    MemData       data_det(nullptr);
+    interp->Details(&span_src, &data_src, &span_det, &data_det, 0.0, block_maxmin);
+
+    maxmin[0] = m_max(maxmin[0], block_maxmin[0]);
+    maxmin[1] = m_min(maxmin[1], block_maxmin[1]);
+    //-------------------------------------------------------------------------
+}
+
+/**
  * @brief Compute the detail coefficient and store them in the field details
  * 
  * @param interp the wavelet object
@@ -405,6 +442,7 @@ void GridBlock::StoreDetails(const Wavelet* interp, const Field* criterion, cons
     }
     //-------------------------------------------------------------------------
 }
+
 
 /**
  * @brief resolve the dependency list created while adapting the mesh (see cback_UpdateDependency() ) by interpolating the needed blocks

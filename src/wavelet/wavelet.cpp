@@ -218,10 +218,11 @@ real_t Wavelet::Criterion(/* source */ const MemSpan* span_src, const ConstMemDa
     //-------------------------------------------------------------------------
     // get the detail coefficients
     MemData detail_data(nullptr);
-    real_t  details_max = 0.0;
-    Details(span_src, data, span_detail, &detail_data, 0.0, &details_max);
+    real_t  details_maxmin[2] = {0.0, 0.0};
+    Details(span_src, data, span_detail, &detail_data, 0.0, details_maxmin);
 
-    return details_max;
+    // return the max
+    return details_maxmin[0];
     //-------------------------------------------------------------------------
 }
 
@@ -315,10 +316,10 @@ real_t Wavelet::Criterion(/* source */ const MemSpan* span_src, const ConstMemDa
  */
 void Wavelet::Details(/* source */ const MemSpan* span_src, const ConstMemData* data,
                       /* target */ const MemSpan* span_detail, const MemData* detail, const real_t tol,
-                      /* output*/ real_t* details_max) const {
+                      /* output*/ real_t details_maxmin[2]) const {
     //-------------------------------------------------------------------------
     InterpCtx ctx(tol, span_src, data, span_detail, detail);
-    Detail_(&ctx, details_max);
+    Detail_(&ctx, details_maxmin);
 
     // get memory details
     //     InterpCtx ctx;
@@ -395,13 +396,13 @@ void Wavelet::SmoothOnMask(/* source */ const MemSpan* span_src,
     //-------------------------------------------------------------------------
     //.........................................................................
     // get the details
-    real_t to_trash = 0.0;
+    real_t             to_trash[2] = {0.0, 0.0};
     const ConstMemData data_src(*data);
-    Details(span_src, &data_src, detail_block, detail_mask, -1.0, &to_trash);
+    Details(span_src, &data_src, detail_block, detail_mask, -1.0, to_trash);
 
     // smooth based on the mask newly computed
     const ConstMemData mask(*detail_mask);
-    InterpCtx ctx(0.0, detail_block, &mask, span_trg, data);
+    InterpCtx          ctx(0.0, detail_block, &mask, span_trg, data);
     Smooth_(&ctx);
 
     //.........................................................................
@@ -488,10 +489,10 @@ void Wavelet::StoreDetails(/* source */ const MemSpan* span_src, const ConstMemD
                            /* target */ const MemSpan* span_detail, const MemData* detail) const {
     //-------------------------------------------------------------------------
     // compute
-    const real_t alpha    = std::numeric_limits<real_t>::max();
-    real_t       to_trash = 0.0;  // -> will be discarded
+    const real_t alpha       = std::numeric_limits<real_t>::max();
+    real_t       to_trash[2] = {0.0, 0.0};  // -> will be discarded
     InterpCtx    ctx(alpha, span_src, data, span_detail, detail);
-    Detail_(&ctx, &to_trash);
+    Detail_(&ctx, to_trash);
 
     //     // get memory details
     // //     InterpCtx ctx;

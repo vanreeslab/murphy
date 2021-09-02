@@ -467,6 +467,10 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+
+    // apply the operator to get the starting value
+    // it gets rid of whatever smoothing has been done
+    // (*expr)(this, field);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -526,7 +530,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
-
     string msg = "--> grid adaptation started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
@@ -542,6 +545,11 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     cback_criterion_ptr_        = coarseref_cback_ptr;
     cback_interpolate_ptr_      = interpolate_ptr;
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
+
+    // reset the status of everyblock to a neutral one
+    m_profStart(prof_, "reset");
+    DoOpMesh(nullptr, &GridBlock::StatusReset, this);
+    m_profStop(prof_, "reset");
 
     //................................................
     // coarsening, need to have the 8 children on the same rank
@@ -564,10 +572,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStop(prof_, "ghost for criterion");
         }
 
-        // while waiting, reset the status on the blocks
-        m_profStart(prof_, "reset");
-        DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
-        m_profStop(prof_, "reset");
+        // while waiting, reset the status on the blocks, while keeping in mind the past if necessary
+        // if (recursive_adapt()) {
+        //     m_profStart(prof_, "status");
+        //     DoOpMesh(nullptr, &GridBlock::StatusRememberPast, this);
+        //     m_profStop(prof_, "status");
+        // }
 
         if (!(field_detail == nullptr)) {
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
@@ -615,6 +625,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches);
             m_profStop(prof_, "patch");
         }
+
+        // the status should now be fully determined, erase the past
+        // and set M_ADAPT_SAME if M_ADAPT_NONE
+        // m_profStart(prof_, "status");
+        // DoOpMesh(nullptr, &GridBlock::StatusForgetPast, this);
+        // m_profStop(prof_, "status");
 
         // synchronize the statuses and handle the neighbor policies
         m_profStart(prof_, "update status");
@@ -758,4 +774,25 @@ void Grid::StoreDetails(Field* criterion, Field* details) {
     }
     //-------------------------------------------------------------------------
     m_end;
+}
+
+void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
+    //--------------------------------------------------------------------------
+    // get the ghosts values
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    this->GhostPull(criterion, ghost_len);
+
+    // get the minmax
+    real_t local_maxmin[2];
+    local_maxmin[0] = 0.0;
+    local_maxmin[1] = std::numeric_limits<real_t>::max();
+
+    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, local_maxmin);
+
+    // reduce is on the whole mesh
+    maxmin[0] = 0.0;
+    maxmin[1] = 0.0;
+    MPI_Allreduce(local_maxmin, maxmin, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(local_maxmin + 1, maxmin + 1, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
+    //--------------------------------------------------------------------------
 }

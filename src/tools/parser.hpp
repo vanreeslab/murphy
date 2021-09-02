@@ -22,6 +22,7 @@ struct ParserArguments {
     bool do_epsilon_test  = false;
     bool do_debug_lifting = false;
     bool do_conv_weno     = false;
+    bool do_2lvl_weno     = false;
 
     real_t reynolds    = 0.0;
     real_t refine_tol  = 1e-2;
@@ -30,7 +31,7 @@ struct ParserArguments {
     real_t time_start = 0.0;
     real_t time_final = 0.5;
 
-    real_t eps_start = 0.1;
+    real_t eps_start = 1.0;
     real_t delta_eps = 0.1;
 
     real_t cfl_max = 100.0;
