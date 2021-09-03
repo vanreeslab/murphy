@@ -92,13 +92,10 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
     const bidx_t ghost_len_interp[2] = {interp->nghost_front(), interp->nghost_back()};
     m_assert(rtol > ctol, "the refinement tolerance must be > the coarsening tolerance: %e vs %e", rtol, ctol);
     //-------------------------------------------------------------------------
-    // m_profStart(profiler, "criterion detail");
-
-    // prevent coarsening of a block that has been refined and the opposite way around
-    // if the field is analytic, it doesn't make sense
-    // if the field is not, we would get 0 detail out of the new block and we don't want to coarsen
-    const bool forbid_coarsening = ((local_children_.size() + ghost_children_.size()) > 0) || (level_ == 0) || (status_lvl_ == M_ADAPT_NEW_FINE);
-    const bool forbid_refinement = ((local_parent_.size() + ghost_parent_.size()) > 0) || (level_ == P8EST_QMAXLEVEL) || (status_lvl_ == M_ADAPT_NEW_COARSE);
+    // prevent coarsening of a block that has been refined, we can always re-refine a block that has been coarsened
+    // as a matter of fact, if we compute the details on a block that has been refined, they should be 0, which would not make sense to coarsen again.
+    const bool forbid_coarsening = (level_ == 0) || (status_lvl_ == M_ADAPT_NEW_FINE);
+    const bool forbid_refinement = (level_ == P8EST_QMAXLEVEL);
     // determine if I have already a decision done = no corsening + no refinement possible or other dimension decided to refine
     // if another dimension has decided to coarsen, we can always change our mind
     const bool is_over = (forbid_coarsening && forbid_refinement) || (status_lvl_ == M_ADAPT_FINER);
@@ -109,6 +106,8 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
         const SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
         const SubBlock block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
         const real_t   norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
+
+        m_log("norm = %e, rtol = %e", norm, rtol);
 
         // get what we should do = what is safe to do considering this direction
         const bool should_refine  = (norm > rtol) && (!forbid_refinement);
@@ -129,8 +128,10 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
         //......................................................................
         // 3. coarsening
         // if we should coarsen and the previous directions said stay the same (status is M_ADAPT_SAME, M_ADAPT_NONE, NEW_FINE or NEW_COARSE ) we coarsen
-        // N.B. the forbid coarsening will prevent me from being true if status is NEW_COARSE
-        status_lvl_ = (should_coarsen && status_lvl_ < M_ADAPT_SAME) ? M_ADAPT_COARSER : status_lvl_;
+        // N.B. the forbid coarsening will prevent me from being true if status is NEW_FINE
+        status_lvl_ = (should_coarsen && status_lvl_ <= M_ADAPT_SAME) ? M_ADAPT_COARSER : status_lvl_;
+    } else {
+        m_log("we don't compute the details for this block, the computation is over: (%d && %d) || %d", forbid_coarsening, forbid_refinement, status_lvl_ == M_ADAPT_FINER);
     }
     // prevent the blocks to have a none-determined status
     status_lvl_ = (status_lvl_ == M_ADAPT_NONE) ? M_ADAPT_SAME : status_lvl_;
@@ -471,7 +472,7 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
             delete (root);
         }
     } else if (n_dependency_active_ == P8EST_CHILDREN) {  // this is COARSENING
-        m_assert(this->status_level() == M_ADAPT_NEW_COARSE, "my status must be M_ADAPT_COARSER instead of %d", this->status_level());
+        m_assert(this->status_level() == M_ADAPT_NEW_COARSE || this->status_level() == M_ADAPT_SAME, "my status must be M_ADAPT_COARSER or M_ADAPT_SAME instead of %d", this->status_level());
         // I have 8 deps, I am a root, waiting data from coarsening of my children
         //allocate the new fields
         m_assert(mem_map_.size() == 0, "the block should be empty here");
