@@ -107,8 +107,6 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
         const SubBlock block_detail(this->gs(), this->stride(), -interp->ndetail_citerion_extend_front(), M_N + interp->ndetail_citerion_extend_back());
         const real_t   norm = interp->Criterion(&block_src, this->data(field_citerion, ida), &block_detail);
 
-        m_log("norm = %e, rtol = %e", norm, rtol);
-
         // get what we should do = what is safe to do considering this direction
         const bool should_refine  = (norm > rtol) && (!forbid_refinement);
         const bool should_coarsen = (norm < ctol) && (!forbid_coarsening);
@@ -130,8 +128,8 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
         // if we should coarsen and the previous directions said stay the same (status is M_ADAPT_SAME, M_ADAPT_NONE, NEW_FINE or NEW_COARSE ) we coarsen
         // N.B. the forbid coarsening will prevent me from being true if status is NEW_FINE
         status_lvl_ = (should_coarsen && status_lvl_ <= M_ADAPT_SAME) ? M_ADAPT_COARSER : status_lvl_;
-    } else {
-        m_log("we don't compute the details for this block, the computation is over: (%d && %d) || %d", forbid_coarsening, forbid_refinement, status_lvl_ == M_ADAPT_FINER);
+    // } else {
+    //     m_log("we don't compute the details for this block, the computation is over: (%d && %d) || %d", forbid_coarsening, forbid_refinement, status_lvl_ == M_ADAPT_FINER);
     }
     // prevent the blocks to have a none-determined status
     status_lvl_ = (status_lvl_ == M_ADAPT_NONE) ? M_ADAPT_SAME : status_lvl_;
