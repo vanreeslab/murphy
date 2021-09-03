@@ -98,12 +98,12 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
     const lid_t   src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
     const MemSpan shifted_span_src(src_start, src_end);
 
-    m_assert(span_src->start[0] <= src_start[0] && src_start[0] < span_src->end[0], "the src_start must be in the block: %d <= %d < %d", span_src->start[0], src_start[0], span_src->end[0]);
-    m_assert(span_src->start[1] <= src_start[1] && src_start[1] < span_src->end[1], "the src_start must be in the block: %d <= %d < %d", span_src->start[1], src_start[1], span_src->end[1]);
-    m_assert(span_src->start[2] <= src_start[2] && src_start[2] < span_src->end[2], "the src_start must be in the block: %d <= %d < %d", span_src->start[2], src_start[2], span_src->end[2]);
-    m_assert(span_src->start[0] < src_end[0] && src_end[0] <= span_src->end[0], "the src_end must be in the block: %d <= %d < %d", span_src->start[0], src_end[0], span_src->end[0]);
-    m_assert(span_src->start[1] < src_end[1] && src_end[1] <= span_src->end[1], "the src_end must be in the block: %d <= %d < %d", span_src->start[1], src_end[1], span_src->end[1]);
-    m_assert(span_src->start[2] < src_end[2] && src_end[2] <= span_src->end[2], "the src_end must be in the block: %d <= %d < %d", span_src->start[2], src_end[2], span_src->end[2]);
+    m_assert(span_src->start[0] <= src_start[0] && src_start[0] <= span_src->end[0], "the src_start must be in the block: %d <= %d <= %d", span_src->start[0], src_start[0], span_src->end[0]);
+    m_assert(span_src->start[1] <= src_start[1] && src_start[1] <= span_src->end[1], "the src_start must be in the block: %d <= %d <= %d", span_src->start[1], src_start[1], span_src->end[1]);
+    m_assert(span_src->start[2] <= src_start[2] && src_start[2] <= span_src->end[2], "the src_start must be in the block: %d <= %d <= %d", span_src->start[2], src_start[2], span_src->end[2]);
+    m_assert(span_src->start[0] <= src_end[0] && src_end[0] <= span_src->end[0], "the src_end must be in the block: %d <= %d <= %d", span_src->start[0], src_end[0], span_src->end[0]);
+    m_assert(span_src->start[1] <= src_end[1] && src_end[1] <= span_src->end[1], "the src_end must be in the block: %d <= %d <= %d", span_src->start[1], src_end[1], span_src->end[1]);
+    m_assert(span_src->start[2] <= src_end[2] && src_end[2] <= span_src->end[2], "the src_end must be in the block: %d <= %d <= %d", span_src->start[2], src_end[2], span_src->end[2]);
 
     // get the corresponding MPI_Datatype for the source (based on the shifted start/end!)
     // the shift is irrelevant for the type and the scale is handeled inside the function
@@ -166,13 +166,13 @@ void PutRma(const level_t dlvl, const bidx_t shift[3],
     const lid_t   src_start[3] = {shift[0] + span_trg->start[0] * scale, shift[1] + span_trg->start[1] * scale, shift[2] + span_trg->start[2] * scale};
     const lid_t   src_end[3]   = {shift[0] + span_trg->end[0] * scale, shift[1] + span_trg->end[1] * scale, shift[2] + span_trg->end[2] * scale};
     const MemSpan shifted_span_src(src_start, src_end);
-    
-    m_assert(span_src->start[0] <= src_start[0] && src_start[0] < span_src->end[0], "the src_start must be in the block: %d <= %d < %d", span_src->start[0], src_start[0], span_src->end[0]);
-    m_assert(span_src->start[1] <= src_start[1] && src_start[1] < span_src->end[1], "the src_start must be in the block: %d <= %d < %d", span_src->start[1], src_start[1], span_src->end[1]);
-    m_assert(span_src->start[2] <= src_start[2] && src_start[2] < span_src->end[2], "the src_start must be in the block: %d <= %d < %d", span_src->start[2], src_start[2], span_src->end[2]);
-    m_assert(span_src->start[0] < src_end[0] && src_end[0] <= span_src->end[0], "the src_end must be in the block: %d <= %d < %d", span_src->start[0], src_end[0], span_src->end[0]);
-    m_assert(span_src->start[1] < src_end[1] && src_end[1] <= span_src->end[1], "the src_end must be in the block: %d <= %d < %d", span_src->start[1], src_end[1], span_src->end[1]);
-    m_assert(span_src->start[2] < src_end[2] && src_end[2] <= span_src->end[2], "the src_end must be in the block: %d <= %d < %d", span_src->start[2], src_end[2], span_src->end[2]);
+
+    m_assert(span_src->start[0] <= src_start[0] && src_start[0] <= span_src->end[0], "the src_start must be in the block: %d <= %d <= %d", span_src->start[0], src_start[0], span_src->end[0]);
+    m_assert(span_src->start[1] <= src_start[1] && src_start[1] <= span_src->end[1], "the src_start must be in the block: %d <= %d <= %d", span_src->start[1], src_start[1], span_src->end[1]);
+    m_assert(span_src->start[2] <= src_start[2] && src_start[2] <= span_src->end[2], "the src_start must be in the block: %d <= %d <= %d", span_src->start[2], src_start[2], span_src->end[2]);
+    m_assert(span_src->start[0] <= src_end[0] && src_end[0] <= span_src->end[0], "the src_end must be in the block: %d <= %d <= %d", span_src->start[0], src_end[0], span_src->end[0]);
+    m_assert(span_src->start[1] <= src_end[1] && src_end[1] <= span_src->end[1], "the src_end must be in the block: %d <= %d <= %d", span_src->start[1], src_end[1], span_src->end[1]);
+    m_assert(span_src->start[2] <= src_end[2] && src_end[2] <= span_src->end[2], "the src_end must be in the block: %d <= %d <= %d", span_src->start[2], src_end[2], span_src->end[2]);
     // get the corresponding MPI_Datatype for the source (based on the shifted span!)
     // the shift is irrelevant for the type and the scale is handeled inside the function
     MPI_Datatype dtype_src;
