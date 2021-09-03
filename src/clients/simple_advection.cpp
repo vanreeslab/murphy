@@ -149,33 +149,39 @@ void SimpleAdvection::Run() {
         //................................................
         // adapt the mesh
         if ((iter % iter_adapt() == 0) && (!no_adapt_)) {
-                m_log("---- adapt mesh");
-                m_profStart(prof_, "adapt");
-                if (!grid_on_sol_) {
-                    // adapt on the current field
-                    // BMinMax minmax;
-                    // grid_->GhostPull(scal_, &minmax);
-                    // real_t min, max;
-                    // minmax(grid_, scal_, &min, &max);
-                    // m_log("MINMAX before adaptation: from %e to %e", min, max);
-                    grid_->SetRecursiveAdapt(true);
-                    grid_->Adapt(scal_);
-                    // minmax(grid_, scal_, &min, &max);
-                    // m_log("MINMAX: field from %e to %e", min, max);
-                } else {
-                    m_assert(false, "this option is not supported without a solution field");
-                }
-                m_profStop(prof_, "adapt");
+            m_log("---- adapt mesh");
+            m_profStart(prof_, "adapt");
+            if (!grid_on_sol_) {
+                // adapt on the current field
+                // BMinMax minmax;
+                // grid_->GhostPull(scal_, &minmax);
+                // real_t min, max;
+                // minmax(grid_, scal_, &min, &max);
+                // m_log("MINMAX before adaptation: from %e to %e", min, max);
+                grid_->SetRecursiveAdapt(true);
+                grid_->Adapt(scal_);
 
-                // reset the velocity
-                m_profStart(prof_, "set velocity");
-                // set the velocity field
-                const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
-                                                    m_max(grid_->interp()->nghost_back(), 3)};
-                SetValue     set_velocity(lambda_velocity, ghost_len_interp);
-                set_velocity(grid_, vel_);
-                m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
-                m_profStop(prof_, "set velocity");
+#ifndef NDEBUG
+                // check/get the max detail on the current grid
+                real_t det_maxmin[2];
+                grid_->MaxMinDetails(scal_, det_maxmin);
+                m_log("rtol = %e, max detail = %e", grid_->rtol(), det_maxmin[0]);
+                m_assert(grid_->rtol() >= det_maxmin[0], "the max detail cannot be > than the tol: %e vs %e", det_maxmin[0], grid_->rtol());
+#endif
+            } else {
+                m_assert(false, "this option is not supported without a solution field");
+            }
+            m_profStop(prof_, "adapt");
+
+            // reset the velocity
+            m_profStart(prof_, "set velocity");
+            // set the velocity field
+            const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
+                                                m_max(grid_->interp()->nghost_back(), 3)};
+            SetValue     set_velocity(lambda_velocity, ghost_len_interp);
+            set_velocity(grid_, vel_);
+            m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
+            m_profStop(prof_, "set velocity");
         }
         // we run the first diagnostic if not done yet
         if (iter == 0) {
@@ -295,7 +301,10 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     long    global_num_quad = grid_->global_num_quadrants();
     m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e)", iter, time, min_level, max_level, density, err2, erri);
     if (rank == 0) {
-        file_diag = fopen(string(folder_diag_ + "/diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + ".data").c_str(), "a+");
+        lid_t adapt_freq = no_adapt_ ? 0 : iter_adapt();
+        string weno_name = fix_weno_ ? "_cons" : "_weno"; 
+        string file_name = "diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq)+ weno_name +to_string(weno_)+ ".data";
+        file_diag = fopen(string(folder_diag_ + "/" + file_name).c_str(), "a+");
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, global_num_quad, min_level, max_level);
         fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());

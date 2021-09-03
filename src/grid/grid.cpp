@@ -594,8 +594,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
                 // compute the criterion on the previous dimension
                 m_profStart(prof_, "criterion");
+<<<<<<< HEAD
                 const lda_t criterion_dim = ida - 1;
                 DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, criterion_dim);
+=======
+                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail, prof_);
+>>>>>>> dev-advection
                 m_profStop(prof_, "criterion");
 
                 // finish the ghost for the current dimension
