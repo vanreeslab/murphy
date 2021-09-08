@@ -94,7 +94,7 @@ void GridBlock::UpdateStatusFromCriterion(/* params */ const lda_t ida, const Wa
     //-------------------------------------------------------------------------
     // prevent coarsening of a block that has been refined, we can always re-refine a block that has been coarsened
     // as a matter of fact, if we compute the details on a block that has been refined, they should be 0, which would not make sense to coarsen again.
-    const bool forbid_coarsening = (level_ == 0) || (status_lvl_ == M_ADAPT_NEW_FINE);
+    const bool forbid_coarsening = (!local_children_.empty()) || (!ghost_children_.empty()) || (level_ == 0) || (status_lvl_ == M_ADAPT_NEW_FINE);
     const bool forbid_refinement = (level_ == P8EST_QMAXLEVEL);
     // determine if I have already a decision done = no corsening + no refinement possible or other dimension decided to refine
     // if another dimension has decided to coarsen, we can always change our mind

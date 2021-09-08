@@ -720,6 +720,12 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             }
         }
 
+#ifndef NDEBUG
+        const level_t min_level = this->MinLevel();
+        const level_t max_level = this->MaxLevel();
+        m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
+#endif
+
         m_log_level_minus;
         // increment the counter
         ++iteration;
