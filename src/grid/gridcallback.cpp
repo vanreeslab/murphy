@@ -340,8 +340,8 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
 #ifndef NDEBUG
             // I can only refine an already refined  coarsen an already refined
             bool is_status_ok = (block_out->status_level() != M_ADAPT_NONE) &&
-                                ((block_out->status_level() >= M_ADAPT_SAME) || !(num_incoming = 1 && block_out->status_level() == M_ADAPT_NEW_FINE));
-            m_assert(is_status_ok, "the leaving block must have valid status: %d with incomming = %d", block_out->status_level(), incoming);
+                                ((block_out->status_level() >= M_ADAPT_SAME) || !(num_incoming == 1 && block_out->status_level() == M_ADAPT_NEW_FINE));
+            m_assert(is_status_ok, "the leaving block must have valid status: %d with incomming = %d", block_out->status_level(), num_incoming);
 #endif
 
             // globaly we created the block ourselves
