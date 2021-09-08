@@ -335,9 +335,14 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
 
         if (n_active == 0) { /* most common: if we had no active dependencies, allocate new blocks, lock them and add them */
-            // we cannot have an old status or a none status here
-            // the status might be SAME because of the 2:1 imposition done by p4est
-            m_assert(block_out->status_level() >= M_ADAPT_SAME, "the leaving block must have status  >= %d instead of %d", M_ADAPT_SAME, block_out->status_level());
+                             // we cannot have an old status or a none status here
+                             // the status might be SAME because of the 2:1 imposition done by p4est
+#ifndef NDEBUG
+            // I can only refine an already refined  coarsen an already refined
+            bool is_status_ok = (block_out->status_level() != M_ADAPT_NONE) &&
+                                ((block_out->status_level() >= M_ADAPT_SAME) || !(num_incoming = 1 && block_out->status_level() == M_ADAPT_NEW_FINE));
+            m_assert(is_status_ok, "the leaving block must have valid status: %d with incomming = %d", block_out->status_level(), incoming);
+#endif
 
             // globaly we created the block ourselves
             m_assert(n_active_total == 0, "we must have created the associated block");
