@@ -28,6 +28,14 @@ typedef enum StatusAdapt {
     
 } StatusAdapt;
 
+typedef enum StatusNghIndex {
+    M_LOC_PARENT = 0,
+    M_GLO_PARENT = 1,
+    M_LOC_CHILDREN = 2,
+    M_GLO_CHILDREN = 3
+    
+} StatusNghIndex;
+
 /**
  * @brief a @ref CartBlock with ghosting and wavelet capabilities
  * 
@@ -36,7 +44,7 @@ class GridBlock : public CartBlock {
    private:
     bidx_t      ghost_len_[2];                               //!< contains the current ghost length
     StatusAdapt status_lvl_                 = M_ADAPT_NONE;  //!< indicate the status of the block
-    short_t*    status_ngh_                 = nullptr;       //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
+    short_t*    status_ngh_[4]              = {nullptr};     //!< status of my neighbors, see StatusNghIndex
     short_t     n_dependency_active_        = 0;             //!< list of dependency = how to create my information after refinement/coarsening
     GridBlock*  dependency_[P8EST_CHILDREN] = {nullptr};     //!< the pointer to the dependency block
 
@@ -90,16 +98,18 @@ class GridBlock : public CartBlock {
                                    /* prof */ Prof* profiler);
     void UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
                                  /* prof */ Prof* profiler);
-    void UpdateStatusFromPolicy();
+    void UpdateStatusFromLocalPolicy(const level_t min_level, const level_t max_level);
+    void UpdateStatusFromGlobalPolicy();
 
     void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
     void UpdateSmoothingMask(const Wavelet* const interp);
 
     // void FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler);
-    void SetNewByCoarsening(const qid_t*  qid, short_t* const  coarsen_vec) const;
-    void GetNewByCoarseningFromNeighbors(const short_t* const  status_vec, MPI_Win status_window);
-    void UpdateDetails();
+    void SyncStatusInit(const qid_t*  qid, short_t* const  coarsen_vec);
+    void SyncStatusUpdate(const short_t* const  status_vec, MPI_Win status_window);
+    void SyncStatusFinalize();
+    // void UpdateDetails();
     /** @} */
 
     /**

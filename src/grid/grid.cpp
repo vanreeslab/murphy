@@ -629,12 +629,23 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // m_profStart(prof_, "status");
         // DoOpMesh(nullptr, &GridBlock::StatusForgetPast, this);
         // m_profStop(prof_, "status");
+        //................................................
+        {
+            m_profStart(prof_, "update status");
+            // up to here, the blocks all have their "ideal" status, we now need to apply the policies
+            // then we update from the local policies (levels, etc)
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromLocalPolicy, this, level_limit_min_, level_limit_max_);
 
-        // synchronize the statuses and handle the neighbor policies
-        m_profStart(prof_, "update status");
-        ghost_->UpdateStatus();
-        DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
-        m_profStop(prof_, "update status");
+            // once the local policies are done, I need to take care of the global policies that require a sync of the status
+            ghost_->SyncStatusInit();
+            ghost_->SyncStatusUpdate();
+
+            // adapt my own status based on my neighbors
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromGlobalPolicy, this);
+
+            ghost_->SyncStatusFinalize();
+            m_profStop(prof_, "update status");
+        }
 
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
@@ -696,7 +707,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //................................................
         // solve the jump in resolution
         m_profStart(prof_, "update status");
-        ghost_->UpdateStatus();
+        // get to know the status of my neighbors
+        ghost_->SyncStatusInit();
+        ghost_->SyncStatusUpdate();
+        // ghost_->SyncStatusFinalize();
         m_profStop(prof_, "update status");
 
         // solve resolution jump if needed
@@ -704,6 +718,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         m_profStart(prof_, "smooth jump");
         DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
         m_profStop(prof_, "smooth jump");
+
+        ghost_->SyncStatusFinalize();
 
         //................................................
         // sum over the ranks and see if we keep going

@@ -63,13 +63,15 @@ class Ghost {
 
    public:
     Ghost(ForestGrid*  grid, const Wavelet*  interp, Prof*  profiler);
-    Ghost(ForestGrid*  grid, const level_t min_level, const level_t max_level, const Wavelet*  interp, Prof*  profiler);
+    Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const Wavelet* interp, Prof* profiler);
     ~Ghost();
 
     // MPI_Group mirror_origin_group() const { return ingroup_; };
     // MPI_Group mirror_target_group() const { return outgroup_; };
 
-    void UpdateStatus();
+    void SyncStatusInit();
+    void SyncStatusUpdate();
+    void SyncStatusFinalize();
 
     void SetLength(bidx_t ghost_len[2]);
 

@@ -160,13 +160,6 @@ void SimpleAdvection::Run() {
                 grid_->SetRecursiveAdapt(true);
                 grid_->Adapt(scal_);
 
-#ifndef NDEBUG
-                // check/get the max detail on the current grid
-                real_t det_maxmin[2];
-                grid_->MaxMinDetails(scal_, det_maxmin);
-                m_log("rtol = %e, max detail = %e", grid_->rtol(), det_maxmin[0]);
-                m_assert(grid_->rtol() >= det_maxmin[0], "the max detail cannot be > than the tol: %e vs %e", det_maxmin[0], grid_->rtol());
-#endif
             } else {
                 m_assert(false, "this option is not supported without a solution field");
             }
