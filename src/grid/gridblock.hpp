@@ -29,8 +29,10 @@ typedef enum StatusAdapt {
 typedef enum StatusNghIndex {
     M_LOC_PARENT = 0,
     M_GLO_PARENT = 1,
-    M_LOC_CHILDREN = 2,
-    M_GLO_CHILDREN = 3
+    M_LOC_SIBLING = 2,
+    M_GLO_SIBLING = 3,
+    M_LOC_CHILDREN = 4,
+    M_GLO_CHILDREN = 5,
     
 } StatusNghIndex;
 
@@ -46,7 +48,7 @@ class GridBlock : public CartBlock {
     // status tracking
     bool        status_refined_ = false;         //!< track if the block has been refined, which prevents a new coarsening
     StatusAdapt status_lvl_     = M_ADAPT_SAME;  //!< indicate the status of the block
-    short_t*    status_ngh_[4]  = {nullptr};     //!< status of my neighbors, see StatusNghIndex
+    short_t*    status_ngh_[6]  = {nullptr};     //!< status of my neighbors, see StatusNghIndex
 
     // dependency tracking
     short_t    n_dependency_active_        = 0;          //!< list of dependency = how to create my information after refinement/coarsening

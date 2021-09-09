@@ -265,15 +265,19 @@ void GridBlock::UpdateStatusFromGlobalPolicy() {
     bool forbid_coarsening = (local_children_.size() + ghost_children_.size()) > 0;
     bool forbid_refining   = (local_parent_.size() + ghost_parent_.size()) > 0;
 
-    // I cannot coarsen if one of my coarser neighbor wants to refine -> rule (1)
+    // I cannot coarsen if one of my coarser or same level neighbor wants to refine -> rule (1)
     {
-        iblock_t nblock = local_parent_.size();
-        for (iblock_t icount = 0; icount < nblock; icount++) {
+        for (iblock_t icount = 0; icount < local_parent_.size(); icount++) {
             forbid_coarsening = forbid_coarsening || (status_ngh_[M_LOC_PARENT][icount] == M_ADAPT_FINER);
         }
-        nblock = ghost_parent_.size();
-        for (iblock_t icount = 0; icount < nblock; icount++) {
+        for (iblock_t icount = 0; icount < ghost_parent_.size(); icount++) {
             forbid_coarsening = forbid_coarsening || (status_ngh_[M_GLO_PARENT][icount] == M_ADAPT_FINER);
+        }
+        for (iblock_t icount = 0; icount < local_sibling_.size(); icount++) {
+            forbid_coarsening = forbid_coarsening || (status_ngh_[M_LOC_SIBLING][icount] == M_ADAPT_FINER);
+        }
+        for (iblock_t icount = 0; icount < ghost_sibling_.size(); icount++) {
+            forbid_coarsening = forbid_coarsening || (status_ngh_[M_GLO_SIBLING][icount] == M_ADAPT_FINER);
         }
     }
 
@@ -300,21 +304,26 @@ void GridBlock::UpdateStatusFromGlobalPolicy() {
  */
 void GridBlock::SyncStatusInit() {
     //--------------------------------------------------------------------------
-    
+
     // allocate the local status_ngh array
     iblock_t nblocks_total = (local_parent_.size() + ghost_parent_.size() +
+                              local_sibling_.size() + ghost_sibling_.size() +
                               local_children_.size() + ghost_children_.size());
 
     // make sure of the order
     m_assert(M_LOC_PARENT == 0, "the first must be the Local parents");
     m_assert(M_GLO_PARENT == 1, "the first must be the Local parents");
-    m_assert(M_LOC_CHILDREN == 2, "the first must be the Local parents");
-    m_assert(M_GLO_CHILDREN == 3, "the first must be the Local parents");
+    m_assert(M_LOC_SIBLING == 2, "the first must be the Local parents");
+    m_assert(M_GLO_SIBLING == 3, "the first must be the Local parents");
+    m_assert(M_LOC_CHILDREN == 4, "the first must be the Local parents");
+    m_assert(M_GLO_CHILDREN == 5, "the first must be the Local parents");
 
     // split the array
     status_ngh_[M_LOC_PARENT]   = reinterpret_cast<short_t*>(m_calloc(nblocks_total * sizeof(short_t)));
     status_ngh_[M_GLO_PARENT]   = status_ngh_[M_LOC_PARENT] + local_parent_.size();
-    status_ngh_[M_LOC_CHILDREN] = status_ngh_[M_GLO_PARENT] + ghost_parent_.size();
+    status_ngh_[M_LOC_SIBLING] = status_ngh_[M_GLO_PARENT] + ghost_parent_.size();
+    status_ngh_[M_GLO_SIBLING] = status_ngh_[M_LOC_SIBLING] + local_sibling_.size();
+    status_ngh_[M_LOC_CHILDREN] = status_ngh_[M_GLO_SIBLING] + ghost_sibling_.size();
     status_ngh_[M_GLO_CHILDREN] = status_ngh_[M_LOC_CHILDREN] + local_children_.size();
     //--------------------------------------------------------------------------
 }
@@ -348,8 +357,6 @@ void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status
             ++count;
         }
     }
-
-    // loop over the remote finer blocks
     {
         iblock_t count = 0;
         for (auto* gblock : ghost_children_) {
@@ -359,7 +366,15 @@ void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status
             ++count;
         }
     }
-
+    {
+        iblock_t count = 0;
+        for (auto* gblock : ghost_sibling_) {
+            // m_log("count = %d -> requestion block cum id = %ld at rank %d", count, displ, gblock->rank());
+            m_assert(sizeof(short_t) == sizeof(short), "the two sizes must match to garantee mpi data types");
+            MPI_Get(status_ngh_[M_GLO_SIBLING] + count, 1, MPI_SHORT, gblock->rank(), gblock->cum_block_id(), 1, MPI_SHORT, status_window);
+            ++count;
+        }
+    }
     //..........................................................................
     // get the local ones now
     {
@@ -374,6 +389,13 @@ void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status
         iblock_t count = 0;
         for (auto* gblock : local_children_) {
             status_ngh_[M_LOC_CHILDREN][count] = status_vec[gblock->cum_block_id()];
+            ++count;
+        }
+    }
+    {
+        iblock_t count = 0;
+        for (auto* gblock : local_sibling_) {
+            status_ngh_[M_LOC_SIBLING][count] = status_vec[gblock->cum_block_id()];
             ++count;
         }
     }
