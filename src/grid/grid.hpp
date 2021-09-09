@@ -124,8 +124,8 @@ class Grid : public ForestGrid {
     [[nodiscard]] void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
     [[nodiscard]] lid_t NQuadToAdapt() const { return (n_quad_to_refine_ + n_quad_to_coarsen_); }
-    void                AddOneQuadToRefine() { ++n_quad_to_refine_; }
-    void                AddOneQuadToCoarsen() { ++n_quad_to_coarsen_; }
+    void                AddOneQuadToRefine() { n_quad_to_refine_ += 1; }
+    void                AddOneQuadToCoarsen() { n_quad_to_coarsen_ += 8; }
     // void                AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
     // void                AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
 
