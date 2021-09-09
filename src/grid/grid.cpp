@@ -558,30 +558,30 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     do {
         m_log("----> adaptation iteration %d", iteration);
         m_log_level_plus;
-        //................................................
-        // ghosting and criterion computation
-        bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+        //......................................................................
+        // cleanup the status
+        DoOpMesh(nullptr, &GridBlock::StatusCleanup, this);
+#ifndef NDEBUG
+        {
+            const level_t min_level = this->MinLevel();
+            const level_t max_level = this->MaxLevel();
+            m_log("--> iteration on a grid with %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
+        }
+#endif
+
+        //......................................................................
+        // get the desired status
         if (!(field_detail == nullptr)) {
-            m_profStart(prof_, "ghost for criterion");
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
+            // ghost the dimension 0
+            m_profStart(prof_, "ghost for criterion");
+            
             // get the length
+            bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
             GhostPull_SetLength(field_detail, ghost_len);
+
             // start the ghosting in the first dimension only
             GhostPull_Post(field_detail, 0, ghost_len);
-            m_profStop(prof_, "ghost for criterion");
-        }
-
-        // while waiting, reset the status on the blocks, while keeping in mind the past if necessary
-        // if (recursive_adapt()) {
-        //     m_profStart(prof_, "status");
-        //     DoOpMesh(nullptr, &GridBlock::StatusRememberPast, this);
-        //     m_profStop(prof_, "status");
-        // }
-
-        if (!(field_detail == nullptr)) {
-            m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
-            // wait for the dim = 0 to finish
-            m_profStart(prof_, "ghost for criterion");
             GhostPull_Wait(field_detail, 0, ghost_len);
             m_profStop(prof_, "ghost for criterion");
             // now we can start the next dimensions
@@ -606,26 +606,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStart(prof_, "criterion");
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail, prof_);
             m_profStop(prof_, "criterion");
+
             // register the computed ghosts
             field_detail->ghost_len(ghost_len);
         }
-
-#ifndef NDEBUG
-        const level_t min_level = this->MinLevel();
-        const level_t max_level = this->MaxLevel();
-        m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
-        // check/get the max detail on the current grid
-        real_t det_maxmin[2];
-        this->MaxMinDetails(field_detail, det_maxmin);
-        m_log("rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
-#endif
-
-        // // compute the criterion or use the patches to get the status
-        // if (!(field_detail == nullptr)) {
-        //     // compute the details
-        //     DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, prof_);
-        // }
-
         // if needed, compute some patches
         if (!(patches == nullptr)) {
             // get the patches processed
@@ -633,24 +617,45 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
             m_profStop(prof_, "patch");
         }
+        //......................................................................
+#ifndef NDEBUG
+        {
+            // check/get the max detail on the current grid
+            real_t det_maxmin[2];
+            this->MaxMinDetails(field_detail, det_maxmin);
+            m_log("--> before adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+        }
+#endif
 
-        // the status should now be fully determined, erase the past
-        // and set M_ADAPT_SAME if M_ADAPT_NONE
-        // m_profStart(prof_, "status");
-        // DoOpMesh(nullptr, &GridBlock::StatusForgetPast, this);
-        // m_profStop(prof_, "status");
-        //................................................
+        //......................................................................
+        // every block has its own desired status by now: finer, coarser or same
+        // we need to apply a few policies to make sure that
+        // (1) two neighboring blocks don't do the opposite operation (coarsen and refine)
+        // (2)
         {
             m_profStart(prof_, "update status");
-            // up to here, the blocks all have their "ideal" status, we now need to apply the policies
-            // then we update from the local policies (levels, etc)
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromLocalPolicy, this, level_limit_min_, level_limit_max_);
+            // first apply the local policies (max/min levels)
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromLevel, this, level_limit_min_, level_limit_max_);
 
-            // once the local policies are done, I need to take care of the global policies that require a sync of the status
+            // allocate the neighbor status vectors on everyblock
             ghost_->SyncStatusInit();
-            ghost_->SyncStatusUpdate();
 
-            // adapt my own status based on my neighbors
+            // I need to make sure that the if one block needs to refine, all the coarser neighbors get that signal
+            // first step is to put refine to everybody
+            const level_t max_level = MaxLevel();
+            const level_t min_level = MinLevel();
+            for (level_t il = (max_level - 1); il >= min_level; --il) {
+                // the finer level fills the status
+                ghost_->SyncStatusFill(il + 1, il + 1);
+                // get the update in the current level
+                ghost_->SyncStatusUpdate(il, il);
+                // forward the refinement criterion: if my finer neighbor has to refine, I refine as well
+                DoOpMeshLevel(nullptr, &GridBlock::UpdateStatusForwardRefinement, this, il);
+            }
+
+            // now adapt my status based on the status of my neighbors
+            ghost_->SyncStatusFill();
+            ghost_->SyncStatusUpdate();
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromGlobalPolicy, this);
 
             ghost_->SyncStatusFinalize();
@@ -719,6 +724,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         m_profStart(prof_, "update status");
         // get to know the status of my neighbors
         ghost_->SyncStatusInit();
+        ghost_->SyncStatusFill();
         ghost_->SyncStatusUpdate();
         // ghost_->SyncStatusFinalize();
         m_profStop(prof_, "update status");
@@ -746,16 +752,14 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             }
         }
 
-// #ifndef NDEBUG
-//         const level_t min_level = this->MinLevel();
-//         const level_t max_level = this->MaxLevel();
-//         m_log("--> grid adaptation done: now %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
-//         // check/get the max detail on the current grid
-//         real_t det_maxmin[2];
-//         this->MaxMinDetails(field_detail, det_maxmin);
-//         m_log("rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
-// #endif
-
+#ifndef NDEBUG
+        {
+            // check/get the max detail on the current grid
+            real_t det_maxmin[2];
+            this->MaxMinDetails(field_detail, det_maxmin);
+            m_log("--> after adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+        }
+#endif
         m_log_level_minus;
         // increment the counter
         ++iteration;

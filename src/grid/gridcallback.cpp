@@ -337,12 +337,12 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         if (n_active == 0) { /* most common: if we had no active dependencies, allocate new blocks, lock them and add them */
                              // we cannot have an old status or a none status here
                              // the status might be SAME because of the 2:1 imposition done by p4est
-#ifndef NDEBUG
-            // I can only refine an already refined  coarsen an already refined
-            bool is_status_ok = (block_out->status_level() != M_ADAPT_NONE) &&
-                                ((block_out->status_level() >= M_ADAPT_SAME) || !(num_incoming == 1 && block_out->status_level() == M_ADAPT_NEW_FINE));
-            m_assert(is_status_ok, "the leaving block must have valid status: %d with incomming = %d", block_out->status_level(), num_incoming);
-#endif
+// #ifndef NDEBUG
+//             // I can only refine an already refined  coarsen an already refined
+//             bool is_status_ok = (block_out->status_level() != M_ADAPT_NONE) &&
+//                                 ((block_out->status_level() >= M_ADAPT_SAME) || !(num_incoming == 1 && block_out->status_level() == M_ADAPT_NEW_FINE));
+//             m_assert(is_status_ok, "the leaving block must have valid status: %d with incomming = %d", block_out->status_level(), num_incoming);
+// #endif
 
             // globaly we created the block ourselves
             m_assert(n_active_total == 0, "we must have created the associated block");
@@ -442,7 +442,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     iblock_t n_reassign = 0;
     for (iblock_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
-        m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
+        // m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
         n_reassign += (block_out->status_level() == M_ADAPT_NEW_COARSE) || (block_out->status_level() == M_ADAPT_NEW_FINE);
     }
     m_assert(n_reassign == 0 || n_reassign == num_outgoing, "the number of reassigning (=%d) must be 0 or %d", n_reassign, num_outgoing);
@@ -505,7 +505,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     iblock_t n_reassign = 0;
     for (iblock_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
-        m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
+        // m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
         n_reassign += (block_out->status_level() == M_ADAPT_NEW_COARSE) || (block_out->status_level() == M_ADAPT_NEW_FINE);
     }
     m_assert(n_reassign == 0 || n_reassign == num_outgoing, "the number of reassigning (=%d) must be 0 or %d", n_reassign, num_outgoing);

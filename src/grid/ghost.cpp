@@ -389,13 +389,22 @@ void Ghost::SyncStatusInit() {
     //--------------------------------------------------------------------------
     // get the status to the array
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOpMeshLevel(nullptr, &GridBlock::SyncStatusInit, grid_, il, status_);
+        DoOpMeshLevel(nullptr, &GridBlock::SyncStatusInit, grid_, il);
     }
-
-    // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
-    MPI_Win_post(ingroup_, 0, status_window_);
-    MPI_Win_start(outgroup_, 0, status_window_);
     //--------------------------------------------------------------------------
+    m_end;
+}
+
+void Ghost::SyncStatusFill(const level_t min_level, const level_t max_level) {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // update neigbbor status, only use the already computed status on level il + 1
+    level_t local_min_level = m_max(min_level, min_level_);
+    level_t local_max_level = m_min(max_level, max_level_);
+    for (level_t il = local_min_level; il <= local_max_level; il++) {
+        DoOpMeshLevel(nullptr, &GridBlock::SyncStatusFill, grid_, il, status_);
+    }
+    //-------------------------------------------------------------------------
     m_end;
 }
 
@@ -403,22 +412,31 @@ void Ghost::SyncStatusInit() {
  * @brief performs the MPI_Get operations for status sync
  * 
  */
-void Ghost::SyncStatusUpdate() {
+void Ghost::SyncStatusUpdate(const level_t min_level, const level_t max_level) {
     m_begin;
     //-------------------------------------------------------------------------
+    // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
+    MPI_Win_post(ingroup_, 0, status_window_);
+    MPI_Win_start(outgroup_, 0, status_window_);
+
     // update neigbbor status, only use the already computed status on level il + 1
-    for (level_t il = min_level_; il <= max_level_; il++) {
+    level_t local_min_level = m_max(min_level, min_level_);
+    level_t local_max_level = m_min(max_level, max_level_);
+    
+    for (level_t il = local_min_level; il <= local_max_level; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SyncStatusUpdate, grid_, il, status_, status_window_);
     }
+
+    // finalize the comm
+    MPI_Win_complete(status_window_);
+    MPI_Win_wait(status_window_);
     //-------------------------------------------------------------------------
     m_end;
 }
 
 void Ghost::SyncStatusFinalize() {
     //-------------------------------------------------------------------------
-    // close the access epochs
-    MPI_Win_complete(status_window_);
-    MPI_Win_wait(status_window_);
+    // deallocate the
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SyncStatusFinalize, grid_, il);
     }

@@ -21,11 +21,9 @@
 typedef enum StatusAdapt {
     M_ADAPT_NEW_COARSE,
     M_ADAPT_NEW_FINE,
-    M_ADAPT_NONE,
     M_ADAPT_SAME,
     M_ADAPT_COARSER,
     M_ADAPT_FINER,
-    
 } StatusAdapt;
 
 typedef enum StatusNghIndex {
@@ -42,12 +40,19 @@ typedef enum StatusNghIndex {
  */
 class GridBlock : public CartBlock {
    private:
-    bidx_t      ghost_len_[2];                               //!< contains the current ghost length
-    StatusAdapt status_lvl_                 = M_ADAPT_NONE;  //!< indicate the status of the block
-    short_t*    status_ngh_[4]              = {nullptr};     //!< status of my neighbors, see StatusNghIndex
-    short_t     n_dependency_active_        = 0;             //!< list of dependency = how to create my information after refinement/coarsening
-    GridBlock*  dependency_[P8EST_CHILDREN] = {nullptr};     //!< the pointer to the dependency block
+    // active ghost lengths
+    bidx_t ghost_len_[2] = {0, 0};  //!< contains the current ghost length
 
+    // status tracking
+    bool        status_refined_ = false;         //!< track if the block has been refined, which prevents a new coarsening
+    StatusAdapt status_lvl_     = M_ADAPT_SAME;  //!< indicate the status of the block
+    short_t*    status_ngh_[4]  = {nullptr};     //!< status of my neighbors, see StatusNghIndex
+
+    // dependency tracking
+    short_t    n_dependency_active_        = 0;          //!< list of dependency = how to create my information after refinement/coarsening
+    GridBlock* dependency_[P8EST_CHILDREN] = {nullptr};  //!< the pointer to the dependency block
+
+    // temp memory
     mem_ptr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
 
     // list of ghosting
@@ -59,7 +64,7 @@ class GridBlock : public CartBlock {
     std::list<NeighborBlock<MPI_Aint>*>   ghost_parent_;          //!< ghost neighbors coarser (neighbor to me)
     std::list<NeighborBlock<MPI_Aint>*>   ghost_children_;        //!< ghost neighbors coarser (neighbor to me)
     std::list<NeighborBlock<MPI_Aint>*>   ghost_parent_reverse_;  //!<  ghost neighbors coarser (me to neighbors)
-    std::list<PhysBlock*>              phys_;                  //!<  physical boundary condition
+    std::list<PhysBlock*>                 phys_;                  //!<  physical boundary condition
 
    public:
     explicit GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
@@ -72,10 +77,18 @@ class GridBlock : public CartBlock {
     StatusAdapt status_level() const { return status_lvl_; };
     void        status_level(const StatusAdapt status) { status_lvl_ = status; };
 
-    /** @brief set the status to M_ADAPT_NONE*/
+    /** @brief reset the status, ready to go for adaptation */
     void StatusReset() {
-        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
-        status_lvl_ = M_ADAPT_NONE;
+        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
+        status_lvl_     = M_ADAPT_SAME;
+        status_refined_ = false;
+    };
+
+    /** @brief reset the status after one pass of adaptation, register if the block has been refined already once */
+    void StatusCleanup() {
+        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
+        status_refined_ = status_refined_ || (status_lvl_ == M_ADAPT_NEW_FINE);
+        status_lvl_     = M_ADAPT_SAME;
     };
 
     // void StatusCleanup() { status_lvl_ = (status_lvl_ == M_ADAPT_NONE)? M_ADAPT_SAME : status_lvl_; };
@@ -98,16 +111,19 @@ class GridBlock : public CartBlock {
                                    /* prof */ Prof* profiler);
     void UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
                                  /* prof */ Prof* profiler);
-    void UpdateStatusFromLocalPolicy(const level_t min_level, const level_t max_level);
+    
+    void UpdateStatusFromLevel(const level_t min_level, const level_t max_level);
+    void UpdateStatusForwardRefinement();
     void UpdateStatusFromGlobalPolicy();
 
     void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
-    void UpdateSmoothingMask(const Wavelet* const interp);
+    // void UpdateSmoothingMask(const Wavelet* const interp);
 
     // void FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler);
-    void SyncStatusInit(const qid_t*  qid, short_t* const  coarsen_vec);
-    void SyncStatusUpdate(const short_t* const  status_vec, MPI_Win status_window);
+    void SyncStatusInit();
+    void SyncStatusFill(const qid_t* qid, short_t* const coarsen_vec);
+    void SyncStatusUpdate(const short_t* const status_vec, MPI_Win status_window);
     void SyncStatusFinalize();
     // void UpdateDetails();
     /** @} */

@@ -11,11 +11,12 @@
 #include "grid/forestgrid.hpp"
 #include "grid/ghostblock.hpp"
 #include "grid/gridblock.hpp"
-#include "prof.hpp"
+#include "tools/prof.hpp"
+#include "tools/toolsp4est.hpp"
 #include "wavelet/wavelet.hpp"
 
 // alias boring names
-using GBLocal      = NeighborBlock<GridBlock *>;
+using GBLocal      = NeighborBlock<GridBlock*>;
 using GBMirror     = NeighborBlock<MPI_Aint>;
 using GBPhysic     = PhysBlock;
 using ListGBLocal  = std::list<GBLocal *>;
@@ -66,11 +67,9 @@ class Ghost {
     Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const Wavelet* interp, Prof* profiler);
     ~Ghost();
 
-    // MPI_Group mirror_origin_group() const { return ingroup_; };
-    // MPI_Group mirror_target_group() const { return outgroup_; };
-
     void SyncStatusInit();
-    void SyncStatusUpdate();
+    void SyncStatusFill(const level_t min_level = 0, const level_t max_level = P8EST_QMAXLEVEL);
+    void SyncStatusUpdate(const level_t min_level = 0, const level_t max_level = P8EST_QMAXLEVEL);
     void SyncStatusFinalize();
 
     void SetLength(bidx_t ghost_len[2]);
