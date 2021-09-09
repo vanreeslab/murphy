@@ -671,7 +671,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         //................................................
         // reset the adapt counter, it will be updated in the interpolate fct
-        n_quad_to_adapt_ = 0;
+        n_quad_to_refine_  = 0;
+        n_quad_to_coarsen_ = 0;
         // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
@@ -689,9 +690,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case
-        m_profStart(prof_, "p4est balance");
-        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
-        m_profStop(prof_, "p4est balance");
+        // m_profStart(prof_, "p4est balance");
+        // p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
+        // m_profStop(prof_, "p4est balance");
 
         //................................................
         // solve the dependencies on the grid
@@ -739,9 +740,13 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         //................................................
         // sum over the ranks and see if we keep going
-        m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
-        MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-        m_log("we have adapted %d blocks", global_n_quad_to_adapt);
+        m_assert(n_quad_to_coarsen_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        m_assert(n_quad_to_refine_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        int global_n_adapt[2];
+        int n_adapt[2] = {n_quad_to_coarsen_, n_quad_to_refine_};
+        MPI_Allreduce(n_adapt, global_n_adapt, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        global_n_quad_to_adapt = global_n_adapt[0] + global_n_adapt[1];
+        m_log("we have coarsened %d blocks and refined %d blocks -> %d new blocks", global_n_adapt[0], global_n_adapt[1],global_n_adapt[0]+ 8 * global_n_adapt[1]);
 
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {

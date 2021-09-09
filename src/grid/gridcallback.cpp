@@ -66,7 +66,7 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
 
     if (is_refinable) {
         // add one block to the count, this drives the recursive adaptation
-        grid->AddOneQuadToAdapt();
+        grid->AddOneQuadToRefine();
         return (true);
     } else {
         return (false);
@@ -91,7 +91,7 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
 
     if (is_coarsenable) {
         // add one block to the count, this drives the recursive adaptation
-        grid->AddOneQuadToAdapt();
+        grid->AddOneQuadToCoarsen();
         return (true);
     } else {
         return (false);
@@ -225,7 +225,7 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
                   block->level() < grid->level_limit_max();
 
     if (refine) {
-        grid->AddOneQuadToAdapt();
+        grid->AddOneQuadToRefine();
     } else {
         // update the status if we will not refine
         StatusAdapt new_status = (current_status == M_ADAPT_FINER) ? (M_ADAPT_SAME) : (current_status);
@@ -258,7 +258,7 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     }
     // if I can coarsen the whole group, register them
     if (coarsen) {
-        grid->AddQuadToAdapt(P8EST_CHILDREN);
+        grid->AddOneQuadToCoarsen();
     } else {
         // if not, make sure that the block that wanted to get coarsened have their tag changed
         for (short_t id = 0; id < P8EST_CHILDREN; id++) {
