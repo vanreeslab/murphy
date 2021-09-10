@@ -76,8 +76,12 @@ class GridBlock : public CartBlock {
      * @name Status level management
      *
      * @{ */
-    StatusAdapt status_level() const { return status_lvl_; };
-    void        status_level(const StatusAdapt status) { status_lvl_ = status; };
+
+    void status_level(const StatusAdapt status) { status_lvl_ = status; };
+    void status_refined(const bool status) { status_refined_ = status; }
+
+    [[nodiscard]] StatusAdapt status_level() const { return status_lvl_; };
+    [[nodiscard]] bool        status_refined() const { return status_refined_; }
 
     /** @brief reset the status, ready to go for adaptation */
     void StatusReset() {
@@ -138,8 +142,8 @@ class GridBlock : public CartBlock {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
-    void       SmoothResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
+    void       SolveDependency(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, std::map<std::string, Field*>::const_iterator field_end, Prof* profiler);
+    void       SmoothResolutionJump(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, std::map<std::string, Field*>::const_iterator field_end, Prof* profiler);
     // void       ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
     /** @} */
 
