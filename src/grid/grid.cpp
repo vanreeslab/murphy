@@ -619,7 +619,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
         //......................................................................
 #ifndef NDEBUG
-        {
+        if (field_detail != nullptr) {
             // check/get the max detail on the current grid
             real_t det_maxmin[2];
             this->MaxMinDetails(field_detail, det_maxmin);
@@ -760,7 +760,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
 
 #ifndef NDEBUG
-        {
+        if (field_detail != nullptr) {
             // check/get the max detail on the current grid
             real_t det_maxmin[2];
             this->MaxMinDetails(field_detail, det_maxmin);
@@ -794,11 +794,13 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
 #ifndef NDEBUG
-    // check/get the max detail on the current grid
-    real_t det_maxmin[2];
-    this->MaxMinDetails(field_detail, det_maxmin);
-    m_log("rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
-    m_assert(this->rtol() >= det_maxmin[0], "the max detail cannot be > than the tol: %e vs %e", det_maxmin[0], this->rtol());
+    if (field_detail != nullptr) {
+        // check/get the max detail on the current grid
+        real_t det_maxmin[2];
+        this->MaxMinDetails(field_detail, det_maxmin);
+        m_log("rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+        m_assert(this->rtol() >= det_maxmin[0], "the max detail cannot be > than the tol: %e vs %e", det_maxmin[0], this->rtol());
+    }
 #endif
     m_end;
 }
