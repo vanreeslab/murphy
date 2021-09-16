@@ -37,7 +37,7 @@ using std::map;
 using std::memcpy;
 
 constexpr size_t PartitionerBlockSize(const MemLayout* layout, const lda_t lda) {
-    return (layout->n_elem * lda + 1);
+    return (layout->n_elem * lda + 2);
 }
 
 /**
@@ -87,7 +87,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
 
     // init the array of current blocks and store their adress before we send it
     const iblock_t n_loc_block = forest->local_num_quadrants;
-    old_blocks_             = reinterpret_cast<GridBlock **>(m_calloc(n_loc_block * sizeof(GridBlock *)));
+    old_blocks_                = reinterpret_cast<GridBlock **>(m_calloc(n_loc_block * sizeof(GridBlock *)));
     // store all the old block adresses before they get send
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; ++it) {
         p8est_tree_t *mytree = p8est_tree_array_index(forest->trees, it);
@@ -463,14 +463,15 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
 
             // copy the field to the buffer
             // real_t *buf = send_buf + (q_send_cum_request[is] + iq) * PartCommSize(n_lda_);
-            real_t *buf = send_buf + (q_send_cum_request[is] + iq) * block_size * n_lda_;
+            const MemLayout blocklayout = block->BlockLayout();
+            real_t *buf = send_buf + (q_send_cum_request[is] + iq) * PartitionerBlockSize(&blocklayout,  n_lda_);
             // the first number is the status
             m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
             m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
             buf[0] = static_cast<real_t>(block->status_level());
             buf[1] = static_cast<real_t>(block->status_refined());
             // shift the buffer for the data
-            buf += 1;
+            buf += 2;
             lda_t idacount = 0;
             for (const auto iter : *fields) {
                 const Field *fid = iter.second;
@@ -552,7 +553,8 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
         for (iblock_t iq = 0; iq < n_q2recv; ++iq) {
             GridBlock *  block      = new_blocks[q_recv_cum_block[idx] + iq];
             const size_t block_size = block->BlockLayout().n_elem;
-            real_t *     buf        = recv_buf + (q_recv_cum_request[idx] + iq) * block_size * n_lda_;
+            const MemLayout blocklayout = block->BlockLayout();
+            real_t *     buf        = recv_buf + (q_recv_cum_request[idx] + iq) * PartitionerBlockSize(&blocklayout, n_lda_);
             m_assert(block != nullptr, "this block shouldn't be nullptr here");
 
             // unpack the status
