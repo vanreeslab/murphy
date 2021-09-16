@@ -307,12 +307,12 @@ real_t Wavelet::Criterion(/* source */ const MemSpan* span_src, const ConstMemDa
 /**
  * @brief Compute the detail coefficients are return the max infinite norm
  * 
- * @param block_src describes the source data layout
+ * @param span_src describes the source span
  * @param data the source data
- * @param detail_block describes the detail data layout
+ * @param span_detail describes the detail data layout
  * @param detail the detail data, if non-null the details are stored, cfr @ref Detail_ for storing policy
  * @param tol if > 0, used to decide wether a detail must be stored cfr @ref Detail_ for storing policy
- * @param details_max the max of the infinite norm on the details
+ * @param details_maxmin the max of the infinite norm on the details
  */
 void Wavelet::Details(/* source */ const MemSpan* span_src, const ConstMemData* data,
                       /* target */ const MemSpan* span_detail, const MemData* detail, const real_t tol,
@@ -384,25 +384,25 @@ void Wavelet::Details(/* source */ const MemSpan* span_src, const ConstMemData* 
  * We use first compute the detail coefficients using the wavelet transform, then
  * we compute the inverse wavelet transform on the details to remove and correct the field
  * 
- * @param block_src the region used a source term for the detail computation
- * @param block_trg the region which need to be smoothed
+ * @param span_src the region used a source term for the detail computation
+ * @param span_trg the region which need to be smoothed
  * @param data the data on which we operate
- * @param detail_block the region of details that need to be computed
+ * @param span_detail the region of details that need to be computed
  * @param detail_mask the mask on the details to compute (1.0 means we remove the detail)
  */
 void Wavelet::SmoothOnMask(/* source */ const MemSpan* span_src,
                            /* target */ const MemSpan* span_trg, const MemData* data,
-                           /* detail */ const MemSpan* detail_block, const MemData* detail_mask) const {
+                           /* detail */ const MemSpan* span_detail, const MemData* detail_mask) const {
     //-------------------------------------------------------------------------
     //.........................................................................
     // get the details
     real_t             to_trash[2] = {0.0, 0.0};
     const ConstMemData data_src(*data);
-    Details(span_src, &data_src, detail_block, detail_mask, -1.0, to_trash);
+    Details(span_src, &data_src, span_detail, detail_mask, -1.0, to_trash);
 
     // smooth based on the mask newly computed
     const ConstMemData mask(*detail_mask);
-    InterpCtx          ctx(0.0, detail_block, &mask, span_trg, data);
+    InterpCtx          ctx(0.0, span_detail, &mask, span_trg, data);
     Smooth_(&ctx);
 
     //.........................................................................
