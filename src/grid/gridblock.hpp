@@ -20,11 +20,9 @@
 typedef enum StatusAdapt {
     M_ADAPT_NEW_COARSE,
     M_ADAPT_NEW_FINE,
-    M_ADAPT_NONE,
     M_ADAPT_SAME,
     M_ADAPT_COARSER,
     M_ADAPT_FINER,
-    
 } StatusAdapt;
 
 // using GBLocal      = NeighborBlock<GridBlock*>;
@@ -35,17 +33,33 @@ using ListGBLocal  = std::list<GBLocal*>;
 using ListGBMirror = std::list<GBMirror*>;
 using ListGBPhysic = std::list<GBPhysic*>;
 
+typedef enum StatusNghIndex {
+    M_LOC_PARENT = 0,
+    M_GLO_PARENT = 1,
+    M_LOC_SIBLING = 2,
+    M_GLO_SIBLING = 3,
+    M_LOC_CHILDREN = 4,
+    M_GLO_CHILDREN = 5,
+    
+} StatusNghIndex;
+
 /**
  * @brief a @ref CartBlock with ghosting and wavelet capabilities
  * 
  */
 class GridBlock : public CartBlock {
    private:
-    bidx_t      ghost_len_[2];                               //!< contains the current ghost length
-    StatusAdapt status_lvl_                 = M_ADAPT_NONE;  //!< indicate the status of the block
-    short_t*    status_ngh_                 = nullptr;       //!< indicate if my sibling neighbors are going to coarsen, stored as local_sibling and then ghost_sibling
-    short_t     n_dependency_active_        = 0;             //!< list of dependency = how to create my information after refinement/coarsening
-    GridBlock*  dependency_[P8EST_CHILDREN] = {nullptr};     //!< the pointer to the dependency block
+    // active ghost lengths
+    bidx_t ghost_len_[2] = {0, 0};  //!< contains the current ghost length
+
+    // status tracking
+    bool        status_refined_ = false;         //!< track if the block has been refined, which prevents a new coarsening
+    StatusAdapt status_lvl_     = M_ADAPT_SAME;  //!< indicate the status of the block
+    short_t*    status_ngh_[6]  = {nullptr};     //!< status of my neighbors, see StatusNghIndex
+
+    // dependency tracking
+    short_t    n_dependency_active_        = 0;          //!< list of dependency = how to create my information after refinement/coarsening
+    GridBlock* dependency_[P8EST_CHILDREN] = {nullptr};  //!< the pointer to the dependency block
 
     MemPtr coarse_ptr_;  //!< a memory reserved for coarser version of myself, includes ghost points
 
@@ -83,13 +97,25 @@ class GridBlock : public CartBlock {
      * @name Status level management
      *
      * @{ */
-    StatusAdapt status_level() const { return status_lvl_; };
-    void        status_level(const StatusAdapt status) { status_lvl_ = status; };
 
-    /** @brief set the status to M_ADAPT_NONE*/
+    void status_level(const StatusAdapt status) { status_lvl_ = status; };
+    void status_refined(const bool status) { status_refined_ = status; }
+
+    [[nodiscard]] StatusAdapt status_level() const { return status_lvl_; };
+    [[nodiscard]] bool        status_refined() const { return status_refined_; }
+
+    /** @brief reset the status, ready to go for adaptation */
     void StatusReset() {
-        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
-        status_lvl_ = M_ADAPT_NONE;
+        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
+        status_lvl_     = M_ADAPT_SAME;
+        status_refined_ = false;
+    };
+
+    /** @brief reset the status after one pass of adaptation, register if the block has been refined already once */
+    void StatusCleanup() {
+        m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE/M_ADAPT_NONE < M_ADAPT_SAME");
+        status_refined_ = status_refined_ || (status_lvl_ == M_ADAPT_NEW_FINE);
+        status_lvl_     = M_ADAPT_SAME;
     };
 
     // void StatusCleanup() { status_lvl_ = (status_lvl_ == M_ADAPT_NONE)? M_ADAPT_SAME : status_lvl_; };
@@ -110,16 +136,22 @@ class GridBlock : public CartBlock {
 
     void UpdateStatusFromCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, const lda_t ida);
     void UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>* patch_list);
-    void UpdateStatusFromPolicy();
+    // void UpdateSmoothingMask(const Wavelet* interp);
+    
+    void UpdateStatusFromLevel(const level_t min_level, const level_t max_level);
+    void UpdateStatusForwardRefinement();
+    void UpdateStatusFromGlobalPolicy();
 
     void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
-    // void UpdateSmoothingMask(const Wavelet* interp);
+    // void UpdateSmoothingMask(const Wavelet* const interp);
 
     // void FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler);
-    void SetNewByCoarsening(const qid_t*  qid, short_t* const  coarsen_vec) const;
-    void GetNewByCoarseningFromNeighbors(const short_t* const  status_vec, MPI_Win status_window);
-    void UpdateDetails();
+    void SyncStatusInit();
+    void SyncStatusFill(const qid_t* qid, short_t* const coarsen_vec);
+    void SyncStatusUpdate(const short_t* const status_vec, MPI_Win status_window);
+    void SyncStatusFinalize();
+    // void UpdateDetails();
     /** @} */
 
     /**

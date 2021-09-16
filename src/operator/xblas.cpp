@@ -55,9 +55,9 @@ void BMinMax::operator()(const ForestGrid* grid, const Field* fid_x, real_t* min
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
     //--------------------------------------------------------------------------
     // go on the blocks, for each dim separately
-    for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
-        real_t res[2] = {std::numeric_limits<real_t>::min(),
-                         std::numeric_limits<real_t>::max()};
+    for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
+        real_t res[2] = {std::numeric_limits<real_t>::max(),
+                         std::numeric_limits<real_t>::min()};
 
         // store the dimension and go!
         DoOpMesh(this, &BMinMax::ComputeBMinMaxGridBlock, grid, fid_x, ida, res);

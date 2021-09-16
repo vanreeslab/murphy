@@ -466,7 +466,9 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
             real_t *buf = send_buf + (q_send_cum_request[is] + iq) * block_size * n_lda_;
             // the first number is the status
             m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
-            buf[0] = (real_t)block->status_level();
+            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
+            buf[0] = static_cast<real_t>(block->status_level());
+            buf[1] = static_cast<real_t>(block->status_refined());
             // shift the buffer for the data
             buf += 1;
             lda_t idacount = 0;
@@ -555,8 +557,10 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
 
             // unpack the status
             m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
+            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
             block->status_level(static_cast<StatusAdapt>(buf[0]));
-            buf += 1;  //shift the buffer
+            block->status_refined(static_cast<bool>(buf[1]));
+            buf += 2;  //shift the buffer
 
             bidx_t idacount = 0;
             for (auto iter : *fields) {
