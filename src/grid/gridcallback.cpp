@@ -66,7 +66,7 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant) {
 
     if (is_refinable) {
         // add one block to the count, this drives the recursive adaptation
-        grid->AddOneQuadToAdapt();
+        grid->AddOneQuadToRefine();
         return (true);
     } else {
         return (false);
@@ -91,7 +91,7 @@ int cback_Yes(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadrant[]) {
 
     if (is_coarsenable) {
         // add one block to the count, this drives the recursive adaptation
-        grid->AddOneQuadToAdapt();
+        grid->AddOneQuadToCoarsen();
         return (true);
     } else {
         return (false);
@@ -219,13 +219,15 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
 
     const StatusAdapt current_status = block->status_level();
 
+    // I allow refinement if we must and that the level is okay to do so (i.e. in the grid bounds)
     bool refine = current_status == M_ADAPT_FINER &&
                   grid->level_limit_min() <= block->level() &&
                   block->level() < grid->level_limit_max();
 
     if (refine) {
-        grid->AddOneQuadToAdapt();
+        grid->AddOneQuadToRefine();
     } else {
+        // update the status if we will not refine
         StatusAdapt new_status = (current_status == M_ADAPT_FINER) ? (M_ADAPT_SAME) : (current_status);
         block->status_level(new_status);
     }
@@ -243,6 +245,7 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     //-------------------------------------------------------------------------
     Grid* grid = reinterpret_cast<Grid*>(forest->user_pointer);
 
+    // I allow coarsening if ALL the j8 children blocks are OK with it
     bool coarsen = true;
     // for each of the children, check if any of them prevent the coarsening
     for (short_t id = 0; id < P8EST_CHILDREN; id++) {
@@ -255,7 +258,7 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
     }
     // if I can coarsen the whole group, register them
     if (coarsen) {
-        grid->AddQuadToAdapt(P8EST_CHILDREN);
+        grid->AddOneQuadToCoarsen();
     } else {
         // if not, make sure that the block that wanted to get coarsened have their tag changed
         for (short_t id = 0; id < P8EST_CHILDREN; id++) {
@@ -332,9 +335,14 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         m_assert(n_active == 0 || n_active == 1 || n_active == P8EST_CHILDREN, "the number of active dependency should always be 0 or %d, now: %d", P8EST_CHILDREN, n_active);
 
         if (n_active == 0) { /* most common: if we had no active dependencies, allocate new blocks, lock them and add them */
-            // StatusAdapt new_out_status = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
-            // block_out->status_level(new_out_status);
-            m_assert(block_out->status_level() == M_ADAPT_COARSER || block_out->status_level() == M_ADAPT_FINER, "the leaving block must have status %d or %d instead of %d", M_ADAPT_COARSER, M_ADAPT_FINER, block_out->status_level());
+                             // we cannot have an old status or a none status here
+                             // the status might be SAME because of the 2:1 imposition done by p4est
+// #ifndef NDEBUG
+//             // I can only refine an already refined  coarsen an already refined
+//             bool is_status_ok = (block_out->status_level() != M_ADAPT_NONE) &&
+//                                 ((block_out->status_level() >= M_ADAPT_SAME) || !(num_incoming == 1 && block_out->status_level() == M_ADAPT_NEW_FINE));
+//             m_assert(is_status_ok, "the leaving block must have valid status: %d with incomming = %d", block_out->status_level(), num_incoming);
+// #endif
 
             // globaly we created the block ourselves
             m_assert(n_active_total == 0, "we must have created the associated block");
@@ -343,8 +351,8 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
                 m_assert(block_in != nullptr, "block is null, ohoh");
 
                 // assign the status
-                StatusAdapt status = (num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE;
-                block_in->status_level(status);
+                StatusAdapt status_in = (num_incoming == 1) ? M_ADAPT_NEW_COARSE : M_ADAPT_NEW_FINE;
+                block_in->status_level(status_in);
 
                 // register the leaving block in the new one, using it's child id
                 int childid_out = (num_outgoing == 1) ? 0 : p4est_GetChildID(block_out->xyz(), block_out->level());
@@ -353,6 +361,9 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
                 // register the new block in the leaving one, using it's child id
                 int childid_in = (num_incoming == 1) ? 0 : p4est_GetChildID(block_in->xyz(), block_in->level());
                 block_out->PushDependency(childid_in, block_in);
+                // assign the status
+                StatusAdapt status_out = (num_incoming == 1) ? M_ADAPT_COARSER : M_ADAPT_FINER;
+                block_out->status_level(status_out);
             }
         } else if (n_active == 1) { /* in case of 2:1 balacing: we want to coarsen blocks that have been asked for refinement */
             m_assert(n_active_total == P8EST_CHILDREN, "we must found a total of P8EST_CHILDREN blocks");
@@ -431,7 +442,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     iblock_t n_reassign = 0;
     for (iblock_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
-        m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
+        // m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
         n_reassign += (block_out->status_level() == M_ADAPT_NEW_COARSE) || (block_out->status_level() == M_ADAPT_NEW_FINE);
     }
     m_assert(n_reassign == 0 || n_reassign == num_outgoing, "the number of reassigning (=%d) must be 0 or %d", n_reassign, num_outgoing);
@@ -494,7 +505,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     iblock_t n_reassign = 0;
     for (iblock_t iout = 0; iout < num_outgoing; iout++) {
         GridBlock* block_out = p4est_GetGridBlock(outgoing[iout]);
-        m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
+        // m_assert(block_out->status_level() != M_ADAPT_NONE, "the block cannot have a none status");
         n_reassign += (block_out->status_level() == M_ADAPT_NEW_COARSE) || (block_out->status_level() == M_ADAPT_NEW_FINE);
     }
     m_assert(n_reassign == 0 || n_reassign == num_outgoing, "the number of reassigning (=%d) must be 0 or %d", n_reassign, num_outgoing);

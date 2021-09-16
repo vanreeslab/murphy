@@ -32,10 +32,11 @@ class Grid : public ForestGrid {
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
     Wavelet* interp_ = nullptr;  //!< the Wavelet to use for all the multilevel operations
 
-    bool   recursive_adapt_ = false;   //!< recursive adaptation or not
-    real_t rtol_            = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
-    real_t ctol_            = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
-    lid_t  n_quad_to_adapt_ = 0;
+    bool   recursive_adapt_   = false;   //!< recursive adaptation or not
+    real_t rtol_              = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
+    real_t ctol_              = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
+    lid_t  n_quad_to_refine_  = 0;
+    lid_t  n_quad_to_coarsen_ = 0;
 
     level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the mesh
     level_t level_limit_min_ = 0;                //!< min level of a quadrant
@@ -122,9 +123,11 @@ class Grid : public ForestGrid {
     [[nodiscard]] void*  cback_criterion_ptr() const { return cback_criterion_ptr_; }
     [[nodiscard]] void*  cback_interpolate_ptr() const { return cback_interpolate_ptr_; }
 
-    [[nodiscard]] lid_t n_quad_to_adapt() const { return n_quad_to_adapt_; }
-    void                AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
-    void                AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
+    [[nodiscard]] lid_t NQuadToAdapt() const { return (n_quad_to_refine_ + n_quad_to_coarsen_); }
+    void                AddOneQuadToRefine() { n_quad_to_refine_ += 1; }
+    void                AddOneQuadToCoarsen() { n_quad_to_coarsen_ += 8; }
+    // void                AddOneQuadToAdapt() { ++n_quad_to_adapt_; }
+    // void                AddQuadToAdapt(const sid_t n_quad) { n_quad_to_adapt_ += n_quad; }
 
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
@@ -132,6 +135,7 @@ class Grid : public ForestGrid {
     void Refine(Field* field);
     void Coarsen(Field* field);
     void StoreDetails(Field* criterion, Field* details);
+    void MaxMinDetails(Field* criterion, real_t maxmin[2]);
 
     void Adapt(Field* field);
     // void Adapt(Field* field, const setvalue_gridop_t* expr_grid, const setvalue_blockop_t* expr_block);

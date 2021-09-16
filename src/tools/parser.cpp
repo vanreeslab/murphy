@@ -155,14 +155,16 @@ static struct argp_option options[] = {
     // simple advection
     {"simple-advection", 4002, 0, OPTION_ARG_OPTIONAL, "simple advection testcase"},
     {"sadv", 0, 0, OPTION_ALIAS, 0},
-    // simple advection
+    // espilon test
     {"epsilon-test", 4003, 0, OPTION_ARG_OPTIONAL, "Epsilon test"},
     {"eps", 0, 0, OPTION_ALIAS, 0},
-    // simple advection
+    // debug the lifting
     {"dbg-lifting", 4004, 0, OPTION_ARG_OPTIONAL, "Debug lifting"},
     {"eps", 0, 0, OPTION_ALIAS, 0},
-    // simple advection
+    // convergence weno
     {"conv-weno", 4005, 0, OPTION_ARG_OPTIONAL, "convergence weno"},
+    // two-level weno
+    {"2lvl-weno", 4006, 0, OPTION_ARG_OPTIONAL, "two-level weno"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -387,6 +389,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4005: { /* convergence weno */
             m_log("convergence weno selected");
             arguments->do_conv_weno = true;
+            return 0;
+        }
+        case 4006: { /* convergence weno */
+            m_log("Two levels weno convergence selected");
+            arguments->do_2lvl_weno = true;
             return 0;
         }
         

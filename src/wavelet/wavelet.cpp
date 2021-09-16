@@ -299,10 +299,11 @@ real_t Wavelet::Criterion(/* source */ const MemLayout* const  block_src, const 
                           /* target */ const MemLayout* const  detail_block) const {
     //-------------------------------------------------------------------------
     // get the detail coefficients
-    real_t details_max = 0.0;
-    Details(block_src, data, detail_block, nullptr, 0.0, &details_max);
+    real_t details[2] = {0.0,0.0};
+    Details(block_src, data, detail_block, nullptr, 0.0, details);
 
-    return details_max;
+    // return the max
+    return details[0];
     //-------------------------------------------------------------------------
 }
 
@@ -396,7 +397,7 @@ real_t Wavelet::Criterion(/* source */ const MemLayout* const  block_src, const 
  */
 void Wavelet::Details(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
                       /* target */ const MemLayout* const  detail_block, const data_ptr& detail, const real_t tol,
-                      /* output*/ real_t*  details_max) const {
+                      /* output*/ real_t  details_max[2]) const {
     //-------------------------------------------------------------------------
     // get memory details
     interp_ctx_t ctx;
@@ -463,8 +464,8 @@ void Wavelet::SmoothOnMask(/* source */ const MemLayout* const  block_src,
     //-------------------------------------------------------------------------
     //.........................................................................
     // get the details
-    real_t trash = 0.0;
-    Details(block_src, data, detail_block, detail_mask, -1.0, &trash);
+    real_t trash[2] = {0.0, 0.0};
+    Details(block_src, data, detail_block, detail_mask, -1.0, trash);
 
     //.........................................................................
     // smooth them
@@ -546,7 +547,7 @@ void Wavelet::StoreDetails(/* source */ const MemLayout* const  block_src, const
     ctx.alpha = std::numeric_limits<real_t>::max();
 
     // compute
-    real_t detail_max = 0.0;  // -> will be discarded
-    Detail_(&ctx, &detail_max);
+    real_t detail_max[2] = {0.0, 0.0};  // -> will be discarded
+    Detail_(&ctx, detail_max);
     //-------------------------------------------------------------------------
 }

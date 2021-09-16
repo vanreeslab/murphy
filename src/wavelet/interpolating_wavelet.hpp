@@ -485,8 +485,9 @@ class InterpolatingWavelet : public Wavelet {
      * @param ctx the interpolation context
      * @param details_max the maximum of the local detail coefficients
      */
-    void Detail_(const interp_ctx_t* const  ctx, real_t* const  details_max) const override {
-        m_assert(details_max[0] == 0.0, "the value must be 0.0");
+    void Detail_(const interp_ctx_t* const ctx, real_t details[2]) const override {
+        // m_assert(details_max[0] == 0.0, "the value must be 0.0");
+        // m_assert(details_max[1] == 0.0, "the value must be 0.0");
         //-------------------------------------------------------------------------
         constexpr short_t   ha_lim = len_ha_<TN, TNT> / 2;
         constexpr short_t   ga_lim = len_ga_<TN, TNT> / 2;
@@ -499,17 +500,11 @@ class InterpolatingWavelet : public Wavelet {
         real_t        temp          = 0.0;
         real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
 
-        // m_log("store? %d, store on mask? %d", store, store_on_mask);
-        // m_log("computing details using %d %d %d to %d %d %d", ctx->srcstart[0], ctx->srcstart[1], ctx->srcstart[2],
-        //       ctx->srcend[0], ctx->srcend[1], ctx->srcend[2]);
-        // m_log("and computing details from %d %d %d to %d %d %d", ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2],
-        //       ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]);
-
         // get the source pointer
         const real_t* const sdata = ctx->sdata.Read();
 
         // go
-        auto op = [=, &tdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=, &tdata, &details](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get if we are odd or even in the cupgridblockrrent location
             const short_t odd_x = m_sign(i0) * (i0 % 2);
             const short_t odd_y = m_sign(i1) * (i1 % 2);
@@ -550,20 +545,18 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(std::isfinite(detail), "the data in %d %d %d is nan %e", i0, i1, i2, detail);
 
             // check the maximum
-            (*details_max) = m_max(fabs(detail), (*details_max));
+            details[0] = m_max(fabs(detail), details[0]);
+            details[1] = m_min(fabs(detail), details[1]);
 
             // store if needed, the index is 0 if not store
             const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->trgstr);
             const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
             tdata[store_id]       = value;
-
-            // if (fabs(value) > 1e-13) {
-            //     m_log("registering value for %d %d %d", i0, i1, i2);
-            // }
         };
 
         // reset the detail max (to be sure)
-        *details_max = 0.0;
+        details[0] = 0.0;                                 // will be max
+        details[1] = std::numeric_limits<real_t>::max();  // will be min
         // let's go
         const lid_t start[3] = {ctx->trgstart[0], ctx->trgstart[1], ctx->trgstart[2]};
         const lid_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};

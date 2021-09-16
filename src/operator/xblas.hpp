@@ -45,6 +45,15 @@ class BAvg : public BlockOperator {
     void ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const;
 };
 
+class BDensity : public BlockOperator {
+   public:
+    explicit BDensity() noexcept;
+    explicit BDensity(const bidx_t* ghost_len) noexcept;
+
+    void operator()(const ForestGrid* grid, real_t* sum) const;
+    void ComputeBDensityGridBlock(const qid_t* qid, const CartBlock* block, real_t* sum) const;
+};
+
 // class BDiscreteMoment : public BlockOperator {
 //    protected:
 //     lda_t  ida_;

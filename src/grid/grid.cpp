@@ -467,6 +467,10 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
     AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+
+    // apply the operator to get the starting value
+    // it gets rid of whatever smoothing has been done
+    // (*expr)(this, field);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -526,7 +530,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
-
     string msg = "--> grid adaptation started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
@@ -543,6 +546,11 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     cback_interpolate_ptr_      = interpolate_ptr;
     p4est_forest_->user_pointer = reinterpret_cast<void*>(this);
 
+    // reset the status of everyblock to a neutral one
+    m_profStart(prof_, "reset");
+    DoOpMesh(nullptr, &GridBlock::StatusReset, this);
+    m_profStop(prof_, "reset");
+
     //................................................
     // coarsening, need to have the 8 children on the same rank
     iter_t   iteration              = 0;
@@ -550,28 +558,30 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     do {
         m_log("----> adaptation iteration %d", iteration);
         m_log_level_plus;
-        //................................................
-        // ghosting and criterion computation
-        bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+        //......................................................................
+        // cleanup the status
+        DoOpMesh(nullptr, &GridBlock::StatusCleanup, this);
+#ifndef NDEBUG
+        {
+            const level_t min_level = this->MinLevel();
+            const level_t max_level = this->MaxLevel();
+            m_log("--> iteration on a grid with %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
+        }
+#endif
+
+        //......................................................................
+        // get the desired status
         if (!(field_detail == nullptr)) {
-            m_profStart(prof_, "ghost for criterion");
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
+            // ghost the dimension 0
+            m_profStart(prof_, "ghost for criterion");
+            
             // get the length
+            bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
             GhostPull_SetLength(field_detail, ghost_len);
+
             // start the ghosting in the first dimension only
             GhostPull_Post(field_detail, 0, ghost_len);
-            m_profStop(prof_, "ghost for criterion");
-        }
-
-        // while waiting, reset the status on the blocks
-        m_profStart(prof_, "reset");
-        DoOpMesh(nullptr, &GridBlock::ResetStatus, this);
-        m_profStop(prof_, "reset");
-
-        if (!(field_detail == nullptr)) {
-            m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
-            // wait for the dim = 0 to finish
-            m_profStart(prof_, "ghost for criterion");
             GhostPull_Wait(field_detail, 0, ghost_len);
             m_profStop(prof_, "ghost for criterion");
             // now we can start the next dimensions
@@ -583,7 +593,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
                 // compute the criterion on the previous dimension
                 m_profStart(prof_, "criterion");
-                const lda_t criterion_dim = ida - 1;
                 DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail, prof_);
                 m_profStop(prof_, "criterion");
 
@@ -597,16 +606,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStart(prof_, "criterion");
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail, prof_);
             m_profStop(prof_, "criterion");
+
             // register the computed ghosts
             field_detail->ghost_len(ghost_len);
         }
-
-        // // compute the criterion or use the patches to get the status
-        // if (!(field_detail == nullptr)) {
-        //     // compute the details
-        //     DoOpTree(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, prof_);
-        // }
-
         // if needed, compute some patches
         if (!(patches == nullptr)) {
             // get the patches processed
@@ -614,12 +617,50 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
             m_profStop(prof_, "patch");
         }
+        //......................................................................
+#ifndef NDEBUG
+        if (field_detail != nullptr) {
+            // check/get the max detail on the current grid
+            real_t det_maxmin[2];
+            this->MaxMinDetails(field_detail, det_maxmin);
+            m_log("--> before adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+        }
+#endif
 
-        // synchronize the statuses and handle the neighbor policies
-        m_profStart(prof_, "update status");
-        ghost_->UpdateStatus();
-        DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPolicy, this);
-        m_profStop(prof_, "update status");
+        //......................................................................
+        // every block has its own desired status by now: finer, coarser or same
+        // we need to apply a few policies to make sure that
+        // (1) two neighboring blocks don't do the opposite operation (coarsen and refine)
+        // (2)
+        {
+            m_profStart(prof_, "update status");
+            // first apply the local policies (max/min levels)
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromLevel, this, level_limit_min_, level_limit_max_);
+
+            // allocate the neighbor status vectors on everyblock
+            ghost_->SyncStatusInit();
+
+            // I need to make sure that the if one block needs to refine, all the coarser neighbors get that signal
+            // first step is to put refine to everybody
+            const level_t max_level = MaxLevel();
+            const level_t min_level = MinLevel();
+            for (level_t il = (max_level - 1); il >= min_level; --il) {
+                // the finer level fills the status
+                ghost_->SyncStatusFill(il + 1, il + 1);
+                // get the update in the current level
+                ghost_->SyncStatusUpdate(il, il);
+                // forward the refinement criterion: if my finer neighbor has to refine, I refine as well
+                DoOpMeshLevel(nullptr, &GridBlock::UpdateStatusForwardRefinement, this, il);
+            }
+
+            // now adapt my status based on the status of my neighbors
+            ghost_->SyncStatusFill();
+            ghost_->SyncStatusUpdate();
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromGlobalPolicy, this);
+
+            ghost_->SyncStatusFinalize();
+            m_profStop(prof_, "update status");
+        }
 
         //................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
@@ -630,7 +671,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         //................................................
         // reset the adapt counter, it will be updated in the interpolate fct
-        n_quad_to_adapt_ = 0;
+        n_quad_to_refine_  = 0;
+        n_quad_to_coarsen_ = 0;
         // WARNING: always try to COARSEN first (no idea why but the other way around doesn't work!)
         // coarsening for p4est-> only one level
         // The limit in levels are handled directly on the block, not in p4est
@@ -648,9 +690,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
 
         // get the 2:1 constrain on the grid, should be guaranteed by the criterion, but just in case
-        m_profStart(prof_, "p4est balance");
-        p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
-        m_profStop(prof_, "p4est balance");
+        // m_profStart(prof_, "p4est balance");
+        // p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
+        // m_profStop(prof_, "p4est balance");
 
         //................................................
         // solve the dependencies on the grid
@@ -681,7 +723,11 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //................................................
         // solve the jump in resolution
         m_profStart(prof_, "update status");
-        ghost_->UpdateStatus();
+        // get to know the status of my neighbors
+        ghost_->SyncStatusInit();
+        ghost_->SyncStatusFill();
+        ghost_->SyncStatusUpdate();
+        // ghost_->SyncStatusFinalize();
         m_profStop(prof_, "update status");
 
         // solve resolution jump if needed
@@ -690,11 +736,19 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
         m_profStop(prof_, "smooth jump");
 
+        ghost_->SyncStatusFinalize();
+
         //................................................
         // sum over the ranks and see if we keep going
-        m_assert(n_quad_to_adapt_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
-        MPI_Allreduce(&n_quad_to_adapt_, &global_n_quad_to_adapt, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-        m_log("we have adapted %d blocks", global_n_quad_to_adapt);
+        m_assert(n_quad_to_coarsen_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        m_assert(n_quad_to_refine_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        m_assert((n_quad_to_coarsen_ % 8) == 0, "the number of quad to coarsen must be a multiple of 8 isntead of %d", n_quad_to_coarsen_);
+
+        int global_n_adapt[2];
+        int n_adapt[2] = {n_quad_to_coarsen_, n_quad_to_refine_};
+        MPI_Allreduce(n_adapt, global_n_adapt, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        global_n_quad_to_adapt = global_n_adapt[0] + global_n_adapt[1];
+        m_log("we have coarsened %d blocks and refined %d blocks -> %d new blocks", global_n_adapt[0], global_n_adapt[1], global_n_adapt[0] / 8 + 8 * global_n_adapt[1]);
 
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
@@ -705,6 +759,14 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             }
         }
 
+#ifndef NDEBUG
+        if (field_detail != nullptr) {
+            // check/get the max detail on the current grid
+            real_t det_maxmin[2];
+            this->MaxMinDetails(field_detail, det_maxmin);
+            m_log("--> after adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+        }
+#endif
         m_log_level_minus;
         // increment the counter
         ++iteration;
@@ -731,6 +793,15 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
     m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
+#ifndef NDEBUG
+    if (field_detail != nullptr) {
+        // check/get the max detail on the current grid
+        real_t det_maxmin[2];
+        this->MaxMinDetails(field_detail, det_maxmin);
+        m_log("rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+        m_assert(this->rtol() >= det_maxmin[0], "the max detail cannot be > than the tol: %e vs %e", det_maxmin[0], this->rtol());
+    }
+#endif
     m_end;
 }
 
@@ -756,4 +827,25 @@ void Grid::StoreDetails(Field* criterion, Field* details) {
     }
     //-------------------------------------------------------------------------
     m_end;
+}
+
+void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
+    //--------------------------------------------------------------------------
+    // get the ghosts values
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    this->GhostPull(criterion, ghost_len);
+
+    // get the minmax
+    real_t local_maxmin[2];
+    local_maxmin[0] = 0.0;
+    local_maxmin[1] = std::numeric_limits<real_t>::max();
+
+    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, local_maxmin);
+
+    // reduce is on the whole mesh
+    maxmin[0] = 0.0;
+    maxmin[1] = 0.0;
+    MPI_Allreduce(local_maxmin, maxmin, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(local_maxmin + 1, maxmin + 1, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
+    //--------------------------------------------------------------------------
 }
