@@ -284,6 +284,11 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     real_t maxmin_details[2];
     grid_->MaxMinDetails(scal_, maxmin_details);
 
+    // tag
+    lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
+    string weno_name  = fix_weno_ ? "_cons" : "_weno";
+    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq) + weno_name + to_string(weno_);
+
     // open the file
     m_profStart(prof_, "dump diag");
     FILE*   file_error;
@@ -293,10 +298,10 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     long    global_num_quad = grid_->global_num_quadrants();
     m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e)", iter, time, min_level, max_level, density, err2, erri);
     if (rank == 0) {
-        lid_t adapt_freq = no_adapt_ ? 0 : iter_adapt();
-        string weno_name = fix_weno_ ? "_cons" : "_weno"; 
-        string file_name = "diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq)+ weno_name +to_string(weno_)+ ".data";
-        file_diag = fopen(string(folder_diag_ + "/" + file_name).c_str(), "a+");
+        // lid_t adapt_freq = no_adapt_ ? 0 : iter_adapt();
+        // string weno_name = fix_weno_ ? "_cons" : "_weno";
+        string file_name = "diag_" + tag + ".data";
+        file_diag        = fopen(string(folder_diag_ + "/" + file_name).c_str(), "a+");
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, global_num_quad, min_level, max_level);
         fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());
@@ -310,8 +315,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     m_profStop(prof_, "dump diag");
 
     m_profStart(prof_, "dump levels");
-    grid_->DumpLevels(iter, folder_diag_, string("_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT)));
+    grid_->DumpLevels(iter, folder_diag_, string("_" + tag));
     m_profStop(prof_, "dump levels");
+
+    m_profStart(prof_, "dump det histogram");
+    grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 16, 1.0);
+    m_profStop(prof_, "dump det histogram");
 
     m_profStart(prof_, "dump field");
     if (iter % iter_dump() == 0 && iter != 0) {

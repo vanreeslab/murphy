@@ -117,12 +117,13 @@ class GridBlock : public CartBlock {
                                    /* prof */ Prof* profiler);
     void UpdateStatusFromPatches(/* params */ const Wavelet* interp, std::list<Patch>* patch_list,
                                  /* prof */ Prof* profiler);
-    
+
     void UpdateStatusFromLevel(const level_t min_level, const level_t max_level);
     void UpdateStatusForwardRefinement();
     void UpdateStatusFromGlobalPolicy();
 
-    void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]);
+    void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2],
+                       bidx_t* max_blocks, const real_t max_cat, const real_t min_cat, const short_t n_cat);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
     // void UpdateSmoothingMask(const Wavelet* const interp);
 
