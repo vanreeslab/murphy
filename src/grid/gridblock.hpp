@@ -89,8 +89,11 @@ class GridBlock : public CartBlock {
         return MemSpan(-interp->CoarseNGhostFront(ghost_len_[0]), M_NHALF + interp->CoarseNGhostBack(ghost_len_[1]));
     }
 
-    __attribute__((always_inline)) inline MemSpan ExtendedSpan() const {
-        return MemSpan(-ghost_len_[0], M_N + ghost_len_[1]);
+    // __attribute__((always_inline)) inline MemSpan ExtendedSpanCurrent() const {
+    //     return MemSpan(-ghost_len_[0], M_N + ghost_len_[1]);
+    // }
+    __attribute__((always_inline)) inline MemSpan ExtendedSpan(const bidx_t ghost_len[2]) const {
+        return MemSpan(-ghost_len[0], M_N + ghost_len[1]);
     }
 
     /**

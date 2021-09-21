@@ -415,7 +415,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
 
     // collect the sizes as "by-copy capture of value of abstract type 'const Wavelet' is not allowed"
     const bidx_t n_criterion_front = interp->ndetail_citerion_extend_front();
-    const bidx_t n_criterion_back = interp->ndetail_citerion_extend_front();
+    const bidx_t n_criterion_back = interp->ndetail_citerion_extend_back();
     const bidx_t n_smooth_front = interp->ndetail_smooth_extend_front();
     const bidx_t n_smooth_back =interp->ndetail_smooth_extend_back();
 
@@ -654,16 +654,16 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
             m_assert(childid == p4est_GetChildID(child_block->xyz(), child_block->level()), "the two ids must match");
             m_assert(child_block->status_level() == M_ADAPT_COARSER, "the status of the new root must be M_ADAPT_NEW_COARSE instead of %d", child_block->status_level());
 
-            // get the shift for me
+            // get the shift for me = child
             const lid_t shift[3]     = {-M_N * ((childid % 2)), -M_N * ((childid % 4) / 2), -M_N * ((childid / 4))};
             const lid_t trg_start[3] = {M_NCENTER * ((childid % 2)), M_NCENTER * ((childid % 4) / 2), M_NCENTER * ((childid / 4))};
             const lid_t trg_end[3]   = {trg_start[0] + M_NCENTER, trg_start[1] + M_NCENTER, trg_start[2] + M_NCENTER};
-            MemSpan    span_trg( trg_start, trg_end);
+            MemSpan     span_trg(trg_start, trg_end);
             // SubBlock    mem_trg(M_GS, M_STRIDE, trg_start, trg_end);
             // and an extended source block for my child
-            const lid_t src_start[3] = {-M_GS, -M_GS, -M_GS};
-            const lid_t src_end[3]   = {M_N + M_GS, M_N + M_GS, M_N + M_GS};
-            MemSpan    span_src( src_start, src_end);
+            // const lid_t src_start[3] = {-M_GS, -M_GS, -M_GS};
+            // const lid_t src_end[3]   = {M_N + M_GS, M_N + M_GS, M_N + M_GS};
+            // MemSpan     span_src(src_start, src_end);
             // SubBlock    mem_src(M_GS, M_STRIDE, src_start, src_end);
 
             // for every field, we interpolate it
@@ -672,6 +672,7 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
                 if (!current_field->is_temp()) {
                     const bidx_t ghost_len[2] = {interp->nghost_front_coarsen(), interp->nghost_back_coarsen()};
                     m_assert(current_field->ghost_status(ghost_len), "The field must have enough valid GP for the refinement - required %d %d, known %d %d", ghost_len[0], ghost_len[1], current_field->get_ghost_len(0), current_field->get_ghost_len(1));
+                    MemSpan      span_src = child_block->ExtendedSpan(ghost_len);
                     // interpolate for every dimension
                     for (sid_t ida = 0; ida < current_field->lda(); ida++) {
                         // get the pointers
@@ -1497,7 +1498,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
                 // SubBlock block_trg(this->gs(), this->stride(), smooth_start, smooth_end);
                 m_assert(ghost_len_[0] >= interp->nghost_front_overwrite(), "the ghost length does not support overwrite: %d vs %d", ghost_len_[0], interp->nghost_front_overwrite());
                 m_assert(ghost_len_[1] >= interp->nghost_back_overwrite(), "the ghost length does not support overwrite: %d vs %d", ghost_len_[1], interp->nghost_back_overwrite());
-                const MemSpan me       = ExtendedSpan();
+                const MemSpan me       = ExtendedSpan(ghost_len_);
                 const MemData data_trg = this->data(field, ida);
                 interp->OverwriteDetails(&me, &smooth_span, &data_trg);
                 // interp->OverwriteDetails(&block_src, &block_trg, this->data(field, ida));
@@ -1528,7 +1529,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
             // the source block is the ghost extended block
             const lid_t shift[3] = {0, 0, 0};
             // const SubBlock me_extended(M_GS, M_STRIDE, - ghost_len_[0], M_N + ghost_len_[1]);
-            const MemSpan ext_span = this->ExtendedSpan();
+            const MemSpan ext_span = this->ExtendedSpan(ghost_len_);
             // interpolate, the level is 1 coarser and the shift is unchanged
             const ConstMemData data_src = this->ConstData(field, ida);
             interp->Interpolate(1, shift, &ext_span, &data_src, &span_coarse, &data_coarse);
