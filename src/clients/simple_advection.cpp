@@ -319,7 +319,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     m_profStop(prof_, "dump levels");
 
     m_profStart(prof_, "dump det histogram");
-    grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 16, 1.0);
+    grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
     m_profStop(prof_, "dump det histogram");
 
     m_profStart(prof_, "dump field");
