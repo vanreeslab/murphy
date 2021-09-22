@@ -73,12 +73,12 @@ class CartBlock {
      * @name CartBlock utility functions
      * 
      * @{ */
-    [[nodiscard]] inline level_t level() const { return level_; }
-    [[nodiscard]] inline real_t  length() const { return length_; }
-    [[nodiscard]] inline real_t  xyz(const int id) const { return xyz_[id]; }
-    [[nodiscard]] inline real_t  hgrid(const int id) const { return hgrid_[id]; }
-    [[nodiscard]] inline real_t* hgrid() const { return hgrid_; }
-    [[nodiscard]] inline real_t* xyz() const { return xyz_; }
+    [[nodiscard]] inline level_t       level() const { return level_; }
+    [[nodiscard]] inline real_t        length() const { return length_; }
+    [[nodiscard]] inline real_t        xyz(const int id) const { return xyz_[id]; }
+    [[nodiscard]] inline real_t        hgrid(const int id) const { return hgrid_[id]; }
+    [[nodiscard]] inline const real_t* hgrid() const { return hgrid_; }
+    [[nodiscard]] inline const real_t* xyz() const { return xyz_; }
     /** @} */
 
     /**
