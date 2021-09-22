@@ -5,8 +5,6 @@
 #include <map>
 #include <string>
 
-
-// #include "core/pointers.hpp"
 #include "core/memspan.hpp"
 #include "core/memdata.hpp"
 #include "core/types.hpp"
@@ -23,28 +21,17 @@
 //     return ida * stride * stride * stride;
 // }
 
+/**
+ * @brief returns the grid spacing for a cartblock given a block length
+ */
 constexpr real_t CartBlockHGrid(const real_t length) {
-    // return length / (M_N - 1);
     return length / (real_t)(M_N);
 }
 
 /**
- * @brief Cartesian block of data, contains its location, level, a map with fields and a grid spacing
+ * @brief Cartesian block of data, contains its basic information (location, level,...) and a map to the field contained on the grid
  * 
- * 
- * We consider a cartesian block where the number of point is EVEN
- * A cartesian block is schematically represented as:
- * 
- * ```
- *      M_GS                  M_N                   M_GS
- *   <------>  <------------------------------>   <------>
- *  |         |                                  |         |
- *  x----x----o----o----o----o----o----o----o----x----x----|
- *  |         |                                  |         |
- * ```
- * 
- * @warning two neighbors share the same first/last information!
- * @warning no ghosting is available for that block
+ * @warning no ghosting is available for that block, see GridBlock
  * 
  */
 class CartBlock {
@@ -61,25 +48,20 @@ class CartBlock {
     ~CartBlock();
 
     /**
-     * @name Memory Layout functions
-     * 
-     * @{ */
-    // inline bidx_t gs() const { return M_GS; }
-    // inline bidx_t core() const { return M_N; }
-    // inline bidx_t stride() const { return (M_N + 2 * M_GS); }
-    // inline bidx_t start(const lda_t ida) const { return 0; }
-    // inline bidx_t end(const lda_t ida) const { return M_N; }
-    /** @} */
-
+     * @brief returns a MemLayout corresponding to the this block
+     */
     __attribute__((always_inline)) inline MemLayout BlockLayout() const {
         return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
     }
+    /**
+     * @brief returns a MemSpan for the interior of this block
+     */
     __attribute__((always_inline)) inline MemSpan BlockSpan() const {
         return MemSpan(0, M_N);
     }
 
     /**
-     * @brief returns the position of a given points (i0, i1, i2)
+     * @brief returns the absolute position of a given points (i0, i1, i2)
      */
     __attribute__((always_inline)) inline void pos(const bidx_t i0, const bidx_t i1, const bidx_t i2, real_t m_pos[3]) const {
         m_pos[0] = i0 * hgrid_[0] + xyz_[0];
@@ -91,12 +73,12 @@ class CartBlock {
      * @name CartBlock utility functions
      * 
      * @{ */
-    inline level_t level() const { return level_; }
-    inline real_t  length() const { return length_; }
-    inline real_t  xyz(const int id) const { return xyz_[id]; }
-    inline real_t  hgrid(const int id) const { return hgrid_[id]; }
-    const real_t*  hgrid() const { return hgrid_; }
-    const real_t*  xyz() const { return xyz_; }
+    [[nodiscard]] inline level_t level() const { return level_; }
+    [[nodiscard]] inline real_t  length() const { return length_; }
+    [[nodiscard]] inline real_t  xyz(const int id) const { return xyz_[id]; }
+    [[nodiscard]] inline real_t  hgrid(const int id) const { return hgrid_[id]; }
+    [[nodiscard]] inline real_t* hgrid() const { return hgrid_; }
+    [[nodiscard]] inline real_t* xyz() const { return xyz_; }
     /** @} */
 
     /**

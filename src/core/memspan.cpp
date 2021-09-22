@@ -1,4 +1,5 @@
 #include "core/memspan.hpp"
+
 #include "macros.hpp"
 
 static bidx_t MemPadSize(const bidx_t size, const bidx_t size_type) {
@@ -11,6 +12,14 @@ static bidx_t MemPadSize(const bidx_t size, const bidx_t size_type) {
     //--------------------------------------------------------------------------
 };
 
+/**
+ * @brief construct a new memory layout
+ * 
+ * @param layout a type of memory layout
+ * @param n_gs_front the desired number of ghost point in front of the stride
+ * @param n_block the desired number of point in the block
+ * @param n_gs_back the desired number of points at the back of the block (optional: if ignored we use n_gs_front)
+ */
 MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t n_block, const bidx_t n_gs_back) noexcept {
     //--------------------------------------------------------------------------
     // we want to ensure that the offset is aligned in memory.
@@ -40,49 +49,14 @@ MemLayout::MemLayout(const m_layout_t dim, const bidx_t n_gs_front, const bidx_t
     //--------------------------------------------------------------------------
 }
 
-//==============================================================================
-MemSpan::MemSpan(const bidx_t in_start, const bidx_t in_end) noexcept {
-    //--------------------------------------------------------------------------
-#pragma unroll 3
-    for (lda_t ida = 0; ida < 3; ++ida) {
-        start[ida] = in_start;
-        end[ida]   = in_end;
-    }
-    //--------------------------------------------------------------------------
-}
-
-MemSpan::MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept {
-    //--------------------------------------------------------------------------
-#pragma unroll 3
-    for (lda_t ida = 0; ida < 3; ++ida) {
-        start[ida] = in_start[ida];
-        end[ida]   = in_end[ida];
-    }
-    //--------------------------------------------------------------------------
-}
-
-MemSpan::MemSpan(const MemSpan* old_span, const bidx_t shift[3]) noexcept{
-    //--------------------------------------------------------------------------
-#pragma unroll 3
-    for (lda_t ida = 0; ida < 3; ++ida) {
-        start[ida] = old_span->start[ida] - shift[ida];
-        end[ida]   = old_span->end[ida] - shift[ida];
-    }
-    //--------------------------------------------------------------------------
-}
-
-//==============================================================================
 /**
- * @brief translate the ghost limits from the current layout to another one
+ * @brief translate the ghost limits from the current MemLayout to another one
  * 
  * if the current index is in a ghost region (the front one or the back one), returns the limit of the new ghost region (known from the new layout)
  * if the current index is in the block, return the index scaled to the new length of the block
  * 
  * @warning if the new index is NOT an integer, we ceil it! (sometimes we use an index of 1 because we want to visit the index 0, we should preserve that)
  * 
- * @param new_layout 
- * @param id index in the current reference 
- * @return bidx_t 
  */
 bidx_t MemLayout::TranslateLimit(const MemLayout* new_layout, const bidx_t c_id) const noexcept {
     //--------------------------------------------------------------------------
@@ -103,5 +77,45 @@ bidx_t MemLayout::TranslateLimit(const MemLayout* new_layout, const bidx_t c_id)
     // return the correct choice
     return res[c];
 
+    //--------------------------------------------------------------------------
+}
+
+//==============================================================================
+/**
+ * @brief construct a new MemSpan from the start and end indexes, equivalent in every dimension
+ */
+MemSpan::MemSpan(const bidx_t in_start, const bidx_t in_end) noexcept {
+    //--------------------------------------------------------------------------
+#pragma unroll 3
+    for (lda_t ida = 0; ida < 3; ++ida) {
+        start[ida] = in_start;
+        end[ida]   = in_end;
+    }
+    //--------------------------------------------------------------------------
+}
+
+/**
+ * @brief Construct a new MemSpan from 3D indexes
+ */
+MemSpan::MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept {
+    //--------------------------------------------------------------------------
+#pragma unroll 3
+    for (lda_t ida = 0; ida < 3; ++ida) {
+        start[ida] = in_start[ida];
+        end[ida]   = in_end[ida];
+    }
+    //--------------------------------------------------------------------------
+}
+
+/**
+ * @brief Construct a new MemSpan from an old Span and substract a shift from it
+ */
+MemSpan::MemSpan(const MemSpan* old_span, const bidx_t shift[3]) noexcept {
+    //--------------------------------------------------------------------------
+#pragma unroll 3
+    for (lda_t ida = 0; ida < 3; ++ida) {
+        start[ida] = old_span->start[ida] - shift[ida];
+        end[ida]   = old_span->end[ida] - shift[ida];
+    }
     //--------------------------------------------------------------------------
 }

@@ -19,15 +19,15 @@ static const lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_
 /**
  * @brief return the grid spacing of a coarser block
  * 
- * @param len the physical length of the coarser block
- * @return constexpr real_t the grid spacing in the coarser block
+ * @param len the physical length of the considered block
  */
 constexpr real_t CoarseHGrid(const real_t len) {
     return len / (real_t)(M_NHALF);
 }
+
 //==============================================================================
 /**
- * @brief constructs a new GridBlock given a 3D length and a position
+ * @brief constructs a new GridBlock
  * 
  * @param length the length of the current block
  * @param xyz the position of the origin, i.e. the left,bottom corner, (x,y,z)
@@ -44,9 +44,6 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
         dependency_[id] = nullptr;
     }
     // allocate the coarse ptr
-    // size_t alloc_size = m_max(interp->CoarseSize(),);
-    // AllocateCoarsePtr(m_blockmemsize(1));
-    // m_assert(interp->CoarseSize() )
     MemLayout myself = BlockLayout();
     coarse_ptr_.Allocate(myself.n_elem);
     //-------------------------------------------------------------------------
@@ -54,10 +51,7 @@ GridBlock::GridBlock(const real_t length, const real_t xyz[3], const sid_t level
 }
 
 /**
- * @brief Destroy the GridBlock
- *
- * delete the ghost ptr if present and delete the associated fields
- *
+ * @brief Destroys the GridBlock
  */
 GridBlock::~GridBlock() {
     //-------------------------------------------------------------------------
@@ -66,13 +60,15 @@ GridBlock::~GridBlock() {
 }
 
 /**
- * @brief compute the criterion, update the block status accordingly and register the coarsening if needed
+ * @brief compute the wavelet refinement/coarsening criterion and update the block status accordingly
  * 
  * The criterion of the block must always be:
- *  rtol >= criterion >= ctol
+ *  ctol <= criterion <= rtol
  * 
  * - if citerion > rtol, we must refine, whatever the other field's dimension value
  * - if citerion < ctol, we can coarsen if this is satisfy by every dimension of the field
+ * 
+ * @warning the call to this function is done on a "dimension by dimension" basis on the criterion field. The current dimension is given by ida
  * 
  */
 void GridBlock::UpdateStatusFromCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, const lda_t ida){
