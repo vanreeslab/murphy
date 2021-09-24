@@ -367,9 +367,12 @@ void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
 void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_begin;
     m_assert(refine_tol > coarsen_tol, "the refinement tolerance must be > the coarsening tolerance");
+    m_assert(refine_tol > 0.0, "The refinement tolerance = %e must be > 0.0", refine_tol);
+    m_assert(coarsen_tol >= 0.0, "The coarsening tolerance = %e must be >= 0.0", coarsen_tol);
     //-------------------------------------------------------------------------
+    // if ctol is smaller than epsilon, just remember epsilon
+    ctol_ = m_max(coarsen_tol, std::numeric_limits<real_t>::epsilon());
     rtol_ = refine_tol;
-    ctol_ = coarsen_tol;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -888,7 +891,7 @@ void Grid::DistributionDetails(const iter_t id, const std::string folder, const 
         }
         fprintf(file_diag, "\n");
         fclose(file_diag);
-        m_assert(block_count == nblock, "the two counts must match: %ld %d", block_count, nblock);
+        m_assert(block_count == nblock, "the two counts must match: %ld %ld", block_count, nblock);
     }
 
     m_free(n_block_local);

@@ -93,6 +93,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // adapt the grid
     if (!no_adapt_) {
+        // if the ctol is smaller than epsilon, just put epsilon
         grid_->SetTol(param->refine_tol, param->coarsen_tol);
         grid_->SetRecursiveAdapt(true);
         grid_->Adapt(scal_, &ring);
@@ -287,7 +288,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     // tag
     lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
     string weno_name  = fix_weno_ ? "_cons" : "_weno";
-    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq) + weno_name + to_string(weno_);
+    int  log_ratio = log10(grid_->ctol())-log10(grid_->rtol());
+    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol"+to_string(-log_ratio);
 
     // open the file
     m_profStart(prof_, "dump diag");
