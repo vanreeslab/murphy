@@ -34,11 +34,11 @@ CartBlock::~CartBlock() {
 }
 
 /**
- * @brief returns the data_ptr corresponding to a field
+ * @brief returns the MemData corresponding to a field
  * 
  * @param fid the field
  * @param ida the required dimension
- * @return data_ptr the data_ptr corresponding to the point in the block, i.e. (0,0,0), for the given dimension.
+ * @return MemData the MemData corresponding to the origin of the block, i.e. (0,0,0), for the given dimension.
  */
 MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     // warning, from cpp reference
@@ -57,7 +57,13 @@ MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     return data_out;
     //-------------------------------------------------------------------------
 }
-
+/**
+ * @brief returns the ConstMemData corresponding to a field 
+ * 
+ * @param fid 
+ * @param ida 
+ * @return ConstMemData the ConstMemData corresponding to the origin of the block, i.e. (0,0,0), for the given dimension.
+ */
 ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexcept {
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
@@ -102,52 +108,6 @@ real_t* __restrict CartBlock::RawPointer(const Field* fid, const lda_t ida) cons
     return mem_map_.at(fid->name()).ptr + BlockLayout().n_elem*ida;
 }
 
-// /**
-//  * @brief  returns the (aligned!) pointer for write access that corresponds to the first point in the block, i.e. (0,0,0), for the first dimension.
-//  * You must use either @ref m_sidx, @ref m_midx or @ref m_idx to access any point in the memory
-//  *
-//  * @param name name of the field you want to access
-//  * @return data_ptr
-//  */
-// data_ptr CartBlock::data(const std::string name, const lda_t ida) {
-//     //-------------------------------------------------------------------------
-// #ifndef NDEBUG
-//     // check the field validity
-//     auto it = mem_map_.find(name);
-//     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", name.c_str());
-//     // check the alignment in memory
-//     data_ptr data = it->second(ida, this) ; //+ m_zeroidx(ida, this);
-//     // m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
-//     return data;
-// #else
-//     return mem_map_.at(name)(ida, this); // + m_zeroidx(ida, this);
-// #endif
-//     //-------------------------------------------------------------------------
-// }
-
-// /**
-//  * @brief returns the MemPtr that corresponds to the actual data pointer
-//  *
-//  * @warning do not confuse with @ref data() function
-//  *
-//  * @param fid the field
-//  * @param ida the required dimension (default = 0)
-//  * @return mem_ptr the memory pointer
-//  */
-// MemPtr CartBlock::pointer(const Field* const fid, const lda_t ida) const noexcept {
-// #ifndef NDEBUG
-//     // check the field validity
-//     auto it = mem_map_.find(fid->name());
-//     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-//     // m_assert(m_isaligned(data), "M_GS = %d and M_N = %d have to be chosen so that (0,0,0) is aligned in memory: ida = %d -> o", M_GS, M_N, ida);
-//     MemPtr ptr = it->second.shift_dim(ida, this);
-//     return ptr;
-// #else
-//     auto   it  = mem_map_.at(fid->name());
-//     MemPtr ptr = it.shift_dim(ida, this);
-//     return ptr;
-// #endif
-// }
 
 /**
  * @brief adds a field to the block if it doesn't exist already

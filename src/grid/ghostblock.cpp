@@ -50,6 +50,10 @@ MemSpan GhostBlock::GetSpan() const {
     return me;
 }
 
+/**
+ * @brief returns a MemSpan corresponding to the coarse representation of my MemSpan
+ * 
+ */
 void GhostBlock::GetCoarseSpan(const MemLayout* layout, const MemLayout* layout_coarse, MemSpan* span_coarse) const {
     // get the current span (warning cannot be the start or end arrays)
     MemSpan me = GetSpan();
@@ -67,6 +71,14 @@ void GhostBlock::GetCoarseSpan(const MemLayout* layout, const MemLayout* layout_
     // this->Resize(coarse_gs, M_NHALF, block_coarse);
 }
 
+/**
+ * @brief Compute the coarse indexes based on fine ones 
+ * 
+ * @param layout 
+ * @param layout_coarse 
+ * @param fine_len 
+ * @param coarse_len 
+ */
 void GhostBlock::GetCoarseLength(const MemLayout* layout, const MemLayout* layout_coarse, const bidx_t fine_len[3], bidx_t coarse_len[3]) const {
     // we assume that the new layout contains the new desired ghost sizes!
 #pragma unroll 3

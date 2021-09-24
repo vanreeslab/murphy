@@ -15,13 +15,6 @@
 #include "tools/toolsp4est.hpp"
 #include "wavelet/wavelet.hpp"
 
-// alias boring names
-// using GBLocal      = NeighborBlock<GridBlock*>;
-// using GBMirror     = NeighborBlock<MPI_Aint>;
-// using GBPhysic     = PhysBlock;
-// using ListGBLocal  = std::list<GBLocal *>;
-// using ListGBMirror = std::list<GBMirror *>;
-// using listGBPhysic = std::list<GBPhysic *>;
 
 class Ghost;
 
