@@ -137,7 +137,7 @@ void SimpleAdvection::Run() {
     }
 
     // time integration
-    lid_t         iter = 0;
+    iter_t         iter = 0;
     real_t        t    = tstart_;
     const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
 
@@ -150,14 +150,9 @@ void SimpleAdvection::Run() {
         // adapt the mesh
         if ((iter % iter_adapt() == 0) && (!no_adapt_)) {
             m_log("---- adapt mesh");
+            m_log_level_plus;
             m_profStart(prof_, "adapt");
             if (!grid_on_sol_) {
-                // adapt on the current field
-                // BMinMax minmax;
-                // grid_->GhostPull(scal_, &minmax);
-                // real_t min, max;
-                // minmax(grid_, scal_, &min, &max);
-                // m_log("MINMAX before adaptation: from %e to %e", min, max);
                 grid_->SetRecursiveAdapt(true);
                 grid_->Adapt(scal_);
 
@@ -175,18 +170,22 @@ void SimpleAdvection::Run() {
             set_velocity(grid_, vel_);
             m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
             m_profStop(prof_, "set velocity");
+            m_log_level_minus;
         }
-        // we run the first diagnostic if not done yet
+        // we run the first diagnostic if not done yet, it's usefull to get a sense of what is going on with the adaptation
         if (iter == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
+            m_log_level_plus;
             real_t wtime_now = MPI_Wtime();
-            Diagnostics(t, 0, iter, wtime_now - wtime_start);
+            Diagnostics(t, 0.0, iter, wtime_now - wtime_start);
             m_profStop(prof_, "diagnostics");
+            m_log_level_minus;
         }
 
         //................................................
         m_log("---- do time-step");
+        m_log_level_plus;
         //................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
@@ -204,14 +203,18 @@ void SimpleAdvection::Run() {
         iter++;
         m_profStop(prof_, "do dt");
 
+        m_log_level_minus;
+
         //................................................
         // diagnostics, dumps, whatever
         if (iter % iter_diag() == 0) {
             m_log("---- run diag");
+            m_log_level_plus;
             m_profStart(prof_, "diagnostics");
             real_t time_now = MPI_Wtime();
-            Diagnostics(t, dt, iter, time_now);
+            Diagnostics(t, dt, iter, time_now - wtime_start);
             m_profStop(prof_, "diagnostics");
+            m_log_level_minus;
         }
     }
     m_profStop(prof_, "run");
@@ -230,7 +233,7 @@ void SimpleAdvection::Run() {
     m_end;
 }
 
-void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_t iter, const real_t wtime) {
+void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
     m_begin;
     m_assert(scal_->lda() == 1, "the scalar field must be scalar");
     //-------------------------------------------------------------------------
@@ -299,7 +302,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     level_t min_level       = grid_->MinLevel();
     level_t max_level       = grid_->MaxLevel();
     long    global_num_quad = grid_->global_num_quadrants();
-    m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e)", iter, time, min_level, max_level, density, err2, erri);
+    m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e), wtime = %e", iter, time, min_level, max_level, density, err2, erri, wtime);
     if (rank == 0) {
         // lid_t adapt_freq = no_adapt_ ? 0 : iter_adapt();
         // string weno_name = fix_weno_ ? "_cons" : "_weno";

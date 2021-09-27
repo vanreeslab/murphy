@@ -533,7 +533,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
-    string msg = "--> grid adaptation started... (recursive = %d, ";
+    string msg = "grid adaptation started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
     }
@@ -794,7 +794,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     const level_t max_level   = this->MaxLevel();
     const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * CartBlockMemNum(1) * sizeof(real_t) / 1.0e+9;
 
-    m_log_level_minus;
+    // m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
 #ifndef NDEBUG
     if (field_detail != nullptr) {
