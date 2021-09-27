@@ -296,7 +296,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     // tag
     lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
     string weno_name  = fix_weno_ ? "_cons" : "_weno";
-    int  log_ratio = log10(grid_->ctol())-log10(grid_->rtol());
+    int  log_ratio = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log10(grid_->ctol())-log10(grid_->rtol())) : -0;
     string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol"+to_string(-log_ratio);
 
     // open the file
