@@ -29,12 +29,15 @@ static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
     // delete the field
+    m_profStart(prof_, "cleanup");
     grid_->DeleteField(vel_);
     grid_->DeleteField(scal_);
 
     delete vel_;
     delete scal_;
     delete grid_;
+
+    m_profStop(prof_, "cleanup");
     
     if (!(prof_ == nullptr)) {
         prof_->Disp();
@@ -44,7 +47,7 @@ SimpleAdvection::~SimpleAdvection() {
 }
 
 void SimpleAdvection::InitParam(ParserArguments* param) {
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // call the general testcase parameters
     this->TestCase::InitParam(param);
 
@@ -65,6 +68,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
         prof_       = new Prof(name);
     }
+    m_profStart(prof_, "init");
 
     // setup the grid
     bidx_t length[3] = {3, 3, 2};
@@ -91,7 +95,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     SetValue     ring(lambda_ring, ghost_len_interp);
     ring(grid_, scal_);
 
-    // adapt the grid
+        // adapt the grid
     if (!no_adapt_) {
         // if the ctol is smaller than epsilon, just put epsilon
         grid_->SetTol(param->refine_tol, param->coarsen_tol);
@@ -110,7 +114,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     tstart_ = param->time_start;
     tfinal_ = param->time_final;
-
+    m_profStop(prof_, "init");
     //-------------------------------------------------------------------------
 }
 
