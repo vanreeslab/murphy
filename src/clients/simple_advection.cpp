@@ -194,7 +194,8 @@ void SimpleAdvection::Run() {
         m_profStop(prof_, "compute dt");
 
         // dump some info
-        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, tfinal_, iter, iter_max(), dt);
+        real_t wtime_now = MPI_Wtime();
+        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal_, iter, iter_max(), dt, wtime_now - wtime_start);
 
         //................................................
         // advance in time
