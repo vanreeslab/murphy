@@ -157,10 +157,12 @@ class mem_ptr : public m_ptr<real_t> {
     void Calloc(const size_t size) {
         m_assert(!IsOwned(), "we cannot have some memory already");
         //-------------------------------------------------------------------------
+        const size_t byte_size = size * sizeof(real_t);
         // allocate the new memory
-        data_     = reinterpret_cast<real_t*>(m_calloc(size * sizeof(real_t)));
+        data_ = reinterpret_cast<real_t*>(m_calloc(byte_size));
         // explicitly touch the memory and set 0.0
-        std::memset(data_, 0, size * sizeof(real_t));
+        // is useless in practise as every array has be reset to 0.0 in the macro
+        // std::memset(data_, 0, byte_size);
         is_owned_ = true;
         //-------------------------------------------------------------------------
     }
