@@ -414,7 +414,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
     //--------------------------------------------------------------------------
     // m_profStart(profiler, "smooth jump");
     // reset the temp memory to 0.0
-    memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+    std::memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
     data_ptr mask      = coarse_ptr_(0, this);
     real_t*  mask_data = mask.Write();
 
@@ -1122,7 +1122,7 @@ void GridBlock::GhostGet_Post(const Field* field, const lda_t ida, const Wavelet
     const bool do_coarse = (local_parent_.size() + ghost_parent_.size()) > 0;
     if (do_coarse) {
         // reset the coarse memory
-        memset(coarse_ptr_(), 0, interp->CoarseSize(ghost_len_) * sizeof(real_t));
+        std::memset(coarse_ptr_(), 0, interp->CoarseSize(ghost_len_) * sizeof(real_t));
 
         // we use the full neighbor span
         const SubBlock bsrc_neighbor(M_GS, M_STRIDE, 0, M_N);
@@ -1289,7 +1289,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
         //................................................
         // enforce the 0-detail policy in the needed region
         {
-            memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
+            std::memset(coarse_ptr_(), 0, CartBlockMemNum(1) * sizeof(real_t));
             data_ptr mask      = coarse_ptr_(0, this);
             real_t*  mask_data = mask.Write();
 
@@ -1342,7 +1342,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
         {
             //................................................
             // reset the tmp to use for the put operations
-            memset(coarse_ptr_(), 0, interp->CoarseSize(ghost_len_) * sizeof(real_t));
+            std::memset(coarse_ptr_(), 0, interp->CoarseSize(ghost_len_) * sizeof(real_t));
 
             // // I am now complete (except children GP), get my coarse representation
             const SubBlock coarse_block(interp->CoarseNGhostFront(ghost_len_[0]), interp->CoarseStride(ghost_len_), 0, M_NHALF);

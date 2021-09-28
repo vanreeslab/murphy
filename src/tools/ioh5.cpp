@@ -362,7 +362,7 @@ void IOH5::xmf_write_header_(const ForestGrid* grid, const size_t n_block_global
     }
     // do an empty quad string to check the length
     char msg[4096];
-    memset(msg, 0, 4096);
+    std::memset(msg, 0, 4096);
     real_t zero[3] = {0.0, 0.0, 0.0};
     len_per_quad_  = xmf_core_(filename_hdf5_, zero, zero, 1, 1, 1, 1, 1, lda, 0, 0, 1, msg);
 
@@ -439,7 +439,7 @@ void IOH5::xmf_write_block_(const qid_t* qid, GridBlock* block, const Field* fid
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     //#pragma omp critical
     char msg[4096];
-    memset(msg, 0, 4096);
+    std::memset(msg, 0, 4096);
     size_t offset = (block_offset_ + qid->cid) * fid->lda() * block_stride_;
     size_t len    = xmf_core_(filename_hdf5_, block->hgrid(), block->xyz(), qid->tid, qid->qid, rank, block_stride_, M_GS - block_shift_, fid->lda(), offset, stride_global_, block->level(), msg);
     m_assert(len == len_per_quad_, "the len has changed, hence the file will be corrupted: now %ld vs stored %ld", len, len_per_quad_);
@@ -453,7 +453,7 @@ size_t IOH5::xmf_core_(const string fname_h5, const real_t* hgrid, const real_t*
     //-------------------------------------------------------------------------
     // we need an extra space for the final character
     char line[256];
-    memset(line, 0, 256);
+    std::memset(line, 0, 256);
     // - L1
     sprintf(line, "\n<!-- tree num %10.10d, quad num %10.10d for %10.10d -->\n", tid, qid, rank);
     strcat(msg, line);
