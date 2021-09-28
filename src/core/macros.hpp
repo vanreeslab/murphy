@@ -91,14 +91,12 @@
         m_assert(m_isaligned(m_assume_aligned_a_), "data has to be aligned"); \
         __assume_aligned(m_assume_aligned_a_, M_ALIGNMENT);                   \
     })
-#define m_calloc(size)                                                                    \
-    ({                                                                                    \
-        size_t m_calloc_size_   = (size_t)(size);                                         \
-        size_t m_calloc_modulo_ = (m_calloc_size_ % M_ALIGNMENT);                         \
-        m_calloc_size_ += (m_calloc_modulo_ == 0) ? 0 : (M_ALIGNMENT - m_calloc_modulo_); \
-        void* m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT);                   \
-        memset(m_calloc_data_, 0, m_calloc_size_);                                        \
-        m_calloc_data_;                                                                   \
+#define m_calloc(size)                                                   \
+    ({                                                                   \
+        size_t m_calloc_size_ = (size_t)(size);                          \
+        void*  m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT); \
+        memset(m_calloc_data_, 0, m_calloc_size_);                       \
+        m_calloc_data_;                                                  \
     })
 #define m_free(data)                        \
     ({                                      \
@@ -116,14 +114,12 @@
  * @brief allocate a given size (in Byte) and set to 0 the array.
  * the return pointer is aligned to M_ALIGMEMENT
  */
-#define m_calloc(size)                                                                    \
-    ({                                                                                    \
-        size_t m_calloc_size_   = (size_t)(size);                                         \
-        size_t m_calloc_modulo_ = (m_calloc_size_ % M_ALIGNMENT);                         \
-        m_calloc_size_ += (m_calloc_modulo_ == 0) ? 0 : (M_ALIGNMENT - m_calloc_modulo_); \
-        void* m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_);                \
-        memset(m_calloc_data_, 0, m_calloc_size_);                                        \
-        m_calloc_data_;                                                                   \
+#define m_calloc(size)                                                      \
+    ({                                                                      \
+        size_t m_calloc_size_ = (size_t)(size);                             \
+        void*  m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_); \
+        memset(m_calloc_data_, 0, m_calloc_size_);                          \
+        m_calloc_data_;                                                     \
     })
 /**
  * @brief frees the pointer allocated using @ref m_calloc()
