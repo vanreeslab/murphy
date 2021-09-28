@@ -577,7 +577,7 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
     }
     // receive the new memory in the new blocks
     if (n_send_request > 0) {
-        MPI_Waitall(n_send_request, send_request, MPI_STATUS_IGNORE);
+        MPI_Waitall(n_send_request, send_request, MPI_STATUSES_IGNORE);
     }
     //-------------------------------------------------------------------------
     m_end;
