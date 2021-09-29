@@ -165,6 +165,8 @@ static struct argp_option options[] = {
     {"conv-weno", 4005, 0, OPTION_ARG_OPTIONAL, "convergence weno"},
     // two-level weno
     {"2lvl-weno", 4006, 0, OPTION_ARG_OPTIONAL, "two-level weno"},
+    // weak scalability
+    {"weak-scal", 4007, 0, OPTION_ARG_OPTIONAL, "weak scalability"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -394,6 +396,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4006: { /* convergence weno */
             m_log("Two levels weno convergence selected");
             arguments->do_2lvl_weno = true;
+            return 0;
+        }
+        case 4007: { /* convergence weno */
+            m_log("weak scalability selected");
+            arguments->do_weak_scal = true;
             return 0;
         }
         

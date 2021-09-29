@@ -83,6 +83,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 Grid::~Grid() {
     m_begin;
     //-------------------------------------------------------------------------
+    m_profStart(prof_,"grid cleanup");
     // destroy the Wavelet and the details they are mine
     if (interp_ != nullptr) {
         m_verb("dealloc the interp");
@@ -94,6 +95,7 @@ Grid::~Grid() {
     if (is_connect_owned_) {
         p8est_iterate(p4est_forest_, nullptr, nullptr, cback_DestroyBlock, nullptr, nullptr, nullptr);
     }
+    m_profStop(prof_,"grid cleanup");
     //-------------------------------------------------------------------------
     m_end;
 }

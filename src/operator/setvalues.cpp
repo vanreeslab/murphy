@@ -1,7 +1,5 @@
 #include "setvalues.hpp"
 
-// #include <cmath>
-
 /**
  * @brief returns the value of an exponential blob between 0 and 1 (given its sigma and its center)
  * 
@@ -21,15 +19,13 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t>
  * 
  */
 lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>
-    scalar_tube = [](const real_t pos[3], const real_t center[3], const lda_t normal, const real_t sigma) -> real_t {
+    scalar_tube = [](const real_t pos[3], const real_t center[3], const real_t sigma, const lda_t normal) -> real_t {
     const lda_t idx = (normal + 1) % 3;
     const lda_t idy = (normal + 2) % 3;
-
     const real_t oo_sigma2 = 1.0 / (sigma * sigma);
-
     // compute the gaussian
     const real_t rad1 = pow(pos[idx] - (center[idx]), 2) + pow(pos[idy] - center[idy], 2);
-    const real_t vort = m_max(0.0, exp(-rad1 * oo_sigma2));
+    const real_t vort = std::exp(-rad1 * oo_sigma2);
 
     return vort;
 };
@@ -54,7 +50,7 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, con
     const real_t rad2r   = radr + radius;
     const real_t rad1_sq = pow(rad1r, 2) + pow(pos[idz] - center[idz], 2);
     const real_t rad2_sq = pow(rad2r, 2) + pow(pos[idz] - center[idz], 2);
-    const real_t vort    = (exp(-rad1_sq * oo_sigma2) + exp(-rad2_sq * oo_sigma2));
+    const real_t vort    = (std::exp(-rad1_sq * oo_sigma2) + std::exp(-rad2_sq * oo_sigma2));
 
     return vort;
 };
