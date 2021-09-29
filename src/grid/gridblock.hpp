@@ -205,17 +205,22 @@ class GridBlock : public CartBlock {
     void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
     void GhostFreeLists();
 
-    
-
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
 static inline GridBlock* p4est_GetGridBlock(const qdrt_t* quad) {
-    return *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+    // the user_data is an array with the addresses of the block
+    GridBlock** p4est_usr_data = static_cast<GridBlock**>(quad->p.user_data);
+    GridBlock*  block          = p4est_usr_data[0];
+    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
+    return block;
 }
 
 static inline void p4est_SetGridBlock(qdrt_t* quad, GridBlock* block) {
-    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+    // reinterpret_cast<GridBlock**>(quad->p.user_data)[0] = block;
+    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
+    GridBlock** p4est_usr_data = static_cast<GridBlock**>(quad->p.user_data);
+    p4est_usr_data[0]          = block;
 }
 
 #endif  // SRC_GRIDBLOCK_HPP_

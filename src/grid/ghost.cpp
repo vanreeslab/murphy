@@ -152,9 +152,10 @@ void Ghost::InitList_() {
     const bidx_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
     // get the base address
     // fill the displacement
-    for (iblock_t im = 0; im < nmlocal; im++) {    
-        qdrt_t* mirror               = p8est_quadrant_array_index(&ghost->mirrors, im);
-        level_t mirror_level         = p4est_GetQuadFromMirror(forest, mirror)->level;
+    for (iblock_t im = 0; im < nmlocal; im++) {
+        qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
+        qdrt_t* mirror_quad  = p4est_GetQuadFromMirror(forest, mirror);
+        level_t mirror_level = mirror_quad->level;
 
         m_assert(mirror->level == mirror_level, "the two levels must be the same: %d vs %d", mirror->level, mirror_level);
         // update the counters if the mirror is admissible
@@ -164,8 +165,8 @@ void Ghost::InitList_() {
             iblock_t local_id = mirror->p.piggy3.local_num;
             m_assert(local_id >= 0, "the address cannot be negative");
             m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
-            const GridBlock* mirror_quad = p4est_GetGridBlock(mirror);
-            local2disp[local_id] = active_mirror_count * mirror_quad->BlockLayout().n_elem;
+            const GridBlock* mirror_block = p4est_GetGridBlock(mirror_quad);
+            local2disp[local_id]          = active_mirror_count * mirror_block->BlockLayout().n_elem;
             active_mirror_count++;
             m_assert(active_mirror_count <= nmlocal, "the number of mirrors cannot be bigger than the local number:  %d vs %d", active_mirror_count, nmlocal);
         }
@@ -239,12 +240,14 @@ void Ghost::InitComm_() {
     size_t   mirror_to_send_size = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
-        level_t mirror_level = p4est_GetQuadFromMirror(forest, mirror)->level;
+        qdrt_t* mirror_quad  = p4est_GetQuadFromMirror(forest, mirror);
+        level_t mirror_level = mirror->level;
         // update the counters if the mirror is admissible (i.e. it satisfies the requirements)
         // we need to have called the function p4est_balance()!!
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
-            mirror_to_send_size += p4est_GetGridBlock(mirror)->BlockLayout().n_elem;
-            n_mirror_to_send++;
+            GridBlock* mirror_block = p4est_GetGridBlock(mirror_quad);
+            mirror_to_send_size += mirror_block->BlockLayout().n_elem;
+            n_mirror_to_send+=1;
         }
     }
     m_verb("I have %d mirrors to send", n_mirror_to_send);

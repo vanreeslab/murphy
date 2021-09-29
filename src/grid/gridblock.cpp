@@ -835,7 +835,8 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             real_t ngh_pos[3];
             if (!isghost) {
                 // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
-                GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
+                // GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
+                GridBlock* ngh_block = p4est_GetGridBlock(nghq);
                 ngh_pos[0]           = ngh_block->xyz(0);
                 ngh_pos[1]           = ngh_block->xyz(1);
                 ngh_pos[2]           = ngh_block->xyz(2);

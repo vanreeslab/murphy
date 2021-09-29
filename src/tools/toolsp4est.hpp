@@ -43,7 +43,7 @@ inline static int p4est_GetOwnerFromGhost(p8est_t* forest, p8est_quadrant_t* gho
     //---------------------------------------------------------------------
 };
 
-inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, p8est_quadrant_t* mirror) {
+inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, const p8est_quadrant_t* mirror) {
     //---------------------------------------------------------------------
     p8est_tree_t*  tree    = p8est_tree_array_index(forest->trees, mirror->p.piggy3.which_tree);
     p4est_locidx_t quad_id = mirror->p.piggy3.local_num - tree->quadrants_offset;

@@ -95,7 +95,8 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
             const qdrt_t * quad   = p8est_quadrant_array_index(&mytree->quadrants, qid);
             const iblock_t offset = mytree->quadrants_offset;
             // store the block address
-            old_blocks_[offset + qid] = *(reinterpret_cast<GridBlock **>(quad->p.user_data));
+            // old_blocks_[offset + qid] = *(reinterpret_cast<GridBlock **>(quad->p.user_data));
+            old_blocks_[offset + qid] = p4est_GetGridBlock(quad);
         }
     }
 
@@ -243,7 +244,8 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                         // add the fields to the block
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now
-                        *(reinterpret_cast<GridBlock **>(quad->p.user_data)) = block;
+                        // *(reinterpret_cast<GridBlock **>(quad->p.user_data)) = block;
+                        p4est_SetGridBlock(quad,block);
                         // store in the array
                         new_blocks_[offset + qid] = block;
                         // increment the counter
@@ -544,13 +546,14 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
             n_send_done += 1;
         }
     }
+    m_free(current_recv_id);
 
     // wait for all the send to be ok (should be trivial)
     if (n_send_request > 0) {
-        MPI_Waitall(n_send_request,send_request,MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_send_request, send_request, MPI_STATUSES_IGNORE);
     }
     if (n_recv_request > 0) {
-        MPI_Waitall(n_recv_request,recv_request,MPI_STATUSES_IGNORE);
+        MPI_Waitall(n_recv_request, recv_request, MPI_STATUSES_IGNORE);
     }
 }
 
