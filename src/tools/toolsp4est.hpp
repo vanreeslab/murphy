@@ -216,7 +216,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
                 // we are a ghost, we can push the piggy quad
                 // search for the quad in the ghost then
                 p8est_tree_t*     tree_to_push  = p8est_tree_array_index(forest->trees, quad_piggy->p.piggy3.which_tree);
-                ssize_t           ghost_offset  = p8est_ghost_bsearch(ghost, rank_to_push, quad_piggy->p.which_tree, quad_piggy);
+                bidx_t           ghost_offset  = p8est_ghost_bsearch(ghost, rank_to_push, quad_piggy->p.which_tree, quad_piggy);
                 p8est_quadrant_t* ghost_to_push = p8est_quadrant_array_index(&ghost->ghosts, ghost_offset);
 
                 if (ngh_quad->elem_count > 0) {

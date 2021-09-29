@@ -17,7 +17,7 @@
  */
 class Stencil : public BlockOperator {
    protected:
-    sid_t ida_ = 0;  //!< current source dimension
+    lda_t ida_ = 0;  //!< current source dimension
 
    public:
     // default void constructor

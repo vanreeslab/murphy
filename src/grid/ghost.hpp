@@ -5,7 +5,7 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/field.hpp"
 #include "grid/forestgrid.hpp"
@@ -15,13 +15,6 @@
 #include "tools/toolsp4est.hpp"
 #include "wavelet/wavelet.hpp"
 
-// alias boring names
-using GBLocal      = NeighborBlock<GridBlock*>;
-using GBMirror     = NeighborBlock<MPI_Aint>;
-using GBPhysic     = PhysBlock;
-using ListGBLocal  = std::list<GBLocal *>;
-using ListGBMirror = std::list<GBMirror *>;
-using listGBPhysic = std::list<GBPhysic *>;
 
 class Ghost;
 
@@ -86,12 +79,12 @@ class Ghost {
      * @name RMA-based low-level ghosting - get and put the values
      * @{
      */
-    void PushToWindow4Block(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
-    void GetGhost4Block_Post(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
-    void GetGhost4Block_Wait(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
-    void PutGhost4Block_Post(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
-    void PutGhost4Block_Wait(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
-    void PullFromWindow4Block(const qid_t*  qid, GridBlock*  block, const Field*  fid) const;
+    void PushToWindow4Block(const qid_t* qid, GridBlock* block, const Field* fid) const;
+    void GetGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field* fid) const;
+    void GetGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field* fid) const;
+    void PutGhost4Block_Post(const qid_t* qid, GridBlock* block, const Field* fid) const;
+    void PutGhost4Block_Wait(const qid_t* qid, GridBlock* block, const Field* fid) const;
+    void PullFromWindow4Block(const qid_t* qid, GridBlock* block, const Field* fid) const;
     /** @}*/
 
    protected:

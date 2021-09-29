@@ -4,11 +4,9 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/memlayout.hpp"
-#include "core/pointers.hpp"
+#include "core/memdata.hpp"
+#include "core/memspan.hpp"
 #include "core/types.hpp"
-#include "p8est.h"
-#include "subblock.hpp"
 
 /**
  * @brief Defines all the required information to perform an interpolation on a given block
@@ -18,30 +16,20 @@
  * 
  * @warning the exact meaning of each field depends on the wavelet function called! please check the documentation.
  */
-typedef struct interp_ctx_t {
-    bidx_t srcstr;  //!< the source stride
-    bidx_t trgstr;  //!< the target stride
+struct InterpCtx {
+    const real_t alpha;
 
-    bidx_t trgstart[3];  //!< first index needed in the target memory
-    bidx_t trgend[3];    //!< last index needed in the target memory
-#ifndef NDEBUG
-    // for debug only
-    bidx_t srcstart[3];  //!< first index available in the source memory
-    bidx_t srcend[3];    //!< last index available in the source memory
-#endif
+    const MemSpan*      sspan;  //!< source memory span
+    const MemSpan*      tspan;  //!< target memory span
+    const ConstMemData* sdata;  //!< refers the (0,0,0) location of the source memory, in the source memory layout
+    const MemData*      tdata;  //!< refers the (0,0,0) location of the target memory
 
-    real_t alpha = 0.0;  //!< a factor used in different ways depending on the context
-
-    /**
-     * @name position pointers
-     * @{
-     */
-    const_data_ptr sdata;  //!< refers the (0,0,0) location of the source memory, in the source memory layout
-    data_ptr       tdata;  //!< refers the (0,0,0) location of the target memory
-    // data_ptr       temp;   //!< refers the (0,0,0) location of the temporary memory (has the layour of trg!)
-    /** @} */
-
-} interp_ctx_t;
+    explicit InterpCtx() = delete;
+    explicit InterpCtx(const real_t   in_alpha,
+                       const MemSpan* src_span, const ConstMemData* src_data,
+                       const MemSpan* trg_span, const MemData* trg_data)
+        : sspan(src_span), tspan(trg_span), sdata(src_data), tdata(trg_data), alpha{in_alpha} {};
+};
 
 #define M_GS_MIN 0
 
@@ -58,48 +46,78 @@ typedef struct interp_ctx_t {
  */
 class Wavelet {
    public:
-    //................................................
+    //==========================================================================
     // need for empty constructor/destructor to call the virtual ones
     // explicit Wavelet(){};
     virtual ~Wavelet(){};
 
-    //................................................
+    //==========================================================================
     /**
-    * @name basic implemented interpolating functions
+    * @name Functions available to the user
     * @{
     */
-   public:
-    void Copy(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg) const;
-    void Interpolate(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
-    void GetRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, MPI_Aint disp_src, const MemLayout*  block_trg, data_ptr data_trg, rank_t src_rank, MPI_Win win) const;
-    void PutRma(const level_t dlvl, const lid_t shift[3], const MemLayout*  block_src, const_data_ptr data_src, const MemLayout*  block_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
+    void Copy(const level_t dlvl, const bidx_t shift[3],
+              const MemSpan* span_src, const ConstMemData* data_src,
+              const MemSpan* span_trg, const MemData* data_trg) const;
+    void Interpolate(const level_t dlvl, const bidx_t shift[3],
+                     const MemSpan* span_src, const ConstMemData* data_src,
+                     const MemSpan* span_trg, const MemData* data_trg) const;
+    // void Interpolate(const level_t dlvl, const bidx_t shift[3],
+    // const MemSpan*  span_src, ConstMemData* data_src,
+    // const MemSpan*  span_trg, MemData* data_trg, const real_t alpha, ConstMemData* data_cst) const;
+    // void GetRma(const level_t dlvl, const bidx_t shift[3],
+    //             const MemSpan* span_src, MPI_Aint disp_src,
+    //             const MemSpan* span_trg, MemData* data_trg, rank_t src_rank, MPI_Win win) const;
+    // void PutRma(const level_t dlvl, const bidx_t shift[3],
+    //             const MemSpan* span_src, ConstMemData* data_src,
+    //             const MemSpan* span_trg, MPI_Aint disp_trg, rank_t trg_rank, MPI_Win win) const;
 
-    real_t Criterion(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
-                     /* target */ const MemLayout* const  detail_block) const;
-    void   Details(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
-                 /* target */ const MemLayout* const  detail_block, const data_ptr& detail, const real_t tol,
-                 /* output*/ real_t details_max[2]) const;
-    void   SmoothOnMask(/* source */ const MemLayout* const  block_src,
-                      /* target */ const MemLayout* const  block_trg, const data_ptr& data,
-                      /* detail */ const MemLayout* const  detail_block, const data_ptr& detail_mask) const;
-    void   OverwriteDetails(/* source */ const MemLayout* const  block_src,
-                          /* target */ const MemLayout* const  block_trg, const data_ptr& data) const;
-    void   StoreDetails(/* source */ const MemLayout* const  block_src, const const_data_ptr& data,
-                           /* target */ const MemLayout* const  block_detail, const data_ptr& detail) const;
+    real_t Criterion(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                     /* target */ const MemSpan* span_detail) const;
+    void   Details(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                 /* target */ const MemSpan* span_detail, const MemData* detail, const real_t tol,
+                 /* output*/ real_t details_maxmin[2]) const;
+    void   SmoothOnMask(/* source */ const MemSpan* span_src,
+                      /* target */ const MemSpan* span_trg, const MemData* data,
+                      /* detail */ const MemSpan* detail_block, const MemData* detail_mask) const;
+    void   OverwriteDetails(/* source */ const MemSpan* span_src,
+                          /* target */ const MemSpan* span_trg, const MemData* data) const;
+    void   StoreDetails(/* source */ const MemSpan* span_src, const ConstMemData* data,
+                      /* target */ const MemSpan* block_detail, const MemData* detail) const;
     /** @} */
 
-    //................................................
+    //==========================================================================
+    /**
+    * @name Functions used as a "do it all" + to be inheritated
+    * @{
+    */
+   protected:
+    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t shift[3], const real_t alpha,
+                          const MemSpan* span_src,const ConstMemData* data_src,
+                          const MemSpan* span_trg,const MemData* data_trg) const;
+    virtual void CopyMagic_(const level_t dlvl, const InterpCtx* ctx) const;
+
+    // to be overwritten functions
+    virtual void Coarsen_(const InterpCtx* const ctx) const                           = 0;
+    virtual void RefineZeroDetails_(const InterpCtx* const ctx) const                 = 0;
+    virtual void OverwriteDetailsDualLifting_(const InterpCtx* const ctx) const       = 0;
+    virtual void Detail_(const InterpCtx* const ctx, real_t details_max[2]) const = 0;
+    virtual void Smooth_(const InterpCtx* const ctx) const                            = 0;
+    // virtual void Clear_(const InterpCtx* ctx) const                             = 0;
+
+    /** @} */
+
+    //==========================================================================
    public:
     /**
-    * @name Identity functions
+    * @name Identity and sizes functions
     * @{
     */
     std::string Identity() const { return "interpolating wavelet " + std::to_string(N()) + "." + std::to_string(Nt()); }
 
-    virtual const short_t N() const  = 0;  // return the interpolation order
-    virtual const short_t Nt() const = 0;  // return the moments order
-    virtual const real_t eps_const() const = 0; //return the theoretical factor in front of the epsilon
+    virtual const short_t N() const         = 0;  // return the interpolation order
+    virtual const short_t Nt() const        = 0;  // return the moments order
+    virtual const real_t  eps_const() const = 0;  //return the theoretical factor in front of the epsilon
 
     const bool smoothed() const { return (Nt() != 0); };  // return if the wavelet details will smooth or not.
 
@@ -158,9 +176,9 @@ class Wavelet {
     };
 
     const bidx_t nghost_front_overwrite() const {
-        const bidx_t n_ga   = len_ga() / 2;
+        const bidx_t n_ga = len_ga() / 2;
         // overwrites only takes place at the first point
-        const bidx_t last_pt = n_ga-1;
+        const bidx_t last_pt = n_ga - 1;
         return m_max(last_pt, 0);
     };
     const bidx_t nghost_back_overwrite() const {
@@ -238,7 +256,7 @@ class Wavelet {
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
      */
-    const lid_t nghost_front_criterion_smooth() const {
+    const bidx_t nghost_front_criterion_smooth() const {
         // // this is the last detail I will ever need, already takes into account that we are in the front
         // const bidx_t max_detail = m_max(ndetail_citerion_extend_front(), ndetail_smooth_extend_front());
         // const bidx_t offset     = 1 * (max_detail == 0);  // we must remove 1 if max_detail ==0
@@ -253,7 +271,7 @@ class Wavelet {
     /**
      * @brief returns the number of gp needed to apply the smooth over a resolution jump
      */
-    const lid_t nghost_back_criterion_smooth() const {
+    const bidx_t nghost_back_criterion_smooth() const {
         const bidx_t last_pt = m_max(ndetail_citerion_extend_back(), ndetail_smooth_extend_back());
         // compute the max between computing the last point and the point just before
         const bidx_t lim_scaling = m_max(last_pt + (len_ha() / 2), last_pt - 1 + (len_ga() / 2));
@@ -261,7 +279,6 @@ class Wavelet {
         const bool   is_detail   = (last_pt % 2) == 0;
         return (is_detail)*lim_detail + (!is_detail) * lim_scaling;
     };
-
 
     // nghosts needed for the interpolation
     const bidx_t nghost_front() const {
@@ -276,7 +293,7 @@ class Wavelet {
                                                nghost_back_criterion_smooth()));
         return m_max(min_wavelet, M_GS_MIN);
     }
-    
+
     /** @} */
 
     /**
@@ -343,7 +360,7 @@ class Wavelet {
     //     // return the correct choice
     //     return res[c];
     // }
-    // inline void CoarseFromFine(const MemLayout* block_fine, SubBlock* block_coarse) const {
+    // inline void CoarseFromFine(const MemSpan* block_fine, SubBlock* block_coarse) const {
     //     bidx_t coarse_start[3], coarse_end[3];
     //     for (bidx_t id = 0; id < 3; ++id) {
     //         coarse_start[id] = CoarseFromBlock(block_fine->start(id));
@@ -359,26 +376,6 @@ class Wavelet {
     /** @} */
 
     //-------------------------------------------------------------------------
-   protected:
-    /**
-     * @name Interpolation functions, to be implemented
-     * @{
-     */
-    virtual void DoMagic_(const level_t dlvl, const bool force_copy, const lid_t shift[3], const MemLayout* block_src, const_data_ptr data_src, const MemLayout* block_trg, data_ptr data_trg, const real_t alpha, const_data_ptr data_cst) const;
-
-    virtual void Coarsen_(const interp_ctx_t* const ctx) const                     = 0;
-    virtual void RefineZeroDetails_(const interp_ctx_t* const ctx) const           = 0;
-    virtual void OverwriteDetailsDualLifting_(const interp_ctx_t* const ctx) const = 0;
-    // virtual void Scaling_(const interp_ctx_t* const  ctx) const                                                   = 0;
-    virtual void Detail_(const interp_ctx_t* const ctx, real_t details[2]) const                          = 0;
-    virtual void ForwardWaveletTransform_(const interp_ctx_t* const ctx, real_t* const details_max) const = 0;
-    virtual void Smooth_(const interp_ctx_t* const ctx) const                                             = 0;
-    virtual void Clear_(const interp_ctx_t* const ctx) const                                              = 0;
-    // virtual void WriteDetail_(const interp_ctx_t*  ctx) const                                     = 0;
-    /** @} */
-
-    // defined function -- might be overriden
-    virtual void Copy_(const level_t dlvl, const interp_ctx_t* ctx) const;
 };
 
 #endif  // SRC_WAVELET_HPP_

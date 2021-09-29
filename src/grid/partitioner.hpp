@@ -5,7 +5,7 @@
 #include <string>
 
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/grid.hpp"
 #include "grid/gridblock.hpp"
@@ -30,16 +30,16 @@ class Partitioner {
     bool  destructive_ = false;  //!< false if the oldblocks belongs to an existing grid
     lda_t n_lda_       = 0;      //!< the total number of dimension accross all the fields
 
-    lid_t n_send_request_ = 0;  //!< the number of send requests
-    lid_t n_recv_request_ = 0;  //!< the number of receive requests
+    int n_send_request_ = 0;  //!< the number of send requests
+    int n_recv_request_ = 0;  //!< the number of receive requests
 
     MPI_Request* for_send_request_  = nullptr;  //!< forward partition - the send requests
     MPI_Request* for_recv_request_  = nullptr;  //!< forward partition - the receive requests
     MPI_Request* back_send_request_ = nullptr;  //!< backward partition - the send requests
     MPI_Request* back_recv_request_ = nullptr;  //!< backward partition - the receive requests
 
-    mem_ptr send_buf_ = nullptr;  //<! the send buffer, since the memory is not continuous accross the blocks
-    mem_ptr recv_buf_ = nullptr;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
+    MemPtr send_buf_;  //<! the send buffer, since the memory is not continuous accross the blocks
+    MemPtr recv_buf_;  //<! the receive buffer, sicne the memory is not continuous accross the blocks
 
     // int*   send_status_count_   = nullptr;  //<! count to send the status of the old blocks
     // int*   send_status_cum_sum_ = nullptr;  //<! cummulative sum to send the status of the old blocks

@@ -67,6 +67,9 @@
 // // static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
 // /** @} */
 
+
+#define M_INLINE __attribute__((always_inline)) inline
+
 /**
  * @name memory management
  * @{
@@ -244,7 +247,7 @@
     ({                                                                                                                                   \
         __typeof__(mem) m_zeroidx_mem_ = (mem);                                                                                          \
         lda_t           m_zeroidx_ida_ = (lda_t)(ida);                                                                                   \
-        lid_t           m_zeroidx_gs_  = (lid_t)(m_zeroidx_mem_->gs());                                                                  \
+        bidx_t          m_zeroidx_gs_  = (bidx_t)(m_zeroidx_mem_->gs());                                                                 \
         bidx_t          m_zeroidx_str_ = (bidx_t)(m_zeroidx_mem_->stride());                                                             \
         (bidx_t)(m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * m_zeroidx_ida_))); \
     })

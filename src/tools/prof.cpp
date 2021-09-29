@@ -143,7 +143,7 @@ real_t TimerBlock::time_acc() const {
  * @param level 
  * @param total_time 
  */
-void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, const lda_t icol) const {
+void TimerBlock::Disp(FILE* file, const level_t level, const real_t total_time, const lda_t icol) const {
     // check if any proc has called the agent
     int total_count = 0;
     MPI_Allreduce(&count_, &total_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -232,9 +232,9 @@ void TimerBlock::Disp(FILE* file, const lid_t level, const real_t total_time, co
     //................................................
     // check that everything is ok for the MPI
 #ifndef NDEBUG
-    lid_t nchildren     = children_.size();
-    lid_t nchildren_max = 0;
-    lid_t nchildren_min = 0;
+    iblock_t nchildren     = children_.size();
+    iblock_t nchildren_max = 0;
+    iblock_t nchildren_min = 0;
     MPI_Allreduce(&nchildren, &nchildren_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(&nchildren, &nchildren_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
     m_assert((nchildren_max == nchildren) && (nchildren == nchildren_min), "TimerBlock %s: nchildren do not match: local = %d, max = %d, min = %d", name_.c_str(), nchildren, nchildren_max, nchildren_min);

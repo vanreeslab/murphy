@@ -1,6 +1,7 @@
 #ifndef SRC_BLOCKOPERATOR_HPP
 #define SRC_BLOCKOPERATOR_HPP
 
+#include "core/memspan.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "tools/prof.hpp"
@@ -14,8 +15,8 @@
  */
 class BlockOperator {
    protected:
-    const bidx_t start_;                        //!< starting index for the loop
-    const bidx_t end_;                          //!< ending index for the loop
+    const MemSpan span_;            //!< Span for the loop
+    
     bidx_t       ghost_len_need_[2] = {0, 0};   //!< the number of ghost points needed by the operator
     bidx_t       ghost_len_res_[2]  = {0, 0};   //!< the number of ghost points actually visited by the operator and ok in the result
     Prof*        prof_              = nullptr;  //!< profiler
@@ -25,8 +26,8 @@ class BlockOperator {
     explicit BlockOperator(const bidx_t* ghost_len_in) noexcept : BlockOperator(ghost_len_in, ghost_len_in){};
 
     explicit BlockOperator(const bidx_t* ghost_len_need, const bidx_t* ghost_len_res) noexcept
-        : start_((ghost_len_res == nullptr) ? 0 : (-ghost_len_res[0])),
-          end_((ghost_len_res == nullptr) ? M_N : (M_N + ghost_len_res[1])) {
+        : span_(((ghost_len_res == nullptr) ? 0 : (-ghost_len_res[0])),
+          ((ghost_len_res == nullptr) ? M_N : (M_N + ghost_len_res[1]))) {
         m_begin;
         //-------------------------------------------------------------------------
         ghost_len_need_[0] = (ghost_len_need == nullptr) ? 0 : ghost_len_need[0];

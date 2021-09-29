@@ -17,7 +17,7 @@
 class TimerBlock {
    protected:
     // bool        is_root_  = true;      //!< indicate if the block is root
-    lid_t       count_    = 0;         //!< the number of times this block has been called
+    iter_t       count_    = 0;         //!< the number of times this block has been called
     size_t      memsize_  = 0;         //!< the memory size associated with a memory operation
     real_t      t0_       = -1.0;      //!< temp start time of the block
     real_t      t1_       = -1.0;      //!< temp stop time of the block
@@ -41,7 +41,7 @@ class TimerBlock {
     TimerBlock* AddChild(std::string child_name) noexcept;
 
     void SetParent(TimerBlock* parent);
-    void Disp(FILE* file, const int level, const real_t totalTime, const lda_t icol) const;
+    void Disp(FILE* file, const level_t level, const real_t totalTime, const lda_t icol) const;
 };
 
 /**

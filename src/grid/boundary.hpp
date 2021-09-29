@@ -3,7 +3,7 @@
 
 #include "core/forloop.hpp"
 #include "core/macros.hpp"
-#include "core/pointers.hpp"
+// #include "core/pointers.hpp"
 #include "grid/cartblock.hpp"
 #include "grid/subblock.hpp"
 
@@ -70,7 +70,8 @@ class Boundary {
      * @param gblock the ghost block where to apply it
      * @param data the data
      */
-    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const gblock, const data_ptr data) const {
+    // virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const SubBlock* const gblock, const data_ptr data) const {
+    virtual void operator()(const sid_t iface, const bidx_t first_last[3], const real_t hgrid[3], const real_t boundary_condition, const MemSpan* gblock, const MemData* sdata) const {
         m_assert(iface >= 0 && iface < 6, "iface = %d is wrong", iface);
         m_assert((npoint + 1) <= M_N, "the size of the box is not big enough to take the needed samples");
         // m_assert(block->stride() == gblock->stride(), "the two strides must be the same");
@@ -84,15 +85,17 @@ class Boundary {
         const real_t* fsign     = face_sign[iface];
 
         // move the data around the starting point of the face to fill
-        bidx_t  b_stride = gblock->stride();
-        real_t* sdata    = data.Write(0, gblock);
+        // bidx_t  b_stride = gblock->stride();
+        // real_t* sdata    = data.Write(0);
+        // m_assert(gblock->stride() == data.stride() && gblock->gs() == data.gs(), "The layout and the memory must be equal");
 
         // m_log("sdata from data = %ld", (sdata - data()) / sizeof(real_t));
         // m_log("the boundary will be from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
 
-        auto op = [=, &sdata](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get the local information
-            real_t* ldata = sdata + m_idx(i0, i1, i2, 0, b_stride);
+            // real_t* ldata = sdata + m_idx(i0, i1, i2, 0, b_stride);
+            const MemData ldata(*sdata, sdata->ptr(i0, i1, i2));
 
             // get the distance between me and the face
             // the face_start is given as M_N, so if I am positive signed, I need add 1 to reach the last element of the block
@@ -116,16 +119,17 @@ class Boundary {
                 const bidx_t idx2 = (!isphys[2]) ? 0 : (-(ip + OverWriteFirst_(fsign[2])) * fsign[2] - dis2);
 
                 // check that we stay at the correct sport for everybody
-                m_assert((i0 + idx0) >= (-gblock->gs()) && (i0 + idx0) < (b_stride), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), b_stride);
-                m_assert((i1 + idx1) >= (-gblock->gs()) && (i1 + idx1) < (b_stride), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), b_stride);
-                m_assert((i2 + idx2) >= (-gblock->gs()) && (i2 + idx2) < (b_stride), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), b_stride);
-                // check the specific isphys direction
-                m_assert((((i0 + idx0) * isphys[0]) >= 0) && ((i0 + idx0) * isphys[0]) < (b_stride - gblock->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), gblock->stride());
-                m_assert((((i1 + idx1) * isphys[1]) >= 0) && ((i1 + idx1) * isphys[1]) < (b_stride - gblock->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), gblock->stride());
-                m_assert((((i2 + idx2) * isphys[2]) >= 0) && ((i2 + idx2) * isphys[2]) < (b_stride - gblock->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), gblock->stride());
+                // m_assert((i0 + idx0) >= (-gblock->gs()) && (i0 + idx0) < (b_stride), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), b_stride);
+                // m_assert((i1 + idx1) >= (-gblock->gs()) && (i1 + idx1) < (b_stride), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), b_stride);
+                // m_assert((i2 + idx2) >= (-gblock->gs()) && (i2 + idx2) < (b_stride), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), b_stride);
+                // // check the specific isphys direction
+                // m_assert((((i0 + idx0) * isphys[0]) >= 0) && ((i0 + idx0) * isphys[0]) < (b_stride - gblock->gs()), "index 0 is wrong: %d with gs = %d and stride = %d", i0 + idx0, gblock->gs(), gblock->stride());
+                // m_assert((((i1 + idx1) * isphys[1]) >= 0) && ((i1 + idx1) * isphys[1]) < (b_stride - gblock->gs()), "index 1 is wrong: %d with gs = %d and stride = %d", i1 + idx1, gblock->gs(), gblock->stride());
+                // m_assert((((i2 + idx2) * isphys[2]) >= 0) && ((i2 + idx2) * isphys[2]) < (b_stride - gblock->gs()), "index 2 is wrong: %d with gs = %d and stride = %d", i2 + idx2, gblock->gs(), gblock->stride());
 
                 // store the result
-                f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];
+                f[ip] = ldata(idx0, idx1, idx2);
+                // f[ip] = ldata[m_idx(idx0, idx1, idx2, 0, b_stride)];
 
                 // get the data position, relative to me, i.e. using the idx indexes
                 // const real_t data_pos[3] = {(idx0)*hgrid[0],
@@ -140,14 +144,15 @@ class Boundary {
             // ldata[0] = Stencil_(f, xf, 0.0, boundary_condition);
             const real_t xb = -dis0 * (dir == 0) - dis1 * (dir == 1) - dis2 * (dir == 2);
             // const real_t xb = -dis0 * (dir == 0) * hgrid[0] - dis1 * (dir == 1) * hgrid[1] - dis2 * (dir == 2) * hgrid[2];
-            ldata[0]        = Stencil_(xf, f, xb, boundary_condition, 0.0);
+            ldata(0,0,0) = Stencil_(xf, f, xb, boundary_condition, 0.0);
         };
 
         // m_log("doing boundary from %d %d %d to %d %d %d", gblock->start(0), gblock->start(1), gblock->start(2), gblock->end(0), gblock->end(1), gblock->end(2));
         // get the starting and ending indexes
-        const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
-        const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
-        for_loop(&op, start, end);
+        // const bidx_t start[3] = {gblock->start(0), gblock->start(1), gblock->start(2)};
+        // const bidx_t end[3]   = {gblock->end(0), gblock->end(1), gblock->end(2)};
+        // for_loop(&op, start, end);
+        for_loop(&op,gblock->start, gblock->end);
     }
     //-------------------------------------------------------------------------
 };

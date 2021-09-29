@@ -58,7 +58,7 @@ class RKRhs : public RKFunctor {
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
             const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
 
-            block->data(fid).Write(i0, i1, i2)[0] = -fact * std::exp(-rho) * dpos;
+            block->data(fid,0)(i0, i1, i2) = -fact * std::exp(-rho) * dpos;
         };
 
         SetValue init(lambda_set);
@@ -88,7 +88,7 @@ class RKRhs : public RKFunctor {
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
             const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
 
-            block->data(fid).Write(i0, i1, i2)[0] -= fact * std::exp(-rho) * dpos;
+            block->data(fid,0)(i0, i1, i2) -= fact * std::exp(-rho) * dpos;
         };
 
         SetValue init(lambda_acc);
@@ -198,7 +198,7 @@ TEST_F(valid_RK, rk3_tvd) {
             // get the position
             real_t pos[3];
             block->pos(i0, i1, i2, pos);
-            block->data(fid).Write(i0, i1, i2)[0] = scalar_exp(pos, center, sigma);
+            block->data(fid,0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
         };
         SetValue init(lambda_initcond);
         init(&grid, &phi);

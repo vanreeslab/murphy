@@ -60,7 +60,7 @@ static lambda_setvalue_t lambda_error = [](const bidx_t i0, const bidx_t i1, con
     block->pos(i0, i1, i2, pos);
 
     // call the function
-    block->data(fid).Write(i0, i1, i2)[0] = scalar_exp(pos, center, sigma);
+    block->data(fid,0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
 };
 
 void DebugLifting::InitParam(ParserArguments* param) {}

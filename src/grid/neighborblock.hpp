@@ -3,7 +3,7 @@
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
-#include "ghostblock.hpp"
+#include "grid/ghostblock.hpp"
 
 constexpr void face_sign(const bool mask_bool, const iface_t iface, iface_t* face_dir, real_t sign[3]) {
     //-------------------------------------------------------------------------
@@ -126,14 +126,14 @@ class NeighborBlock : public GhostBlock {
      * @param block_id the cummulative id of the underlying neighboring block (used to access the data)
      * @param rank the rank where to find the underlying neighboring block (-1 if local)
      */
-    NeighborBlock(const bidx_t gs, const bidx_t stride, const bidx_t (*const ghost_len)[2],
-                  const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : GhostBlock(gs, stride, ghost_len),
+    NeighborBlock(const bidx_t (*const ghost_len)[2],
+                  const iface_t ibidule, const iblock_t block_id, const rank_t rank = -1) : GhostBlock(ghost_len),
                                                                                             ibidule_(ibidule),
                                                                                             cum_block_id_(block_id),
                                                                                             rank_rma_(rank) {
         //---------------------------------------------------------------------
-        m_assert(this->core() == M_N, "the core = %d should be %d", this->core(), M_N);
-        m_assert(this->gs(0) == M_GS && this->gs(1) == M_GS, "the gs = %d %d should be %d", this->gs(0), this->gs(1), M_GS);
+        // m_assert(this->core() == M_N, "the core = %d should be %d", this->core(), M_N);
+        // m_assert(this->gs(0) == M_GS && this->gs(1) == M_GS, "the gs = %d %d should be %d", this->gs(0), this->gs(1), M_GS);
         // given the ibidule, determine if I have to scale and in which direction
         // real_t sign[3];
         // GhostGetSign(ibidule, sign);
@@ -146,55 +146,28 @@ class NeighborBlock : public GhostBlock {
     }
 
     // return arguments
-    [[nodiscard]] short_t      dlvl() const { return dlvl_; }
-    [[nodiscard]] bidx_t       shift(const int id) const { return shift_[id]; }
-    [[nodiscard]] const lid_t* shift() const { return shift_; }
-    [[nodiscard]] rank_t       rank() const { return rank_rma_; }
-    [[nodiscard]] iblock_t     cum_block_id() const { return cum_block_id_; };
-    [[nodiscard]] iface_t      ibidule() const { return ibidule_; };
+    M_INLINE short_t       dlvl() const { return dlvl_; }
+    M_INLINE bidx_t        shift(const int id) const { return shift_[id]; }
+    M_INLINE const bidx_t* shift() const { return shift_; }
+    M_INLINE rank_t        rank() const { return rank_rma_; }
+    M_INLINE iblock_t      cum_block_id() const { return cum_block_id_; };
+    M_INLINE iface_t       ibidule() const { return ibidule_; };
 
-    [[nodiscard]] T data_src() {
+    M_INLINE T data_src() const noexcept {
         return data_src_;
     }
-    [[nodiscard]] T* data_src_ptr() {
+    M_INLINE T* data_src_ptr() noexcept {
         return &data_src_;
     }
-    void data_src(T data) {
+    M_INLINE void data_src(T data) {
         data_src_ = data;
     }
-
-    // MemLayout return functions
-    // [[nodiscard]] bidx_t gs() const override {
-    //     return gs_;
-    // };
-    // [[nodiscard]] bidx_t stride() const override {
-    //     return stride_;
-    // };
-    // [[nodiscard]] bidx_t start(const lda_t ida) const override final {
-    //     return start_[ida] - scale_dir_start_[ida] * ghost_len_[0];
-    // };
-    // [[nodiscard]] bidx_t end(const lda_t ida) const override final {
-    //     return start_[ida] + scale_dir_end_[ida] * ghost_len_[1];
-    // };
-    // [[nodiscard]] const bidx_t* ghost_len() const { return ghost_len_; };
-
-    // /**
-    //  * @brief transforms indexes to a coarse layout
-    //  *
-    //  * @param interp
-    //  * @param id_fine
-    //  * @param id_coarse
-    //  */
-    // void ToCoarse(const Wavelet* interp, const bidx_t id_fine[3], bidx_t id_coarse[3]) {
-    //     // get the coarse ghost sizes
-    //     const bidx_t n_front = interp->CoarseNGhostFront(ghost_len_[0]);
-    //     const bidx_t n_back  = interp->CoarseNGhostBack(ghost_len_[1]);
-
-    //     // compute the coarse indexes
-    //     for (bidx_t id = 0; id < 3; ++id) {
-    //         id_coarse[id] = TranslateBlockLimits(id_fine[id], M_N, n_front, M_NHALF, n_back);
-    //     }
-    // }
+    M_INLINE MemSpan SourceSpan() const noexcept {
+        return data_src_->BlockSpan();
+    }
+    M_INLINE MemLayout SourceLayout() const noexcept {
+        return data_src_->BlockLayout();
+    }
 
     /**
     * @brief Computes the ghost region as the intersection between two blocks
@@ -255,14 +228,25 @@ class NeighborBlock : public GhostBlock {
             scale_dir_end_[id]   = (end_idx == trg_max);
 
             // if yes, register the closest block boundary instead
-            start_[id] = scale_dir_start_[id] ? 0 : start_idx;
-            end_[id]   = scale_dir_end_[id] ? trg_core : end_idx;
+            start[id] = scale_dir_start_[id] ? 0 : start_idx;
+            end[id]   = scale_dir_end_[id] ? trg_core : end_idx;
         }
-        m_assert(start_[0] <= end_[0], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[0], end_[0], shift_[0], src_pos[0], trg_pos[0]);
-        m_assert(start_[1] <= end_[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[1], end_[1], shift_[1], src_pos[1], trg_pos[1]);
-        m_assert(start_[2] <= end_[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start_[2], end_[2], shift_[2], src_pos[2], trg_pos[2]);
+        m_assert(start[0] <= end[0], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[0], end[0], shift_[0], src_pos[0], trg_pos[0]);
+        m_assert(start[1] <= end[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[1], end[1], shift_[1], src_pos[1], trg_pos[1]);
+        m_assert(start[2] <= end[2], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[2], end[2], shift_[2], src_pos[2], trg_pos[2]);
         //---------------------------------------------------------------------
     }
 };
+
+// specify the functions when we have a MPI_Aint
+template <>
+M_INLINE MemSpan NeighborBlock<MPI_Aint>::SourceSpan() const noexcept {
+    return MemSpan(0, M_N);
+}
+// specify the function for the BlockSpan function
+template <>
+M_INLINE MemLayout NeighborBlock<MPI_Aint>::SourceLayout() const noexcept {
+    return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
+}
 
 #endif  // SRC_GHOST_BLOCK_HPP_

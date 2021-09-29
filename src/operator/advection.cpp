@@ -24,43 +24,44 @@ constexpr real_t alpha_js(const real_t gamma, const real_t beta) {
  * and df+/dv > 0. In the case of the advection, we have f(v) = u v, so the separation is made based on the velocity u.
  * 
  */
-using lambda_flux_weno_z_t = std::function<void(const lda_t ida, const real_t* const src, const real_t* const vel, real_t* const flux)>;
+using lambda_flux_weno_z_t = std::function<void(const lda_t ida, const ConstMemData* src, const ConstMemData* vel, real_t* const flux)>;
 
 /**
  * @brief Given a flux function, do the magic for the WENO_Z schemes
  * 
  */
 static void DoMagic_Flux(/* param */ const bidx_t                    nghost,
-                          /* flux weno */ const lambda_flux_weno_z_t* flux_weno,
-                          /* fields */ const real_t* data_vel[3], const real_t* data_src, real_t* data_trg,
-                          /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3]) noexcept {
+                         /* flux weno */ const lambda_flux_weno_z_t* flux_weno,
+                         /* fields */ const ConstMemData data_vel[3], const ConstMemData* data_src, const MemData* data_trg,
+                         /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3]) noexcept {
     //-------------------------------------------------------------------------
-    auto op = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        const bidx_t  idx[3] = {i0, i1, i2};
-        real_t*       trg    = data_trg + m_idx(i0, i1, i2);
-        const real_t* src    = data_src + m_idx(i0, i1, i2);
+    auto op = [&](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        const bidx_t       idx[3] = {i0, i1, i2};
+        const MemData      ltrg(*data_trg, i0, i1, i2);
+        const ConstMemData lsrc(*data_src, i0, i1, i2);
 
         // loop on the faces
-        #pragma unroll 3
+#pragma unroll 3
         for (lda_t ida = 0; ida < 3; ++ida) {
+            const ConstMemData lvel(data_vel[ida], i0, i1, i2);
             // as we are on the face +1/2, apply the flux on the:
             // -> left only if we are >0
             // -> right only if we are < (M_N-1)
             const bool flux_apply_left  = idx[ida] > 0;
             const bool flux_apply_right = idx[ida] < (M_N - 1);
             real_t     fluxes[2]        = {0.0, 0.0};
-            (*flux_weno)(ida, src, data_vel[ida] + m_idx(i0, i1, i2), fluxes);
+            (*flux_weno)(ida, &lsrc, &lvel, fluxes);
 
             // update
-            trg[m_idx_delta(-1, ida)] -= oneoh[ida] * fluxes[0] * flux_apply_left;
-            trg[m_idx_delta(+0, ida)] += oneoh[ida] * (fluxes[0] - fluxes[1]);
-            trg[m_idx_delta(+1, ida)] += oneoh[ida] * fluxes[1] * flux_apply_right;
+            ltrg.Stencil(-1, ida) -= oneoh[ida] * fluxes[0] * flux_apply_left;
+            ltrg.Stencil(+0, ida) += oneoh[ida] * (fluxes[0] - fluxes[1]);
+            ltrg.Stencil(+1, ida) += oneoh[ida] * fluxes[1] * flux_apply_right;
         }
     };
 
     if (!is_outer) {
-        auto reset = [=, &data_trg](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-            data_trg[m_idx(i0, i1, i2)] *= alpha;
+        auto reset = [&](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+            (*data_trg)(i0, i1, i2) *= alpha;
         };
         // reset the whole block, we don't need the ghost points to do that
         for_loop(&reset, 0, M_N);
@@ -122,11 +123,11 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
     // the flux computed is the one in i+1/2!
-    lambda_flux_weno_z_t flux_weno_3 = [=](const lda_t ida, const real_t* const src, const real_t* const vel, real_t* const flux) -> void {
+    lambda_flux_weno_z_t flux_weno_3 = [=](const lda_t ida, const ConstMemData* src, const ConstMemData* vel, real_t* const flux) -> void {
         // get the values
-        const real_t field[3] = {src[m_idx_delta(-1, ida)] * vel[m_idx_delta(-1, ida)],
-                                 src[0] * vel[0],
-                                 src[m_idx_delta(+1, ida)] * vel[m_idx_delta(+1, ida)]};
+        const real_t field[3] = {src->Stencil(-1, ida) * vel->Stencil(-1, ida),
+                                 src->Stencil(+0, ida) * vel->Stencil(+0, ida),
+                                 src->Stencil(+1, ida) * vel->Stencil(+1, ida)};
         // get the field shifted (it's easier)
         const real_t* const f = field + 1;
 
@@ -150,8 +151,8 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
             const real_t w0    = alpha_0 * denom;
             const real_t w1    = alpha_1 * denom;
 
-            const real_t fvel = 0.5 * (vel[m_idx_delta(-1, ida)] + vel[0]);  // i - 1/2
-            flux[0]           = (m_sign(fvel) < 0.0) * (w0 * s0 + w1 * s1);  // it's a negative flux
+            const real_t fvel = 0.5 * (vel->Stencil(-1, ida) + vel->Stencil(0, ida));  // i - 1/2
+            flux[0]           = (m_sign(fvel) < 0.0) * (w0 * s0 + w1 * s1);            // it's a negative flux
         }
         // case 1: inteface i+1/2, left biased stencils - flux is positive
         {
@@ -168,20 +169,21 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
             const real_t w0    = alpha_0 * denom;
             const real_t w1    = alpha_1 * denom;
 
-            const real_t fvel = 0.5 * (vel[m_idx_delta(+1, ida)] + vel[0]);  // i + 1/2
-            flux[1]           = (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1);  // it's a positive flux
+            const real_t fvel = 0.5 * (vel->Stencil(+1, ida) + vel->Stencil(0, ida));  // i + 1/2
+            flux[1]           = (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1);            // it's a positive flux
         }
     };
     //-------------------------------------------------------------------------
     // apply the flux computations
-    const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
-    const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
-    const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
-    // m_profStart(prof_,"do magic");
+    const real_t       alpha       = (accumulate_) ? 1.0 : 0.0;
+    const real_t       oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
+    const ConstMemData data_vel[3] = {block->ConstData(u_, 0), block->ConstData(u_, 1), block->ConstData(u_, 2)};
+    const ConstMemData data_src    = block->ConstData(fid_src, ida_);
+    const MemData      data_trg    = block->data(fid_trg, ida_);
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
-                  &flux_weno_3,
-                  data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
-                  is_outer, alpha, oneoh);
+                 &flux_weno_3,
+                 data_vel, &data_src, &data_trg,
+                 is_outer, alpha, oneoh);
     // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
 }
@@ -193,13 +195,13 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
-    lambda_flux_weno_z_t flux_weno_5 = [=](const lda_t ida, const real_t* src, const real_t* vel, real_t* const flux) -> void {
+    lambda_flux_weno_z_t flux_weno_5 = [=](const lda_t ida, const ConstMemData* src, const ConstMemData* vel, real_t* const flux) -> void {
         // get the values
-        const real_t  field[5] = {src[m_idx_delta(-2, ida)] * vel[m_idx_delta(-2, ida)],
-                                 src[m_idx_delta(-1, ida)] * vel[m_idx_delta(-1, ida)],
-                                 src[0] * vel[0],
-                                 src[m_idx_delta(+1, ida)] * vel[m_idx_delta(+1, ida)],
-                                 src[m_idx_delta(+2, ida)] * vel[m_idx_delta(+2, ida)]};
+        const real_t  field[5] = {src->Stencil(-2, ida) * vel->Stencil(-2, ida),
+                                 src->Stencil(-1, ida) * vel->Stencil(-1, ida),
+                                 src->Stencil(+0, ida) * vel->Stencil(+0, ida),
+                                 src->Stencil(+1, ida) * vel->Stencil(+1, ida),
+                                 src->Stencil(+2, ida) * vel->Stencil(+2, ida)};
         const real_t* f        = field + 2;
 
         // we compute the betas unique, they adapt to the stencils
@@ -228,7 +230,7 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
             const real_t w1    = alpha_1 * denom;
             const real_t w2    = alpha_2 * denom;
 
-            const real_t fvel = 0.5 * (vel[m_idx_delta(-1, ida)] + vel[0]);            // i - 1/2
+            const real_t fvel = 0.5 * (vel->Stencil(-1, ida) + vel->Stencil(0, ida));  // i - 1/2
             flux[0]           = (m_sign(fvel) < 0.0) * (w0 * s0 + w1 * s1 + w2 * s2);  // it's a negative flux
         }
         // case 1: inteface i+1/2, left biased stencils - flux is positive
@@ -251,20 +253,22 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
             const real_t w1    = alpha_1 * denom;
             const real_t w2    = alpha_2 * denom;
 
-            const real_t fvel = 0.5 * (vel[m_idx_delta(+1, ida)] + vel[0]);            // i + 1/2
+            const real_t fvel = 0.5 * (vel->Stencil(+1, ida) + vel->Stencil(0, ida));  // i + 1/2
             flux[1]           = (m_sign(fvel) > 0.0) * (w0 * s0 + w1 * s1 + w2 * s2);  // it's a positive flux
         }
     };
     //-------------------------------------------------------------------------
     // apply the flux computations
-    const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
-    const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
-    const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
+    const real_t       alpha       = (accumulate_) ? 1.0 : 0.0;
+    const real_t       oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
+    const ConstMemData data_vel[3] = {block->ConstData(u_, 0), block->ConstData(u_, 1), block->ConstData(u_, 2)};
+    const ConstMemData data_src    = block->ConstData(fid_src, ida_);
+    const MemData      data_trg    = block->data(fid_trg, ida_);
     // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
-                  &flux_weno_5,
-                  data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
-                  is_outer, alpha, oneoh);
+                 &flux_weno_5,
+                 data_vel, &data_src, &data_trg,
+                 is_outer, alpha, oneoh);
     // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
 }
@@ -278,24 +282,24 @@ void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const boo
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
     // the flux computed is the one in i+1/2!
-    lambda_flux_weno_z_t flux_weno_3 = [=](const lda_t ida, const real_t* const src, const real_t* const vel, real_t* const flux) -> void {
+    lambda_flux_weno_z_t flux_weno_3 = [=](const lda_t ida, const ConstMemData* src, const ConstMemData* vel, real_t* const flux) -> void {
         // get the values
-        const real_t field[3] = {src[m_idx_delta(-1, ida)] * vel[m_idx_delta(-1, ida)],
-                                 src[0] * vel[0],
-                                 src[m_idx_delta(+1, ida)] * vel[m_idx_delta(+1, ida)]};
+        const real_t field[3] = {src->Stencil(-1, ida) * vel->Stencil(-1, ida),
+                                 src->Stencil(+0, ida) * vel->Stencil(+0, ida),
+                                 src->Stencil(+1, ida) * vel->Stencil(+1, ida)};
         // get the field shifted (it's easier)
         const real_t* const f = field + 1;
 
         // case 0: inteface i-1/2, right biased stencils - flux is negative
         {
             const real_t f0   = 1.0 / 3.0 * f[-1] + 5.0 / 6.0 * f[0] - 1.0 / 6.0 * f[1];
-            const real_t fvel = 0.5 * (vel[m_idx_delta(-1, ida)] + vel[0]);  // i - 1/2
+            const real_t fvel = 0.5 * (vel->Stencil(-1, ida) + vel->Stencil(0, ida));  // i - 1/2
             flux[0]           = (m_sign(fvel) < 0.0) * f0;                   // it's a negative flux
         }
         // case 1: inteface i+1/2, left biased stencils - flux is positive
         {
             const real_t f1   = -1.0 / 6.0 * f[-1] + 5.0 / 6.0 * f[0] + 1.0 / 3.0 * f[1];
-            const real_t fvel = 0.5 * (vel[m_idx_delta(+1, ida)] + vel[0]);  // i + 1/2
+            const real_t fvel = 0.5 * (vel->Stencil(+1, ida) + vel->Stencil(0, ida));  // i + 1/2
             flux[1]           = (m_sign(fvel) > 0.0) * f1;                   // it's a positive flux
         }
     };
@@ -303,11 +307,13 @@ void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     // apply the flux computations
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
-    const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
+    const ConstMemData data_vel[3] = {block->ConstData(u_, 0), block->ConstData(u_, 1), block->ConstData(u_, 2)};
+    const ConstMemData data_src    = block->ConstData(fid_src, ida_);
+    const MemData      data_trg    = block->data(fid_trg, ida_);
     // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
                   &flux_weno_3,
-                  data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
+                  data_vel, &data_src, &data_trg,
                   is_outer, alpha, oneoh);
     // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
@@ -320,13 +326,13 @@ void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
-    lambda_flux_weno_z_t flux_weno_5 = [=](const lda_t ida, const real_t* src, const real_t* vel, real_t* const flux) -> void {
+    lambda_flux_weno_z_t flux_weno_5 = [=](const lda_t ida, const ConstMemData* src, const ConstMemData* vel, real_t* const flux) -> void {
         // get the values
-        const real_t  field[5] = {src[m_idx_delta(-2, ida)] * vel[m_idx_delta(-2, ida)],
-                                 src[m_idx_delta(-1, ida)] * vel[m_idx_delta(-1, ida)],
-                                 src[0] * vel[0],
-                                 src[m_idx_delta(+1, ida)] * vel[m_idx_delta(+1, ida)],
-                                 src[m_idx_delta(+2, ida)] * vel[m_idx_delta(+2, ida)]};
+        const real_t  field[5] = {src->Stencil(-2, ida) * vel->Stencil(-2, ida),
+                                 src->Stencil(-1, ida) * vel->Stencil(-1, ida),
+                                 src->Stencil(+0, ida) * vel->Stencil(+0, ida),
+                                 src->Stencil(+1, ida) * vel->Stencil(+1, ida),
+                                 src->Stencil(+2, ida) * vel->Stencil(+2, ida)};
         const real_t* f        = field + 2;
 
         // we compute the betas unique, they adapt to the stencils
@@ -338,13 +344,13 @@ void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const boo
         // case 0: inteface i-1/2, right biased stencils - flux is negative
         {
             const real_t f0   = -1.0 / 20.0 * f[-2] + 9.0 / 20.0 * f[-1] + 47.0 / 60.0 * f[0] - 13.0 / 60.0 * f[1] + 1.0 / 30.0 * f[2];
-            const real_t fvel = 0.5 * (vel[m_idx_delta(-1, ida)] + vel[0]);  // i - 1/2
+            const real_t fvel = 0.5 * (vel->Stencil(-1, ida) + vel->Stencil(0, ida));  // i - 1/2
             flux[0]           = (m_sign(fvel) < 0.0) * (f0);                 // it's a negative flux
         }
         // case 1: inteface i+1/2, left biased stencils - flux is positive
         {
             const real_t f1   = 1.0 / 30.0 * f[-2] - 13.0 / 60.0 * f[-1] + 47.0 / 60.0 * f[0] + 9.0 / 20.0 * f[1] - 1.0 / 20.0 * f[2];
-            const real_t fvel = 0.5 * (vel[m_idx_delta(+1, ida)] + vel[0]);  // i + 1/2
+            const real_t fvel = 0.5 * (vel->Stencil(+1, ida) + vel->Stencil(0, ida));  // i + 1/2
             flux[1]           = (m_sign(fvel) > 0.0) * (f1);                 // it's a positive flux
         }
     };
@@ -352,11 +358,13 @@ void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     // apply the flux computations
     const real_t  alpha       = (accumulate_) ? 1.0 : 0.0;
     const real_t  oneoh[3]    = {1.0 / block->hgrid(0), 1.0 / block->hgrid(1), 1.0 / block->hgrid(2)};
-    const real_t* data_vel[3] = {block->data(u_, 0).Read(), block->data(u_, 1).Read(), block->data(u_, 2).Read()};
+    const ConstMemData data_vel[3] = {block->ConstData(u_, 0), block->ConstData(u_, 1), block->ConstData(u_, 2)};
+    const ConstMemData data_src    = block->ConstData(fid_src, ida_);
+    const MemData      data_trg    = block->data(fid_trg, ida_);
     // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
                   &flux_weno_5,
-                  data_vel, block->data(fid_src, ida_).Read(), block->data(fid_trg, ida_).Write(),
+                  data_vel, &data_src, &data_trg,
                   is_outer, alpha, oneoh);
     // m_profStop(prof_,"do magic");
     // -------------------------------------------------------------------------
