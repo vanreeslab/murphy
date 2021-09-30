@@ -318,6 +318,7 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                m_verb("adding rank %d to the ingroup (now %d ranks",ir,n_in_group);
                 break;
             }
         }
@@ -344,6 +345,7 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                m_verb("adding rank %d to the outgroup (now %d ranks",ir,n_in_group);
                 break;
             }
         }

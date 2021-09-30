@@ -56,7 +56,7 @@ void WeakScalability::Run() {
 
     // setup the grid
     bool   period[3] = {true, false, false};
-    bidx_t length[3] = {comm_size, 1, 2};
+    bidx_t length[3] = {comm_size/32, 1, 2};
     Grid   grid(1, period, length, MPI_COMM_WORLD, prof_);
     grid.level_limit(0, P8EST_QMAXLEVEL);
 
@@ -81,7 +81,7 @@ void WeakScalability::Run() {
     // dump(&grid, &scal, 0);
 
     // adapt the grid
-    grid.SetTol(1e-3, 1e-5);
+    grid.SetTol(1e-4, 1e-6);
     grid.SetRecursiveAdapt(true);
     grid.Adapt(&scal, &tube);
 
