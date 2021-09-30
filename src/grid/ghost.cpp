@@ -134,10 +134,10 @@ void Ghost::InitList_() {
 
     // displacement
     m_profStart(prof_, "MPI_Win_create");
-    MPI_Aint  win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
-    MPI_Aint* local2disp        = static_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
-    MPI_Win   local2disp_window = MPI_WIN_NULL;
-    MPI_Win_create(local2disp, win_disp_mem_size, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
+    MPI_Aint win_disp_mem_size = mesh->local_num_quadrants * sizeof(bidx_t);
+    bidx_t*  local2disp        = reinterpret_cast<bidx_t*>(m_calloc(win_disp_mem_size));
+    MPI_Win  local2disp_window = MPI_WIN_NULL;
+    MPI_Win_create(local2disp, win_disp_mem_size, sizeof(bidx_t), info, MPI_COMM_WORLD, &local2disp_window);
     m_assert(win_disp_mem_size >= 0, "the memory size should be >=0");
     m_assert(local2disp_window != MPI_WIN_NULL, "window must be ready");
     m_verb("allocating %ld bytes in the window for %d active quad", win_disp_mem_size, mesh->local_num_quadrants);
@@ -166,7 +166,13 @@ void Ghost::InitList_() {
             m_assert(local_id >= 0, "the address cannot be negative");
             m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
             const GridBlock* mirror_block = p4est_GetGridBlock(mirror_quad);
-            local2disp[local_id]          = active_mirror_count * mirror_block->BlockLayout().n_elem;
+#ifndef NDEBUG
+            MPI_Aint id          = active_mirror_count * mirror_block->BlockLayout().n_elem;
+            local2disp[local_id] = id;
+            m_assert(id < std::numeric_limits<int>::max(), "the value must be lower than the max value of int");
+#else
+            local2disp[local_id] = static_cast<int>(active_mirror_count * mirror_block->BlockLayout().n_elem);
+#endif
             active_mirror_count++;
             m_assert(active_mirror_count <= nmlocal, "the number of mirrors cannot be bigger than the local number:  %d vs %d", active_mirror_count, nmlocal);
         }

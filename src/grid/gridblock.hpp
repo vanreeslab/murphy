@@ -27,7 +27,7 @@ typedef enum StatusAdapt {
 
 // using GBLocal      = NeighborBlock<GridBlock*>;
 using GBLocal      = NeighborBlock<CartBlock*>;
-using GBMirror     = NeighborBlock<MPI_Aint>;
+using GBMirror     = NeighborBlock<bidx_t>;
 using GBPhysic     = PhysBlock;
 using ListGBLocal  = std::list<GBLocal*>;
 using ListGBMirror = std::list<GBMirror*>;
