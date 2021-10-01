@@ -76,7 +76,7 @@ class GridBlock : public CartBlock {
 
    public:
     explicit GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
-    ~GridBlock();
+    virtual ~GridBlock();
 
     __attribute__((always_inline)) inline MemLayout CoarseLayout(const Wavelet* interp) const {
         return MemLayout(M_LAYOUT_BLOCK, interp->CoarseNGhostFront(ghost_len_[0]), M_NHALF, interp->CoarseNGhostBack(ghost_len_[1]));

@@ -45,7 +45,7 @@ class CartBlock {
 
    public:
     explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level) noexcept;
-    ~CartBlock();
+    virtual ~CartBlock();
 
     /**
      * @brief returns a MemLayout corresponding to the this block
