@@ -23,9 +23,9 @@ inline static T* p4est_GetPointer(sc_array_t* array, const int id) {
     return reinterpret_cast<T*>(sc_array_index_int(array, id));
 };
 
-inline static char p4est_MaxLocalLevel(const p8est_t* forest) {
+inline static level_t p4est_MaxLocalLevel(const p8est_t* forest) {
     //---------------------------------------------------------------------
-    char l_max_level = 0;
+    level_t l_max_level = 0;
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
         // get the current tree
         p8est_tree_t* ctree = p8est_tree_array_index(forest->trees, it);
@@ -51,7 +51,7 @@ inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, c
     //---------------------------------------------------------------------
 };
 
-inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const char level) {
+inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const level_t level) {
     m_assert(level >= 0, "the level = %d must be >=0", level);
     m_assert(level < P8EST_MAXLEVEL, "the level = %d must be <= %d", level, P8EST_MAXLEVEL);
     //---------------------------------------------------------------------
@@ -60,7 +60,7 @@ inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, cons
     return num;
     //---------------------------------------------------------------------
 };
-inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, const char level, const p4est_locidx_t quad_id) {
+inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, const level_t level, const p4est_locidx_t quad_id) {
     m_assert(quad_id < numeric_limits<int>::max(), "quad id is too big");
     //---------------------------------------------------------------------
     sc_array_t quad_id_array = mesh->quad_level[level];
@@ -129,7 +129,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
     for (iblock_t ib = 0; ib < ngh_quad->elem_count; ++ib) {
         m_assert(ngh_qid->elem_count == ngh_quad->elem_count, "the counters = %ld and %ld must be =", ngh_qid->elem_count, ngh_quad->elem_count);
         m_assert(ngh_enc->elem_count == ngh_quad->elem_count, "the counters = %ld and %ld must be =", ngh_enc->elem_count, ngh_quad->elem_count);
-        m_verb("ngh_qid = %d, ngh_enc = %d, ngh_quad = %d", ngh_qid->elem_count, ngh_quad->elem_count, ngh_enc->elem_count);
+        m_verb("ngh_qid = %ld, ngh_enc = %ld, ngh_quad = %ld", ngh_qid->elem_count, ngh_quad->elem_count, ngh_enc->elem_count);
         // p8est_quadrant_t* ngh = p8est_quadrant_array_index(ngh_quad, ib);
 
         p8est_quadrant_t* ngh = p4est_GetElement<p8est_quadrant_t*>(ngh_quad, ib);
@@ -188,7 +188,7 @@ inline static void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8es
             int is_valid = p8est_quadrant_exists(forest, ghost, tree_2_find, quad_2_find, exist_arr, rank_arr, quad_arr);
             m_assert(quad_arr->elem_count == 1, "there is %ld quad matching the needed one", quad_arr->elem_count);
             m_verb("the quadrant found is valid? %d", is_valid);  // i don't understand this value....
-            m_verb("we have %d elements in the exist vector", exist_arr->elem_count);
+            m_verb("we have %ld elements in the exist vector", exist_arr->elem_count);
 
             // store the quadrant and the rank -> use the piggy3 to get the correct quad
             p8est_quadrant_t* quad_piggy   = p4est_GetPointer<p8est_quadrant_t>(quad_arr, 0);

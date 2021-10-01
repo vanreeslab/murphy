@@ -131,7 +131,7 @@ void Grid::SetupMeshGhost() {
     this->SetupP4estMeshAndGhost();
     // create the ghosts structure
     m_verb("starting the Ghost construction");
-    ghost_ = new Ghost(this, interp_, prof_);
+    ghost_ = new Ghost(this, level_limit_min_ - 1, level_limit_max_ + 1, interp_, prof_);
     //-------------------------------------------------------------------------
     m_end;
 }

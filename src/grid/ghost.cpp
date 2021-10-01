@@ -19,19 +19,19 @@
  */
 // static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
 
-/**
- * @brief Construct a new Ghost object 
- * 
- * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp) for details
- * 
- * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
- * @param interp the Wavelet to use, will drive the number of ghost points to consider
- */
-Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
-    //-------------------------------------------------------------------------
-    // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp)
-    //-------------------------------------------------------------------------
-}
+// /**
+//  * @brief Construct a new Ghost object 
+//  * 
+//  * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp) for details
+//  * 
+//  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
+//  * @param interp the Wavelet to use, will drive the number of ghost points to consider
+//  */
+// Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
+//     //-------------------------------------------------------------------------
+//     // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp)
+//     //-------------------------------------------------------------------------
+// }
 
 /**
  * @brief Construct a new Ghost, allocate the ghost lists and initiates the communications
