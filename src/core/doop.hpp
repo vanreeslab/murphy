@@ -64,10 +64,9 @@ void DoOpMesh(const O op, F memfunc, const ForestGrid*  grid, T... data) {
         myid.qid = bid - tree->quadrants_offset;  // quadrant id
         myid.tid = mesh->quad_to_tree[bid];       // tree id
         // the quadrants can be from differents trees -> get the correct one
-        p8est_quadrant_t* quad;
-        quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+        p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+        GridBlock*        block = p4est_GetGridBlock(quad);
+        
         // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
         if constexpr (do_gridblock && with_qid) {
             (block->*memfunc)(&myid, data...);
@@ -138,11 +137,10 @@ void DoOpMeshLevel(const O op, F memfunc, const ForestGrid*  grid, const level_t
         myid.qid = bid - tree->quadrants_offset;
         myid.tid = mesh->quad_to_tree[bid];
         // the quadrants can be from differents trees -> get the correct one
-        p8est_quadrant_t* quad = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
-
+        p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
+        GridBlock*        block = p4est_GetGridBlock(quad);
         m_assert(quad->level == lvl, "the selected quadrant has the wrong level");
 
-        GridBlock* block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
         // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
         if constexpr (do_gridblock && with_qid) {
             (block->*memfunc)(&myid, data...);

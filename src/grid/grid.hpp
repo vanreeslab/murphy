@@ -136,6 +136,8 @@ class Grid : public ForestGrid {
     void Coarsen(Field* field);
     void StoreDetails(Field* criterion, Field* details);
     void MaxMinDetails(Field* criterion, real_t maxmin[2]);
+    void DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+                             const short_t n_cat, const real_t max_category);
 
     void Adapt(Field* field);
     // void Adapt(Field* field, const setvalue_gridop_t* expr_grid, const setvalue_blockop_t* expr_block);

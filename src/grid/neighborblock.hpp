@@ -5,19 +5,19 @@
 #include "core/types.hpp"
 #include "grid/ghostblock.hpp"
 
-constexpr void face_sign(const bool mask, const iface_t iface, iface_t* face_dir, real_t sign[3]) {
+constexpr void face_sign(const bool mask_bool, const iface_t iface, iface_t* face_dir, real_t sign[3]) {
     //-------------------------------------------------------------------------
-    real_t        mask_real = static_cast<real_t>(mask);
-    const iface_t dir       = (iface / 2) * mask_real;
+    const real_t  mask = static_cast<real_t>(mask_bool);
+    const iface_t dir  = (iface / 2) * mask;
     // store the dir
-    (*face_dir) += mask_real * dir;
+    (*face_dir) += mask * dir;
     // update the sign
-    sign[dir] += mask_real * (((iface % 2) == 1) ? 1.0 : -1.0);
+    sign[dir] += mask * (((iface % 2) == 1) ? 1.0 : -1.0);
     sign[(dir + 1) % 3] += 0.0;
     sign[(dir + 2) % 3] += 0.0;
     //-------------------------------------------------------------------------
 }
-constexpr void edge_sign(const bool mask, const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
+constexpr void edge_sign(const bool mask_bool, const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
     /*
     the plane convention for the sign variable convention for the sign
     2 +--------------+ 3
@@ -29,26 +29,26 @@ constexpr void edge_sign(const bool mask, const iface_t iedge, iface_t* edge_dir
         dir1
     */
     //-------------------------------------------------------------------------
-    real_t  mask_real = static_cast<real_t>(mask);
-    iface_t dir       = (iedge / 4) * mask_real;  // this is the direction of the edge
+    const real_t  mask = static_cast<real_t>(mask_bool);
+    const iface_t dir  = (iedge / 4) * mask;                  // this is the direction of the edge
+    const iface_t dir1 = static_cast<iface_t>(dir == 0);      // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
+    const iface_t dir2 = 2 - static_cast<iface_t>(dir == 2);  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
     // iface_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
     // iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-    iface_t dir1 = static_cast<iface_t>(dir == 0);      // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
-    iface_t dir2 = 2 - static_cast<iface_t>(dir == 2);  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
     // store the dir
-    (*edge_dir) += mask_real * dir;
+    (*edge_dir) += mask * dir;
     // update the sign
     sign[dir] += 0.0;
-    sign[dir1] += mask_real * (((iedge % 4) % 2) == 1 ? +1.0 : -1.0);
-    sign[dir2] += mask_real * (((iedge % 4) / 2) == 1 ? +1.0 : -1.0);
+    sign[dir1] += mask * (((iedge % 4) % 2) == 1 ? +1.0 : -1.0);
+    sign[dir2] += mask * (((iedge % 4) / 2) == 1 ? +1.0 : -1.0);
     //-------------------------------------------------------------------------
 }
-constexpr void corner_sign(const bool mask, const iface_t icorner, real_t sign[3]) {
+constexpr void corner_sign(const bool mask_bool, const iface_t icorner, real_t sign[3]) {
     //-------------------------------------------------------------------------
-    real_t mask_real = static_cast<real_t>(mask);
-    sign[0] += mask_real * ((icorner % 2) == 1 ? +1.0 : -1.0);
-    sign[1] += mask_real * (((icorner % 4) / 2) == 1 ? +1.0 : -1.0);
-    sign[2] += mask_real * ((icorner / 4) == 1 ? +1.0 : -1.0);
+    const real_t mask = static_cast<real_t>(mask_bool);
+    sign[0] += mask * ((icorner % 2) == 1 ? +1.0 : -1.0);
+    sign[1] += mask * (((icorner % 4) / 2) == 1 ? +1.0 : -1.0);
+    sign[2] += mask * ((icorner / 4) == 1 ? +1.0 : -1.0);
     //-------------------------------------------------------------------------
 }
 

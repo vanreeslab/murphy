@@ -32,8 +32,9 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
     m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
-    real_t len = p4est_QuadLen(quad->level);
-    p4est_SetGridBlock(quad, new GridBlock(len, xyz, quad->level));
+    real_t     len   = p4est_QuadLen(quad->level);
+    GridBlock* block = new GridBlock(len, xyz, quad->level);
+    p4est_SetGridBlock(quad, block);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -48,7 +49,7 @@ void cback_DestroyBlock(p8est_iter_volume_info_t* info, void* user_data) {
     GridBlock*        block = p4est_GetGridBlock(quad);
     m_assert(block != nullptr, "the block you are trying to free has already been free'ed");
     delete (block);
-    p4est_SetGridBlock(quad, nullptr);
+    // p4est_SetGridBlock(quad, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -534,10 +535,11 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         block->status_level(status);
     }
 
-    // deallocate the leaving blocks
+    // deallocate the leaving blocks and set nullptr instead
     for (int id = 0; id < num_outgoing; id++) {
         qdrt_t*    quad  = outgoing[id];
         GridBlock* block = p4est_GetGridBlock(quad);
+        // p4est_SetGridBlock(quad,nullptr);
         // delete the block, the fields are destroyed in the destructor
         delete (block);
     }

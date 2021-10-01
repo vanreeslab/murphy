@@ -29,12 +29,15 @@ static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_
 SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
     // delete the field
+    m_profStart(prof_, "cleanup");
     grid_->DeleteField(vel_);
     grid_->DeleteField(scal_);
 
     delete vel_;
     delete scal_;
     delete grid_;
+
+    m_profStop(prof_, "cleanup");
     
     if (!(prof_ == nullptr)) {
         prof_->Disp();
@@ -44,7 +47,7 @@ SimpleAdvection::~SimpleAdvection() {
 }
 
 void SimpleAdvection::InitParam(ParserArguments* param) {
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // call the general testcase parameters
     this->TestCase::InitParam(param);
 
@@ -65,6 +68,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
         prof_       = new Prof(name);
     }
+    m_profStart(prof_, "init");
 
     // setup the grid
     bidx_t length[3] = {3, 3, 2};
@@ -92,8 +96,9 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     SetValue     ring(lambda_ring, ghost_len_interp);
     ring(grid_, scal_);
 
-    // adapt the grid
+        // adapt the grid
     if (!no_adapt_) {
+        // if the ctol is smaller than epsilon, just put epsilon
         grid_->SetTol(param->refine_tol, param->coarsen_tol);
         grid_->SetRecursiveAdapt(true);
         grid_->Adapt(scal_, &ring);
@@ -110,7 +115,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     tstart_ = param->time_start;
     tfinal_ = param->time_final;
-
+    m_profStop(prof_, "init");
     //-------------------------------------------------------------------------
 }
 
@@ -137,7 +142,7 @@ void SimpleAdvection::Run() {
     }
 
     // time integration
-    lid_t         iter = 0;
+    iter_t         iter = 0;
     real_t        t    = tstart_;
     const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
 
@@ -150,14 +155,9 @@ void SimpleAdvection::Run() {
         // adapt the mesh
         if ((iter % iter_adapt() == 0) && (!no_adapt_)) {
             m_log("---- adapt mesh");
+            m_log_level_plus;
             m_profStart(prof_, "adapt");
             if (!grid_on_sol_) {
-                // adapt on the current field
-                // BMinMax minmax;
-                // grid_->GhostPull(scal_, &minmax);
-                // real_t min, max;
-                // minmax(grid_, scal_, &min, &max);
-                // m_log("MINMAX before adaptation: from %e to %e", min, max);
                 grid_->SetRecursiveAdapt(true);
                 grid_->Adapt(scal_);
 
@@ -175,18 +175,22 @@ void SimpleAdvection::Run() {
             set_velocity(grid_, vel_);
             m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
             m_profStop(prof_, "set velocity");
+            m_log_level_minus;
         }
-        // we run the first diagnostic if not done yet
+        // we run the first diagnostic if not done yet, it's usefull to get a sense of what is going on with the adaptation
         if (iter == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
+            m_log_level_plus;
             real_t wtime_now = MPI_Wtime();
-            Diagnostics(t, 0, iter, wtime_now - wtime_start);
+            Diagnostics(t, 0.0, iter, wtime_now - wtime_start);
             m_profStop(prof_, "diagnostics");
+            m_log_level_minus;
         }
 
         //................................................
         m_log("---- do time-step");
+        m_log_level_plus;
         //................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
@@ -194,7 +198,8 @@ void SimpleAdvection::Run() {
         m_profStop(prof_, "compute dt");
 
         // dump some info
-        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e", t, tfinal_, iter, iter_max(), dt);
+        real_t wtime_now = MPI_Wtime();
+        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal_, iter, iter_max(), dt, wtime_now - wtime_start);
 
         //................................................
         // advance in time
@@ -203,14 +208,18 @@ void SimpleAdvection::Run() {
         iter++;
         m_profStop(prof_, "do dt");
 
+        m_log_level_minus;
+
         //................................................
         // diagnostics, dumps, whatever
         if (iter % iter_diag() == 0) {
             m_log("---- run diag");
+            m_log_level_plus;
             m_profStart(prof_, "diagnostics");
             real_t time_now = MPI_Wtime();
-            Diagnostics(t, dt, iter, time_now);
+            Diagnostics(t, dt, iter, time_now - wtime_start);
             m_profStop(prof_, "diagnostics");
+            m_log_level_minus;
         }
     }
     m_profStop(prof_, "run");
@@ -229,7 +238,7 @@ void SimpleAdvection::Run() {
     m_end;
 }
 
-void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_t iter, const real_t wtime) {
+void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
     m_begin;
     m_assert(scal_->lda() == 1, "the scalar field must be scalar");
     //-------------------------------------------------------------------------
@@ -285,6 +294,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     real_t maxmin_details[2];
     grid_->MaxMinDetails(scal_, maxmin_details);
 
+    // tag
+    lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
+    string weno_name  = fix_weno_ ? "_cons" : "_weno";
+    int  log_ratio = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log10(grid_->ctol())-log10(grid_->rtol())) : -0;
+    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol"+to_string(-log_ratio);
+
     // open the file
     m_profStart(prof_, "dump diag");
     FILE*   file_error;
@@ -292,12 +307,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     level_t min_level       = grid_->MinLevel();
     level_t max_level       = grid_->MaxLevel();
     long    global_num_quad = grid_->global_num_quadrants();
-    m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e)", iter, time, min_level, max_level, density, err2, erri);
+    m_log("iter = %6.6d time = %e: levels = (%d , %d -> %e), errors = (%e , %e), wtime = %e", iter, time, min_level, max_level, density, err2, erri, wtime);
     if (rank == 0) {
-        lid_t adapt_freq = no_adapt_ ? 0 : iter_adapt();
-        string weno_name = fix_weno_ ? "_cons" : "_weno"; 
-        string file_name = "diag_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq)+ weno_name +to_string(weno_)+ ".data";
-        file_diag = fopen(string(folder_diag_ + "/" + file_name).c_str(), "a+");
+        // lid_t adapt_freq = no_adapt_ ? 0 : iter_adapt();
+        // string weno_name = fix_weno_ ? "_cons" : "_weno";
+        string file_name = "diag_" + tag + ".data";
+        file_diag        = fopen(string(folder_diag_ + "/" + file_name).c_str(), "a+");
         fprintf(file_diag, "%6.6d;%e;%e;%ld;%d;%d", iter, time, dt, global_num_quad, min_level, max_level);
         fprintf(file_diag, ";%e", wtime);
         fprintf(file_diag, ";%e;%e", grid_->rtol(), grid_->ctol());
@@ -311,8 +326,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const lid_
     m_profStop(prof_, "dump diag");
 
     m_profStart(prof_, "dump levels");
-    grid_->DumpLevels(iter, folder_diag_, string("_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT)));
+    grid_->DumpLevels(iter, folder_diag_, string("_" + tag));
     m_profStop(prof_, "dump levels");
+
+    m_profStart(prof_, "dump det histogram");
+    grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
+    m_profStop(prof_, "dump det histogram");
 
     m_profStart(prof_, "dump field");
     if (iter % iter_dump() == 0 && iter != 0) {

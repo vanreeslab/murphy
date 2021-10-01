@@ -58,9 +58,9 @@ class ForestGrid {
     [[nodiscard]] inline p8est_mesh_t*         p4est_mesh() const { return p4est_mesh_; }
     [[nodiscard]] inline p8est_ghost_t*        p4est_ghost() const { return p4est_ghost_; }
     [[nodiscard]] inline p8est_connectivity_t* p4est_connect() const { return p4est_forest_->connectivity; }
-
     [[nodiscard]] inline bidx_t local_num_quadrants() const { return p4est_forest_->local_num_quadrants; }
     [[nodiscard]] inline long  global_num_quadrants() const { return p4est_forest_->global_num_quadrants; }
+    
     [[nodiscard]] level_t      MaxLevel() const;
     [[nodiscard]] level_t      MinLevel() const;
     [[nodiscard]] real_t       FinestH() const;

@@ -145,7 +145,8 @@ class GridBlock : public CartBlock {
     void UpdateStatusForwardRefinement();
     void UpdateStatusFromGlobalPolicy();
 
-    void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]);
+    void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2],
+                       bidx_t* max_blocks, const real_t max_cat, const real_t min_cat, const short_t n_cat);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
     // void UpdateSmoothingMask(const Wavelet* const interp);
 
@@ -204,17 +205,22 @@ class GridBlock : public CartBlock {
     void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
     void GhostFreeLists();
 
-    
-
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
 static inline GridBlock* p4est_GetGridBlock(const qdrt_t* quad) {
-    return *(reinterpret_cast<GridBlock**>(quad->p.user_data));
+    // the user_data is an array with the addresses of the block
+    GridBlock** p4est_usr_data = static_cast<GridBlock**>(quad->p.user_data);
+    GridBlock*  block          = p4est_usr_data[0];
+    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
+    return block;
 }
 
 static inline void p4est_SetGridBlock(qdrt_t* quad, GridBlock* block) {
-    *(reinterpret_cast<GridBlock**>(quad->p.user_data)) = block;
+    // reinterpret_cast<GridBlock**>(quad->p.user_data)[0] = block;
+    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
+    GridBlock** p4est_usr_data = static_cast<GridBlock**>(quad->p.user_data);
+    p4est_usr_data[0]          = block;
 }
 
 #endif  // SRC_GRIDBLOCK_HPP_

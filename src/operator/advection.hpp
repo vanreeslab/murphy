@@ -99,7 +99,7 @@ inline real_t Advection<M_CONS, 3>::cfl_rk3() const {
     return 1.6;
 };
 template <>
-void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
+void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
 
 //-----------------------------------------------------------------------------
 template <>
@@ -109,6 +109,6 @@ inline real_t Advection<M_CONS, 5>::cfl_rk3() const {
     return 1.4;
 };
 template <>
-void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
+void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
 
 #endif  // SRC_ADVECTION_DIFFUSION_HPP_

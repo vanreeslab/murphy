@@ -95,7 +95,8 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
             const qdrt_t * quad   = p8est_quadrant_array_index(&mytree->quadrants, qid);
             const iblock_t offset = mytree->quadrants_offset;
             // store the block address
-            old_blocks_[offset + qid] = *(reinterpret_cast<GridBlock **>(quad->p.user_data));
+            // old_blocks_[offset + qid] = *(reinterpret_cast<GridBlock **>(quad->p.user_data));
+            old_blocks_[offset + qid] = p4est_GetGridBlock(quad);
         }
     }
 
@@ -243,7 +244,8 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                         // add the fields to the block
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now
-                        *(reinterpret_cast<GridBlock **>(quad->p.user_data)) = block;
+                        // *(reinterpret_cast<GridBlock **>(quad->p.user_data)) = block;
+                        p4est_SetGridBlock(quad,block);
                         // store in the array
                         new_blocks_[offset + qid] = block;
                         // increment the counter
@@ -395,6 +397,164 @@ Partitioner::~Partitioner() {
     m_free(q_send_cum_request_);
     m_free(q_recv_cum_block_);
     m_free(q_recv_cum_request_);
+}
+
+void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir) {
+    //--------------------------------------------------------------------------
+    lid_t  n_recv_request;
+    lid_t  n_send_request;
+    lid_t *q_send_cum_request;
+    lid_t *q_recv_cum_request;
+
+    lid_t *q_send_cum_block;
+    lid_t *q_recv_cum_block;
+
+    real_t *send_buf;
+    real_p  recv_buf;
+
+    MPI_Request *recv_request;
+    MPI_Request *send_request;
+    GridBlock ** old_blocks;
+    GridBlock ** new_blocks;
+
+    if (dir == M_FORWARD) {
+        n_recv_request     = n_recv_request_;
+        n_send_request     = n_send_request_;
+        q_send_cum_request = q_send_cum_request_;
+        q_recv_cum_request = q_recv_cum_request_;
+        q_send_cum_block   = q_send_cum_block_;
+        q_recv_cum_block   = q_recv_cum_block_;
+        send_buf           = send_buf_.ptr;
+        recv_buf           = recv_buf_.ptr;
+        recv_request       = for_recv_request_;
+        send_request       = for_send_request_;
+        new_blocks         = new_blocks_;
+        old_blocks         = old_blocks_;
+    } else {
+        n_recv_request     = n_send_request_;
+        n_send_request     = n_recv_request_;
+        q_send_cum_request = q_recv_cum_request_;
+        q_recv_cum_request = q_send_cum_request_;
+        q_send_cum_block   = q_recv_cum_block_;
+        q_recv_cum_block   = q_send_cum_block_;
+        send_buf           = recv_buf_.ptr;
+        recv_buf           = send_buf_.ptr;
+        recv_request       = back_recv_request_;
+        send_request       = back_send_request_;
+        old_blocks         = new_blocks_;
+        new_blocks         = old_blocks_;
+
+        m_assert(!destructive_, "we cannot send backward and be destructive, otherwise the status are not sent");
+    }
+
+    //..........................................................................
+    // performs the send of the request is
+    auto send_my_request = [=](const lid_t is) {
+        lid_t n_q2send = q_send_cum_request[is + 1] - q_send_cum_request[is];
+        for (lid_t iq = 0; iq < n_q2send; iq++) {
+            // get the block to send
+            GridBlock *     block       = old_blocks[q_send_cum_block[is] + iq];
+            const MemLayout blocklayout = block->BlockLayout();
+            real_t *        buf         = send_buf + (q_send_cum_request[is] + iq) * PartitionerBlockSize(&blocklayout, n_lda_);
+
+            // the first numbers are the status
+            m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
+            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
+            buf[0] = static_cast<real_t>(block->status_level());
+            buf[1] = static_cast<real_t>(block->status_refined());
+            buf += 2;
+
+            // send the fields now
+            lda_t idacount = 0;
+            for (const auto iter : *fields) {
+                const Field *fid        = iter.second;
+                const size_t block_size = blocklayout.n_elem;
+                real_t *     lbuf       = buf + block_size * idacount;
+                // copy the whole memory at once on the dim
+                memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
+                // update the counters
+                idacount += fid->lda();
+
+                m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
+            }
+        }
+        // start the send
+        MPI_Start(send_request + is);
+        m_verb("I have started the send of request %d", is);
+    };
+
+    // performs the recv of the request idx
+    auto recv_my_request = [=](const lid_t ir) {
+        lid_t n_q2recv = q_recv_cum_request[ir + 1] - q_recv_cum_request[ir];
+        for (lid_t iq = 0; iq < n_q2recv; iq++) {
+            // get the block
+            GridBlock *     block       = new_blocks[q_recv_cum_block[ir] + iq];
+            const MemLayout blocklayout = block->BlockLayout();
+            real_t *        buf         = recv_buf + (q_recv_cum_request[ir] + iq) * PartitionerBlockSize(&blocklayout, n_lda_);
+            m_assert(block != nullptr, "this block shouldn't be nullptr here");
+
+            // unpack the status as the two first indexes
+            m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
+            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
+            block->status_level(static_cast<StatusAdapt>(buf[0]));
+            block->status_refined(static_cast<bool>(buf[1]));
+            buf += 2;
+
+            // handle the field
+            bidx_t idacount = 0;
+            for (auto iter : *fields) {
+                const Field *fid = iter.second;
+                // security check
+                const size_t block_size = blocklayout.n_elem;
+                m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
+                const real_t *lbuf = buf + block_size * idacount;
+                // copy the whole memory at once on the dim
+                memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
+                // update the counters
+                idacount += fid->lda();
+            }
+        }
+        m_verb("I have finished the recv of request %d", ir);
+    };
+
+    //..........................................................................
+    // we do the send while waiting for a recv request to complete
+    // start all the reception
+    if (n_recv_request > 0) {
+        MPI_Startall(n_recv_request, recv_request);
+    }
+
+    // allocate the worst case array
+    int * current_recv_id = reinterpret_cast<int *>(m_calloc(n_recv_request * sizeof(int)));
+    lid_t n_recv_done     = 0;
+    lid_t n_send_done     = 0;
+    while ((n_recv_done < n_recv_request) || (n_send_done < n_send_request)) {
+        // m_log("already done %d recv and %d sends", n_recv_done, n_send_done);
+        // if we have some recv left, test them
+        if (n_recv_done < n_recv_request) {
+            int n_recv_ready = 0;
+            MPI_Testsome(n_recv_request, recv_request, &n_recv_ready, current_recv_id, MPI_STATUSES_IGNORE);
+            // perform the recv if they are ready
+            for (int ir = 0; ir < n_recv_ready; ++ir) {
+                recv_my_request(current_recv_id[ir]);
+                n_recv_done += 1;
+            }
+        }
+        // once done, send 1 request
+        if (n_send_done < n_send_request) {
+            send_my_request(n_send_done);
+            n_send_done += 1;
+        }
+    }
+    m_free(current_recv_id);
+
+    // wait for all the send to be ok (should be trivial)
+    if (n_send_request > 0) {
+        MPI_Waitall(n_send_request, send_request, MPI_STATUSES_IGNORE);
+    }
+    if (n_recv_request > 0) {
+        MPI_Waitall(n_recv_request, recv_request, MPI_STATUSES_IGNORE);
+    }
 }
 
 /**
@@ -585,7 +745,7 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
     }
     // receive the new memory in the new blocks
     if (n_send_request > 0) {
-        MPI_Waitall(n_send_request, send_request, MPI_STATUS_IGNORE);
+        MPI_Waitall(n_send_request, send_request, MPI_STATUSES_IGNORE);
     }
     //-------------------------------------------------------------------------
     m_end;

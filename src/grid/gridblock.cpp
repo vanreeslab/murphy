@@ -526,11 +526,14 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
  * 
  * the function updates the ongoing maxmin array if needed (no initialization is performed in the function)
  * 
+ * @param qid the quadrant ID of the block
  * @param interp the Wavelet
  * @param criterion the criterion field, must be scalar (for now)
  * @param maxmin the minmax that is used to collect on the blocks
+ * @param max_blocks an array containing the max of every block, can be nullptr
  */
-void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2]) {
+void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2],
+                              bidx_t* max_blocks, const real_t max_cat, const real_t min_cat, const short_t n_cat) {
     m_assert(criterion->lda() == 1, "field must be a scalar");
     //-------------------------------------------------------------------------
     // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
@@ -545,6 +548,19 @@ void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, rea
 
     maxmin[0] = m_max(maxmin[0], block_maxmin[0]);
     maxmin[1] = m_min(maxmin[1], block_maxmin[1]);
+
+    // we store the categories
+    if (max_blocks != nullptr) {
+        // get the category split
+        const real_t h_cat  = (log10(max_cat) - log10(min_cat)) / n_cat;
+        short_t      id_cat = m_max(0, m_min(n_cat - 1, (log10(block_maxmin[0]) - log10(min_cat)) / h_cat));
+
+        // got
+        m_assert(n_cat > id_cat && id_cat >= 0, "the cat id = %d must be >=0 and < %d", id_cat, n_cat);
+        // m_assert(log10(block_maxmin[0]) >= pow(10, id_cat * h_cat), "the category id doens't match: %e with h_cat=%e from %e to %e (%d cats)", block_maxmin[0], h_cat, min_cat, max_cat, n_cat);
+        // m_assert(log10(block_maxmin[0]) >= pow(10, (id_cat + 1) * h_cat), "the category id doens't match: %e with h_cat=%e from %e to %e (%d cats)", block_maxmin[0], h_cat, min_cat, max_cat, n_cat);
+        max_blocks[id_cat] += 1;
+    }
     //--------------------------------------------------------------------------
 }
 
@@ -819,7 +835,8 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             real_t ngh_pos[3];
             if (!isghost) {
                 // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
-                GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
+                // GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
+                GridBlock* ngh_block = p4est_GetGridBlock(nghq);
                 ngh_pos[0]           = ngh_block->xyz(0);
                 ngh_pos[1]           = ngh_block->xyz(1);
                 ngh_pos[2]           = ngh_block->xyz(2);

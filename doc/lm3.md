@@ -27,4 +27,15 @@ make install -j
 mpirun --mca pml ucx --mca osc ucx --mca btl ^uct
 ```
 
+
+
+```bash
+wget https://p4est.github.io/release/p4est-2.3.2.tar.gz
+tar -xvf p4est-2.3.2.tar.gz
+cd p4est-2.3.2/
+
+CC=mpic++ ./configure --prefix=/home/ucl/tfl/tgillis/p4est-2.3.2-releases2020b CFLAGS="-O3 -Wall" --enable-mpi --enable-openmp --with-blas=-lopenblas
+make install -j
+
+```
  

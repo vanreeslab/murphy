@@ -3,12 +3,12 @@
 
 #include <execinfo.h>
 #include <mpi.h>
-#include <p8est.h>
-
 #include <omp.h>
+#include <p8est.h>
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 
 #include "core/types.hpp"
@@ -23,13 +23,13 @@
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 2
+#define M_WAVELET_N 4
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 2
+#define M_WAVELET_NT 0
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -96,11 +96,10 @@
     })
 #define m_calloc(size)                                                                    \
     ({                                                                                    \
-        size_t m_calloc_size_   = (size_t)(size);                                         \
-        size_t m_calloc_modulo_ = (m_calloc_size_ % M_ALIGNMENT);                         \
-        m_calloc_size_ += (m_calloc_modulo_ == 0) ? 0 : (M_ALIGNMENT - m_calloc_modulo_); \
-        void* m_calloc_data_ = _mm_malloc(m_calloc_size_, M_ALIGNMENT);                   \
-        memset(m_calloc_data_, 0, m_calloc_size_);                                        \
+        size_t m_calloc_size_        = (size_t)(size) + M_ALIGNMENT - 1;                  \
+        size_t m_calloc_padded_size_ = (m_calloc_size_) - (m_calloc_size_ % M_ALIGNMENT); \
+        void*  m_calloc_data_        = _mm_malloc(m_calloc_padded_size_, M_ALIGNMENT);    \
+        std::memset(m_calloc_data_, 0, m_calloc_padded_size_);                            \
         m_calloc_data_;                                                                   \
     })
 #define m_free(data)                        \
@@ -121,11 +120,10 @@
  */
 #define m_calloc(size)                                                                    \
     ({                                                                                    \
-        size_t m_calloc_size_   = (size_t)(size);                                         \
-        size_t m_calloc_modulo_ = (m_calloc_size_ % M_ALIGNMENT);                         \
-        m_calloc_size_ += (m_calloc_modulo_ == 0) ? 0 : (M_ALIGNMENT - m_calloc_modulo_); \
-        void* m_calloc_data_ = aligned_alloc(M_ALIGNMENT, m_calloc_size_);                \
-        memset(m_calloc_data_, 0, m_calloc_size_);                                        \
+        size_t m_calloc_size_        = (size_t)(size) + M_ALIGNMENT - 1;                  \
+        size_t m_calloc_padded_size_ = (m_calloc_size_) - (m_calloc_size_ % M_ALIGNMENT); \
+        void*  m_calloc_data_        = aligned_alloc(M_ALIGNMENT, m_calloc_padded_size_); \
+        std::memset(m_calloc_data_, 0, m_calloc_padded_size_);                            \
         m_calloc_data_;                                                                   \
     })
 /**
@@ -233,7 +231,7 @@
 
 // /**
 //  * @brief returns the size (in elements) of one block
-//  * 
+//  *
 //  */
 // #define m_blockmemsize(lda)                                             \
 //     ({                                                                  \
@@ -248,9 +246,9 @@
 #define m_zeroidx(ida, mem)                                                                                                              \
     ({                                                                                                                                   \
         __typeof__(mem) m_zeroidx_mem_ = (mem);                                                                                          \
-        lda_t  m_zeroidx_ida_          = (lda_t)(ida);                                                                                   \
-        bidx_t  m_zeroidx_gs_          = (bidx_t)(m_zeroidx_mem_->gs());                                                                  \
-        bidx_t m_zeroidx_str_          = (bidx_t)(m_zeroidx_mem_->stride());                                                             \
+        lda_t           m_zeroidx_ida_ = (lda_t)(ida);                                                                                   \
+        bidx_t          m_zeroidx_gs_  = (bidx_t)(m_zeroidx_mem_->gs());                                                                 \
+        bidx_t          m_zeroidx_str_ = (bidx_t)(m_zeroidx_mem_->stride());                                                             \
         (bidx_t)(m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * m_zeroidx_ida_))); \
     })
 
@@ -328,24 +326,24 @@ extern char  m_log_level_prefix[32];
  */
 #ifndef LOG_MUTE
 #ifndef LOG_ALLRANKS
-#define m_log(format, ...)                                \
-    ({                                                    \
-        int m_log_rank_;                                  \
-        MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);      \
-        if (m_log_rank_ == 0) {                           \
-            char m_log_msg_[1024];                        \
-            sprintf(m_log_msg_, format, ##__VA_ARGS__);   \
-            fprintf(stdout, "[murphy] %s %s\n",m_log_level_prefix, m_log_msg_); \
-        }                                                 \
+#define m_log(format, ...)                                                       \
+    ({                                                                           \
+        int m_log_rank_;                                                         \
+        MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);                             \
+        if (m_log_rank_ == 0) {                                                  \
+            char m_log_msg_[1024];                                               \
+            sprintf(m_log_msg_, format, ##__VA_ARGS__);                          \
+            fprintf(stdout, "[murphy] %s %s\n", m_log_level_prefix, m_log_msg_); \
+        }                                                                        \
     })
 #else
-#define m_log(format, ...)                                            \
-    ({                                                                \
-        int m_log_rank_;                                              \
-        MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);                  \
-        char m_log_msg_[1024];                                        \
-        sprintf(m_log_msg_, format, ##__VA_ARGS__);                   \
-        fprintf(stdout, "[%d murphy] %s %s\n", m_log_rank_,m_log_level_prefix, m_log_msg_); \
+#define m_log(format, ...)                                                                   \
+    ({                                                                                       \
+        int m_log_rank_;                                                                     \
+        MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);                                         \
+        char m_log_msg_[1024];                                                               \
+        sprintf(m_log_msg_, format, ##__VA_ARGS__);                                          \
+        fprintf(stdout, "[%d murphy] %s %s\n", m_log_rank_, m_log_level_prefix, m_log_msg_); \
     })
 #endif
 #else

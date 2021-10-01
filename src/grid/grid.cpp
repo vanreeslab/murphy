@@ -41,8 +41,9 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
-    part.Start(&fields_, M_FORWARD);
-    part.End(&fields_, M_FORWARD);
+    // part.Start(&fields_, M_FORWARD);
+    // part.End(&fields_, M_FORWARD);
+    part.SendRecv(&fields_, M_FORWARD);
 
     // setup the ghost stuctures as the mesh will not change anymore
     SetupMeshGhost();
@@ -367,9 +368,12 @@ void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
 void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_begin;
     m_assert(refine_tol > coarsen_tol, "the refinement tolerance must be > the coarsening tolerance");
+    m_assert(refine_tol > 0.0, "The refinement tolerance = %e must be > 0.0", refine_tol);
+    m_assert(coarsen_tol >= 0.0, "The coarsening tolerance = %e must be >= 0.0", coarsen_tol);
     //-------------------------------------------------------------------------
+    // if ctol is smaller than epsilon, just remember epsilon
+    ctol_ = m_max(coarsen_tol, std::numeric_limits<real_t>::epsilon());
     rtol_ = refine_tol;
-    ctol_ = coarsen_tol;
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -530,7 +534,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
-    string msg = "--> grid adaptation started... (recursive = %d, ";
+    string msg = "grid adaptation started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
     }
@@ -711,8 +715,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         Partitioner partition(&fields_, this, true);
         m_profStop(prof_, "partition init");
         m_profStart(prof_, "partition comm");
-        partition.Start(&fields_, M_FORWARD);
-        partition.End(&fields_, M_FORWARD);
+        partition.SendRecv(&fields_, M_FORWARD);
+        // partition.Start(&fields_, M_FORWARD);
+        // partition.End(&fields_, M_FORWARD);
         m_profStop(prof_, "partition comm");
 
         //................................................
@@ -793,7 +798,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     const MemLayout block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
     const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
 
-    m_log_level_minus;
+    // m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
 #ifndef NDEBUG
     if (field_detail != nullptr) {
@@ -842,12 +847,59 @@ void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
     local_maxmin[0] = 0.0;
     local_maxmin[1] = std::numeric_limits<real_t>::max();
 
-    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, local_maxmin);
+    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, local_maxmin, nullptr, 0.0, 0.0, 0);
 
     // reduce is on the whole mesh
     maxmin[0] = 0.0;
     maxmin[1] = 0.0;
     MPI_Allreduce(local_maxmin, maxmin, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(local_maxmin + 1, maxmin + 1, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
+    //--------------------------------------------------------------------------
+}
+
+void Grid::DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+                               const short_t n_cat, const real_t max_value_cat) {
+    //--------------------------------------------------------------------------
+    // get the ghosts values
+    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    this->GhostPull(criterion, ghost_len);
+
+    bidx_t* n_block_local  = reinterpret_cast<bidx_t*>(m_calloc(n_cat * sizeof(bidx_t)));
+    bidx_t* n_block_global = reinterpret_cast<bidx_t*>(m_calloc(n_cat * sizeof(bidx_t)));
+
+    // get the minmax for the whole grid + for each block
+    real_t to_trash[2];
+    to_trash[0] = 0.0;
+    to_trash[1] = std::numeric_limits<real_t>::max();
+    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, to_trash, n_block_local, max_value_cat, 1e-16, n_cat);
+
+    // sum everything on rank 0 to dump
+    const rank_t root = 0;
+    m_assert(sizeof(bidx_t) == sizeof(int), "the two sizes must match");
+    MPI_Reduce(n_block_local, n_block_global, n_cat, MPI_INT, MPI_SUM, root, MPI_COMM_WORLD);
+
+    // dump
+    rank_t rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    long nblock = this->global_num_quadrants();
+
+    FILE* file_diag;
+    if (rank == root) {
+        file_diag = fopen(std::string(folder + "/detail_histogram" + suffix + ".data").c_str(), "a+");
+        fprintf(file_diag, "%d;%ld", id, nblock);
+        long block_count = 0;
+        for (level_t il = 0; il < n_cat; ++il) {
+            fprintf(file_diag, ";%d", n_block_global[il]);
+            block_count += n_block_global[il];
+        }
+        fprintf(file_diag, "\n");
+        fclose(file_diag);
+        m_assert(block_count == nblock, "the two counts must match: %ld %ld", block_count, nblock);
+    }
+
+    m_free(n_block_local);
+    m_free(n_block_global);
+
     //--------------------------------------------------------------------------
 }
