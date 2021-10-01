@@ -1,6 +1,6 @@
 #include "setvalues.hpp"
 
-#include <cmath>
+// #include <cmath>
 
 /**
  * @brief returns the value of an exponential blob between 0 and 1 (given its sigma and its center)

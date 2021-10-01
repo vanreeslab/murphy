@@ -102,9 +102,8 @@ TEST_P(Epsilon, periodic) {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-        real_t* data = block->data(fid).Write(i0, i1, i2);
         // set value
-        data[0] = scalar_exp(pos, center, sigma);
+        block->data(fid, 0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
     };
     SetValue init(lambda_initcond);
     init(&grid, &scal);
@@ -232,9 +231,8 @@ TEST_P(Epsilon, extrap) {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-        real_t* data = block->data(fid).Write(i0, i1, i2);
         // set value
-        data[0] = scalar_exp(pos, center, sigma);
+        block->data(fid,0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
     };
     SetValue init(lambda_initcond);
     init(&grid, &scal);

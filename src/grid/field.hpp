@@ -40,6 +40,11 @@ class Field {
     [[nodiscard]] inline bctype_t    bctype(const lda_t ida, const iface_t iface) const { return bctype_[iface][ida]; }
     [[nodiscard]] inline bctype_t*   bctype(const iface_t iface) const { return bctype_[iface]; }
 
+    /**
+     * @brief Return true if the number of ghosts up-to-date are equal or larger than the number of ghosts requested
+     * 
+     * @param ghost_len number of ghosts requested
+     */
     [[nodiscard]] inline bool ghost_status(const bidx_t ghost_len[2]) const {
         const bool is_trivial = (ghost_len[0] == 0) && (ghost_len[1] == 0);
         const bool is_large_enough = (ghost_len[0] <= ghost_len_[0]) && (ghost_len[1] <= ghost_len_[1]);

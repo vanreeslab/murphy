@@ -164,7 +164,7 @@ size_t Grid::LocalMemSize() const {
     memsize += sizeof(prof_);
     // memsize += ghost_->LocalMemSize();
     // memsize += interp_->LocalMemSize();
-    for (const auto& fid : fields_) {
+    for (const auto fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
     //-------------------------------------------------------------------------
@@ -252,11 +252,11 @@ void Grid::ResetFields(const std::map<string, Field*>* fields) {
     // clear the current map
     fields_.clear();
     // copy the new one
-    for (auto iter = fields->cbegin(); iter != fields->cend(); iter++) {
-        fields_[iter->first] = iter->second;
+    for (auto fid : *fields) {
+        fields_[fid.first] = fid.second;
 
         // check if we satisfy the requirements on the key
-        m_assert(iter->first == iter->second->name(), "the key of the map must be the name of the field");
+        m_assert(fid.first == fid.second->name(), "the key of the map must be the name of the field");
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -389,7 +389,7 @@ void Grid::Refine(Field* field) {
     // get the ghost length
     const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto& fid : fields_) {
+    for (auto fid : fields_) {
         Field* cur_field = fid.second;
         if (!cur_field->is_temp()) {
             GhostPull(cur_field, ghost_len);
@@ -416,7 +416,7 @@ void Grid::Coarsen(Field* field) {
     // // get the ghost length
     // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto& fid : fields_) {
+    // for (auto* fid : fields_) {
     //     Field* cur_field = fid.second;
     //     if (!cur_field->is_temp()) {
     //         GhostPull(cur_field, ghost_len);
@@ -555,6 +555,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // coarsening, need to have the 8 children on the same rank
     iter_t   iteration              = 0;
     iblock_t global_n_quad_to_adapt = 0;
+
     do {
         m_log("----> adaptation iteration %d", iteration);
         m_log_level_plus;
@@ -593,7 +594,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
                 // compute the criterion on the previous dimension
                 m_profStart(prof_, "criterion");
-                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, ida - 1, interp_, rtol_, ctol_, field_detail, prof_);
+                DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, ida - 1);
                 m_profStop(prof_, "criterion");
 
                 // finish the ghost for the current dimension
@@ -602,9 +603,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
                 m_profStop(prof_, "ghost for criterion");
             }
             // finally, compute on the last dimension of the field
-            const lda_t criterion_dim = field_detail->lda() - 1;
             m_profStart(prof_, "criterion");
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, criterion_dim, interp_, rtol_, ctol_, field_detail, prof_);
+            const lda_t criterion_dim = field_detail->lda() - 1;
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromCriterion, this, interp_, rtol_, ctol_, field_detail, criterion_dim);
             m_profStop(prof_, "criterion");
 
             // register the computed ghosts
@@ -614,7 +615,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         if (!(patches == nullptr)) {
             // get the patches processed
             m_profStart(prof_, "patch");
-            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches, prof_);
+            DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches);
             m_profStop(prof_, "patch");
         }
         //......................................................................
@@ -701,7 +702,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
         }
         m_profStart(prof_, "solve dependency");
-        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "solve dependency");
 
         //................................................
@@ -733,7 +734,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // solve resolution jump if needed
         m_verb("solve jump resolution");
         m_profStart(prof_, "smooth jump");
-        DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd(), prof_);
+        DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "smooth jump");
 
         ghost_->SyncStatusFinalize();
@@ -752,7 +753,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
-            for (auto& fid : fields_) {
+            for (auto fid : fields_) {
                 m_log("changing ghost status of <%s>", fid.second->name().c_str());
                 const bidx_t ghost_len[2] = {0, 0};
                 fid.second->ghost_len(ghost_len);
@@ -789,7 +790,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     const level_t min_level   = this->MinLevel();
     const level_t max_level   = this->MaxLevel();
-    const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * CartBlockMemNum(1) * sizeof(real_t) / 1.0e+9;
+    const MemLayout block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
+    const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
 
     m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);

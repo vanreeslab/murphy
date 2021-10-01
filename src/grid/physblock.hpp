@@ -15,7 +15,7 @@ class PhysBlock : public GhostBlock {
 
    public:
     PhysBlock() = delete;
-    PhysBlock(const bidx_t (*const ghost_len)[2], const iface_t iface, const MemLayout* block);
+    PhysBlock(const bidx_t (*const ghost_len)[2], const iface_t iface, const MemSpan* block) ;
 
     iface_t iface() { return iface_; }
 };

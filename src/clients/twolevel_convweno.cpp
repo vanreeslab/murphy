@@ -64,9 +64,9 @@ void TwoLevelConvWeno::Run() {
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
         // call the function
-        block->data(fid).Write(i0, i1, i2)[0] = sin(2.0 * M_PI * 2.0 / ((real_t)grid_len[0]) * pos[0]) +
-                                                sin(2.0 * M_PI * 2.0 / ((real_t)grid_len[1]) * pos[1]) +
-                                                sin(2.0 * M_PI * 2.0 / ((real_t)grid_len[2]) * pos[2]);
+        block->data(fid, 0)(i0, i1, i2) = sin(2.0 * M_PI * 2.0 / ((real_t)grid_len[0]) * pos[0]) +
+                                          sin(2.0 * M_PI * 2.0 / ((real_t)grid_len[1]) * pos[1]) +
+                                          sin(2.0 * M_PI * 2.0 / ((real_t)grid_len[2]) * pos[2]);
     };
     static lambda_error_t lambda_sol_rhs = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
         // get the position
@@ -107,9 +107,9 @@ void TwoLevelConvWeno::Run() {
         Field vel("vel", 3);
         grid.AddField(&vel);
         lambda_setvalue_t lambda_vel = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
-            block->data(fid, 0).Write(i0, i1, i2)[0] = rand_vel[0];
-            block->data(fid, 1).Write(i0, i1, i2)[0] = rand_vel[1];
-            block->data(fid, 2).Write(i0, i1, i2)[0] = rand_vel[2];
+            block->data(fid, 0)(i0, i1, i2) = rand_vel[0];
+            block->data(fid, 1)(i0, i1, i2) = rand_vel[1];
+            block->data(fid, 2)(i0, i1, i2) = rand_vel[2];
         };
         const bidx_t ghost_len[2] = {3, 3};
         SetValue     vel_init(lambda_vel, ghost_len);

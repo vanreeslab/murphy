@@ -22,6 +22,7 @@ using short_t  = short;             //!< short integer, only used when nothing e
 using long_t   = long;              //!< long integer (for global quantities)
 /**@}*/
 
+//-------------------------------------------------------------------------
 template<typename R,typename... T>
 using lambda_t = std::function<R(T...)>;
 

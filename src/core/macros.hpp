@@ -23,13 +23,13 @@
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -66,6 +66,9 @@
 // // static constexpr bidx_t m_stride_ext = ((m_stride_reg * sizeof(real_t)) % M_ALIGNMENT == 0) ?
 // // static constexpr bidx_t m_stride[3] = {() % (M_ALIGNMENT / sizeof(real_t))}
 // /** @} */
+
+
+#define M_INLINE __attribute__((always_inline)) inline
 
 /**
  * @name memory management
@@ -246,7 +249,7 @@
     ({                                                                                                                                   \
         __typeof__(mem) m_zeroidx_mem_ = (mem);                                                                                          \
         lda_t  m_zeroidx_ida_          = (lda_t)(ida);                                                                                   \
-        lid_t  m_zeroidx_gs_           = (lid_t)(m_zeroidx_mem_->gs());                                                                  \
+        bidx_t  m_zeroidx_gs_          = (bidx_t)(m_zeroidx_mem_->gs());                                                                  \
         bidx_t m_zeroidx_str_          = (bidx_t)(m_zeroidx_mem_->stride());                                                             \
         (bidx_t)(m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * (m_zeroidx_gs_ + m_zeroidx_str_ * m_zeroidx_ida_))); \
     })

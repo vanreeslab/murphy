@@ -202,7 +202,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 2004: { /* patches */
             real_t  data[7];
             error_t err   = atof_list(7, arg, data);
-            lid_t   level = (lid_t)(data[6]);
+            level_t   level = (level_t)(data[6]);
             arguments->patch.push_back(Patch(data, data + 3, level));
             m_log("patch: level %d starting (%f %f %f) of length (%f %f %f)", level, data[0], data[1], data[2], data[3], data[4], data[5]);
             return err;

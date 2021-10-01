@@ -23,8 +23,8 @@ Stencil::Stencil() : BlockOperator(nullptr){};
 void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
     m_begin;
     m_assert(!(grid == nullptr), "the grid cannot be null");
-    m_assert(!(field_src == nullptr), "the source field cannot be null");
-    m_assert(!(field_trg == nullptr), "the source field cannot be null");
+    // m_assert(!(field_src == nullptr), "the source field cannot be null");
+    // m_assert(!(field_trg == nullptr), "the source field cannot be null");
     m_assert(grid->is_mesh_valid(), "we need the mesh and the ghost to do something here");
     m_assert((ghost_len_res_[0] == 0) && (ghost_len_res_[1] == 0), "the ghost_len_res must be 0 0 instead of %d %d", ghost_len_res_[0], ghost_len_res_[1]);
     // m_assert(grid->NGhostFront() >= this->NGhost(), "the wavelet do not provied enough ghost points for the stencil: %d vs %d", grid->NGhostFront(), this->NGhost());
@@ -44,10 +44,10 @@ void Stencil::operator()(const Grid* grid, Field* field_src, Field* field_trg) {
 
         // compute the stencil on the outer side
         m_profStart(prof_, "inner");
-        if (!(field_trg == nullptr)) {
+        // if (!(field_trg == nullptr)) {
             ida_ = ida;
             DoOpMesh(this, &Stencil::DoMagic, grid, false, field_src, field_trg);
-        }
+        // }
         m_profStop(prof_, "inner");
 
         // get the coarse representation back
