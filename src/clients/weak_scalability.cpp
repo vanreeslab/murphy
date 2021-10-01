@@ -56,7 +56,8 @@ void WeakScalability::Run() {
 
     // setup the grid
     bool   period[3] = {true, false, false};
-    bidx_t length[3] = {comm_size/32, 1, 2};
+    bidx_t length[3] = {m_max(1,comm_size/32), 1, 1};
+    m_log("length is %d %d %d",length[0],length[1],length[2]);
     Grid   grid(1, period, length, MPI_COMM_WORLD, prof_);
     grid.level_limit(0, P8EST_QMAXLEVEL);
 
@@ -81,7 +82,7 @@ void WeakScalability::Run() {
     // dump(&grid, &scal, 0);
 
     // adapt the grid
-    grid.SetTol(1e-4, 1e-6);
+    grid.SetTol(1e-5, 1e-7);
     grid.SetRecursiveAdapt(true);
     grid.Adapt(&scal, &tube);
 
@@ -133,7 +134,6 @@ void WeakScalability::Run() {
             m_profStop(prof_, "set velocity");
             m_log_level_minus;
         }
-
         //......................................................................
         m_log("---- do time-step");
         m_log_level_plus;
@@ -143,8 +143,27 @@ void WeakScalability::Run() {
         real_t dt = rk3.ComputeDt(&adv_stencil, &vel);
         m_profStop(prof_, "compute dt");
 
-        // dump some info
-        real_t wtime_now = MPI_Wtime();
+        //......................................................................
+        m_profStart(prof_, "dump IO");
+        // get the rank
+        rank_t rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        // get the info
+        real_t  wtime_now       = MPI_Wtime();
+        level_t min_level       = grid.MinLevel();
+        level_t max_level       = grid.MaxLevel();
+        long    global_num_quad = grid.global_num_quadrants();
+        // dump
+        if (rank == 0) {
+            FILE*  file;
+            string tag       = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_" + to_string(comm_size) + "ranks";
+            string file_name = "diag_" + tag + ".data";
+            file             = fopen(string(folder_diag_ + "/" + file_name).c_str(), "a+");
+            fprintf(file, "%6.6d;%e;%ld;%ld;%d;%d;%e\n", iter, t, global_num_quad, global_num_quad / comm_size, min_level, max_level, wtime_now - wtime_start);
+            fclose(file);
+        }
+        m_profStop(prof_, "dump IO");
         m_log("RK3 - time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal, iter, iterfinal, dt, wtime_now - wtime_start);
 
         //......................................................................
