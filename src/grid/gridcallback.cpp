@@ -17,7 +17,9 @@ using std::list;
  * 
  * @warning no memory allocation is done at this point!
  */
+template<typename BlockType>
 void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
+    static_assert(std::is_base_of<GridBlock, BlockType>::value, "BlockType in Grid must derive from GridBlock.");
     m_begin;
     //-------------------------------------------------------------------------
     p8est_t*              forest     = info->p4est;
@@ -33,11 +35,13 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
     m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
     real_t     len   = p4est_QuadLen(quad->level);
-    GridBlock* block = new GridBlock(len, xyz, quad->level);
+    GridBlock* block = new BlockType(len, xyz, quad->level);
     p4est_SetGridBlock(quad, block);
     //-------------------------------------------------------------------------
     m_end;
 }
+
+template void cback_CreateBlock<GridBlock>(p8est_iter_volume_info_t*, void*);
 
 /**
  * @brief delete a create block associated to a p4est quad
@@ -285,7 +289,9 @@ int cback_StatusCheck(p8est_t* forest, p4est_topidx_t which_tree, qdrt_t* quadra
  * @param num_incoming 
  * @param incoming 
  */
+template<typename BlockType>
 void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    static_assert(std::is_base_of<GridBlock, BlockType>::value, "BlockType in Grid must derive from GridBlock.");
     m_begin;
     m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
     m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
@@ -317,7 +323,7 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len      = p4est_QuadLen(quad->level);
-        GridBlock* block_in = new GridBlock(len, xyz, quad->level);
+        GridBlock* block_in = new BlockType(len, xyz, quad->level);
  
         // store the block in the quad
         p4est_SetGridBlock(quad, block_in);
@@ -412,6 +418,8 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
     m_end;
 };
 
+template void cback_UpdateDependency<GridBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+
 /**
  * @brief allocate the entering children or allocate the entering parent, no interpolation is performed
  * 
@@ -424,7 +432,9 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
  * @param num_incoming 
  * @param incoming 
  */
+template<typename BlockType>
 void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    static_assert(std::is_base_of<GridBlock, BlockType>::value, "BlockType in Grid must derive from GridBlock.");
     m_begin;
     m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
     m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
@@ -456,7 +466,7 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len   = p4est_QuadLen(quad->level);
-        GridBlock* block = new GridBlock(len, xyz, quad->level);
+        GridBlock* block = new BlockType(len, xyz, quad->level);
         // store the block
         p4est_SetGridBlock(quad, block);
         // for every field, we allocate the memory
@@ -481,7 +491,11 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
     m_end;
 }
 
+template void cback_AllocateOnly<GridBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+
+template<typename BlockType>
 void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
+    static_assert(std::is_base_of<GridBlock, BlockType>::value, "BlockType in Grid must derive from GridBlock.");    
     m_begin;
     m_assert(num_incoming == 1 || num_outgoing == 1, "we have either to compress or to refine");
     m_assert(num_incoming == P8EST_CHILDREN || num_outgoing == P8EST_CHILDREN, "the number of replacing blocks has to be the number of children");
@@ -519,7 +533,7 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
         real_t     len   = p4est_QuadLen(quad->level);
-        GridBlock* block = new GridBlock(len, xyz, quad->level);
+        GridBlock* block = new BlockType(len, xyz, quad->level);
         // store the block
         p4est_SetGridBlock(quad, block);
         // for every field, we allocate the memory
@@ -546,6 +560,9 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
     //-------------------------------------------------------------------------
     m_end;
 }
+
+template void cback_ValueFill<GridBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+    
 
 // void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
 //     m_begin;

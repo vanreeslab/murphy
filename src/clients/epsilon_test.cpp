@@ -112,7 +112,7 @@ void EpsilonTest::Run() {
         do {
             bidx_t ghost_len[2] = {grid.interp()->nghost_front(), grid.interp()->nghost_back()};
             grid.GhostPull(&scal, ghost_len);
-            grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+            grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();

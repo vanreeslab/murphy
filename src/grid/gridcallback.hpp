@@ -16,6 +16,7 @@ using cback_interpolate_t      = void (*)(p8est_t *forest, p4est_topidx_t which_
  * 
  * @{
  */
+template<typename BlockType>
 void cback_CreateBlock(p8est_iter_volume_info_t *info, void *user_data);
 void cback_DestroyBlock(p8est_iter_volume_info_t *info, void *user_data);
 /**@}*/
@@ -37,8 +38,11 @@ int cback_StatusCheck(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadra
 
 // interpolation
 // void cback_Interpolate(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+template<typename BlockType>
 void cback_AllocateOnly(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+template<typename BlockType>
 void cback_ValueFill(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+template<typename BlockType>
 void cback_UpdateDependency(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
 /**@}*/
 

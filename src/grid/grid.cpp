@@ -37,7 +37,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
     interp_ = new InterpolatingWavelet();
 
     // create the associated blocks
-    p8est_iterate(p4est_forest_, nullptr, nullptr, cback_CreateBlock, nullptr, nullptr, nullptr);
+    p8est_iterate(p4est_forest_, nullptr, nullptr, cback_CreateBlock<GridBlock>, nullptr, nullptr, nullptr);
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
@@ -400,7 +400,7 @@ void Grid::Refine(Field* field) {
         }
     }
 
-    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -427,7 +427,7 @@ void Grid::Coarsen(Field* field) {
     //     }
     // }
 
-    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -443,7 +443,7 @@ void Grid::Adapt(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     //-------------------------------------------------------------------------
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -470,7 +470,7 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
 
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill<GridBlock>, my_expr);
 
     // apply the operator to get the starting value
     // it gets rid of whatever smoothing has been done
@@ -495,7 +495,7 @@ void Grid::Adapt(list<Patch>* patches) {
     if (patches->empty()) {
         return;
     }
-    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -523,7 +523,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
-    // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
+    // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency<GridBlock>), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
