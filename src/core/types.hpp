@@ -66,6 +66,16 @@ typedef enum m_direction_t {
     M_BACKWARD
 } m_direction_t;
 
+/**
+ * @brief indicates the type of block managed by a grid
+ */
+typedef enum BlockDataType {
+    M_CARTBLOCK,
+    M_GRIDBLOCK,
+    M_IIMBLOCK,
+    M_NULLTYPE
+} BlockDataType;
+
 //-------------------------------------------------------------------------
 // must be removed from the code
 typedef int  lid_t;

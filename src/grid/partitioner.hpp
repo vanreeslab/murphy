@@ -8,8 +8,7 @@
 // #include "core/pointers.hpp"
 #include "core/types.hpp"
 #include "grid/grid.hpp"
-#include "grid/gridblock.hpp"
-#include "grid/iimblock.hpp"
+#include "grid/blocktypetools.hpp"
 
 /**
  * @brief Paritions a @ref Grid by distributing it on the available processors and send/recv the associated GridBlock*

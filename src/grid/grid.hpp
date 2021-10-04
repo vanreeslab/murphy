@@ -19,6 +19,7 @@
 #include "tools/patch.hpp"
 #include "tools/prof.hpp"
 #include "wavelet/wavelet.hpp"
+#include "grid/blocktypetools.hpp"
 
 /**
  * @brief provide understandable grid management

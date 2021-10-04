@@ -28,7 +28,7 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
  * @param prof the profiler pointer if any (can be nullptr)
  */
 Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataType block_type, MPI_Comm comm, Prof* const prof)
-    : ForestGrid(ilvl, isper, l, block_type, comm) {
+    : ForestGrid(ilvl, isper, l, block_type, BlockPointerSize(block_type), comm) {
     m_begin;
     //-------------------------------------------------------------------------
     // profiler
@@ -429,7 +429,8 @@ void Grid::Coarsen(Field* field) {
     //     }
     // }
 
-    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
+    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, cback_update_dependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -445,7 +446,8 @@ void Grid::Adapt(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     //-------------------------------------------------------------------------
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
+    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, cback_update_dependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -498,7 +500,8 @@ void Grid::Adapt(list<Patch>* patches) {
     if (patches->empty()) {
         return;
     }
-    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
+    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
+    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, cback_update_dependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -526,7 +529,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
-    // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency<GridBlock>), "we cannot use the update dependency in a recursive mode");
+    // m_assert(!(recursive_adapt() && interp_fct == get_cback_UpdateDependency(block_type_), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................

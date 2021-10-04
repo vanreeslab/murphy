@@ -7,16 +7,6 @@
 using std::string;
 using std::unordered_map;
 
-inline GridBlock* AllocateBlock(BlockDataType bdt, const real_t length, const real_t xyz[3], const sid_t level) {
-    m_assert(bdt != M_NULLTYPE, "cannot provide size of unspecified block type.");
-    if (bdt == M_GRIDBLOCK) return (GridBlock*)(new GridBlock(length, xyz, level));
-    if (bdt == M_IIMBLOCK)  return (GridBlock*)(new IIMBlock(length, xyz, level));
-
-    // if you get here, there is an error
-    m_assert(false, "BlockDataType value not recognized.");
-    return nullptr; 
-}
-
 /**
  * @brief returns the rank that owns the value in the array of length commsize+1
  * 
@@ -250,7 +240,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                         p8est_qcoord_to_vertex(forest->connectivity, it, quad->x, quad->y, quad->z, xyz);
                         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
                         real_t     len   = p4est_QuadLen(quad->level);
-                        GridBlock *block = AllocateBlock(grid->block_type(), len, xyz, quad->level);
+                        GridBlock *block = AllocateGridBlock(grid->block_type(), len, xyz, quad->level);
                         // add the fields to the block
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now

@@ -9,14 +9,6 @@
 #include "core/macros.hpp"
 // #include "core/pointers.hpp"
 #include "core/types.hpp"
-// #include "grid/gridblock.hpp"
-// #include "iim/iimblock.hpp" TODO: avoid circular include, move functions elsehere.
-
-typedef enum BlockDataType {
-    M_GRIDBLOCK,
-    M_IIMBLOCK,
-    M_NULLTYPE
-} BlockDataType;
 
 /**
  * @brief handles the p4est structures. This class is a minimal grid, intended to be used by every other class
@@ -46,7 +38,7 @@ class ForestGrid {
      * @{
      */
     explicit ForestGrid();
-    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, MPI_Comm comm);
+    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, const size_t datasize, MPI_Comm comm);
     ~ForestGrid();
     /** @} */
 
