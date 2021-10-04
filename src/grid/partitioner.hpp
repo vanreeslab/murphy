@@ -9,6 +9,7 @@
 #include "core/types.hpp"
 #include "grid/grid.hpp"
 #include "grid/gridblock.hpp"
+#include "grid/iimblock.hpp"
 
 /**
  * @brief Paritions a @ref Grid by distributing it on the available processors and send/recv the associated GridBlock*

@@ -72,7 +72,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // setup the grid
     bidx_t length[3] = {3, 3, 2};
-    grid_            = new Grid(param->init_lvl, param->period, length, MPI_COMM_WORLD, prof_);
+    grid_            = new Grid(param->init_lvl, param->period, length, M_GRIDBLOCK, MPI_COMM_WORLD, prof_);
 
     // set the min/max level
     grid_->level_limit(param->level_min, param->level_max);

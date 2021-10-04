@@ -158,7 +158,7 @@ TEST_F(valid_RK, rk3_tvd) {
     // for (level_t il = 1; il < 3; ++il) {
     // get a uniform grid
     level_t     il = 1;
-    Grid        grid(il, period, L, MPI_COMM_WORLD, nullptr);
+    Grid        grid(il, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
     real_t      origin2[3] = {0.0, 0.0, 0.0};
     real_t      length2[3] = {(real_t)L[0], (real_t)L[1], (real_t)L[2]};
     Patch       p2(origin2, length2, il);

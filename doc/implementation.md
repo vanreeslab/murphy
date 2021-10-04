@@ -9,7 +9,7 @@
 ```
 lid_t  L[3]      = {2, 1, 3};
 bool periodic[3] = {false, false, false};
-Grid* grid       = new Grid(1, periodic, L, MPI_COMM_WORLD, nullptr);
+Grid* grid       = new Grid(1, periodic, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 ```
 We create a distributed (MPI) forest of octrees, organized in a rectangular shape. The number of tree in each direction is given by `L[0]`x`L[1]`x`L[2]` (each octree is a unit cube of physical size `1`x`1`x`1`);
 The tree management operations are performed by the library `p4est`. Additionally to the forest size, the periodicity of its boundary is given to p4est and cannot change during the simulation. Other boundary conditions are given afterwards. Each leaf of the tree contains a `GridBlock`, a continuous memory space of fixed size. The block size in a direction is given by the number of unknowns in its core, `M_N`, and the number of ghost points, `M_GS`. The memory stride is then given by `M_STRIDE = 2 * M_GS + M_N`.

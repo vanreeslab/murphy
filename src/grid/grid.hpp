@@ -49,7 +49,7 @@ class Grid : public ForestGrid {
 
    public:
     explicit Grid();
-    Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const prof);
+    Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataType block_type, MPI_Comm comm, Prof* const prof);
     ~Grid();
 
     [[nodiscard]] size_t LocalMemSize() const;

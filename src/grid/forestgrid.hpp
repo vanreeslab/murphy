@@ -9,6 +9,14 @@
 #include "core/macros.hpp"
 // #include "core/pointers.hpp"
 #include "core/types.hpp"
+// #include "grid/gridblock.hpp"
+// #include "iim/iimblock.hpp" TODO: avoid circular include, move functions elsehere.
+
+typedef enum BlockDataType {
+    M_GRIDBLOCK,
+    M_IIMBLOCK,
+    M_NULLTYPE
+} BlockDataType;
 
 /**
  * @brief handles the p4est structures. This class is a minimal grid, intended to be used by every other class
@@ -29,6 +37,8 @@ class ForestGrid {
     bool is_connect_owned_ = false; /**<indicate if we have to free the connectivity */
     bool is_mesh_valid_    = false; /**<indicate that the mesh and the ghost structures are up-to-date */
 
+    BlockDataType block_type_= M_NULLTYPE;
+
    public:
     /**
      * @name constructors and destructor
@@ -36,15 +46,16 @@ class ForestGrid {
      * @{
      */
     explicit ForestGrid();
-    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const size_t datasize, MPI_Comm comm);
+    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, MPI_Comm comm);
     ~ForestGrid();
     /** @} */
 
     // void CopyFrom(const ForestGrid* grid);
 
-    [[nodiscard]] real_t      domain_length(const sid_t id) const { return domain_length_[id]; }
-    [[nodiscard]] bool        domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
-    [[nodiscard]] inline bool is_mesh_valid() const { return is_mesh_valid_; }
+    [[nodiscard]] BlockDataType block_type() const { return block_type_; }
+    [[nodiscard]] real_t        domain_length(const sid_t id) const { return domain_length_[id]; }
+    [[nodiscard]] bool          domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
+    [[nodiscard]] inline bool   is_mesh_valid() const { return is_mesh_valid_; }
 
     /**
      * @name p4est managmeent

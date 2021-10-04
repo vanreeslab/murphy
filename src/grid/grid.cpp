@@ -27,8 +27,8 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const prof)
-    : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
+Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataType block_type, MPI_Comm comm, Prof* const prof)
+    : ForestGrid(ilvl, isper, l, block_type, comm) {
     m_begin;
     //-------------------------------------------------------------------------
     // profiler
@@ -37,7 +37,8 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
     interp_ = new InterpolatingWavelet();
 
     // create the associated blocks
-    p8est_iterate(p4est_forest_, nullptr, nullptr, cback_CreateBlock<GridBlock>, nullptr, nullptr, nullptr);
+    p8est_iter_volume_t callback_create = get_cback_CreateBlock(block_type);
+    p8est_iterate(p4est_forest_, nullptr, nullptr, callback_create, nullptr, nullptr, nullptr);
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
@@ -400,7 +401,8 @@ void Grid::Refine(Field* field) {
         }
     }
 
-    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
+    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
+    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, cback_update_dependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -470,7 +472,8 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
 
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill<GridBlock>, my_expr);
+    const cback_interpolate_t cback_value_fill = get_cback_ValueFill(block_type_);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), cback_value_fill, my_expr);
 
     // apply the operator to get the starting value
     // it gets rid of whatever smoothing has been done

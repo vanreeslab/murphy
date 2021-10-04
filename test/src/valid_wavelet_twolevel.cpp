@@ -158,7 +158,7 @@ class TwoLevel : public ::testing::TestWithParam<int> {
         // create a grid - uniform on level 1
         bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {2, 2, 2};
-        grid_             = new Grid(1, period, grid_len, MPI_COMM_WORLD, nullptr);
+        grid_             = new Grid(1, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         grid_->level_limit(0, 1);
 
         // create a field an put it on it

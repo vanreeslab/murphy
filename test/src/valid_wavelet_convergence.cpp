@@ -39,7 +39,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
         lid_t L[3]      = {3, 3, 3};
 
         for (level_t il = 0; il < 2; ++il) {
-            Grid grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
+            Grid grid(il + BLVL, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
             real_t origin11[3] = {0.0, 1.0, 1.0};
@@ -149,7 +149,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
         lid_t L[3]      = {3, 3, 3};
 
         for (level_t il = 0; il < 2; ++il) {
-            Grid grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
+            Grid grid(il + BLVL, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
             real_t origin1[3] = {1.0, 1.0, 1.0};
@@ -246,7 +246,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
         lid_t L[3]      = {2, 2, 2};
 
         for (level_t il = 0; il < 2; ++il) {
-            Grid grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
+            Grid grid(il + BLVL, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
             real_t origin1[3] = {1.0, 1.0, 0.0};
@@ -339,7 +339,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
 //         for (level_t il = 0; il < 2; ++il) {
 //             bool  period[3] = {false, false, false};
 //             lid_t L[3]      = {3, 3, 3};
-//             Grid  grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
+//             Grid  grid(il + BLVL, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
 //             // create the patch refinement to refine the middle tree
 //             real_t origin1[3] = {1.0, 1.0, 1.0};
@@ -410,7 +410,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
             bool period[3] = {true, true, true};
             period[id]     = false;
             lid_t L[3]     = {3, 3, 3};
-            Grid  grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
+            Grid  grid(il + BLVL, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
             real_t origin1[3] = {1.0, 1.0, 1.0};
@@ -511,7 +511,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
             bool period[3] = {true, true, true};
             period[id]     = false;
             lid_t L[3]     = {3, 3, 3};
-            Grid  grid(il + BLVL, period, L, MPI_COMM_WORLD, nullptr);
+            Grid  grid(il + BLVL, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
             // create the patch refinement to refine the middle tree
             // create the patch refinement to refine the middle tree

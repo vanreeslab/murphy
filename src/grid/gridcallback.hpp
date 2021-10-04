@@ -3,6 +3,7 @@
 
 #include <p8est.h>
 #include <p8est_extended.h>
+#include "grid/forestgrid.hpp"
 
 #include "core/macros.hpp"
 #include "core/types.hpp"
@@ -18,6 +19,8 @@ using cback_interpolate_t      = void (*)(p8est_t *forest, p4est_topidx_t which_
  */
 template<typename BlockType>
 void cback_CreateBlock(p8est_iter_volume_info_t *info, void *user_data);
+p8est_iter_volume_t get_cback_CreateBlock(BlockDataType block_type);
+
 void cback_DestroyBlock(p8est_iter_volume_info_t *info, void *user_data);
 /**@}*/
 
@@ -40,10 +43,16 @@ int cback_StatusCheck(p8est_t *forest, p4est_topidx_t which_tree, qdrt_t *quadra
 // void cback_Interpolate(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
 template<typename BlockType>
 void cback_AllocateOnly(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+cback_interpolate_t get_cback_AllocateOnly(BlockDataType block_type);
+
 template<typename BlockType>
 void cback_ValueFill(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+cback_interpolate_t get_cback_ValueFill(BlockDataType block_type);
+
 template<typename BlockType>
 void cback_UpdateDependency(p8est_t *forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t *outgoing[], int num_incoming, qdrt_t *incoming[]);
+cback_interpolate_t get_cback_UpdateDependency(BlockDataType block_type);
+
 /**@}*/
 
 /**

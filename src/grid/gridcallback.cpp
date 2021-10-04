@@ -6,6 +6,7 @@
 
 #include "grid/grid.hpp"
 #include "grid/gridblock.hpp"
+#include "grid/iimblock.hpp"
 #include "tools/patch.hpp"
 #include "operator/setvalues.hpp"
 
@@ -42,6 +43,17 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
 }
 
 template void cback_CreateBlock<GridBlock>(p8est_iter_volume_info_t*, void*);
+template void cback_CreateBlock<IIMBlock>(p8est_iter_volume_info_t*, void*);
+
+p8est_iter_volume_t get_cback_CreateBlock(BlockDataType block_type) {
+    m_assert(block_type != M_NULLTYPE, "cannot provide size of unspecified block type.");
+    if (block_type == M_GRIDBLOCK) return cback_CreateBlock<GridBlock>;
+    if (block_type == M_IIMBLOCK)  return cback_CreateBlock<IIMBlock>;
+
+    // if you get here, there is an error
+    m_assert(false, "BlockDataType value not recognized.");
+    return (p8est_iter_volume_t)(nullptr);
+}
 
 /**
  * @brief delete a create block associated to a p4est quad
@@ -419,6 +431,17 @@ void cback_UpdateDependency(p8est_t* forest, p4est_topidx_t which_tree, int num_
 };
 
 template void cback_UpdateDependency<GridBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+template void cback_UpdateDependency<IIMBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+
+cback_interpolate_t get_cback_UpdateDependency(BlockDataType block_type) {
+    m_assert(block_type != M_NULLTYPE, "cannot provide callback for unspecified block type.");
+    if (block_type == M_GRIDBLOCK) return cback_UpdateDependency<GridBlock>;
+    if (block_type == M_IIMBLOCK)  return cback_UpdateDependency<IIMBlock>;
+
+    // if you get here, there is an error
+    m_assert(false, "BlockDataType value not recognized.");
+    return (cback_interpolate_t)(nullptr);
+}
 
 /**
  * @brief allocate the entering children or allocate the entering parent, no interpolation is performed
@@ -492,6 +515,17 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
 }
 
 template void cback_AllocateOnly<GridBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+template void cback_AllocateOnly<IIMBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+
+cback_interpolate_t get_cback_AllocateOnly(BlockDataType block_type) {
+    m_assert(block_type != M_NULLTYPE, "cannot provide callback for unspecified block type.");
+    if (block_type == M_GRIDBLOCK) return cback_AllocateOnly<GridBlock>;
+    if (block_type == M_IIMBLOCK)  return cback_AllocateOnly<IIMBlock>;
+
+    // if you get here, there is an error
+    m_assert(false, "BlockDataType value not recognized.");
+    return (cback_interpolate_t)(nullptr);
+}
 
 template<typename BlockType>
 void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
@@ -562,7 +596,17 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
 }
 
 template void cback_ValueFill<GridBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
+template void cback_ValueFill<IIMBlock>(p8est_t*, p4est_topidx_t, int, qdrt_t*[], int, qdrt_t*[]);
     
+cback_interpolate_t get_cback_ValueFill(BlockDataType block_type) {
+    m_assert(block_type != M_NULLTYPE, "cannot provide callback for unspecified block type.");
+    if (block_type == M_GRIDBLOCK) return cback_ValueFill<GridBlock>;
+    if (block_type == M_IIMBLOCK)  return cback_ValueFill<IIMBlock>;
+
+    // if you get here, there is an error
+    m_assert(false, "BlockDataType value not recognized.");
+    return (cback_interpolate_t)(nullptr);
+}
 
 // void cback_MGCreateFamilly(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoing, qdrt_t* outgoing[], int num_incoming, qdrt_t* incoming[]) {
 //     m_begin;

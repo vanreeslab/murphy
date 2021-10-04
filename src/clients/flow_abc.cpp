@@ -39,7 +39,7 @@ void FlowABC::InitParam(ParserArguments* param) {
 
     // setup the grid
     bool period[3]    = {true, true, true};
-    grid_             = new Grid(param->init_lvl, period, param->length, MPI_COMM_WORLD, prof_);
+    grid_             = new Grid(param->init_lvl, period, param->length, M_GRIDBLOCK, MPI_COMM_WORLD, prof_);
     const real_t L[3] = {1.0, 1.0, 1.0};
 
     // set the levels
