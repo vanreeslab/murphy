@@ -450,12 +450,14 @@ void Ghost::SyncStatusUpdate(const level_t min_level, const level_t max_level) {
 }
 
 void Ghost::SyncStatusFinalize() {
+    m_begin;
     //-------------------------------------------------------------------------
     // deallocate the
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SyncStatusFinalize, grid_, il);
     }
     //-------------------------------------------------------------------------
+    m_end;
 }
 
 /**

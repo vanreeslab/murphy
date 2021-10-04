@@ -626,12 +626,14 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
         //......................................................................
 #ifndef NDEBUG
+        m_profStart(prof_, "assert rtol");
         if (field_detail != nullptr) {
             // check/get the max detail on the current grid
             real_t det_maxmin[2];
             this->MaxMinDetails(field_detail, det_maxmin);
             m_log("--> before adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
         }
+        m_profStop(prof_, "assert rtol");
 #endif
 
         //......................................................................
@@ -744,7 +746,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         DoOpTree(nullptr, &GridBlock::SmoothResolutionJump, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "smooth jump");
 
+        m_profStart(prof_, "finalize status");
         ghost_->SyncStatusFinalize();
+        m_profStop(prof_, "finalize status");
 
         //................................................
         // sum over the ranks and see if we keep going
@@ -752,11 +756,13 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         m_assert(n_quad_to_refine_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
         m_assert((n_quad_to_coarsen_ % 8) == 0, "the number of quad to coarsen must be a multiple of 8 isntead of %d", n_quad_to_coarsen_);
 
+        m_profStart(prof_, "compute nblocks");
         int global_n_adapt[2];
         int n_adapt[2] = {n_quad_to_coarsen_, n_quad_to_refine_};
         MPI_Allreduce(n_adapt, global_n_adapt, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
         global_n_quad_to_adapt = global_n_adapt[0] + global_n_adapt[1];
         m_log("we have coarsened %d blocks and refined %d blocks -> %d new blocks", global_n_adapt[0], global_n_adapt[1], global_n_adapt[0] / 8 + 8 * global_n_adapt[1]);
+        m_profStop(prof_, "compute nblocks");
 
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
@@ -768,12 +774,14 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         }
 
 #ifndef NDEBUG
+        m_profStart(prof_, "assert rtol");
         if (field_detail != nullptr) {
             // check/get the max detail on the current grid
             real_t det_maxmin[2];
             this->MaxMinDetails(field_detail, det_maxmin);
             m_log("--> after adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
         }
+        m_profStop(prof_, "assert rtol");
 #endif
         m_log_level_minus;
         // increment the counter
