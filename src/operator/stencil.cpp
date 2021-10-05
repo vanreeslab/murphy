@@ -70,7 +70,9 @@ void Stencil<BlockType>::operator()(const Grid* grid, Field* field_src, Field* f
     field_src->ghost_len(ghost_len_actual);
 
     // the trg has been overwritten anyway
-    field_trg->ghost_len(ghost_len_res_);
+    if (!(field_trg == nullptr)) {
+        field_trg->ghost_len(ghost_len_res_);
+    }
     //-------------------------------------------------------------------------
     m_end;
 }
