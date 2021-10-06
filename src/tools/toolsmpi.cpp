@@ -29,19 +29,20 @@ void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t sc
         m_assert(stride_x == stride_lb, "the two strides should be the same... I am confused here: %ld vs %ld", stride_lb, stride_x);
     }
 #endif
-    MPI_Datatype xy_type;
+    MPI_Datatype x_type, xy_type;
     //................................................
     // do x type as a simple vector
     bidx_t count_x = (span->end[0] - span->start[0]);
     m_assert(count_x >= 0, "we at least need to take 1 element");
     m_assert(count_x <= layout->stride[0], "we cannot take more element than the stride");
+    MPI_Type_create_hvector(count_x / scale, 1, (MPI_Aint)(stride_x * scale), M_MPI_REAL, &x_type);
     //................................................
     // do y type
     bidx_t   count_y  = (span->end[1] - span->start[1]);
     MPI_Aint stride_y = stride_x * layout->stride[0];
     m_assert(count_y >= 0, "we at least need to take 1 element");
     m_assert(count_y <= layout->stride[1], "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_y / scale, count_x / scale, stride_y * scale, M_MPI_REAL, &xy_type);
+    MPI_Type_create_hvector(count_y / scale, 1, stride_y * scale, x_type, &xy_type);
 
     //................................................
     // do z type
@@ -53,6 +54,7 @@ void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t sc
     //................................................
     // finally commit the type so it's ready to use
     MPI_Type_commit(xyz_type);
+    MPI_Type_free(&x_type);
     MPI_Type_free(&xy_type);
     //--------------------------------------------------------------------------
     m_end;

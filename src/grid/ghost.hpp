@@ -56,7 +56,7 @@ class Ghost {
     std::string prof_msg_;
 
    public:
-    Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler);
+    // Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler);
     Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const Wavelet* interp, Prof* profiler);
     ~Ghost();
 
