@@ -1,15 +1,15 @@
 #include "gridblock.hpp"
 
-#include <p8est_bits.h>
+
 
 #include <algorithm>
 #include <string>
 
 #include "core/forloop.hpp"
-#include "core/macros.hpp"
 #include "grid/boundary.hpp"
-#include "p8est_iterate.h"
-#include "tools/toolsp4est.hpp"
+// #include "p8est_iterate.h"
+// #include "tools/toolsp4est.hpp"
+// #include <p8est_bits.h>
 #include "tools/toolsmpi.hpp"
 
 using std::string;
@@ -748,7 +748,7 @@ void GridBlock::PushDependency(const sid_t child_id, GridBlock* dependent_block)
  * @param interp the wavelet to use (for coarse ghost sizes etc)
  * @param local2disp_window the displacement information for RMA
  */
-void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window) {
+void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_info, const Wavelet* interp, MPI_Win local2disp_window) {
     //--------------------------------------------------------------------------
     // allocate the ghost pointer, which is reused for the wavelets smoothing
     // size_t alloc_size = m_max(interp->CoarseSize(), m_blockmemsize(1));
@@ -758,10 +758,11 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
     // m_log("Coarse = %ld vs block size = %ld", interp->CoarseSize(), CartBlockMemNum(1));
 
     //................................................
-    p8est_t*              forest  = grid->p4est_forest();
-    p8est_mesh_t*         mesh    = grid->p4est_mesh();
-    p8est_ghost_t*        ghost   = grid->p4est_ghost();
-    p8est_connectivity_t* connect = forest->connectivity;
+    const bool*           is_periodic = ess_info->is_periodic;
+    p8est_t*              forest      = ess_info->forest;
+    p8est_mesh_t*         mesh        = ess_info->mesh;
+    p8est_ghost_t*        ghost       = ess_info->ghost;
+    p8est_connectivity_t* connect     = forest->connectivity;
 
     std::list<qdrt_t*>  ngh_list;
     std::list<iblock_t> bid_list;
@@ -841,13 +842,13 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                 ngh_pos[1]           = ngh_block->xyz(1);
                 ngh_pos[2]           = ngh_block->xyz(2);
             } else {
-                p8est_qcoord_to_vertex(grid->p4est_connect(), nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
+                p8est_qcoord_to_vertex(connect, nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
             }
             // fix the shift in coordinates needed if the domain is periodic
             for (lda_t id = 0; id < 3; ++id) {
                 // if we are periodic, we overwrite the position in the direction of the normal !!ONLY!!
                 // since it is my neighbor in this normal direction, I am 100% sure that it's origin corresponds to the end of my block
-                const real_t to_replace = sign[id] * sign[id] * grid->domain_periodic(id);  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
+                const real_t to_replace = sign[id] * sign[id] * is_periodic[id];  // is (+-1)^2 = +1 if we need to replace it, 0.0 otherwize
                 // get the expected position
                 m_assert(level() >= 0, "the level=%d must be >=0", level());
                 m_assert(nghq->level >= 0, "the level=%d must be >=0", nghq->level);

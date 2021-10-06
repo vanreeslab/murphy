@@ -3,7 +3,7 @@
 
 #include <p8est.h>
 #include <p8est_extended.h>
-#include "grid/forestgrid.hpp"
+// #include "grid/forestgrid.hpp"
 
 #include "core/macros.hpp"
 #include "core/types.hpp"

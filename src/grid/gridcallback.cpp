@@ -4,9 +4,9 @@
 
 #include <list>
 
-#include "grid/grid.hpp"
-#include "grid/gridblock.hpp"
-#include "grid/iimblock.hpp"
+// #include "grid/grid.hpp"
+// #include "grid/gridblock.hpp"
+// #include "grid/iimblock.hpp"
 #include "tools/patch.hpp"
 #include "operator/setvalues.hpp"
 
@@ -20,7 +20,7 @@ using std::list;
  */
 template<typename BlockType>
 void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
-    static_assert(std::is_base_of<GridBlock, BlockType>::value, "BlockType in Grid must derive from GridBlock.");
+    // static_assert(std::is_base_of<GridBlock, BlockType>::value, "BlockType in Grid must derive from GridBlock.");
     m_begin;
     //-------------------------------------------------------------------------
     p8est_t*              forest     = info->p4est;
@@ -29,14 +29,14 @@ void cback_CreateBlock(p8est_iter_volume_info_t* info, void* user_data) {
     p8est_connectivity_t* connect    = forest->connectivity;
 
     // sanity checks
-    m_assert(sizeof(GridBlock*) == forest->data_size, "cannot cast the pointer, this is baaaad");
+    m_assert(sizeof(BlockType*) == forest->data_size, "cannot cast the pointer, this is baaaad");
 
     // create the new block and store it's address
     real_t xyz[3];
     p8est_qcoord_to_vertex(connect, which_tree, quad->x, quad->y, quad->z, xyz);
     m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
     real_t     len   = p4est_QuadLen(quad->level);
-    GridBlock* block = new BlockType(len, xyz, quad->level);
+    BlockType* block = new BlockType(len, xyz, quad->level);
     p4est_SetGridBlock(quad, block);
     //-------------------------------------------------------------------------
     m_end;

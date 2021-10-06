@@ -8,11 +8,10 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "grid/cartblock.hpp"
-#include "grid/forestgrid.hpp"
 #include "grid/neighborblock.hpp"
 #include "grid/physblock.hpp"
 #include "tools/patch.hpp"
-#include "tools/prof.hpp"
+#include "tools/toolsp4est.hpp"
 #include "wavelet/wavelet.hpp"
 
 #define M_NNEIGHBORS 26
@@ -167,9 +166,9 @@ class GridBlock : public CartBlock {
     sid_t      n_dependency_active() { return n_dependency_active_; }
     GridBlock* PopDependency(const sid_t child_id);
     void       PushDependency(const sid_t child_id, GridBlock* dependent_block);
-    void       SolveDependency(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end);//, Prof*  profiler);
-    void       SmoothResolutionJump(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, 
-                                                            std::map<std::string, Field*>::const_iterator field_end);
+    void       SolveDependency(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, std::map<std::string, Field*>::const_iterator field_end);  //, Prof*  profiler);
+    void       SmoothResolutionJump(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start,
+                                    std::map<std::string, Field*>::const_iterator field_end);
     // void       ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
     /** @} */
 
@@ -198,7 +197,7 @@ class GridBlock : public CartBlock {
 
     void GhostUpdateSize(const bidx_t ghost_len[2]);
 
-    void GhostInitLists(const qid_t* qid, const ForestGrid* grid, const Wavelet* interp, MPI_Win local2disp_window);
+    void GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_info, const Wavelet* interp, MPI_Win local2disp_window);
     void GhostGet_Cmpt(const Field* field, const lda_t ida, const Wavelet* interp);
     void GhostGet_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
     void GhostGet_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
@@ -208,20 +207,5 @@ class GridBlock : public CartBlock {
 
     // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
-
-static inline GridBlock* p4est_GetGridBlock(const qdrt_t* quad) {
-    // the user_data is an array with the addresses of the block
-    GridBlock** p4est_usr_data = static_cast<GridBlock**>(quad->p.user_data);
-    GridBlock*  block          = p4est_usr_data[0];
-    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
-    return block;
-}
-
-static inline void p4est_SetGridBlock(qdrt_t* quad, GridBlock* block) {
-    // reinterpret_cast<GridBlock**>(quad->p.user_data)[0] = block;
-    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
-    GridBlock** p4est_usr_data = static_cast<GridBlock**>(quad->p.user_data);
-    p4est_usr_data[0]          = block;
-}
 
 #endif  // SRC_GRIDBLOCK_HPP_

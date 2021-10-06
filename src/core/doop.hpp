@@ -66,6 +66,32 @@ void CheckBlockType(const ForestGrid* grid, F memfunc) {
         "argument and grid block types must be compatible");
 }
 
+template <typename B, typename... T>
+using DoOpMesh_FnBlockMemberQid = void (B::*)(const qid_t*, T...);
+template <typename B, typename... T>
+using DoOpMesh_FnBlockMember = void (B::*)(T...);
+
+
+template <typename O, typename F, typename... T>
+void CallOperator(const BlockType grid_block_type, const O op, F* func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
+    m_assert(false, "This function is not callable through the DoOpMesh familly");
+}
+
+template <typename B, typename... T>
+void CallOperator(const BlockType grid_block_type, const std::nullptr_t op, DoOpMesh_FnBlockMember<B, T...>* func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
+    m_assert(op == nullptr,"the operator must be nullptr");
+    B* block = p4est_GetGridBlock(quad);
+    m_assert(TypeToEnum<B>(),grid_block_type)"The two types must be compatible to cast");
+    block->func(data...);
+}
+
+template <typename B, typename... T>
+void CallOperator(const std::nullptr_t op, DoOpMesh_FnBlockMemberQid<B, T...>* func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
+    m_assert(op == nullptr,"the operator must be nullptr");
+    B* block = p4est_GetGridBlock(quad);
+    block->func(qid,data...);
+}
+
 /**
  * @brief iterates on the Gridblocks at a given level using the p4est_mesh object
  * 
@@ -82,7 +108,7 @@ void CheckBlockType(const ForestGrid* grid, F memfunc) {
  * @param data the data passed by the user to the function
  */
 template <typename O, typename F, typename... T>
-void DoOpMesh(const O op, F memfunc, const ForestGrid*  grid, T... data) {
+void DoOpMesh(const O op, F* memfunc, const ForestGrid*  grid, T... data) {
     m_begin;
     m_assert(grid->is_mesh_valid(), "mesh is not valid, unable to process");
     //-------------------------------------------------------------------------
@@ -122,17 +148,18 @@ void DoOpMesh(const O op, F memfunc, const ForestGrid*  grid, T... data) {
         // the quadrants can be from differents trees -> get the correct one
         p8est_quadrant_t* quad  = p8est_quadrant_array_index(&tree->quadrants, myid.qid);
         
-        // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
-        if constexpr (do_gridblock && with_qid) {
-            GridBlock* block = p4est_GetGridBlock(quad);
-            (block->*memfunc)(&myid, data...);
-        } else if constexpr (do_gridblock) {
-            GridBlock* block = p4est_GetGridBlock(quad);
-            (block->*memfunc)(data...);
-        } else {
-            CheckBlockType(grid, memfunc);
-            CallMemfunc(op, memfunc, &myid, quad->p.user_data, data...);
-        }
+        // // send the task on the block or on the operator, constexpr will compile only 1 of the two expressions
+        // if constexpr (do_gridblock && with_qid) {
+        //     GridBlock* block = p4est_GetGridBlock(quad);
+        //     (block->*memfunc)(&myid, data...);
+        // } else if constexpr (do_gridblock) {
+        //     GridBlock* block = p4est_GetGridBlock(quad);
+        //     (block->*memfunc)(data...);
+        // } else {
+        //     CheckBlockType(grid, memfunc);
+        //     CallMemfunc(op, memfunc, &myid, quad->p.user_data, data...);
+        // }
+        CallOperator(op,memfunc,&myid,quad,data...);
     }
     //-------------------------------------------------------------------------
     m_end;
