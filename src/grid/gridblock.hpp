@@ -25,22 +25,21 @@ typedef enum StatusAdapt {
     M_ADAPT_FINER,
 } StatusAdapt;
 
-// using GBLocal      = NeighborBlock<GridBlock*>;
 using GBLocal      = NeighborBlock<CartBlock*>;
-using GBMirror     = NeighborBlock<bidx_t>;
+using GBMirror     = NeighborBlock<MPI_Aint>;
 using GBPhysic     = PhysBlock;
 using ListGBLocal  = std::list<GBLocal*>;
 using ListGBMirror = std::list<GBMirror*>;
 using ListGBPhysic = std::list<GBPhysic*>;
 
 typedef enum StatusNghIndex {
-    M_LOC_PARENT = 0,
-    M_GLO_PARENT = 1,
-    M_LOC_SIBLING = 2,
-    M_GLO_SIBLING = 3,
+    M_LOC_PARENT   = 0,
+    M_GLO_PARENT   = 1,
+    M_LOC_SIBLING  = 2,
+    M_GLO_SIBLING  = 3,
     M_LOC_CHILDREN = 4,
     M_GLO_CHILDREN = 5,
-    
+
 } StatusNghIndex;
 
 /**

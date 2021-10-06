@@ -240,14 +240,12 @@ class NeighborBlock : public GhostBlock {
 
 // specify the functions when we have a MPI_Aint
 template <>
-// M_INLINE MemSpan NeighborBlock<MPI_Aint>::SourceSpan() const noexcept {
-M_INLINE MemSpan NeighborBlock<bidx_t>::SourceSpan() const noexcept {
+M_INLINE MemSpan NeighborBlock<MPI_Aint>::SourceSpan() const noexcept {
     return MemSpan(0, M_N);
 }
 // specify the function for the BlockSpan function
 template <>
-// M_INLINE MemLayout NeighborBlock<MPI_Aint>::SourceLayout() const noexcept {
-M_INLINE MemLayout NeighborBlock<bidx_t>::SourceLayout() const noexcept {
+M_INLINE MemLayout NeighborBlock<MPI_Aint>::SourceLayout() const noexcept {
     return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
 }
 
