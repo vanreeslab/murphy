@@ -10,6 +10,7 @@
 #include "clients/simple_advection.hpp"
 #include "clients/convergence_weno.hpp"
 #include "clients/twolevel_convweno.hpp"
+#include "clients/weak_scalability.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -102,6 +103,10 @@ TestCase* MurphyInit(int argc, char** argv) {
         return testcase;
     } else if (argument.do_2lvl_weno) {
         testcase = new TwoLevelConvWeno();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else if (argument.do_weak_scal) {
+        testcase = new WeakScalability();
         testcase->InitParam(&argument);
         return testcase;
     } else {

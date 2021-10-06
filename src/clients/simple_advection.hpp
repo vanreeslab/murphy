@@ -2,7 +2,6 @@
 #define SRC_CLIENTS_SIMPLEADVECTION_HPP_
 
 #include "clients/testcase.hpp"
-#include "core/pointers.hpp"
 #include "grid/field.hpp"
 #include "grid/grid.hpp"
 #include "tools/parser.hpp"

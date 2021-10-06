@@ -69,7 +69,7 @@ typedef enum m_direction_t {
 //-------------------------------------------------------------------------
 // must be removed from the code
 typedef int  lid_t;
-typedef char sid_t;
+typedef short sid_t;
 typedef real_t* __restrict real_p;  //!< pointer type = root of the memory allocation
 
 #endif  // SRC_CORE_TYPES_HPP_

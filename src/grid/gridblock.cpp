@@ -824,7 +824,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
             const iblock_t ngh_cum_id = bid_list.back();
             const rank_t   ngh_rank   = rank_list.back();
             const bool     isghost    = (ngh_rank != my_rank);
-            m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
+            m_verb("reading the list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
 
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
             real_t sign[3];
@@ -943,6 +943,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     // ask the displacement (will be available later, when completing the call)
+                    m_assert(sizeof(bidx_t) == sizeof(int), "the two sizes must match");
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_sibling_.push_back(gb);
@@ -966,7 +967,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const ForestGrid* grid, const W
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_parent_reverse_.push_back(invert_gb);
-
                 }
                 //................................................
                 else if (nghq->level > level_) {
@@ -1480,21 +1480,21 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
                 // create the start and end indexes from the current block
                 MemSpan smooth_span = block_span;
                 // bidx_t smooth_start[3], smooth_end[3];
-                for (lda_t ida = 0; ida < 3; ++ida) {
-                    if (sign[ida] > 0.5) {
+                for (lda_t id = 0; id < 3; ++id) {
+                    if (sign[id] > 0.5) {
                         // my ngh assumed 0 details in my block
-                        smooth_span.start[ida] = block_span.end[ida] -interp->ndetail_citerion_extend_front(); 
+                        smooth_span.start[id] = block_span.end[id] -interp->ndetail_citerion_extend_front(); 
                         // smooth_start[ida] = this->end(ida) - interp->ndetail_citerion_extend_front();
                         // the number of my ngh details influencing my values
-                        smooth_span.end[ida] = block_span.end[ida];
+                        smooth_span.end[id] = block_span.end[id];
                         // smooth_end[ida] = this->end(ida);
-                    } else if (sign[ida] < (-0.5)) {
+                    } else if (sign[id] < (-0.5)) {
                         // my ngh assumed 0 details in my block
                         // smooth_start[ida] = this->start(ida);
-                        smooth_span.start[ida] = block_span.start[ida]; 
+                        smooth_span.start[id] = block_span.start[id]; 
                         // the number of my ngh details influencing my values
                         // smooth_end[ida] = this->start(ida) + interp->ndetail_citerion_extend_back();
-                        smooth_span.end[ida] = block_span.start[ida] + interp->ndetail_citerion_extend_back();
+                        smooth_span.end[id] = block_span.start[id] + interp->ndetail_citerion_extend_back();
                     }
                     // else {
                     //     // even in the directions orthogonal to ibidule, the details must be killed!

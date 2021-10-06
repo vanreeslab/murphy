@@ -15,25 +15,6 @@
 #define M_NNEIGHBOR 26
 
 /**
- * @brief the localization of the interface
- */
-// static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
-
-/**
- * @brief Construct a new Ghost object 
- * 
- * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp) for details
- * 
- * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
- * @param interp the Wavelet to use, will drive the number of ghost points to consider
- */
-Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
-    //-------------------------------------------------------------------------
-    // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp)
-    //-------------------------------------------------------------------------
-}
-
-/**
  * @brief Construct a new Ghost, allocate the ghost lists and initiates the communications
  * 
  * Once created, the ghost is fixed for a given grid. if the grid changes, a new Ghost objects has to be created.
@@ -43,8 +24,8 @@ Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(gr
  * be computed. To reduce the memory cost, only the needed ghost points will be computed.
  * 
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
- * @param min_level the minimum level on which the GP are initiated
- * @param max_level the maximum level on which the GP are initiated
+ * @param min_level the minimum level at which a block will get a neighbor (the level of the block, not the one of the ghost!)
+ * @param max_level the maximum level at which a block will get a neighbor (the level of the block, not the one of the ghost!)
  * @param interp the Wavelet to use, will drive the number of ghost points to consider
  */
 Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const Wavelet* interp, Prof* profiler) : interp_(interp) {
@@ -134,13 +115,13 @@ void Ghost::InitList_() {
 
     // displacement
     m_profStart(prof_, "MPI_Win_create");
-    MPI_Aint  win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
-    MPI_Aint* local2disp        = static_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
+    MPI_Aint  win_disp_memsize  = mesh->local_num_quadrants * sizeof(MPI_Aint);
+    MPI_Aint* local2disp        = reinterpret_cast<MPI_Aint*>(m_calloc(win_disp_memsize));
     MPI_Win   local2disp_window = MPI_WIN_NULL;
-    MPI_Win_create(local2disp, win_disp_mem_size, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
-    m_assert(win_disp_mem_size >= 0, "the memory size should be >=0");
+    MPI_Win_create(local2disp, win_disp_memsize, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
+    m_assert(win_disp_memsize >= 0, "the memory size should be >=0");
     m_assert(local2disp_window != MPI_WIN_NULL, "window must be ready");
-    m_verb("allocating %ld bytes in the window for %d active quad", win_disp_mem_size, mesh->local_num_quadrants);
+    m_verb("allocating %ld bytes in the window for %d active quad", win_disp_memsize, mesh->local_num_quadrants);
     m_profStop(prof_, "MPI_Win_create");
 
     // free the info
@@ -148,7 +129,7 @@ void Ghost::InitList_() {
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
-    iblock_t    active_mirror_count = 0;
+    iblock_t     active_mirror_count = 0;
     const bidx_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
     // get the base address
     // fill the displacement
@@ -166,7 +147,13 @@ void Ghost::InitList_() {
             m_assert(local_id >= 0, "the address cannot be negative");
             m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
             const GridBlock* mirror_block = p4est_GetGridBlock(mirror_quad);
-            local2disp[local_id]          = active_mirror_count * mirror_block->BlockLayout().n_elem;
+#ifndef NDEBUG
+            size_t id = active_mirror_count * mirror_block->BlockLayout().n_elem;
+            m_assert(id < std::numeric_limits<MPI_Aint>::max(), "the value must be lower than the max value of int");
+            local2disp[local_id] = static_cast<MPI_Aint>(id);
+#else
+            local2disp[local_id] = static_cast<MPI_Aint>(active_mirror_count * mirror_block->BlockLayout().n_elem);
+#endif
             active_mirror_count++;
             m_assert(active_mirror_count <= nmlocal, "the number of mirrors cannot be bigger than the local number:  %d vs %d", active_mirror_count, nmlocal);
         }
@@ -312,6 +299,7 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                m_verb("adding rank %d to the ingroup (now %d ranks",ir,n_in_group);
                 break;
             }
         }
@@ -338,6 +326,7 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                m_verb("adding rank %d to the outgroup (now %d ranks",ir,n_in_group);
                 break;
             }
         }
@@ -442,12 +431,14 @@ void Ghost::SyncStatusUpdate(const level_t min_level, const level_t max_level) {
 }
 
 void Ghost::SyncStatusFinalize() {
+    m_begin;
     //-------------------------------------------------------------------------
     // deallocate the
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SyncStatusFinalize, grid_, il);
     }
     //-------------------------------------------------------------------------
+    m_end;
 }
 
 /**

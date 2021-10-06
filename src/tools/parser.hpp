@@ -23,6 +23,7 @@ struct ParserArguments {
     bool do_debug_lifting = false;
     bool do_conv_weno     = false;
     bool do_2lvl_weno     = false;
+    bool do_weak_scal     = false;
 
     real_t reynolds    = 0.0;
     real_t refine_tol  = 1e-2;

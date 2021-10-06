@@ -13,7 +13,7 @@
  * @param scale the scale coefficient (1 or 2). If 2, we take one points out of 2 in each direction, i.e. the stride is x2 and the number of elements is /2
  * @param xyz_type the corresponding datattype
  */
-void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t scale, MPI_Datatype* xyz_type){
+void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t scale, MPI_Datatype* xyz_type) {
     m_begin;
     m_assert(scale == 1 || scale == 2, "the scale must be 1 or 2: here: %d", scale);
     m_assert(span->start[0] <= span->end[0], "the end = %d is smaller than the start = %d", span->end[0], span->start[0]);
@@ -29,7 +29,6 @@ void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t sc
         m_assert(stride_x == stride_lb, "the two strides should be the same... I am confused here: %ld vs %ld", stride_lb, stride_x);
     }
 #endif
-
     MPI_Datatype x_type, xy_type;
     //................................................
     // do x type as a simple vector
@@ -43,7 +42,7 @@ void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t sc
     MPI_Aint stride_y = stride_x * layout->stride[0];
     m_assert(count_y >= 0, "we at least need to take 1 element");
     m_assert(count_y <= layout->stride[1], "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_y / scale, 1, (MPI_Aint)(stride_y * scale), x_type, &xy_type);
+    MPI_Type_create_hvector(count_y / scale, 1, stride_y * scale, x_type, &xy_type);
 
     //................................................
     // do z type
@@ -51,13 +50,12 @@ void ToMPIDatatype(const MemLayout* layout, const MemSpan* span, const bidx_t sc
     MPI_Aint stride_z = stride_y * layout->stride[1];
     m_assert(count_z >= 0, "we at least need to take 1 element");
     m_assert(count_z <= layout->stride[1], "we cannot take more element than the stride");
-    MPI_Type_create_hvector(count_z / scale, 1, (MPI_Aint)(stride_z * scale), xy_type, xyz_type);
+    MPI_Type_create_hvector(count_z / scale, 1, stride_z * scale, xy_type, xyz_type);
     //................................................
     // finally commit the type so it's ready to use
     MPI_Type_commit(xyz_type);
     MPI_Type_free(&x_type);
     MPI_Type_free(&xy_type);
-
     //--------------------------------------------------------------------------
     m_end;
 }
@@ -109,7 +107,10 @@ void GetRma(const level_t dlvl, const bidx_t shift[3],
     // the shift is irrelevant for the type and the scale is handeled inside the function
     MPI_Datatype dtype_src;
     ToMPIDatatype(layout_src, &shifted_span_src, scale, &dtype_src);
-    MPI_Aint disp = disp_src + layout_src->offset(src_start[0], src_start[1], src_start[2]);
+    bidx_t   offset = layout_src->offset(src_start[0], src_start[1], src_start[2]);
+    MPI_Aint disp   = disp_src + offset;
+    m_assert(offset >= 0, "the offset = %d from %d %d %d must be >= 0", offset, src_start[0], src_start[1], src_start[2]);
+    m_assert(offset < layout_src->n_elem, "the offset = %d from %d %d %d must be < %ld", offset, src_start[0], src_start[1], src_start[2], layout_src->n_elem);
 
     //..........................................................................
     int size_trg;

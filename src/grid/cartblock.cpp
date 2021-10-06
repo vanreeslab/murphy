@@ -52,7 +52,8 @@ MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     MemData data_out(&it->second, &myself, ida);
 #else
-    MemData data_out(&mem_map_[fid->name()],&myself, ida);
+    MemPtr       ptr = mem_map_.at(fid->name());
+    MemData      data_out(&ptr, &myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -76,12 +77,12 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     ConstMemData data_out(&it->second, &myself, ida);
 #else
-    ConstMemData data_out(&mem_map_[fid->name()], &myself, ida);
+    MemPtr       ptr = mem_map_.at(fid->name());
+    ConstMemData data_out(&ptr, &myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
 }
-
 
 /**
  * @brief returns the raw pointer corresponding to a field
