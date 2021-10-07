@@ -837,10 +837,10 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
             if (!isghost) {
                 // cannot use the p8est function because the which_tree is not assigned, so we retrieve the position through the block
                 // GridBlock* ngh_block = *(reinterpret_cast<GridBlock**>(nghq->p.user_data));
-                GridBlock* ngh_block = p4est_GetGridBlock(nghq);
-                ngh_pos[0]           = ngh_block->xyz(0);
-                ngh_pos[1]           = ngh_block->xyz(1);
-                ngh_pos[2]           = ngh_block->xyz(2);
+                auto ngh_block = p4est_GetBlock<CartBlock>(nghq);
+                ngh_pos[0]     = ngh_block->xyz(0);
+                ngh_pos[1]     = ngh_block->xyz(1);
+                ngh_pos[2]     = ngh_block->xyz(2);
             } else {
                 p8est_qcoord_to_vertex(connect, nghq->p.piggy3.which_tree, nghq->x, nghq->y, nghq->z, ngh_pos);
             }
@@ -867,7 +867,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
             if (!isghost) {
                 // m_log("the block is not a ghost");
                 // associate the corresponding neighboring block
-                GridBlock* ngh_block = p4est_GetGridBlock(nghq);
+                auto ngh_block = p4est_GetBlock<GridBlock>(nghq);
                 // #ifndef NDEBUG
                 // {  // check the indexing... you never know with this shitty functions
                 //     m_log("check the indexing...");
@@ -876,7 +876,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
                 //     p4est_locidx_t quad_id = ngh_cum_id - tree->quadrants_offset;
                 //     m_assert(quad_id >= 0, "the quad id must be >0: %d = %d - %d", ngh_cum_id, tree->quadrants_offset);
                 //     p8est_quadrant* quad = p8est_quadrant_array_index(&tree->quadrants, quad_id);
-                //     m_assert(p4est_GetGridBlock(quad) == ngh_block, "these two addresses must be the same! %p vs %p", p4est_GetGridBlock(quad), ngh_block);
+                //     m_assert(p4est_GetBlock(quad) == ngh_block, "these two addresses must be the same! %p vs %p", p4est_GetBlock(quad), ngh_block);
                 //     m_log("end of check, compute the intersections");
                 // }
                 // #endif

@@ -96,7 +96,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
             const iblock_t offset = mytree->quadrants_offset;
             // store the block address
             // old_blocks_[offset + qid] = *(reinterpret_cast<GridBlock **>(quad->p.user_data));
-            old_blocks_[offset + qid] = p4est_GetGridBlock(quad);
+            old_blocks_[offset + qid] = p4est_GetBlock(quad);
         }
     }
 
@@ -245,7 +245,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now
                         // *(reinterpret_cast<GridBlock **>(quad->p.user_data)) = block;
-                        p4est_SetGridBlock(quad,block);
+                        p4est_SetBlock(quad,block);
                         // store in the array
                         new_blocks_[offset + qid] = block;
                         // increment the counter

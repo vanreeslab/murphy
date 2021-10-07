@@ -103,11 +103,11 @@ inline static int p4est_GetChildID(const real_t xyz[3], const level_t level) {
  * @brief gets the Block of type B stored as a user_data of the p4est quadrant
  */
 template <typename B>
-static inline B* p4est_GetGridBlock(const qdrt_t* quad) {
+B* p4est_GetBlock(const qdrt_t* quad) {
     //-------------------------------------------------------------------------------
     B** p4est_usr_data = static_cast<B**>(quad->p.user_data);
     B*  block          = p4est_usr_data[0];
-    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
+    m_assert(block != nullptr, "the block address cannot be null");
     return block;
     //-------------------------------------------------------------------------------
 }
@@ -116,7 +116,7 @@ static inline B* p4est_GetGridBlock(const qdrt_t* quad) {
  * @brief sets the Block of type B stored as a user_data of the p4est quadrant
  */
 template <typename B>
-static inline void p4est_SetGridBlock(qdrt_t* quad, B* block) {
+static inline void p4est_SetBlock(qdrt_t* quad, B* block) {
     //-------------------------------------------------------------------------------
     m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
     B** p4est_usr_data = static_cast<B**>(quad->p.user_data);
