@@ -14,6 +14,10 @@
 #include "core/types.hpp"
 #include "hdf5.h"
 
+#ifndef MPI_NONASYNC
+#define M_MPI_AGGRESSIVE
+#endif
+
 // register the current git commit for tracking purpose
 #ifdef GIT_COMMIT
 #define M_GIT_COMMIT GIT_COMMIT

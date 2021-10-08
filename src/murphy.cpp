@@ -3,12 +3,12 @@
 
 #include <string>
 
+#include "clients/convergence_weno.hpp"
 #include "clients/debug_lifting.hpp"
 #include "clients/epsilon_test.hpp"
 #include "clients/flow_abc.hpp"
 #include "clients/navier_stokes.hpp"
 #include "clients/simple_advection.hpp"
-#include "clients/convergence_weno.hpp"
 #include "clients/twolevel_convweno.hpp"
 #include "clients/weak_scalability.hpp"
 #include "core/macros.hpp"
@@ -50,17 +50,18 @@ TestCase* MurphyInit(int argc, char** argv) {
     //-------------------------------------------------------------------------
     MPI_Init(&argc, &argv);
     MPI_Comm comm = MPI_COMM_WORLD;
-
-    sc_init(comm,0,0,NULL,SC_LP_SILENT);
+    sc_init(comm, 0, 0, NULL, SC_LP_SILENT);
     p4est_init(NULL, SC_LP_SILENT);
 
-    // set some properties on the COMM_WORLD
+#ifdef M_MPI_AGGRESSIVE
+    // set some properties on the COMM_WORLD to be more aggressive
     MPI_Info info;
     MPI_Info_create(&info);
-    MPI_Info_set(info,"mpi_assert_exact_length","true");
-    MPI_Info_set(info,"mpi_assert_allow_overtaking","true");
-    MPI_Comm_set_info(MPI_COMM_WORLD,info);
+    MPI_Info_set(info, "mpi_assert_exact_length", "true");
+    MPI_Info_set(info, "mpi_assert_allow_overtaking", "true");
+    MPI_Comm_set_info(MPI_COMM_WORLD, info);
     MPI_Info_free(&info);
+#endif
 
     // so dome checks for the aligment, the constants etc
     m_assert((M_N % 2) == 0, "the number of points must be odd");

@@ -703,6 +703,19 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // p8est_balance_ext(p4est_forest_, P8EST_CONNECT_FULL, nullptr, interpolate_fct);
         // m_profStop(prof_, "p4est balance");
 
+#ifdef M_MPI_AGGRESSIVE
+        // the number of adapted block has been fixed, I can now reduce them and get the result later
+        m_profStart(prof_, "compute nblocks");
+        m_assert(n_quad_to_coarsen_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        m_assert(n_quad_to_refine_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
+        m_assert((n_quad_to_coarsen_ % 8) == 0, "the number of quad to coarsen must be a multiple of 8 isntead of %d", n_quad_to_coarsen_);
+        MPI_Request n_adapt_request;
+        int         global_n_adapt[2];
+        int         n_adapt[2] = {n_quad_to_coarsen_, n_quad_to_refine_};
+        MPI_Iallreduce(n_adapt, global_n_adapt, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD, &n_adapt_request);
+        m_profStop(prof_, "compute nblocks");
+#endif
+
         //................................................
         // solve the dependencies on the grid
         // warn the user that we do not interpolate a temporary field
@@ -752,14 +765,19 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
         //................................................
         // sum over the ranks and see if we keep going
+
+        m_profStart(prof_, "compute nblocks");
+#ifdef M_MPI_AGGRESSIVE
+        MPI_Wait(&n_adapt_request, MPI_STATUS_IGNORE);
+#else
         m_assert(n_quad_to_coarsen_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
         m_assert(n_quad_to_refine_ < std::numeric_limits<int>::max(), "we must be smaller than the integer limit");
         m_assert((n_quad_to_coarsen_ % 8) == 0, "the number of quad to coarsen must be a multiple of 8 isntead of %d", n_quad_to_coarsen_);
 
-        m_profStart(prof_, "compute nblocks");
         int global_n_adapt[2];
         int n_adapt[2] = {n_quad_to_coarsen_, n_quad_to_refine_};
         MPI_Allreduce(n_adapt, global_n_adapt, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
         global_n_quad_to_adapt = global_n_adapt[0] + global_n_adapt[1];
         m_log("we have coarsened %d blocks and refined %d blocks -> %d new blocks", global_n_adapt[0], global_n_adapt[1], global_n_adapt[0] / 8 + 8 * global_n_adapt[1]);
         m_profStop(prof_, "compute nblocks");
