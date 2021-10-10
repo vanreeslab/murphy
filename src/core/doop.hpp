@@ -92,7 +92,7 @@ using DoOpMesh_FnOnBlockQid = void (*)(const qid_t*, B*, T...);
 template <typename O, typename F, typename... T>
 void CallOperator(const BlockDataType grid_block_type,
                   const O op, F func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
-    m_assert(false, "This function is not callable through the DoOpMesh familly");
+    m_assert(false, "This function is not callable through the DoOpMesh familly: O = %s, F=%s", typeid(op).name(), typeid(func).name());
 }
 
 /**
@@ -100,13 +100,13 @@ void CallOperator(const BlockDataType grid_block_type,
  */
 template <typename B, typename... T>
 void CallOperator(const BlockDataType  grid_block_type,
-                  const std::nullptr_t op, DoOpMesh_FnBlockMember<B, T...>* func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
+                  const std::nullptr_t op, DoOpMesh_FnBlockMember<B, T...> func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
     m_begin;
     m_assert(op == nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
-    block->func(data...);
+    (block->*func)(data...);
     //--------------------------------------------------------------------------
     m_end;
 }
@@ -116,13 +116,13 @@ void CallOperator(const BlockDataType  grid_block_type,
  */
 template <typename B, typename... T>
 void CallOperator(const BlockDataType  grid_block_type,
-                  const std::nullptr_t op, DoOpMesh_FnBlockMemberQid<B, T...>* func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
+                  const std::nullptr_t op, DoOpMesh_FnBlockMemberQid<B, T...> func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
     m_begin;
     m_assert(op == nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
-    block->func(qid, data...);
+    (block->*func)(qid, data...);
     //--------------------------------------------------------------------------
     m_end;
 }
@@ -132,13 +132,13 @@ void CallOperator(const BlockDataType  grid_block_type,
  */
 template <typename O, typename B, typename... T>
 void CallOperator(const BlockDataType grid_block_type,
-                  const O op, DoOpMesh_FnOnBlockQid<B, T...>* func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
+                  const O op, DoOpMesh_FnOnBlockQid<B, T...> func, const qid_t* qid, const p8est_quadrant_t* quad, T... data) {
     m_begin;
     m_assert(op != nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
-    op->func(qid, block, data...);
+    (op->*func)(qid, block, data...);
     //--------------------------------------------------------------------------
     m_end;
 }

@@ -183,9 +183,9 @@ void Ghost::InitList_() {
     MPI_Win_start(outgroup_, 0, local2disp_window);
 
     // init the list on every active block that matches the level requirements
-    const ForestGrid* mygrid = grid_;
+    const p4est_Essentials essential = grid_->p4estEssentials();
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, mygrid, interp_, local2disp_window);
+        DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, &essential, interp_, local2disp_window);
     }
 
     // complete the epoch and wait for the exposure one
