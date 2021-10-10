@@ -6,6 +6,7 @@
 
 #include "core/macros.hpp"
 // #include "core/pointers.hpp"
+#include "grid/cartblock.hpp"
 #include "core/types.hpp"
 #include "grid/grid.hpp"
 
@@ -54,7 +55,7 @@ class Partitioner {
     // note: since every block owns his own memory, I have to copy it to the buffer for the receive as well
     iblock_t*   q_recv_cum_block_   = nullptr;  //!< remember at which local block we started for the request[i]
     iblock_t*   q_recv_cum_request_ = nullptr;  //!< cummulative count on the moving blocks for the request[i]
-    GridBlock** new_blocks_         = nullptr;
+    CartBlock** new_blocks_         = nullptr;
 
    public:
     Partitioner(std::map<std::string, Field*>* fields, Grid* grid, bool destructive);

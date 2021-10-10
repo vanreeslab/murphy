@@ -78,22 +78,57 @@ class GridBlock : public CartBlock {
     explicit GridBlock(const real_t length, const real_t xyz[3], const sid_t level);
     virtual ~GridBlock();
 
-    __attribute__((always_inline)) inline MemLayout CoarseLayout(const Wavelet* interp) const {
+    M_INLINE MemLayout CoarseLayout(const Wavelet* interp) const {
         return MemLayout(M_LAYOUT_BLOCK, interp->CoarseNGhostFront(ghost_len_[0]), M_NHALF, interp->CoarseNGhostBack(ghost_len_[1]));
     }
-    __attribute__((always_inline)) inline MemSpan CoarseSpan() const {
+    M_INLINE MemSpan CoarseSpan() const {
         return MemSpan(0, M_NHALF);
     }
 
-    __attribute__((always_inline)) inline MemSpan CoarseExtendedSpan(const Wavelet* interp) const {
+    M_INLINE MemSpan CoarseExtendedSpan(const Wavelet* interp) const {
         return MemSpan(-interp->CoarseNGhostFront(ghost_len_[0]), M_NHALF + interp->CoarseNGhostBack(ghost_len_[1]));
     }
 
-    // __attribute__((always_inline)) inline MemSpan ExtendedSpanCurrent() const {
+    // M_INLINE MemSpan ExtendedSpanCurrent() const {
     //     return MemSpan(-ghost_len_[0], M_N + ghost_len_[1]);
     // }
-    __attribute__((always_inline)) inline MemSpan ExtendedSpan(const bidx_t ghost_len[2]) const {
+    M_INLINE MemSpan ExtendedSpan(const bidx_t ghost_len[2]) const {
         return MemSpan(-ghost_len[0], M_N + ghost_len[1]);
+    }
+
+    /**
+     * @brief return the offset for the partitioning buffer
+     * 
+     * @warning the offset is measured in number of real_t
+     */
+    virtual size_t PartitionDataOffset() const override { return 2; }
+
+    /**
+     * @brief pack (store) the needed information in the partitioner buffer
+     * 
+     * The data will be sent over to another rank during partitioning and recoverd by PartitionDataUnPack()
+     * 
+     * @warning the information MUST be cast to a real_t
+     */
+    virtual void PartitionDataPack(real_t* buff) const override {
+        m_assert(sizeof(status_lvl_) < sizeof(real_t), "the size of the status must fit in the real type");
+        m_assert(sizeof(status_refined_) < sizeof(real_t), "the size of the status must fit in the real type");
+        buff[0] = static_cast<real_t>(status_lvl_);
+        buff[1] = static_cast<real_t>(status_refined_);
+    }
+
+    /**
+     * @brief unpack the needed information from the partitioner buffer
+     * 
+     * The data has been stored by PartitionDataPack() and send over to another rank
+     * 
+     * @warning the information MUST be uncast from a real_t
+     */
+    virtual void PartitionDataUnPack(const real_t* buff) override {
+        m_assert(sizeof(status_lvl_) < sizeof(real_t), "the size of the status must fit in the real type");
+        m_assert(sizeof(status_refined_) < sizeof(real_t), "the size of the status must fit in the real type");
+        status_lvl_     = static_cast<StatusAdapt>(buff[0]);
+        status_refined_ = static_cast<bool>(buff[1]);
     }
 
     /**

@@ -1,13 +1,40 @@
 #include "toolsblocktypes.hpp"
 
+template <>
+BlockDataType TypeToEnum<CartBlock>() { return M_CARTBLOCK; }
+template <>
+BlockDataType TypeToEnum<GridBlock>() { return M_GRIDBLOCK; }
 
-// void AllocateGridBlock(BlockDataType bdt, const real_t length, const real_t xyz[3], const sid_t level) {
-// //     m_assert(bdt != M_NULLTYPE, "cannot allocate unspecified block type.");
-// //     m_assert(bdt != M_CARTBLOCK, "cannot pass a CartBlock via GridBlock*.");
-// //     if (bdt == M_GRIDBLOCK) return (GridBlock*)(new GridBlock(length, xyz, level));
-// //     if (bdt == M_IIMBLOCK)  return (GridBlock*)(new IIMBlock(length, xyz, level));
+/**
+ * @brief provide size of block pointer based on BlockDataType enum
+ */
+size_t BlockPointerSize(const BlockDataType bdt) {
+    m_begin;
+    //--------------------------------------------------------------------------
+    m_assert(bdt != M_NULLTYPE, "cannot provide size of unspecified block type.");
+    if (bdt == M_CARTBLOCK) return sizeof(CartBlock*);
+    if (bdt == M_GRIDBLOCK) return sizeof(GridBlock*);
 
-// //     // if you get here, there is an error
-// //     m_assert(false, "BlockDataType value not recognized.");
-// //     return nullptr; 
-// // }
+    // if you get here, there is an error
+    m_assert(false, "BlockDataType value not recognized.");
+    return -1;
+    //--------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief allocate a block and return a GridBlock pointer to its location
+ */
+void AllocateBlockForP4est(const BlockDataType bdt, const real_t xyz[3], qdrt_t* p4est_quad) {
+    //--------------------------------------------------------------------------
+    const real_t length = p4est_QuadLen(p4est_quad->level);
+    if (bdt == M_CARTBLOCK) {
+        CartBlock* block = new CartBlock(length, xyz, p4est_quad->level);
+        p4est_SetBlock(p4est_quad, block);
+    }
+    if (bdt == M_CARTBLOCK) {
+        CartBlock* block = new CartBlock(length, xyz, p4est_quad->level);
+        p4est_SetBlock(p4est_quad, block);
+    }
+    //--------------------------------------------------------------------------
+}

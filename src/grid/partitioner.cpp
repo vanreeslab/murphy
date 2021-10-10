@@ -36,8 +36,13 @@ using std::array;
 using std::map;
 using std::memcpy;
 
-constexpr size_t PartitionerBlockSize(const MemLayout* layout, const lda_t lda) {
-    return (layout->n_elem * lda + 2);
+// constexpr size_t PartitionerBlockSize(const MemLayout* layout, const lda_t lda) {
+//     return (layout->n_elem * lda + 2);
+// }
+constexpr size_t PartitionerBlockSize(const CartBlock *block, const lda_t lda) {
+    const size_t n_elem = block->BlockLayout().n_elem;
+    const size_t offset = block->PartitionDataOffset();
+    return (n_elem * lda + offset);
 }
 
 /**
@@ -62,10 +67,11 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
     destructive_ = destructive;
 
     // count how many ldas we have to forecast for the exchange, depend on the destructive mode
+    n_lda_ = 0;
     if (destructive_) {
         // if destructive, we move all the fields
         m_assert(fields->size() == grid->NField(), "the number of fields must match so we don't loose information during the partitioning");
-        for (const auto fid : *fields){
+        for (const auto fid : *fields) {
             // add the total count
             n_lda_ += fid.second->lda();
             m_assert(grid->IsAField(fid.second), "the field MUST be present in the grid");
@@ -80,14 +86,21 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
     // we might have to send no field, but never a negative one!!
     m_assert(n_lda_ >= 0, "I cannot send a negative dimension");
 
+    //..........................................................................
     // store the location of the quads in the old partition
     // note: we have to know the new partition to use it
     p4est_gloidx_t *oldpart = reinterpret_cast<p4est_gloidx_t *>(m_calloc((commsize + 1) * sizeof(p4est_gloidx_t)));
     memcpy(oldpart, forest->global_first_quadrant, (commsize + 1) * sizeof(p4est_gloidx_t));
 
+    // get the blocksize in the grid relying on the first quadrant we can find
+    // the block size depends on the block type but is constant for a given grid
+    p8est_tree_t *first_tree  = p8est_tree_array_index(forest->trees, forest->first_local_tree);
+    CartBlock *   first_block = p4est_GetBlock<CartBlock>(p8est_quadrant_array_index(&first_tree->quadrants, 0));
+    const size_t  block_size  = PartitionerBlockSize(first_block, n_lda_);
+
     // init the array of current blocks and store their adress before we send it
     const iblock_t n_loc_block = forest->local_num_quadrants;
-    old_blocks_                = reinterpret_cast<GridBlock **>(m_calloc(n_loc_block * sizeof(GridBlock *)));
+    old_blocks_                = reinterpret_cast<CartBlock **>(m_calloc(n_loc_block * sizeof(CartBlock *)));
     // store all the old block adresses before they get send
     for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; ++it) {
         p8est_tree_t *mytree = p8est_tree_array_index(forest->trees, it);
@@ -95,27 +108,20 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
             const qdrt_t * quad   = p8est_quadrant_array_index(&mytree->quadrants, qid);
             const iblock_t offset = mytree->quadrants_offset;
             // store the block address
-            // old_blocks_[offset + qid] = *(reinterpret_cast<GridBlock **>(quad->p.user_data));
-            old_blocks_[offset + qid] = p4est_GetBlock(quad);
+            CartBlock *block          = p4est_GetBlock<CartBlock>(quad);
+            old_blocks_[offset + qid] = block;
+            m_assert(block_size == PartitionerBlockSize(block, n_lda_), "The block size must be constant over the grid: %ld vs %ld", block_size, PartitionerBlockSize(block, n_lda_));
         }
     }
 
-    //................................................
+    //..........................................................................
     m_verb("current status: %d quads locally", forest->local_num_quadrants);
     // compute the new partition, asking the children to be on the same block (in case of coarsening)
     p4est_gloidx_t nqshipped = p8est_partition_ext(forest, true, NULL);
     m_assert(nqshipped >= 0, "the number of quads to send must be >= 0");
-    // p4est_gloidx_t nqshipped = p8est_partition_for_coarsening(forest, 0, NULL);
     m_verb("we decided to move %ld blocks", nqshipped);
     m_verb("new status: %d quads locally", forest->local_num_quadrants);
 
-    // if (destructive_) {
-    //     // the status are only send if the partitioner is destructive
-    //     send_status_count_   = reinterpret_cast<int *>(m_calloc((commsize) * sizeof(int)));
-    //     send_status_cum_sum_ = reinterpret_cast<int *>(m_calloc((commsize + 1) * sizeof(int)));
-    //     recv_status_count_   = reinterpret_cast<int *>(m_calloc((commsize) * sizeof(int)));
-    //     recv_status_cum_sum_ = reinterpret_cast<int *>(m_calloc((commsize + 1) * sizeof(int)));
-    // }
     //..........................................................................
     if (nqshipped > 0) {
         // get the NEW number of quads
@@ -135,8 +141,8 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
 
         //......................................................................
         // this is a bit disgusting but couldn't find another way to do it
-        MemLayout    block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
-        const size_t block_size = PartitionerBlockSize(&block_layout, n_lda_);
+        // MemLayout block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
+        // const size_t block_size = PartitionerBlockSize(&block_layout, n_lda_);
         // init the send
         if (opart_n > 0) {
             // the send buffer is used to copy the current blocks as they are not continuous to memory
@@ -222,7 +228,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
         // init the reception
         if (cpart_n > 0) {
             // store the new quadrant adress, to create a new block if needed
-            new_blocks_                = reinterpret_cast<GridBlock **>(m_calloc(forest->local_num_quadrants * sizeof(GridBlock *)));
+            new_blocks_                = reinterpret_cast<CartBlock **>(m_calloc(forest->local_num_quadrants * sizeof(GridBlock *)));
             p4est_gloidx_t rank_offset = forest->global_first_quadrant[rank];
 
             // got through each block and add it if needed
@@ -239,8 +245,10 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                         real_t xyz[3];
                         p8est_qcoord_to_vertex(forest->connectivity, it, quad->x, quad->y, quad->z, xyz);
                         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
-                        real_t     len   = p4est_QuadLen(quad->level);
-                        GridBlock *block = AllocateGridBlock(grid->block_type(), len, xyz, quad->level);
+                        // real_t     len   = p4est_QuadLen(quad->level);
+                        // CartBlock *block = AllocateGridBlock(grid->block_type(), len, xyz, quad->level);
+                        AllocateBlockForP4est(grid->block_type(),xyz,quad);
+                        CartBlock* block = p4est_GetBlock<CartBlock>(quad);
                         // add the fields to the block
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now
@@ -414,8 +422,8 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
-    GridBlock ** old_blocks;
-    GridBlock ** new_blocks;
+    CartBlock ** old_blocks;
+    CartBlock ** new_blocks;
 
     if (dir == M_FORWARD) {
         n_recv_request     = n_recv_request_;
@@ -453,23 +461,19 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         lid_t n_q2send = q_send_cum_request[is + 1] - q_send_cum_request[is];
         for (lid_t iq = 0; iq < n_q2send; iq++) {
             // get the block to send
-            GridBlock *     block       = old_blocks[q_send_cum_block[is] + iq];
-            const MemLayout blocklayout = block->BlockLayout();
-            real_t *        buf         = send_buf + (q_send_cum_request[is] + iq) * PartitionerBlockSize(&blocklayout, n_lda_);
+            CartBlock *block = old_blocks[q_send_cum_block[is] + iq];
+            real_t *   buf   = send_buf + (q_send_cum_request[is] + iq) * PartitionerBlockSize(block, n_lda_);
 
             // the first numbers are the status
-            m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
-            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
-            buf[0] = static_cast<real_t>(block->status_level());
-            buf[1] = static_cast<real_t>(block->status_refined());
-            buf += 2;
+            block->PartitionDataPack(buf);
+            buf += block->PartitionDataOffset();
 
-            // send the fields now
-            lda_t idacount = 0;
+            // handle the field
+            bidx_t       idacount   = 0;
+            const size_t block_size = block->BlockLayout().n_elem;
             for (const auto iter : *fields) {
-                const Field *fid        = iter.second;
-                const size_t block_size = blocklayout.n_elem;
-                real_t *     lbuf       = buf + block_size * idacount;
+                const Field *fid  = iter.second;
+                real_t *     lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
                 memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
                 // update the counters
@@ -488,24 +492,20 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         lid_t n_q2recv = q_recv_cum_request[ir + 1] - q_recv_cum_request[ir];
         for (lid_t iq = 0; iq < n_q2recv; iq++) {
             // get the block
-            GridBlock *     block       = new_blocks[q_recv_cum_block[ir] + iq];
-            const MemLayout blocklayout = block->BlockLayout();
-            real_t *        buf         = recv_buf + (q_recv_cum_request[ir] + iq) * PartitionerBlockSize(&blocklayout, n_lda_);
+            CartBlock *block = new_blocks[q_recv_cum_block[ir] + iq];
+            real_t *   buf   = recv_buf + (q_recv_cum_request[ir] + iq) * PartitionerBlockSize(block, n_lda_);
             m_assert(block != nullptr, "this block shouldn't be nullptr here");
 
-            // unpack the status as the two first indexes
-            m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
-            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
-            block->status_level(static_cast<StatusAdapt>(buf[0]));
-            block->status_refined(static_cast<bool>(buf[1]));
-            buf += 2;
+            // the first numbers are the status
+            block->PartitionDataUnPack(buf);
+            buf += block->PartitionDataOffset();
 
             // handle the field
-            bidx_t idacount = 0;
+            bidx_t       idacount   = 0;
+            const size_t block_size = block->BlockLayout().n_elem;
             for (auto iter : *fields) {
                 const Field *fid = iter.second;
                 // security check
-                const size_t block_size = blocklayout.n_elem;
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 const real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
@@ -580,7 +580,7 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
-    GridBlock ** old_blocks;
+    CartBlock ** old_blocks;
 
     if (dir == M_FORWARD) {
         n_recv_request     = n_recv_request_;
@@ -612,27 +612,16 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
     for (rank_t is = 0; is < n_send_request; ++is) {
         iblock_t n_q2send = q_send_cum_request[is + 1] - q_send_cum_request[is];
         for (rank_t iq = 0; iq < n_q2send; ++iq) {
-            const GridBlock *block      = old_blocks[q_send_cum_block[is] + iq];
-            const size_t     block_size = block->BlockLayout().n_elem;
+            const CartBlock *block       = old_blocks[q_send_cum_block[is] + iq];
+            real_t *         buf         = send_buf + (q_send_cum_request[is] + iq) * PartitionerBlockSize(block, n_lda_);
 
-            // // copy the status to the buffer
-            // if (destructive_) {
-            //     send_status_buf_[q_send_cum_request[is] + iq] = (short)block->status_level();
-            //     // m_log("setting status %d to block in %f %f %f", block->status_level(), block->xyz(0), block->xyz(1), block->xyz(2));
-            // }
+            // the first numbers are the status
+            block->PartitionDataPack(buf);
+            buf += block->PartitionDataOffset();
 
-            // copy the field to the buffer
-            // real_t *buf = send_buf + (q_send_cum_request[is] + iq) * PartCommSize(n_lda_);
-            const MemLayout blocklayout = block->BlockLayout();
-            real_t *buf = send_buf + (q_send_cum_request[is] + iq) * PartitionerBlockSize(&blocklayout,  n_lda_);
-            // the first number is the status
-            m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
-            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
-            buf[0] = static_cast<real_t>(block->status_level());
-            buf[1] = static_cast<real_t>(block->status_refined());
-            // shift the buffer for the data
-            buf += 2;
-            lda_t idacount = 0;
+            // get the data now
+            const size_t block_size = block->BlockLayout().n_elem;
+            lda_t        idacount   = 0;
             for (const auto iter : *fields) {
                 const Field *fid = iter.second;
                 // security check
@@ -648,10 +637,6 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
         // start the send
         MPI_Start(send_request + is);
     }
-    // // do the scatterv on the status -> it's a blocking call, sorry I was lazy
-    // if (destructive_) {
-    //     MPI_Alltoallv(send_status_buf_, send_status_count_, send_status_cum_sum_, MPI_SHORT, recv_status_buf_, recv_status_count_, recv_status_cum_sum_, MPI_SHORT, MPI_COMM_WORLD);
-    // }
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -677,7 +662,7 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
-    GridBlock ** new_blocks;
+    CartBlock ** new_blocks;
 
     if (dir == M_FORWARD) {
         n_recv_request     = n_recv_request_;
@@ -700,10 +685,6 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
         m_assert(!destructive_, "we cannot send backward and be destructive, otherwise the status are not sent");
     }
 
-    // if (destructive_) {
-    //     MPI_Wait(&status_request_, MPI_STATUS_IGNORE);
-    // }
-
     // handle the moving ones
     for (rank_t ir = 0; ir < n_recv_request; ++ir) {
         rank_t idx;
@@ -711,20 +692,16 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
         iblock_t n_q2recv = q_recv_cum_request[idx + 1] - q_recv_cum_request[idx];
 
         for (iblock_t iq = 0; iq < n_q2recv; ++iq) {
-            GridBlock *  block      = new_blocks[q_recv_cum_block[idx] + iq];
-            const size_t block_size = block->BlockLayout().n_elem;
-            const MemLayout blocklayout = block->BlockLayout();
-            real_t *     buf        = recv_buf + (q_recv_cum_request[idx] + iq) * PartitionerBlockSize(&blocklayout, n_lda_);
+            CartBlock *block = new_blocks[q_recv_cum_block[idx] + iq];
+            real_t *   buf   = recv_buf + (q_recv_cum_request[idx] + iq) * PartitionerBlockSize(block, n_lda_);
             m_assert(block != nullptr, "this block shouldn't be nullptr here");
 
-            // unpack the status
-            m_assert(sizeof(block->status_level()) < sizeof(real_t), "the size of the status must fit in the real type");
-            m_assert(sizeof(bool) < sizeof(real_t), "the size of the status must fit in the real type");
-            block->status_level(static_cast<StatusAdapt>(buf[0]));
-            block->status_refined(static_cast<bool>(buf[1]));
-            buf += 2;  //shift the buffer
+            // the first numbers are the status
+            block->PartitionDataUnPack(buf);
+            buf += block->PartitionDataOffset();
 
-            bidx_t idacount = 0;
+            bidx_t       idacount   = 0;
+            const size_t block_size = block->BlockLayout().n_elem;
             for (auto iter : *fields) {
                 const Field *fid = iter.second;
                 // security check
@@ -735,12 +712,6 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
                 // update the counters
                 idacount += fid->lda();
             }
-
-            // if (destructive_) {
-            //     StatusAdapt status = (StatusAdapt)recv_status_buf_[q_recv_cum_request[idx] + iq];
-            //     // m_log("pulling status %d to block in %f %f %f", status, block->xyz(0), block->xyz(1), block->xyz(2));
-            //     block->status_level(status);
-            // }
         }
     }
     // receive the new memory in the new blocks

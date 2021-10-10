@@ -93,7 +93,8 @@ Grid::~Grid() {
     DestroyMeshGhost();
     // destroy the remaining blocks
     if (is_connect_owned_) {
-        p8est_iterate(p4est_forest_, nullptr, nullptr, cback_DestroyBlock, nullptr, nullptr, nullptr);
+        p8est_iter_volume_t callback_destroy = get_cback_DestroyBlock(this->block_type());
+        p8est_iterate(p4est_forest_, nullptr, nullptr, callback_destroy, nullptr, nullptr, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -391,18 +392,16 @@ void Grid::Refine(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto fid : fields_) {
-        Field* cur_field = fid.second;
-        if (!cur_field->is_temp()) {
-            GhostPull(cur_field, ghost_len);
-        }
-    }
-
-    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
-    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, cback_update_dependency, nullptr);
+    // // get the ghost length
+    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+    // // compute the ghost needed by the interpolation of every other field in the grid
+    // for (auto fid : fields_) {
+    //     Field* cur_field = fid.second;
+    //     if (!cur_field->is_temp()) {
+    //         GhostPull(cur_field, ghost_len);
+    //     }
+    // }
+    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -417,20 +416,8 @@ void Grid::Refine(Field* field) {
 void Grid::Coarsen(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    // m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // // get the ghost length
-    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto* fid : fields_) {
-    //     Field* cur_field = fid.second;
-    //     if (!cur_field->is_temp()) {
-    //         GhostPull(cur_field, ghost_len);
-    //     }
-    // }
-
-    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
-    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, cback_update_dependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -446,8 +433,7 @@ void Grid::Adapt(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
     //-------------------------------------------------------------------------
-    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, cback_update_dependency, nullptr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
@@ -474,8 +460,7 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
 
     // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
     void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
-    const cback_interpolate_t cback_value_fill = get_cback_ValueFill(block_type_);
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), cback_value_fill, my_expr);
+    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
 
     // apply the operator to get the starting value
     // it gets rid of whatever smoothing has been done
@@ -500,8 +485,7 @@ void Grid::Adapt(list<Patch>* patches) {
     if (patches->empty()) {
         return;
     }
-    const cback_interpolate_t cback_update_dependency = get_cback_UpdateDependency(block_type_);
-    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, cback_update_dependency, nullptr);
+    AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
 }
