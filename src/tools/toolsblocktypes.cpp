@@ -36,8 +36,8 @@ void AllocateBlockForP4est(const BlockDataType bdt, const real_t xyz[3], qdrt_t*
         CartBlock* block = new CartBlock(length, xyz, p4est_quad->level);
         p4est_SetBlock(p4est_quad, block);
     }
-    if (bdt == M_CARTBLOCK) {
-        CartBlock* block = new CartBlock(length, xyz, p4est_quad->level);
+    if (bdt == M_GRIDBLOCK) {
+        GridBlock* block = new GridBlock(length, xyz, p4est_quad->level);
         p4est_SetBlock(p4est_quad, block);
     }
     //--------------------------------------------------------------------------

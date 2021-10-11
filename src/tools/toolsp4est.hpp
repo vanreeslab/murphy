@@ -118,7 +118,7 @@ B* p4est_GetBlock(const qdrt_t* quad) {
 template <typename B>
 static inline void p4est_SetBlock(qdrt_t* quad, B* block) {
     //-------------------------------------------------------------------------------
-    m_assert(block != nullptr, "the block address cannot be null, we have an issue here");
+    m_assert(quad != nullptr, "the block address cannot be null, we have an issue here");
     B** p4est_usr_data = static_cast<B**>(quad->p.user_data);
     p4est_usr_data[0]  = block;
     //-------------------------------------------------------------------------------
