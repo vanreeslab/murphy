@@ -4,6 +4,10 @@ template <>
 BlockDataType TypeToEnum<CartBlock>() { return M_CARTBLOCK; }
 template <>
 BlockDataType TypeToEnum<GridBlock>() { return M_GRIDBLOCK; }
+template <>
+BlockDataType TypeToEnum<const CartBlock>() { return M_CARTBLOCK; }
+template <>
+BlockDataType TypeToEnum<const GridBlock>() { return M_GRIDBLOCK; }
 
 /**
  * @brief provide size of block pointer based on BlockDataType enum

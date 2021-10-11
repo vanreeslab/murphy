@@ -570,7 +570,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
             // ghost the dimension 0
             m_profStart(prof_, "ghost for criterion");
-            
+
             // get the length
             bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
             GhostPull_SetLength(field_detail, ghost_len);
@@ -783,10 +783,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  nullptr");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
-    const level_t min_level   = this->MinLevel();
-    const level_t max_level   = this->MaxLevel();
+    const level_t   min_level = this->MinLevel();
+    const level_t   max_level = this->MaxLevel();
     const MemLayout block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
-    const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
+    const real_t    mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
 
     // m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
