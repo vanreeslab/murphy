@@ -114,6 +114,7 @@ void CallOperator(const BlockDataType  grid_block_type,
     m_begin;
     m_assert(op == nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
+    static_assert(sizeof...(TD) ==  sizeof...(TF), "The size of the arguments for the DoOpMesh function and for the operator must be the same");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
     (block->*func)(data...);
@@ -129,6 +130,7 @@ void CallOperator(const BlockDataType  grid_block_type,
     m_begin;
     m_assert(op == nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
+    static_assert(sizeof...(TD) ==  sizeof...(TF), "The size of the arguments for the DoOpMesh function and for the operator must be the same");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
     (block->*func)(data...);
@@ -145,6 +147,7 @@ void CallOperator(const BlockDataType  grid_block_type,
     m_begin;
     m_assert(op == nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
+    static_assert(sizeof...(TD) ==  sizeof...(TF), "The size of the arguments for the DoOpMesh function and for the operator must be the same");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
     (block->*func)(qid, data...);
@@ -160,6 +163,7 @@ void CallOperator(const BlockDataType  grid_block_type,
     m_begin;
     m_assert(op == nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
+    static_assert(sizeof...(TD) ==  sizeof...(TF), "The size of the arguments for the DoOpMesh function and for the operator must be the same");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
     (block->*func)(qid, data...);
@@ -176,6 +180,7 @@ void CallOperator(const BlockDataType grid_block_type,
     m_begin;
     m_assert(op != nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
+    static_assert(sizeof...(TD) ==  sizeof...(TF), "The size of the arguments for the DoOpMesh function and for the operator must be the same");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
     (op->*func)(qid, block, data...);
@@ -191,6 +196,7 @@ void CallOperator(const BlockDataType grid_block_type,
     m_begin;
     m_assert(op != nullptr, "the operator must be nullptr");
     m_assert(IsCompatibleBlockType(TypeToEnum<B>(), grid_block_type), "The two types must be compatible to cast");
+    static_assert(sizeof...(TD) ==  sizeof...(TF), "The size of the arguments for the DoOpMesh function and for the operator must be the same");
     //--------------------------------------------------------------------------
     B* block = p4est_GetBlock<B>(quad);
     (op->*func)(qid, block, data...);
