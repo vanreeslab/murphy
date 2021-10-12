@@ -96,10 +96,10 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     SetValue     ring(lambda_ring, ghost_len_interp);
     ring(grid_, scal_);
 
-        // adapt the grid
+    grid_->SetTol(param->refine_tol, param->coarsen_tol);
+    // adapt the grid
     if (!no_adapt_) {
         // if the ctol is smaller than epsilon, just put epsilon
-        grid_->SetTol(param->refine_tol, param->coarsen_tol);
         grid_->SetRecursiveAdapt(true);
         grid_->Adapt(scal_, &ring);
     }
