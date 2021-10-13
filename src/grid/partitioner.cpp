@@ -42,6 +42,7 @@ using std::memcpy;
 constexpr size_t PartitionerBlockSize(const CartBlock *block, const lda_t lda) {
     const size_t n_elem = block->BlockLayout().n_elem;
     const size_t offset = block->PartitionDataOffset();
+ 
     return (n_elem * lda + offset);
 }
 
@@ -89,14 +90,19 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
     //..........................................................................
     // store the location of the quads in the old partition
     // note: we have to know the new partition to use it
+    
     p4est_gloidx_t *oldpart = reinterpret_cast<p4est_gloidx_t *>(m_calloc((commsize + 1) * sizeof(p4est_gloidx_t)));
     memcpy(oldpart, forest->global_first_quadrant, (commsize + 1) * sizeof(p4est_gloidx_t));
 
     // get the blocksize in the grid relying on the first quadrant we can find
     // the block size depends on the block type but is constant for a given grid
-    p8est_tree_t *first_tree  = p8est_tree_array_index(forest->trees, forest->first_local_tree);
-    CartBlock *   first_block = p4est_GetBlock<CartBlock>(p8est_quadrant_array_index(&first_tree->quadrants, 0));
-    const size_t  block_size  = PartitionerBlockSize(first_block, n_lda_);
+    // if the forest is empty on the current rank, first_local_tree will be -1 and the size must be 0
+    CartBlock *first_block = nullptr;
+    if (forest->first_local_tree >= 0) {
+        p8est_tree_t *first_tree = p8est_tree_array_index(forest->trees, forest->first_local_tree);
+        first_block              = p4est_GetBlock<CartBlock>(p8est_quadrant_array_index(&first_tree->quadrants, 0));
+    }
+    const size_t block_size = (first_block == nullptr) ? 0 : PartitionerBlockSize(first_block, n_lda_);
 
     // init the array of current blocks and store their adress before we send it
     const iblock_t n_loc_block = forest->local_num_quadrants;
@@ -228,7 +234,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
         // init the reception
         if (cpart_n > 0) {
             // store the new quadrant adress, to create a new block if needed
-            new_blocks_                = reinterpret_cast<CartBlock **>(m_calloc(forest->local_num_quadrants * sizeof(GridBlock *)));
+            new_blocks_                = reinterpret_cast<CartBlock **>(m_calloc(forest->local_num_quadrants * sizeof(CartBlock *)));
             p4est_gloidx_t rank_offset = forest->global_first_quadrant[rank];
 
             // got through each block and add it if needed
@@ -253,7 +259,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now
                         // *(reinterpret_cast<GridBlock **>(quad->p.user_data)) = block;
-                        p4est_SetBlock(quad,block);
+                        // p4est_SetBlock(quad,block);
                         // store in the array
                         new_blocks_[offset + qid] = block;
                         // increment the counter
