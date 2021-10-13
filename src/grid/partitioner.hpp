@@ -29,6 +29,7 @@ class Partitioner {
    protected:
     bool  destructive_ = false;  //!< false if the oldblocks belongs to an existing grid
     lda_t n_lda_       = 0;      //!< the total number of dimension accross all the fields
+    size_t partition_blocksize_ = 0; //!< the size of one block exchanged (this size is computed once and unique for a given exchange)
 
     int n_send_request_ = 0;  //!< the number of send requests
     int n_recv_request_ = 0;  //!< the number of receive requests

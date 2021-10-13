@@ -38,6 +38,7 @@ static bool IsCompatibleBlockType(const BlockDataType type_to_convert_to, const 
 }
 
 size_t BlockPointerSize(const BlockDataType bdt);
-void AllocateBlockForP4est(const BlockDataType bdt, const real_t xyz[3], qdrt_t* p4est_quad);
+size_t BlockPartitionSize(const BlockDataType bdt, const lda_t lda);
+void   AllocateBlockForP4est(const BlockDataType bdt, const real_t xyz[3], qdrt_t* p4est_quad);
 
 #endif

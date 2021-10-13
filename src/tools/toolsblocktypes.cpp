@@ -27,6 +27,38 @@ size_t BlockPointerSize(const BlockDataType bdt) {
 }
 
 /**
+ * @brief Return the size needed by one block during the partitioning
+ * 
+ * @warning we create a random block and query the size, it's not the best but it works fine enough
+ */
+size_t BlockPartitionSize(const BlockDataType bdt, const lda_t lda) {
+    m_begin;
+    //--------------------------------------------------------------------------
+    m_assert(bdt != M_NULLTYPE, "cannot provide size of unspecified block type.");
+    const real_t xyz[3] = {0.0, 0.0, 0.0};
+    if (bdt == M_CARTBLOCK) {
+        CartBlock    block(1.0, xyz, 0);
+        const size_t n_elem   = block.BlockLayout().n_elem;
+        const size_t n_offset = block.PartitionDataOffset();
+
+        return n_elem * lda + n_offset;
+    }
+    if (bdt == M_GRIDBLOCK) {
+        GridBlock    block(1.0, xyz, 0);
+        const size_t n_elem   = block.BlockLayout().n_elem;
+        const size_t n_offset = block.PartitionDataOffset();
+
+        return n_elem * lda + n_offset;
+    }
+
+    // if you get here, there is an error
+    m_assert(false, "BlockDataType value not recognized.");
+    return 0;
+    //--------------------------------------------------------------------------
+    m_end;
+}
+
+/**
  * @brief allocate a block and return a GridBlock pointer to its location
  */
 void AllocateBlockForP4est(const BlockDataType bdt, const real_t xyz[3], qdrt_t* p4est_quad) {
