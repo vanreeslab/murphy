@@ -96,12 +96,20 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     SetValue     ring(lambda_ring, ghost_len_interp);
     ring(grid_, scal_);
 
-    grid_->SetTol(param->refine_tol, param->coarsen_tol);
+    // reinterpret the coarsen tol
+    real_t coarsen_tol = (param->coarsen_tol < 0.0) ? 0.0 : (param->coarsen_tol);
+    refine_only_ = (param->coarsen_tol < 0.0);
+
+    grid_->SetTol(param->refine_tol, coarsen_tol);
     // adapt the grid
     if (!no_adapt_) {
         // if the ctol is smaller than epsilon, just put epsilon
         grid_->SetRecursiveAdapt(true);
-        grid_->Adapt(scal_, &ring);
+        if (refine_only_) {
+            grid_->Refine(scal_,&ring);
+        } else {
+            grid_->Adapt(scal_, &ring);
+        }
     }
 
     //-------------------------------------------------------------------------
@@ -142,7 +150,7 @@ void SimpleAdvection::Run() {
     }
 
     // time integration
-    iter_t         iter = 0;
+    iter_t        iter = 0;
     real_t        t    = tstart_;
     const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
 
@@ -159,8 +167,12 @@ void SimpleAdvection::Run() {
             m_profStart(prof_, "adapt");
             if (!grid_on_sol_) {
                 grid_->SetRecursiveAdapt(true);
-                grid_->Adapt(scal_);
-
+                // grid_->Adapt(scal_);
+                if (refine_only_) {
+                    grid_->Refine(scal_);
+                } else {
+                    grid_->Adapt(scal_);
+                }
             } else {
                 m_assert(false, "this option is not supported without a solution field");
             }
