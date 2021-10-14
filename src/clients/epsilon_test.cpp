@@ -57,7 +57,7 @@ static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const 
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
-    real_t depsilon = 1e-20;//delta_eps_;
+    real_t depsilon = delta_eps_;
     real_t epsilon  = eps_start_;
     m_log("starting with epsilon = %e", epsilon);
     while (epsilon >= std::pow(2.0, -34)) {
