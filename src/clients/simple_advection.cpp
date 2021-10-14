@@ -38,7 +38,7 @@ SimpleAdvection::~SimpleAdvection() {
     delete grid_;
 
     m_profStop(prof_, "cleanup");
-    
+
     if (!(prof_ == nullptr)) {
         prof_->Disp();
         delete prof_;
@@ -89,7 +89,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
         // block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
-        block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
+        block->data(fid, 0)(i0, i1, i2) = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
     };
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
                                         m_max(grid_->interp()->nghost_back(), 3)};
@@ -98,7 +98,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // reinterpret the coarsen tol
     real_t coarsen_tol = (param->coarsen_tol < 0.0) ? 0.0 : (param->coarsen_tol);
-    refine_only_ = (param->coarsen_tol < 0.0);
+    refine_only_       = (param->coarsen_tol < 0.0);
 
     grid_->SetTol(param->refine_tol, coarsen_tol);
     // adapt the grid
@@ -106,7 +106,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         // if the ctol is smaller than epsilon, just put epsilon
         grid_->SetRecursiveAdapt(true);
         if (refine_only_) {
-            grid_->Refine(scal_,&ring);
+            grid_->Refine(scal_, &ring);
         } else {
             grid_->Adapt(scal_, &ring);
         }
@@ -309,8 +309,9 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     // tag
     lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
     string weno_name  = fix_weno_ ? "_cons" : "_weno";
-    int  log_ratio = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log10(grid_->ctol())-log10(grid_->rtol())) : -0;
-    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_a" + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol"+to_string(-log_ratio);
+    int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log10(grid_->ctol()) - log10(grid_->rtol())) : -0;
+    string adapt_tag  = (refine_only_) ? ("_r") : ("_a");
+    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol" + to_string(-log_ratio);
 
     // open the file
     m_profStart(prof_, "dump diag");
