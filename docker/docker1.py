@@ -39,7 +39,7 @@ Stage0 += fftw(version='3.3.9', toolchain=omp.toolchain,
 
 # blas and lapack
 Stage0 += openblas(version='0.3.18', toolchain=omp.toolchain,
-                   make_opts=['USE_OPENMP=1', 'DYNAMIC_ARCH=1', 'CC=clang'])
+                   make_opts=['USE_OPENMP=1', 'DYNAMIC_ARCH=1'])
 
 # build stage 1
 Stage1 += baseimage(image='ubuntu:20.04')
