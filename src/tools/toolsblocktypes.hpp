@@ -5,7 +5,6 @@
 #include "core/types.hpp"
 #include "grid/cartblock.hpp"
 #include "grid/gridblock.hpp"
-#include "grid/iimblock.hpp"
 #include "toolsp4est.hpp"
 
 /**
