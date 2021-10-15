@@ -3,12 +3,9 @@
 
 #include <string>
 
-#include <p8est.h>
-#include <p8est_extended.h>
-
 #include "core/macros.hpp"
-// #include "core/pointers.hpp"
 #include "core/types.hpp"
+#include "tools/toolsp4est.hpp"
 
 /**
  * @brief handles the p4est structures. This class is a minimal grid, intended to be used by every other class
@@ -29,7 +26,7 @@ class ForestGrid {
     bool is_connect_owned_ = false; /**<indicate if we have to free the connectivity */
     bool is_mesh_valid_    = false; /**<indicate that the mesh and the ghost structures are up-to-date */
 
-    BlockDataType block_type_= M_NULLTYPE;
+    BlockDataType block_type_ = M_NULLTYPE;
 
    public:
     /**
@@ -38,16 +35,17 @@ class ForestGrid {
      * @{
      */
     explicit ForestGrid();
-    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, const size_t datasize, MPI_Comm comm);
+    ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, MPI_Comm comm);
     ~ForestGrid();
     /** @} */
 
     // void CopyFrom(const ForestGrid* grid);
 
-    [[nodiscard]] BlockDataType block_type() const { return block_type_; }
-    [[nodiscard]] real_t        domain_length(const sid_t id) const { return domain_length_[id]; }
-    [[nodiscard]] bool          domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
-    [[nodiscard]] inline bool   is_mesh_valid() const { return is_mesh_valid_; }
+    [[nodiscard]] BlockDataType    block_type() const { return block_type_; }
+    [[nodiscard]] real_t           domain_length(const sid_t id) const { return domain_length_[id]; }
+    [[nodiscard]] bool             domain_periodic(const sid_t id) const { return domain_periodic_[id]; }
+    [[nodiscard]] inline bool      is_mesh_valid() const { return is_mesh_valid_; }
+    [[nodiscard]] p4est_Essentials p4estEssentials() const;
 
     /**
      * @name p4est managmeent
@@ -61,13 +59,13 @@ class ForestGrid {
     [[nodiscard]] inline p8est_mesh_t*         p4est_mesh() const { return p4est_mesh_; }
     [[nodiscard]] inline p8est_ghost_t*        p4est_ghost() const { return p4est_ghost_; }
     [[nodiscard]] inline p8est_connectivity_t* p4est_connect() const { return p4est_forest_->connectivity; }
-    [[nodiscard]] inline bidx_t local_num_quadrants() const { return p4est_forest_->local_num_quadrants; }
-    [[nodiscard]] inline long  global_num_quadrants() const { return p4est_forest_->global_num_quadrants; }
-    
-    [[nodiscard]] level_t      MaxLevel() const;
-    [[nodiscard]] level_t      MinLevel() const;
-    [[nodiscard]] real_t       FinestH() const;
-    [[nodiscard]] real_t       CoarsestH() const;
+    [[nodiscard]] inline bidx_t                local_num_quadrants() const { return p4est_forest_->local_num_quadrants; }
+    [[nodiscard]] inline long                  global_num_quadrants() const { return p4est_forest_->global_num_quadrants; }
+
+    [[nodiscard]] level_t MaxLevel() const;
+    [[nodiscard]] level_t MinLevel() const;
+    [[nodiscard]] real_t  FinestH() const;
+    [[nodiscard]] real_t  CoarsestH() const;
 
     void DumpLevels(const iter_t id, const std::string folder, const std::string suffix = "") const;
     /** @} */

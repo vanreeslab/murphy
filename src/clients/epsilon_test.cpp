@@ -64,7 +64,7 @@ void EpsilonTest::Run() {
         m_log("================================================================================");
         //......................................................................
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {true, true, true};
+        bool  period[3]   = {false, false, false};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
@@ -112,7 +112,7 @@ void EpsilonTest::Run() {
         do {
             bidx_t ghost_len[2] = {grid.interp()->nghost_front(), grid.interp()->nghost_back()};
             grid.GhostPull(&scal, ghost_len);
-            grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency<GridBlock>, nullptr);
+            grid.AdaptMagic(nullptr, &patch, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
 
             level_t tmp_min_lvl = grid.MinLevel();
             level_t tmp_max_lvl = grid.MaxLevel();

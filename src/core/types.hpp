@@ -72,7 +72,6 @@ typedef enum m_direction_t {
 typedef enum BlockDataType {
     M_CARTBLOCK,
     M_GRIDBLOCK,
-    M_IIMBLOCK,
     M_NULLTYPE
 } BlockDataType;
 

@@ -6,9 +6,9 @@
 
 #include "core/macros.hpp"
 // #include "core/pointers.hpp"
+#include "grid/cartblock.hpp"
 #include "core/types.hpp"
 #include "grid/grid.hpp"
-#include "grid/blocktypetools.hpp"
 
 /**
  * @brief Paritions a @ref Grid by distributing it on the available processors and send/recv the associated GridBlock*
@@ -29,6 +29,7 @@ class Partitioner {
    protected:
     bool  destructive_ = false;  //!< false if the oldblocks belongs to an existing grid
     lda_t n_lda_       = 0;      //!< the total number of dimension accross all the fields
+    size_t partition_blocksize_ = 0; //!< the size of one block exchanged (this size is computed once and unique for a given exchange)
 
     int n_send_request_ = 0;  //!< the number of send requests
     int n_recv_request_ = 0;  //!< the number of receive requests
@@ -50,12 +51,12 @@ class Partitioner {
 
     iblock_t*   q_send_cum_block_   = nullptr;  //!< remember at which local block we started for the request[i]
     iblock_t*   q_send_cum_request_ = nullptr;  //!< cummulative count on the moving blocks for the request[i]
-    GridBlock** old_blocks_         = nullptr;  //!< array with the addresses to each old block
+    CartBlock** old_blocks_         = nullptr;  //!< array with the addresses to each old block
 
     // note: since every block owns his own memory, I have to copy it to the buffer for the receive as well
     iblock_t*   q_recv_cum_block_   = nullptr;  //!< remember at which local block we started for the request[i]
     iblock_t*   q_recv_cum_request_ = nullptr;  //!< cummulative count on the moving blocks for the request[i]
-    GridBlock** new_blocks_         = nullptr;
+    CartBlock** new_blocks_         = nullptr;
 
    public:
     Partitioner(std::map<std::string, Field*>* fields, Grid* grid, bool destructive);

@@ -5,7 +5,6 @@
 #include "core/types.hpp"
 #include "grid/grid.hpp"
 #include "grid/gridblock.hpp"
-#include "grid/iimblock.hpp"
 #include "operator/blockoperator.hpp"
 #include "doop.hpp"
 

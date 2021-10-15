@@ -1,10 +1,7 @@
 #include "forestgrid.hpp"
-#include "grid/gridblock.hpp"
-#include "grid/iimblock.hpp"
 
-#include <cmath>
-
-#include "tools/toolsp4est.hpp"
+#include <p8est_extended.h>
+#include "tools/toolsblocktypes.hpp"
 
 /**
  * @brief Construct an empty ForestGrid
@@ -33,11 +30,13 @@ ForestGrid::ForestGrid() {
  * @param datasize the datasize to give to p4est
  * @param comm the communicator to build the forest
  */
-ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, const size_t datasize, MPI_Comm comm) {
+ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3], const BlockDataType block_type, MPI_Comm comm) {
     m_begin;
     m_assert(ilvl >= 0, "the init level has to be >= 0");
     m_assert(ilvl <= P8EST_MAXLEVEL, "the init level has to be <= P8EST_MAXLEVEL");
     //-------------------------------------------------------------------------
+    // store the type of block managed by the grid
+    block_type_ = block_type;
     // create the connect as a box of L[0]xL[1]xL[2] trees
     is_connect_owned_             = true;
     p8est_connectivity_t* connect = p8est_connectivity_new_brick(l[0], l[1], l[2], isper[0], isper[1], isper[2]);
@@ -46,7 +45,7 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     // int min_quad  = ((int)pow(2, 3 * ilvl)) / comm_size;
     // p4est_forest_ = p8est_new_ext(comm, connect, min_quad, 0, 1, datasize, nullptr, nullptr);
-    p4est_forest_ = p8est_new_ext(comm, connect,0, ilvl, 1, datasize, nullptr, nullptr);
+    p4est_forest_ = p8est_new_ext(comm, connect,0, ilvl, 1, BlockPointerSize(block_type), nullptr, nullptr);
     // forest_ - p8est_new(comm,connect,datasize,nullptr,nullptr);
     // set the pointer to null
     p4est_forest_->user_pointer = nullptr;
@@ -57,11 +56,7 @@ ForestGrid::ForestGrid(const level_t ilvl, const bool isper[3], const lid_t l[3]
     domain_periodic_[0] = isper[0];
     domain_periodic_[1] = isper[1];
     domain_periodic_[2] = isper[2];
-    // store the type of block managed by the grid
-    block_type_ = block_type;
     //-------------------------------------------------------------------------
-    // m_assert(this->MinLevel() == ilvl, "the current level = %d must match the level asked = %d", this->MinLevel(), ilvl);
-    // m_assert(this->MaxLevel() == ilvl, "the current level = %d must match the level asked = %d", this->MaxLevel(), ilvl);
     m_assert(p4est_forest_->global_num_quadrants == ((int)pow(2, 3 * ilvl) * l[0] * l[1] * l[2]), "the number of global quad = %ld must match the initial level number = %d", p4est_forest_->global_num_quadrants, (int)pow(2, 3 * ilvl));
     m_end;
 }
@@ -108,7 +103,21 @@ ForestGrid::~ForestGrid() {
     if (is_connect_owned_) {
         p8est_connectivity_destroy(connect);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
+    m_end;
+}
+
+/**
+ * @brief returns the essential information about p4est, cfr p4est_Essentials
+ * 
+ * @return p4est_Essentials 
+ */
+p4est_Essentials ForestGrid::p4estEssentials() const {
+    m_begin;
+    //--------------------------------------------------------------------------
+    p4est_Essentials essential{domain_periodic_, p4est_forest_, p4est_mesh_, p4est_ghost_};
+    return essential;
+    //--------------------------------------------------------------------------
     m_end;
 }
 

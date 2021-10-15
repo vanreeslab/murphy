@@ -78,4 +78,3 @@ void Stencil<BlockType>::operator()(const Grid* grid, Field* field_src, Field* f
 }
 
 template class Stencil<GridBlock>;
-template class Stencil<IIMBlock>;
