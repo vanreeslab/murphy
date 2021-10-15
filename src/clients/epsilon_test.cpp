@@ -10,8 +10,8 @@
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
 
-static const real_t sigma     = 0.05;
-static const real_t radius    = 0.25;
+static const real_t sigma     = 0.02;
+static const real_t radius    = 0.2;
 static const real_t beta      = 3.0;
 static const auto   freq      = std::vector<short_t>{};  //std::vector<short_t>{5, 1000};
 static const auto   amp       = std::vector<real_t>{};   //std::vector<real_t>{0.2, 0.2};
@@ -64,7 +64,7 @@ void EpsilonTest::Run() {
         m_log("================================================================================");
         //......................................................................
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {true, true, true};
+        bool  period[3]   = {false, false, false};
         lid_t grid_len[3] = {1, 1, 1};
         Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
@@ -146,7 +146,7 @@ void EpsilonTest::Run() {
         real_t moment0, moment1[3];
         grid.GhostPull(&scal, &moment);
         moment(&grid, &scal, &moment0, moment1);
-        real_t dmoment0, dmoment1[3];
+        // real_t dmoment0, dmoment1[3];
         // dmoment(&grid, &scal, &dmoment0, dmoment1);
         m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment0, moment0, abs(sol_moment0 - moment0));
         m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[0], moment1[0], abs(sol_moment1[0] - moment1[0]));

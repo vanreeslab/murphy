@@ -212,13 +212,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 2005: { /* rtol */
             real_t* tol = &arguments->refine_tol;
             error_t err = atof_list(1, arg, tol);
-            m_log("refinement tolerance: %f", tol[0]);
+            m_log("refinement tolerance: %e", tol[0]);
             return err;
         }
         case 2006: { /* ctol */
             real_t* tol = &arguments->coarsen_tol;
             error_t err = atof_list(1, arg, tol);
-            m_log("coarsening tolerance: %f", tol[0]);
+            m_log("coarsening tolerance: %e", tol[0]);
             return err;
         }
         case 2007: { /* no adapt */

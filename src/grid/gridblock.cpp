@@ -536,8 +536,6 @@ void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, rea
                               bidx_t* max_blocks, const real_t max_cat, const real_t min_cat, const short_t n_cat) {
     m_assert(criterion->lda() == 1, "field must be a scalar");
     //-------------------------------------------------------------------------
-    // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-
     real_t block_maxmin[2] = {0.0, 0.0};
 
     const MemSpan span_src(-interp->nghost_front(), M_N + interp->nghost_back());
@@ -557,8 +555,6 @@ void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, rea
 
         // got
         m_assert(n_cat > id_cat && id_cat >= 0, "the cat id = %d must be >=0 and < %d", id_cat, n_cat);
-        // m_assert(log10(block_maxmin[0]) >= pow(10, id_cat * h_cat), "the category id doens't match: %e with h_cat=%e from %e to %e (%d cats)", block_maxmin[0], h_cat, min_cat, max_cat, n_cat);
-        // m_assert(log10(block_maxmin[0]) >= pow(10, (id_cat + 1) * h_cat), "the category id doens't match: %e with h_cat=%e from %e to %e (%d cats)", block_maxmin[0], h_cat, min_cat, max_cat, n_cat);
         max_blocks[id_cat] += 1;
     }
     //--------------------------------------------------------------------------

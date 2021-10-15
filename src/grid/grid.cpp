@@ -30,7 +30,7 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
 Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const prof)
     : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // profiler
     prof_ = prof;
     // create a default Wavelet -> default is M_WAVELET_N and M_WAVELET_NT
@@ -47,7 +47,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 
     // setup the ghost stuctures as the mesh will not change anymore
     SetupMeshGhost();
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
@@ -59,7 +59,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 //  */
 // void Grid::CopyFrom(const Grid* grid) {
 //     m_begin;
-//     //-------------------------------------------------------------------------
+//     //--------------------------------------------------------------------------
 //     this->ForestGrid::CopyFrom(grid);
 //     // copy the field mapping
 //     for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
@@ -69,7 +69,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
 //     }
 //     // copy the profiler
 //     prof_ = grid->profiler();
-//     //-------------------------------------------------------------------------
+//     //--------------------------------------------------------------------------
 //     m_end;
 // }
 
@@ -82,7 +82,7 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
  */
 Grid::~Grid() {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_profStart(prof_,"grid cleanup");
     // destroy the Wavelet and the details they are mine
     if (interp_ != nullptr) {
@@ -96,7 +96,7 @@ Grid::~Grid() {
         p8est_iterate(p4est_forest_, nullptr, nullptr, cback_DestroyBlock, nullptr, nullptr, nullptr);
     }
     m_profStop(prof_,"grid cleanup");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -110,11 +110,11 @@ void Grid::level_limit(const level_t min, const level_t max) {
     m_assert(min <= max, "the levels must be %d <= %d", min, max);
     m_assert(this->MinLevel() >= min, "trying to impose a min level = %d while blocks exist on a lower one = %d", min, this->MinLevel());
     m_assert(this->MaxLevel() <= max, "trying to impose a max level = %d while blocks exist on a higher one = %d", max, this->MaxLevel());
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     level_limit_min_ = min;
     level_limit_max_ = max;
     m_verb("limit leves are now %d to %d ", min, max);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 };
 
 /**
@@ -126,13 +126,13 @@ void Grid::level_limit(const level_t min, const level_t max) {
 void Grid::SetupMeshGhost() {
     m_begin;
     m_assert(ghost_ == nullptr, "cannot create something that already exists");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // create the forestGrid part
     this->SetupP4estMeshAndGhost();
     // create the ghosts structure
     m_verb("starting the Ghost construction");
     ghost_ = new Ghost(this, level_limit_min_, level_limit_max_, interp_, prof_);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -142,14 +142,14 @@ void Grid::SetupMeshGhost() {
  */
 void Grid::DestroyMeshGhost() {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     if (ghost_ != nullptr) {
         m_verb("dealloc the ghost");
         delete ghost_;
         ghost_ = nullptr;
     }
     this->DestroyP4estMeshAndGhost();
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -160,7 +160,7 @@ void Grid::DestroyMeshGhost() {
  */
 size_t Grid::LocalMemSize() const {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     size_t memsize = 0;
 
     memsize += sizeof(fields_);
@@ -170,7 +170,7 @@ size_t Grid::LocalMemSize() const {
     for (const auto fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
     return memsize;
 }
@@ -208,7 +208,7 @@ bool Grid::IsAField(const Field* const field) const {
 void Grid::AddField(Field* field) {
     m_begin;
     // m_assert(!field.IsOwned(), "The field cannot be owned as it has not been created here");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     if (!IsAField(field)) {
         // add the field
         fields_[field->name()] = field;
@@ -218,7 +218,7 @@ void Grid::AddField(Field* field) {
     } else {
         m_verb("field %s is already in the grid", field->name().c_str());
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -229,7 +229,7 @@ void Grid::AddField(Field* field) {
  */
 void Grid::DeleteField(const Field* field) {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     if (IsAField(field)) {
         // remove the field to everyblock
         DoOpTree(nullptr, &GridBlock::DeleteField, this, field);
@@ -238,7 +238,7 @@ void Grid::DeleteField(const Field* field) {
     } else {
         m_verb("field %s is not in the grid", field->name().c_str());
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -251,7 +251,7 @@ void Grid::DeleteField(const Field* field) {
  */
 void Grid::ResetFields(const std::map<string, Field*>* fields) {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // clear the current map
     fields_.clear();
     // copy the new one
@@ -261,7 +261,7 @@ void Grid::ResetFields(const std::map<string, Field*>* fields) {
         // check if we satisfy the requirements on the key
         m_assert(fid.first == fid.second->name(), "the key of the map must be the name of the field");
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -270,12 +270,12 @@ void Grid::GhostPull_SetLength(const Field* field, bidx_t ghost_len[2]) const {
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed", ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
     if (!field->ghost_status(ghost_len)) {
         ghost_->SetLength(ghost_len);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -291,11 +291,11 @@ void Grid::GhostPull_Post(const Field* field, const sid_t ida, const bidx_t ghos
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     if (!field->ghost_status(ghost_len)) {
         ghost_->PullGhost_Post(field, ida);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -311,21 +311,21 @@ void Grid::GhostPull_Wait(const Field* field, const sid_t ida, const bidx_t ghos
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     if (!field->ghost_status(ghost_len)) {
         ghost_->PullGhost_Wait(field, ida);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
 void Grid::GhostPull(Field* field, const BlockOperator* op) const {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     bidx_t ghost_len[2];
     op->GhostLengthNeed(ghost_len);
     GhostPull(field, ghost_len);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -338,13 +338,12 @@ void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
     m_begin;
     m_assert(!(field == nullptr), "the source field cannot be empty");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // get the real ghost length
     bidx_t ghost_len[2] = {ghost_len_usr[0], ghost_len_usr[1]};
     GhostPull_SetLength(field, ghost_len);
 
     // start the send in the first dimension
-    // m_log("ghost check: field <%s> is %s", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed");
     m_profStart(prof_, "pull ghost");
     for (lda_t ida = 0; ida < field->lda(); ++ida) {
         m_verb("ghosting post field <%s> in dir %d", field->name().c_str(), ida);
@@ -357,7 +356,7 @@ void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
     const bidx_t ghost_len_actual[2] = {m_max(ghost_len[0], field->get_ghost_len(0)),
                                         m_max(ghost_len[1], field->get_ghost_len(1))};
     field->ghost_len(ghost_len_actual);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -372,11 +371,11 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_assert(refine_tol > coarsen_tol, "the refinement tolerance must be > the coarsening tolerance");
     m_assert(refine_tol > 0.0, "The refinement tolerance = %e must be > 0.0", refine_tol);
     m_assert(coarsen_tol >= 0.0, "The coarsening tolerance = %e must be >= 0.0", coarsen_tol);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     // if ctol is smaller than epsilon, just remember epsilon
     ctol_ = m_max(coarsen_tol, std::numeric_limits<real_t>::epsilon());
     rtol_ = refine_tol;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -387,23 +386,25 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
  * 
  * @param field the field to use for the criterion computation
  */
-void Grid::Refine(Field* field) {
+void Grid::Refine(Field* field, const SetValue* expr) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
-    //-------------------------------------------------------------------------
-    // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto fid : fields_) {
-        Field* cur_field = fid.second;
-        if (!cur_field->is_temp()) {
-            GhostPull(cur_field, ghost_len);
-        }
+    //--------------------------------------------------------------------------
+   //--------------------------------------------------------------------------
+    if (expr == nullptr) {
+        AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+        // AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+    } else {
+        // apply the operator to get the starting value
+        (*expr)(this, field);
+        // adapt given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
+        void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
+        AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+        // AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
     }
 
-    AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
-    //-------------------------------------------------------------------------
+    
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -414,46 +415,29 @@ void Grid::Refine(Field* field) {
  * 
  * @param field the field to use for the criterion computation
  */
-void Grid::Coarsen(Field* field) {
+void Grid::Coarsen(Field* field, const SetValue* expr) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    // m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
-    //-------------------------------------------------------------------------
-    // // get the ghost length
-    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto* fid : fields_) {
-    //     Field* cur_field = fid.second;
-    //     if (!cur_field->is_temp()) {
-    //         GhostPull(cur_field, ghost_len);
-    //     }
-    // }
-
-    AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
+    if (expr == nullptr) {
+        AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
+        // AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+    } else {
+        // apply the operator to get the starting value
+        (*expr)(this, field);
+        // adapt given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
+        void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
+        AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, static_cast<void*>(field), &cback_ValueFill, my_expr);
+        // AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+    }
+    //--------------------------------------------------------------------------
     m_end;
 }
 
-/**
- * @brief Adapt the grid based on field which is used as a criterion
+/**a
+ * @brief Adapt the grid using a given field for the details.
  * 
- * The adaptation might be recursive, see Grid::SetRecursiveAdapt() function
- * 
- * @param field the field used for the criterion
- */
-void Grid::Adapt(Field* field) {
-    m_begin;
-    m_assert(IsAField(field), "the field must already exist on the grid!");
-    //-------------------------------------------------------------------------
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
-    //-------------------------------------------------------------------------
-    m_end;
-}
-
-/**
- * @brief Adapt the grid given an analytical expression for the designated field (typically an initial condition)
- * 
- * The anaylical expression is used to start and then is used everytime a new block is created.
+ * The (optional) anaylical expression is used before the adaptation and then is used everytime a new block is created.
  * Other fields than field might be garbage
  * 
  * Notes: 
@@ -461,23 +445,22 @@ void Grid::Adapt(Field* field) {
  * - if the ghost provided by the SetValue are not sufficient, the ghosts will be recomputed
  * 
  * @param field the field to adapt
- * @param expr the analytical expression to use as a SetValue object
+ * @param expr the analytical expression to use as a SetValue object, might be null
  */
 void Grid::Adapt(Field* field, const SetValue* expr) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    //-------------------------------------------------------------------------
-    // apply the operator to get the starting value
-    (*expr)(this, field);
-
-    // refine given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
-    void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
-    AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
-
-    // apply the operator to get the starting value
-    // it gets rid of whatever smoothing has been done
-    // (*expr)(this, field);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
+    if (expr == nullptr) {
+        AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
+    } else {
+        // apply the operator to get the starting value
+        (*expr)(this, field);
+        // adapt given the value, have to remove the cast to allow the cas in void* (only possible way, sorry)
+        void* my_expr = static_cast<void*>(const_cast<SetValue*>(expr));
+        AdaptMagic(field, nullptr, &cback_StatusCheck, &cback_StatusCheck, static_cast<void*>(field), &cback_ValueFill, my_expr);
+    }
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -493,12 +476,12 @@ void Grid::Adapt(Field* field, const SetValue* expr) {
  */
 void Grid::Adapt(list<Patch>* patches) {
     m_begin;
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     if (patches->empty()) {
         return;
     }
     AdaptMagic(nullptr, patches, &cback_StatusCheck, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
@@ -526,7 +509,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
     // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
     // pre-assigne the profiling in case every cpu doesn't enter it
@@ -536,7 +519,16 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     // m_profInitLeave(prof_, "smooth jump");
 
     // inform we start the mess
-    string msg = "grid adaptation started... (recursive = %d, ";
+    // string msg = "grid adaptation started... (recursive = %d, ";
+    string msg = "grid";
+    if (coarsen_cback != nullptr && refine_cback != nullptr) {
+        msg += " adaptation";
+    } else if (coarsen_cback != nullptr) {
+        msg += " coarsening";
+    } else if (refine_cback != nullptr) {
+        msg += " refinement";
+    }
+    msg += " started... (recursive = %d, ";
     if (!(field_detail == nullptr)) {
         msg += "using details";
     }
@@ -631,7 +623,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             // check/get the max detail on the current grid
             real_t det_maxmin[2];
             this->MaxMinDetails(field_detail, det_maxmin);
-            m_log("--> before adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+            m_log("--> before adaptation: tols = {%e , %e}, max detail = %e", this->rtol(), this->ctol(), det_maxmin[0]);
         }
         m_profStop(prof_, "assert rtol");
 #endif
@@ -797,7 +789,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             // check/get the max detail on the current grid
             real_t det_maxmin[2];
             this->MaxMinDetails(field_detail, det_maxmin);
-            m_log("--> after adaptation: rtol = %e, max detail = %e", this->rtol(), det_maxmin[0]);
+            m_log("--> after adaptation: tol = {%e , %e}, max detail = %e", this->rtol(), this->ctol(), det_maxmin[0]);
         }
         m_profStop(prof_, "assert rtol");
 #endif
@@ -817,7 +809,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 
     // and finally end that stuff
     m_profStop(prof_, "adaptation");
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  nullptr");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
@@ -849,7 +841,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 void Grid::StoreDetails(Field* criterion, Field* details) {
     m_begin;
     m_assert(criterion->lda() == details->lda(), "field <%s> and <%s> must have the same size", criterion->name().c_str(), details->name().c_str());
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     {
         const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
         this->GhostPull(criterion, ghost_len);
@@ -860,12 +852,12 @@ void Grid::StoreDetails(Field* criterion, Field* details) {
         const bidx_t ghost_len[2] = {0, 0};
         details->ghost_len(ghost_len);
     }
-    //-------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     m_end;
 }
 
 void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
-    //--------------------------------------------------------------------------
+    //---------------------------------------------------------------------------
     // get the ghosts values
     const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     this->GhostPull(criterion, ghost_len);
@@ -882,12 +874,12 @@ void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
     maxmin[1] = 0.0;
     MPI_Allreduce(local_maxmin, maxmin, 1, M_MPI_REAL, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(local_maxmin + 1, maxmin + 1, 1, M_MPI_REAL, MPI_MIN, MPI_COMM_WORLD);
-    //--------------------------------------------------------------------------
+    //---------------------------------------------------------------------------
 }
 
 void Grid::DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
                                const short_t n_cat, const real_t max_value_cat) {
-    //--------------------------------------------------------------------------
+    //---------------------------------------------------------------------------
     // get the ghosts values
     const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
     this->GhostPull(criterion, ghost_len);
@@ -929,5 +921,5 @@ void Grid::DistributionDetails(const iter_t id, const std::string folder, const 
     m_free(n_block_local);
     m_free(n_block_global);
 
-    //--------------------------------------------------------------------------
+    //---------------------------------------------------------------------------
 }

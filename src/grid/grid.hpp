@@ -132,16 +132,15 @@ class Grid : public ForestGrid {
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
-    void Refine(Field* field);
-    void Coarsen(Field* field);
     void StoreDetails(Field* criterion, Field* details);
     void MaxMinDetails(Field* criterion, real_t maxmin[2]);
     void DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
                              const short_t n_cat, const real_t max_category);
 
-    void Adapt(Field* field);
-    // void Adapt(Field* field, const setvalue_gridop_t* expr_grid, const setvalue_blockop_t* expr_block);
-    void Adapt(Field* field, const SetValue* expr);
+    void Refine(Field* field, const SetValue* expr = nullptr);
+    void Coarsen(Field* field, const SetValue* expr = nullptr);
+    void Adapt(Field* field, const SetValue* expr = nullptr);
+
     void Adapt(std::list<Patch>* patches);
 
     // void AdaptMagic(Field*  field, list<Patch*  > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);
