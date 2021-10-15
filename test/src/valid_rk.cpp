@@ -138,7 +138,7 @@ class RKRhs : public RKFunctor {
 //     }
 };
 
-class valid_RK : public ::testing::Test {
+class ValidRK : public ::testing::Test {
     void SetUp() override{};
     void TearDown() override{};
 };
@@ -150,7 +150,7 @@ using std::string;
  * @brief test the RK3 implementation on a regular, uniform grid with a analytical advection source term
  * 
  */
-TEST_F(valid_RK, rk3_tvd) {
+TEST_F(ValidRK, rk3_tvd) {
     // setup the mesh
     bool  period[3] = {true, true, true};
     lid_t L[3]      = {3, 3, 3};

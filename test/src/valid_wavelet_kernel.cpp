@@ -10,7 +10,7 @@
  * @brief test the wavelet's filters
  * 
  */
-class valid_Wavelet_Kernel : public ::testing::Test {
+class ValidWaveletKernel : public ::testing::Test {
 //    protected:
 //     SubBlock* block_coarse_;
 //     SubBlock* block_fine_;
@@ -28,7 +28,7 @@ class valid_Wavelet_Kernel : public ::testing::Test {
     void TearDown() override{};
 };
 
-TEST_F(valid_Wavelet_Kernel, filter_length) {
+TEST_F(ValidWaveletKernel, filter_length) {
     InterpolatingWavelet interp;
     m_log("testing wavelet %d.%d", interp.N(), interp.Nt());
 
