@@ -877,49 +877,50 @@ void Grid::MaxMinDetails(Field* criterion, real_t maxmin[2]) {
     //---------------------------------------------------------------------------
 }
 
-void Grid::DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
-                               const short_t n_cat, const real_t max_value_cat) {
-    //---------------------------------------------------------------------------
-    // get the ghosts values
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    this->GhostPull(criterion, ghost_len);
+// // must be moved ot a diagnostics
+// void Grid::DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+//                                const short_t n_cat, const real_t max_value_cat) {
+//     //---------------------------------------------------------------------------
+//     // get the ghosts values
+//     const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
+//     this->GhostPull(criterion, ghost_len);
 
-    bidx_t* n_block_local  = reinterpret_cast<bidx_t*>(m_calloc(n_cat * sizeof(bidx_t)));
-    bidx_t* n_block_global = reinterpret_cast<bidx_t*>(m_calloc(n_cat * sizeof(bidx_t)));
+//     bidx_t* n_block_local  = reinterpret_cast<bidx_t*>(m_calloc(n_cat * sizeof(bidx_t)));
+//     bidx_t* n_block_global = reinterpret_cast<bidx_t*>(m_calloc(n_cat * sizeof(bidx_t)));
 
-    // get the minmax for the whole grid + for each block
-    real_t to_trash[2];
-    to_trash[0] = 0.0;
-    to_trash[1] = std::numeric_limits<real_t>::max();
-    DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, to_trash, n_block_local, max_value_cat, 1e-16, n_cat);
+//     // get the minmax for the whole grid + for each block
+//     real_t to_trash[2];
+//     to_trash[0] = 0.0;
+//     to_trash[1] = std::numeric_limits<real_t>::max();
+//     DoOpMesh(nullptr, &GridBlock::MaxMinDetails, this, interp(), criterion, to_trash, n_block_local, max_value_cat, 1e-16, n_cat);
 
-    // sum everything on rank 0 to dump
-    const rank_t root = 0;
-    m_assert(sizeof(bidx_t) == sizeof(int), "the two sizes must match");
-    MPI_Reduce(n_block_local, n_block_global, n_cat, MPI_INT, MPI_SUM, root, MPI_COMM_WORLD);
+//     // sum everything on rank 0 to dump
+//     const rank_t root = 0;
+//     m_assert(sizeof(bidx_t) == sizeof(int), "the two sizes must match");
+//     MPI_Reduce(n_block_local, n_block_global, n_cat, MPI_INT, MPI_SUM, root, MPI_COMM_WORLD);
 
-    // dump
-    rank_t rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//     // dump
+//     rank_t rank;
+//     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    long nblock = this->global_num_quadrants();
+//     long nblock = this->global_num_quadrants();
 
-    FILE* file_diag;
-    if (rank == root) {
-        file_diag = fopen(std::string(folder + "/detail_histogram" + suffix + ".data").c_str(), "a+");
-        fprintf(file_diag, "%d;%ld", id, nblock);
-        long block_count = 0;
-        for (level_t il = 0; il < n_cat; ++il) {
-            fprintf(file_diag, ";%d", n_block_global[il]);
-            block_count += n_block_global[il];
-        }
-        fprintf(file_diag, "\n");
-        fclose(file_diag);
-        m_assert(block_count == nblock, "the two counts must match: %ld %ld", block_count, nblock);
-    }
+//     FILE* file_diag;
+//     if (rank == root) {
+//         file_diag = fopen(std::string(folder + "/detail_histogram" + suffix + ".data").c_str(), "a+");
+//         fprintf(file_diag, "%d;%ld", id, nblock);
+//         long block_count = 0;
+//         for (level_t il = 0; il < n_cat; ++il) {
+//             fprintf(file_diag, ";%d", n_block_global[il]);
+//             block_count += n_block_global[il];
+//         }
+//         fprintf(file_diag, "\n");
+//         fclose(file_diag);
+//         m_assert(block_count == nblock, "the two counts must match: %ld %ld", block_count, nblock);
+//     }
 
-    m_free(n_block_local);
-    m_free(n_block_global);
+//     m_free(n_block_local);
+//     m_free(n_block_global);
 
-    //---------------------------------------------------------------------------
-}
+//     //---------------------------------------------------------------------------
+// }

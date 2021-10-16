@@ -6,6 +6,7 @@
 #include "operator/xblas.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
+#include "operator/diagnostics.hpp"
 
 using std::string;
 using std::to_string;
@@ -343,7 +344,9 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     m_profStop(prof_, "dump levels");
 
     m_profStart(prof_, "dump det histogram");
-    grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
+    // grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
+    DetailVsError distr(grid_->interp());
+    distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
     m_profStop(prof_, "dump det histogram");
 
     m_profStart(prof_, "dump field");

@@ -328,7 +328,7 @@ void GridBlock::SyncStatusFill(const qid_t* qid, short_t* const coarsen_vec) {
  * allocate the @ref status_siblings_neighbors_ array, which will be destroyed in the @ref SolveNeighbor function.
  */
 void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status_window) {
-    //---------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     const iblock_t n_coarser = local_parent_.size() + ghost_parent_.size();
     const iblock_t n_finer   = local_children_.size() + local_children_.size();
     const iblock_t n_local_coarser  = local_parent_.size();
@@ -387,7 +387,7 @@ void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status
             ++count;
         }
     }
-    //---------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
 void GridBlock::SyncStatusFinalize() {

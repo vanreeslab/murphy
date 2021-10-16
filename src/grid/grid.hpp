@@ -134,8 +134,10 @@ class Grid : public ForestGrid {
 
     void StoreDetails(Field* criterion, Field* details);
     void MaxMinDetails(Field* criterion, real_t maxmin[2]);
-    void DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
-                             const short_t n_cat, const real_t max_category);
+    // void DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+    //                          const short_t n_cat, const real_t max_category);
+    // void DistributionDetailsInfiniteNorm(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+                            //  const short_t n_cat, const real_t max_category);
 
     void Refine(Field* field, const SetValue* expr = nullptr);
     void Coarsen(Field* field, const SetValue* expr = nullptr);
