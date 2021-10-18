@@ -158,45 +158,49 @@ void SimpleAdvection::Run() {
     // let's gooo
     m_profStart(prof_, "run");
     const real_t wtime_start = MPI_Wtime();
+    real_t       dt          = 0.0;
     while (t < tfinal_ && iter < iter_max()) {
         m_log("--------------------------------------------------------------------------------");
         //................................................
         // adapt the mesh
-        if ((iter % iter_adapt() == 0) && (!no_adapt_)) {
-            m_log("---- adapt mesh");
-            m_log_level_plus;
-            m_profStart(prof_, "adapt");
-            if (!grid_on_sol_) {
-                grid_->SetRecursiveAdapt(true);
-                // grid_->Adapt(scal_);
-                if (refine_only_) {
-                    grid_->Refine(scal_);
+        if (iter % iter_adapt() == 0) {
+            if (!no_adapt_) {
+                m_log("---- adapt mesh");
+                m_log_level_plus;
+                m_profStart(prof_, "adapt");
+                if (!grid_on_sol_) {
+                    grid_->SetRecursiveAdapt(true);
+                    // grid_->Adapt(scal_);
+                    if (refine_only_) {
+                        grid_->Refine(scal_);
+                    } else {
+                        grid_->Adapt(scal_);
+                    }
                 } else {
-                    grid_->Adapt(scal_);
+                    m_assert(false, "this option is not supported without a solution field");
                 }
-            } else {
-                m_assert(false, "this option is not supported without a solution field");
-            }
-            m_profStop(prof_, "adapt");
+                m_profStop(prof_, "adapt");
 
-            // reset the velocity
-            m_profStart(prof_, "set velocity");
-            // set the velocity field
-            const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
-                                                m_max(grid_->interp()->nghost_back(), 3)};
-            SetValue     set_velocity(lambda_velocity, ghost_len_interp);
-            set_velocity(grid_, vel_);
-            m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
-            m_profStop(prof_, "set velocity");
-            m_log_level_minus;
+                // reset the velocity
+                m_profStart(prof_, "set velocity");
+                // set the velocity field
+                const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
+                                                    m_max(grid_->interp()->nghost_back(), 3)};
+                SetValue     set_velocity(lambda_velocity, ghost_len_interp);
+                set_velocity(grid_, vel_);
+                m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
+                m_profStop(prof_, "set velocity");
+                m_log_level_minus;
+            }
         }
-        // we run the first diagnostic if not done yet, it's usefull to get a sense of what is going on with the adaptation
-        if (iter == 0) {
-            m_profStart(prof_, "diagnostics");
+        //................................................
+        // diagnostics, dumps, whatever
+        if (iter % iter_diag() == 0) {
             m_log("---- run diag");
             m_log_level_plus;
-            real_t wtime_now = MPI_Wtime();
-            Diagnostics(t, 0.0, iter, wtime_now - wtime_start);
+            m_profStart(prof_, "diagnostics");
+            real_t time_now = MPI_Wtime();
+            Diagnostics(t, dt, iter, time_now - wtime_start);
             m_profStop(prof_, "diagnostics");
             m_log_level_minus;
         }
@@ -207,7 +211,7 @@ void SimpleAdvection::Run() {
         //................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
-        real_t dt = rk3.ComputeDt(advection, vel_);
+        dt = rk3.ComputeDt(advection, vel_);
         m_profStop(prof_, "compute dt");
 
         // dump some info
@@ -220,20 +224,7 @@ void SimpleAdvection::Run() {
         rk3.DoDt(dt, &t);
         iter++;
         m_profStop(prof_, "do dt");
-
         m_log_level_minus;
-
-        //................................................
-        // diagnostics, dumps, whatever
-        if (iter % iter_diag() == 0) {
-            m_log("---- run diag");
-            m_log_level_plus;
-            m_profStart(prof_, "diagnostics");
-            real_t time_now = MPI_Wtime();
-            Diagnostics(t, dt, iter, time_now - wtime_start);
-            m_profStop(prof_, "diagnostics");
-            m_log_level_minus;
-        }
     }
     m_profStop(prof_, "run");
     // run the last diag
@@ -343,11 +334,13 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     grid_->DumpLevels(iter, folder_diag_, string("_" + tag));
     m_profStop(prof_, "dump levels");
 
-    m_profStart(prof_, "dump det histogram");
-    // grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
-    DetailVsError distr(grid_->interp());
-    distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
-    m_profStop(prof_, "dump det histogram");
+    if (iter % iter_adapt() == 0) {
+        m_profStart(prof_, "dump det histogram");
+        // grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
+        DetailVsError distr(grid_->interp());
+        distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
+        m_profStop(prof_, "dump det histogram");
+    }
 
     m_profStart(prof_, "dump field");
     if (iter % iter_dump() == 0 && iter != 0) {
