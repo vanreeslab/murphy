@@ -31,7 +31,9 @@ BlockDataType TypeToEnum<const GridBlock>();// { return M_GRIDBLOCK; }
 static bool IsCompatibleBlockType(const BlockDataType type_to_convert_to, const BlockDataType type_to_convert_from) {
     m_begin;
     //--------------------------------------------------------------------------
-    return (type_to_convert_to <= type_to_convert_from);
+    const bool no_nulltype = type_to_convert_from * type_to_convert_to != 0;
+    const bool is_safecast = type_to_convert_from % type_to_convert_to == 0;
+    return no_nulltype && is_safecast;
     //--------------------------------------------------------------------------
     m_end;
 }

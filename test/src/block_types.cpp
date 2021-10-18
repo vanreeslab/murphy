@@ -86,8 +86,10 @@ void DestroyForestGrid(ForestGrid* grid) {
 
 TEST(BlockTypeDeathTest, doop) {
 
-    //GTEST_FLAG_SET(death_test_style, "threadsafe"); - this should compile, but doesn't?
-    // At the moment it's quite difficult to run 
+    // GTEST_FLAG_SET(death_test_style, "threadsafe"); - this should compile, but doesn't?
+    // At the moment it's difficult to run death tests with MPI, so those are commented out.
+    // They can be tested safely on a single process with :
+    // ./murphy_test --gtest_filter="BlockTypeDeathTest.doop" --gtest_death_test_style=threadsafe
 
     // create a grid of GridBlocks and a grid of CartBlocks
     const bool period[3] = {false, false, false};
