@@ -30,6 +30,7 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
 Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataType block_type, MPI_Comm comm, Prof* const prof)
     : ForestGrid(ilvl, isper, l, block_type, comm) {
     m_begin;
+    m_assert(IsCompatibleBlockType(M_GRIDBLOCK, block_type), "You can not instantiate a Grid with Blocks which don't have ghosting capabilities");
     //-------------------------------------------------------------------------
     // profiler
     prof_ = prof;

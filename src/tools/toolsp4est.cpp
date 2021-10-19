@@ -38,7 +38,7 @@ void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8est_connectivity
     for (iblock_t ib = 0; ib < ngh_quad->elem_count; ++ib) {
         m_assert(ngh_qid->elem_count == ngh_quad->elem_count, "the counters = %ld and %ld must be =", ngh_qid->elem_count, ngh_quad->elem_count);
         m_assert(ngh_enc->elem_count == ngh_quad->elem_count, "the counters = %ld and %ld must be =", ngh_enc->elem_count, ngh_quad->elem_count);
-        m_verb("ngh_qid = %d, ngh_enc = %d, ngh_quad = %d", ngh_qid->elem_count, ngh_quad->elem_count, ngh_enc->elem_count);
+        m_verb("ngh_qid = %zu, ngh_enc = %zu, ngh_quad = %zu", ngh_qid->elem_count, ngh_quad->elem_count, ngh_enc->elem_count);
         // p8est_quadrant_t* ngh = p8est_quadrant_array_index(ngh_quad, ib);
 
         p8est_quadrant_t* ngh = p4est_GetElement<p8est_quadrant_t*>(ngh_quad, ib);
@@ -97,7 +97,7 @@ void p4est_GetNeighbor(/* p4est arguments */ p8est_t* forest, p8est_connectivity
             int is_valid = p8est_quadrant_exists(forest, ghost, tree_2_find, quad_2_find, exist_arr, rank_arr, quad_arr);
             m_assert(quad_arr->elem_count == 1, "there is %ld quad matching the needed one", quad_arr->elem_count);
             m_verb("the quadrant found is valid? %d", is_valid);  // i don't understand this value....
-            m_verb("we have %d elements in the exist vector", exist_arr->elem_count);
+            m_verb("we have %zu elements in the exist vector", exist_arr->elem_count);
 
             // store the quadrant and the rank -> use the piggy3 to get the correct quad
             p8est_quadrant_t* quad_piggy   = p4est_GetPointer<p8est_quadrant_t>(quad_arr, 0);
