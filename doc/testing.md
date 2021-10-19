@@ -3,7 +3,7 @@
 Tests in MURPHY use the Google Test framework, which organizes individual tests into a series of test suites. By convention, all MURPHY test suite names (and instantiation names for parametrized tests) are `CamelCase`, while individual tests are named in `snake_case`. This page provides descriptions of each test and is organized according to the Google Test hierarchy. The source file containing any given test is listed in its description. 
 
 ## Test Hierarchy 
-A high level overview of all test can be obtained by running `./murphy_test --gtest_list_all_tests`. A compressed version of the output is below, with the format
+A high level overview of all test can be obtained by running `./murphy_test --gtest_list_tests`. A compressed version of the output is below, with the format
 
 ```
 (InstiationName/)TestSuiteName.
@@ -12,8 +12,11 @@ A high level overview of all test can be obtained by running `./murphy_test --gt
 ```
 Here the `InstantiationName` prefix is present only for parametrized tests, and `(0-N)` represents a parametrized test with `N+1` parameters. 
 
-#### Currently implemented tests (updated October 15th, 2021):
+#### Currently implemented tests (updated October 19th, 2021):
 ```
+BlockTypeDeathTest.
+  doop
+
 ValidStencilUniform.
   weno_extrap_cosinus
 
@@ -22,6 +25,10 @@ ValidRK.
 
 ValidWaveletKernel.
   filter_length
+
+ValidPartitioner/TestPartitioner.
+  nblocks_leq_ncpus/0 
+  nblocks_geq_ncpus/0 
 
 ValidGhost/ValidWaveletInterpolation.
   ghost_reconstruction_periodic_sin/0-6
@@ -44,6 +51,9 @@ ValidWavelet/Epsilon.
 
 ## Test Descriptions
 
+#### `BlockTypeDeathTest.doop`
+From `block_types.cpp`. Asserts that the `DoOp` interface works properly with the different `BlockDataType` and throws an error when the interface is misused. 
+
 #### `ValidStencilUniform.weno_extrap_cosinus`
 From `valid_stencil.cpp`. Chooses a random uniform velocity field, sets up a sinusoidal scalar field with two periods in each direction, and computes an advection RHS using four different stencils (WENO 3, WENO 5, conservative 3, conservative 5). For the WENO cases, asserts that the stencil is conservative up to floating point error. For all cases, runs at two different spatial resolutions, and asserts that the stencils achieve their expected convergence order.
 
@@ -52,6 +62,12 @@ From `valid_rk.cpp`. Sets up an advection test with uniform velocity and a Gauss
 
 #### `ValidWaveletKernel.filter_length`
 From `valid_wavelet_kernel.cpp`. Asserts that members of `InterpolatingWavelet` related to ghosting size have the correct values.
+
+#### `ValidPartitioner/TestPartitioner.nblocks_leq_ncpus/0`
+From `valid_partitioner.cpp`. Sets up a grid with 16 blocks, adapts (and partitions) it to reduce the number of blocks to two. With the current tests configuration, it change the grid from a  number of blocks by CPUs > 1 to a number of blocks per CPUs <= 1. Checks that there is no _nan_ or _segfault_. Adapts (and partitions) the grid and retrieves its initial configuration. Performs the check again.
+
+#### `ValidPartitioner/TestPartitioner.nblocks_geq_ncpus/0`
+From `valid_partitioner.cpp`. Sets up a grid with 16 blocks, adapts (and partitions) it to increase the number of blocks to 128. Checks that there is no _nan_ or _segfault_. Adapts (and partitions) the grid and retrieves its initial configuration. Performs the check again.
 
 #### `ValidGhost/ValidWaveletInterpolation.ghost_reconstruction_periodic_sin/0-6`
 From `valid_wavelet_convergence.cpp`. Sets up a periodic two-level grid with a sinusoidal scalar field, executes a ghost pull, and measures the error in the field (including ghost values). The calculation is done at two different spatial resolutions, and the test asserts that the observed convergence rate matches the interpolation order of the wavelet to within a prescribed tolerance. For wavelet N.0, the test also asserts that there is no error in the coarse-level ghosts. The test parameter represents the number of ghosts in each dimension.
