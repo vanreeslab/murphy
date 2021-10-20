@@ -264,7 +264,6 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(((2 * i2 - ha_lim) >= (ctx->sspan->start[2])) && ((2 * i2 + ha_lim) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx->sspan->start[2], 2 * i2 + ha_lim, ctx->sspan->end[2]);
 
             //get the local adress of the source, which is twice finer compared to the target
-            // const real_t* const lsdata = sdata + m_idx(2 * i0, 2 * i1, 2 * i2, 0, ctx->sdata.stride());
             const ConstMemData lsdata(sdata, sdata.ptr(2 * i0, 2 * i1, 2 * i2));
 
             // apply the filter
@@ -278,7 +277,6 @@ class InterpolatingWavelet : public Wavelet {
                         // add the info
                         const real_t fact = ha[id0] * ha[id1] * ha[id2];
                         value += fact * lsdata(id0, id1, id2);
-                        // value += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
 
                         // check for nan's
                         m_assert(std::isfinite(lsdata(id0, id1, id2)), "nan detected -- i0 = %d ; i1 = %d i2 =%d", id0, id1, id2);
@@ -290,16 +288,8 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
 
             tdata(i0, i1, i2) = value;
-            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
-
         for_loop(&op, ctx->tspan);
-        // // get the start and end
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-
-        // // run that shit
-        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     }
 
@@ -344,7 +334,6 @@ class InterpolatingWavelet : public Wavelet {
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
 
             const ConstMemData lsdata(sdata, sdata.ptr(i0_s, i1_s, i2_s));
-            // const real_t* const lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->sdata.stride());
 
             // get the filter, depending on if I am odd or even
             const real_t* const ks_x = (odd_x) ? (ks) : (js);
@@ -371,7 +360,6 @@ class InterpolatingWavelet : public Wavelet {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; id0 += 2) {
                         const real_t fact   = ks_x[id0] * ks_y[id1] * ks_z[id2];
                         const real_t svalue = lsdata((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2);
-                        // const real_t svalue = lsdata[m_idx((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2, 0, ctx->sdata.stride())];
                         value += fact * svalue;
 
                         // check for nan's
@@ -382,13 +370,8 @@ class InterpolatingWavelet : public Wavelet {
             }
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
             tdata(i0, i1, i2) = value;
-            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
         for_loop(&op, ctx->tspan);
-
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
 
@@ -466,10 +449,10 @@ class InterpolatingWavelet : public Wavelet {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
                         // if I consider myself, don't take me into account
                         const bool to_skip = (fabs(id0) + fabs(id1) + fabs(id2)) == 0.0;
-                        // minus to inverse the dual lifting
+                        // minus to inverse the dual lifting => (-1)^3 = -1
                         const real_t fact   = -(iga_x[id0] * iga_y[id1] * iga_z[id2]) * (!to_skip);
                         const real_t svalue = lsdata(id0, id1, id2);
-                        // const real_t svalue = lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+
                         // sum-up
                         value += fact * svalue;
 
@@ -481,23 +464,16 @@ class InterpolatingWavelet : public Wavelet {
             }
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
             tdata(i0, i1, i2) = value;
-            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
-
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // count = 1: dx, dy and dz
         count = 1;
         for_loop(&op, ctx->tspan);
-        // for_loop(&op, start, end);
         // count = 2: dxy, dxz and dyz
         count = 2;
         for_loop(&op, ctx->tspan);
-        // for_loop(&op, start, end);
         // count = 3: dxyz
         count = 3;
         for_loop(&op, ctx->tspan);
-        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
 
