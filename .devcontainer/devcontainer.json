@@ -8,7 +8,7 @@
 	// "dockerFile": "docker/Dockerfile",
 	// Rather use an image from DockerHub, first download it or build it
 	// "image": "vanreeslab/murphy:v1.9",
-	"image": "vanreeslab/murphy:v1.10",
+	"image": "vanreeslab/murphy:v1.11",
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
 		"telemetry.enableTelemetry": false,
@@ -21,7 +21,8 @@
 		"ms-vscode.cpptools",
 		"cschlosser.doxdocgen",
 		"notskm.clang-tidy",
-		"vadimcn.vscode-lldb"
+		"vadimcn.vscode-lldb",
+		"eamodio.gitlens"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

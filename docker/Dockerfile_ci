@@ -4,11 +4,17 @@ FROM vanreeslab/murphy_base
 RUN apt-get -y update && apt-get -y upgrade && apt-get -y install zlib1g zlib1g-dev libnuma-dev
 
 #p4est
-RUN git clone --recursive https://github.com/cburstedde/p4est
-RUN cd /p4est &&\
-    git checkout feature-mesh-edge &&\
-    git submodule init && git submodule update &&\
-    F77=gfortran FC=gfortran ./bootstrap &&\
+#RUN git clone --recursive https://github.com/cburstedde/p4est
+#RUN cd /p4est &&\
+#    git checkout feature-mesh-edge &&\
+#    git submodule init && git submodule update &&\
+#    F77=gfortran FC=gfortran ./bootstrap &&\
+#    F77=gfortran FC=gfortran CC=mpicc CXX=mpic++ LIBS=-L/usr/local/openblas/lib CFLAGS="-O3 -Wall"\
+#    ./configure --prefix=/soft/p4est-github --enable-mpi --enable-openmp --enable-debug --with-blas=-lopenblas &&\
+#    make install -j
+RUN wget https://p4est.github.io/release/p4est-2.3.2.tar.gz &&\
+    tar -xvf p4est-2.3.2.tar.gz &&\
+    cd p4est-2.3.2/ &&\
     F77=gfortran FC=gfortran CC=mpicc CXX=mpic++ LIBS=-L/usr/local/openblas/lib CFLAGS="-O3 -Wall"\
     ./configure --prefix=/soft/p4est-github --enable-mpi --enable-openmp --enable-debug --with-blas=-lopenblas &&\
     make install -j
