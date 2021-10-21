@@ -156,25 +156,9 @@ class GridBlock : public CartBlock {
         status_lvl_     = M_ADAPT_SAME;
     };
 
-    // void StatusCleanup() { status_lvl_ = (status_lvl_ == M_ADAPT_NONE)? M_ADAPT_SAME : status_lvl_; };
-
-    /** @brief set the status to M_ADAPT_NONE unless it is M_ADAPT_NEW_FINE/COARSE */
-    // void StatusRememberPast() {
-    //     // will preserve the information "newly" refined/coarsed
-        
-    //     status_lvl_ = m_min(M_ADAPT_NONE, status_lvl_);
-    // };
-    // /** @brief set the status to M_ADAPT_SAME if the status is from the past (i.e. M_ADAPT_NEW_FINE/COARSE) or if we still have M_ADAPT_NONE  */
-    // void StatusForgetPast() {
-    //     m_assert(M_ADAPT_NEW_FINE < M_ADAPT_SAME && M_ADAPT_NEW_COARSE < M_ADAPT_SAME, "please keep M_ADAPT_NEW_FINE/COARSE < M_ADAPT_SAME");
-    //     m_assert(M_ADAPT_SAME < M_ADAPT_COARSER && M_ADAPT_SAME < M_ADAPT_FINER, "please keep M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
-    //     m_assert(M_ADAPT_NONE < M_ADAPT_SAME && M_ADAPT_NONE < M_ADAPT_FINER && M_ADAPT_NONE < M_ADAPT_COARSER, "please keep M_ADAPT_NONE < M_ADAPT_SAME < M_ADAPT_FINER/COARSER");
-    //     status_lvl_ = m_max(M_ADAPT_SAME, status_lvl_);
-    // };
 
     void UpdateStatusFromCriterion(const Wavelet* interp, const real_t rtol, const real_t ctol, const Field* field_citerion, const lda_t ida);
     void UpdateStatusFromPatches(const Wavelet* interp, std::list<Patch>* patch_list);
-    // void UpdateSmoothingMask(const Wavelet* interp);
     
     void UpdateStatusFromLevel(const level_t min_level, const level_t max_level);
     void UpdateStatusForwardRefinement();
@@ -183,14 +167,11 @@ class GridBlock : public CartBlock {
     void MaxMinDetails(const Wavelet* interp, const Field* criterion, real_t maxmin[2],
                        bidx_t* max_blocks, const real_t max_cat, const real_t min_cat, const short_t n_cat);
     void StoreDetails(const Wavelet* interp, const Field* criterion, const Field* details);
-    // void UpdateSmoothingMask(const Wavelet* const interp);
-
-    // void FWTAndGetStatus(const Wavelet*  interp, const real_t rtol, const real_t ctol, const Field*  field_citerion, Prof*  profiler);
+    
     void SyncStatusInit();
     void SyncStatusFill(const qid_t* qid, short_t* const coarsen_vec);
     void SyncStatusUpdate(const short_t* const status_vec, MPI_Win status_window);
     void SyncStatusFinalize();
-    // void UpdateDetails();
     /** @} */
 
     /**
@@ -204,16 +185,7 @@ class GridBlock : public CartBlock {
     void       SolveDependency(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start, std::map<std::string, Field*>::const_iterator field_end);  //, Prof*  profiler);
     void       SmoothResolutionJump(const Wavelet* interp, std::map<std::string, Field*>::const_iterator field_start,
                                     std::map<std::string, Field*>::const_iterator field_end);
-    // void       ClearResolutionJump(const Wavelet*  interp, std::map<std::string, Field*  >::const_iterator field_start, std::map<std::string, Field*  >::const_iterator field_end, Prof*  profiler);
     /** @} */
-
-    // /**
-    //  * @name coarse pointer management
-    //  * @{
-    //  */
-    // Mem coarse_ptr() const { return coarse_ptr_; }
-    // void    AllocateCoarsePtr(const size_t memsize);
-    // /**@} */
 
     /**
      * @name return the ghost lists
@@ -239,8 +211,6 @@ class GridBlock : public CartBlock {
     void GhostPut_Post(const Field* field, const lda_t ida, const Wavelet* interp, MPI_Win mirrors_window);
     void GhostPut_Wait(const Field* field, const lda_t ida, const Wavelet* interp);
     void GhostFreeLists();
-
-    // void Coarse_DownSampleWithBoundary(const Field* field, const lda_t ida, const Wavelet* interp, SubBlock* coarse_block);
 };
 
 #endif  // SRC_GRIDBLOCK_HPP_

@@ -43,8 +43,6 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataT
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
-    // part.Start(&fields_, M_FORWARD);
-    // part.End(&fields_, M_FORWARD);
     part.SendRecv(&fields_, M_FORWARD);
 
     // setup the ghost stuctures as the mesh will not change anymore
@@ -53,27 +51,6 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataT
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
-
-// /**
-//  * @brief Copy the ForestGrid part from a grid
-//  *
-//  * @param grid the source grid
-//  */
-// void Grid::CopyFrom(const Grid* grid) {
-//     m_begin;
-//     //-------------------------------------------------------------------------
-//     this->ForestGrid::CopyFrom(grid);
-//     // copy the field mapping
-//     for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
-//         string name   = iter->first;
-//         Field* fid    = iter->second;
-//         fields_[name] = fid;
-//     }
-//     // copy the profiler
-//     prof_ = grid->profiler();
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
 
 /**
  * @brief Destroy the Grid, frees all the blocks and the fields contained (if not done)
@@ -166,8 +143,6 @@ size_t Grid::LocalMemSize() const {
 
     memsize += sizeof(fields_);
     memsize += sizeof(prof_);
-    // memsize += ghost_->LocalMemSize();
-    // memsize += interp_->LocalMemSize();
     for (const auto fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
@@ -393,15 +368,6 @@ void Grid::Refine(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // // get the ghost length
-    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto fid : fields_) {
-    //     Field* cur_field = fid.second;
-    //     if (!cur_field->is_temp()) {
-    //         GhostPull(cur_field, ghost_len);
-    //     }
-    // }
     AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
