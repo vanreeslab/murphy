@@ -12,8 +12,8 @@ using std::string;
 using std::to_string;
 
 static const lda_t  ring_normal = 2;
-static const real_t sigma       = 0.10;
-static const real_t radius      = 0.75;
+static const real_t sigma       = 0.05;
+static const real_t radius      = 0.5;
 static const real_t beta        = 3;
 static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
 static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};

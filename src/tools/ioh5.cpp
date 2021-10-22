@@ -225,7 +225,7 @@ void IOH5::hdf5_write_header_(const ForestGrid* grid, const size_t n_block_globa
     H5Pclose(fapl);
 
     //................................................
-    // write some usefull attribute data, just for fun
+    // write some useful attribute data, just for fun
     const string filename_xmdf = folder_ + string("/") + filename_xdmf_;
     HDF5_AttributeString(hdf5_file_, "xmf file", filename_xmdf.c_str());
     HDF5_AttributeString(hdf5_file_, "written by ", "Murphy");

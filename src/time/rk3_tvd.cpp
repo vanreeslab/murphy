@@ -134,13 +134,18 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) const {
  * 
  * @return real_t 
  */
-real_t RK3_TVD::ComputeDt(const RKFunctor*  rhs, const Field*  velocity) const {
+real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const Field* velocity) const {
     m_begin;
     //-------------------------------------------------------------------------
-    // get the max velocity and the finest h
+    // get the max velocity
+    m_profStart(prof_, "u max");
     BMax   getmax;
     real_t max_vel = getmax(grid_, velocity);
-    real_t h_fine  = grid_->FinestH();
+    m_profStop(prof_, "u max");
+    // get the finest h
+    m_profStart(prof_, "h max");
+    real_t h_fine = grid_->FinestH();
+    m_profStop(prof_, "h max");
     m_assert(h_fine > 0.0, "the finest h = %e must be positive", h_fine);
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
