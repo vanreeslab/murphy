@@ -142,6 +142,21 @@ real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const Field* velocity) const {
     BMax   getmax;
     real_t max_vel = getmax(grid_, velocity);
     m_profStop(prof_, "u max");
+
+    real_t cfl_dt = ComputeDt(rhs, max_vel);
+    //-------------------------------------------------------------------------
+    m_end;
+    return cfl_dt;
+}
+
+/**
+ * @brief compute the permited time-step
+ * 
+ * @return real_t 
+ */
+real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const real_t max_vel) const {
+    m_begin;
+    //-------------------------------------------------------------------------
     // get the finest h
     m_profStart(prof_, "h max");
     real_t h_fine = grid_->FinestH();
@@ -151,8 +166,6 @@ real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const Field* velocity) const {
 
     // know the limits from the rhs directly
     real_t cfl_limit = m_min(rhs->cfl_rk3(), cfl_max_);  // CFL = max_vel * dt / h
-    // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
-    // get the finest h in the grid
 
     // get the fastest velocity
     real_t cfl_dt = cfl_limit * h_fine / max_vel;

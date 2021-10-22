@@ -25,21 +25,20 @@ real_t BMax::operator()(const ForestGrid* grid, const Field* fid_x) const {
     return max_global;
 }
 
-void BMax::ComputeBMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, real_t* max)const {
+void BMax::ComputeBMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, real_t* max) const {
     //--------------------------------------------------------------------------
     // get the data for each direction
+    real_t local_max = 0.0;
     for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
         // for the current ida
-        real_t        local_max  = 0.0;
         const ConstMemData data = block->data(fid_x, ida);
 
         auto op = [=, &local_max](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             local_max = m_max(fabs(data(i0, i1, i2)), local_max);
         };
         for_loop(&op, span_);
-
-        max[0] = m_max(local_max, max[0]);
     }
+    max[0] = m_max(local_max, max[0]);
     //--------------------------------------------------------------------------
 }
 

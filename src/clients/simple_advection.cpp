@@ -211,7 +211,7 @@ void SimpleAdvection::Run() {
         //................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
-        dt = rk3.ComputeDt(advection, vel_);
+        dt = rk3.ComputeDt(advection, 1.0);
         m_profStop(prof_, "compute dt");
 
         // dump some info
