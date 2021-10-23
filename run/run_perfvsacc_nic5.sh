@@ -1,101 +1,111 @@
 # Let's gooooo
 
 #remove the old stuffs
-SCRATCH=$GLOBALSCRATCH/perf_vs_acc_nic5
-rm -rf ${SCRATCH}
+TAG=`date '+%Y-%m-%d-%H%M'`-`uuidgen -t | head -c 8`
+SCRATCH=$GLOBALSCRATCH/perf_vs_acc_nic5-${TAG}
+echo "scratch file = ${SCRATCH}"
 
-## produce the different exec
-## 2.0
-#make destroy
-#ARCH_FILE=make_arch/make.nic5_mpich make -j12 OPTS="-DWAVELET_N=2 -DWAVELET_NT=0 -DBLOCK_GS=2"
-#mv murphy murphy20
-## 2.2
-#make destroy
-#ARCH_FILE=make_arch/make.nic5_mpich make -j12 OPTS="-DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=4"
-#mv murphy murphy22
+#==============================================================================
+# NCPUS
+#NCPUS=512
+
+#==============================================================================
+# compilation
 # 4.0
 make destroy
-ARCH_FILE=make_arch/make.nic5_mpich make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
+ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
 mv murphy murphy40
 ## 4.2
 #make destroy
-#ARCH_FILE=make_arch/make.nic5_mpich make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
+#ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
 #mv murphy murphy42
 ## 6.0
 #make destroy
-#ARCH_FILE=make_arch/make.nic5_mpich make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
+#ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
 #mv murphy murphy60
 ## 6.2
 #make destroy
-#ARCH_FILE=make_arch/make.nic5_mpich make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
+#ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
 #mv murphy murphy62
-
-
-NCPUS=384
-
-# let's go for the adaptive simulations
-i=5
-while [ $i -le 7 ]
+#=============================
+i=4
+while [ $i -le 6 ]
 do
-	
-	# get the tolerances
-	export RTOL=$(echo "1e-$i")
-	export CTOL=$(echo "1e-$(($i+2))")
-	
+    export NCPUS_TMP=$(echo "$(($i*128))")
+    export NCPUS=$(echo "$(( $NCPUS_TMP > 0 ? $NCPUS_TMP : 32))")
 	# get the folder
 	export RUN_DIR=$SCRATCH/level$i
-	
-	# do not not-adapt
-	export NO_ADAPT=""
-	export ILEVEL=3
-	
+
+    #--------------------------------------------------------------------------
+    # start the "with compression"
+	export NO_ADAPT="--iter-adapt=6"
+	export ILEVEL=0
+    for r in {1,2,4,20}
+    do
+        export RTOL=$(echo "1e-$(($i+2))")
+	    export CTOL=$(echo "1e-$(($i+2+$r))")
+
+	    export MNAME=murphy40
+        export WENO="--weno=3 --fix-weno"
+	    sbatch --ntasks=${NCPUS} --job-name=murphy40_c3_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
+        #export WENO="--weno=5 --fix-weno"
+	    #sbatch --ntasks=${NCPUS} --job-name=murphy40_c5_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
+
+	    #export MNAME=murphy42
+	    #sbatch --ntasks=${NCPUS} --job-name=murphy42_${i} ./run/run_perfvsacc_kern_nic5.sh
+	    #export MNAME=murphy60
+	    #sbatch --ntasks=${NCPUS} --job-name=murphy60_${i} ./run/run_perfvsacc_kern_nic5.sh
+    done
+
+    ##--------------------------------------------------------------------------
+	# refine only
+	export NO_ADAPT="--iter-adapt=6"
+	export ILEVEL=0
+    export RTOL=$(echo "1e-$(($i+2))")
+    export CTOL=-1.0
 	# submit
-	#bash ./run/run_perfvsacc_kern_nic5_mpich.sh
-	#export MNAME=murphy20
-	#sbatch --ntasks=${NCPUS} --job-name=murphy20_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
-	#export MNAME=murphy22
-	#sbatch --ntasks=${NCPUS} --job-name=murphy22_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
 	export MNAME=murphy40
-	sbatch --ntasks=${NCPUS} --job-name=murphy40_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
+    export WENO="--weno=3 --fix-weno"
+	sbatch --ntasks=${NCPUS} --job-name=murphy40_c3_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5 --fix-weno"
+    #sbatch --ntasks=${NCPUS} --job-name=murphy40_w5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
 	#export MNAME=murphy42
-	#sbatch --ntasks=${NCPUS} --job-name=murphy42_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
+	#sbatch --ntasks=${NCPUS} --job-name=murphy42_${i} ./run/run_perfvsacc_kern_nic5.sh
 	#export MNAME=murphy60
-	#sbatch --ntasks=${NCPUS} --job-name=murphy60_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
-	#export MNAME=murphy62
-	#sbatch --ntasks=${NCPUS} --job-name=murphy62_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
+	#sbatch --ntasks=${NCPUS} --job-name=murphy60_${i} ./run/run_perfvsacc_kern_nic5.sh
+
+    ##--------------------------------------------------------------------------
+	# do not adapt
+	export NO_ADAPT="--no-adapt"
+	export ILEVEL=$i
+    export RTOL=1.0
+    export CTOL=0.0
+	# submit
+	export MNAME=murphy40
+    export WENO="--weno=3 --fix-weno"
+	sbatch --ntasks=${NCPUS} --job-name=murphy40_c3_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5"
+	#sbatch --ntasks=${NCPUS} --job-name=murphy40_w5_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
+	#export MNAME=murphy42
+	#sbatch --ntasks=${NCPUS} --job-name=murphy42_${i} ./run/run_perfvsacc_kern_nic5.sh
+	#export MNAME=murphy60
+	#sbatch --ntasks=${NCPUS} --job-name=murphy60_${i} ./run/run_perfvsacc_kern_nic5.sh
 	
+    ###--------------------------------------------------------------------------
+    ### weno 5
+	##export NO_ADAPT="--iter-adapt=6"
+    ##export WENO="--weno=5"
+	##export ILEVEL=4
+	### submit
+	##export MNAME=murphy40
+	##sbatch --ntasks=${NCPUS} --job-name=murphy40_${i} ./run/run_perfvsacc_kern_nic5.sh
+	###export MNAME=murphy42
+	###sbatch --ntasks=${NCPUS} --job-name=murphy42_${i} ./run/run_perfvsacc_kern_nic5.sh
+	###export MNAME=murphy60
+	###sbatch --ntasks=${NCPUS} --job-name=murphy60_${i} ./run/run_perfvsacc_kern_nic5.sh
+
 	# increment the counter
 	((i++))
 	
 done
-
-
-#i=3
-#while [ $i -le 7 ]
-#do
-#	
-#	# get the tolerances
-#	export RTOL=$(echo "10^(-($i+0))" | bc -l)
-#	export CTOL=$(echo "10^(-($i+2))" | bc -l)
-#	
-#	# get the folder
-#	export RUN_DIR=$SCRATCH/ref_level$i
-#	
-#	# do not not-adapt
-#	export NO_ADAPT="--no-adapt"
-#	export ILEVEL=$i
-#	
-#	# submit
-#	#bash ./run/run_perfvsacc_kern_nic5_mpich.sh
-#	export MNAME=murphy42
-#	sbatch --ntasks=${NCPUS} --job-name=murphy_ref_${i} ./run/run_perfvsacc_kern_nic5_mpich.sh
-#	
-#	# increment the counter
-#	((i++))
-#	
-#done
-
-
-
-
 
