@@ -228,20 +228,14 @@ void CartBlock::DeleteField(const Field* fid) {
     //-------------------------------------------------------------------------
 }
 
-void CartBlock::SetExpr(const Field* field, const lambda_i3_t<real_t,lda_t> expr){
-    m_assert(field->is_expr(),"unable to perform that action on a normal field");
+void CartBlock::SetExpr(const Field* field, const lambda_i3_t<real_t, lda_t> expr) {
+    m_assert(field->is_expr(), "unable to perform that action on a normal field");
     //-------------------------------------------------------------------------
     string name = field->name();
     // try to find the field
     auto it = expr_map_.find(name);
-
-    // if not found, create it
-    if (it == expr_map_.end()) [[likely]] {
-        // create an empty pointer, a copy is happening here!
-        expr_map_[name] = expr;
-        m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), field->lda());
-    } else {
-        m_verb("field <%s> already in the block (dim=%d)", name.c_str(), field->lda());
-    }
+    // create an empty pointer, a copy is happening here!
+    expr_map_[name] = expr;
+    m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), field->lda());
     //--------------------------------------------------------------------------
 }

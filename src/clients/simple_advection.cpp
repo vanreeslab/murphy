@@ -34,7 +34,7 @@ SimpleAdvection::~SimpleAdvection() {
     //-------------------------------------------------------------------------
     // delete the field
     m_profStart(prof_, "cleanup");
-    grid_->DeleteField(vel_);
+    // grid_->DeleteField(vel_);
     grid_->DeleteField(scal_);
 
     delete vel_;
