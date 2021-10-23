@@ -97,7 +97,6 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
  * @return Data<const real_t>* 
  */
 Data<const real_t>* CartBlock::ConstDataPtr(const Field* const fid, const lda_t ida) const noexcept {
-    m_assert(!fid->is_expr(), "unable to perform that action on an expression");
     //-------------------------------------------------------------------------
     if (fid->is_expr()) {
 #ifndef NDEBUG

@@ -222,6 +222,23 @@ void Grid::AddField(Field* field) {
     m_end;
 }
 
+void Grid::SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr) {
+    m_begin;
+    m_assert(field->is_expr(), "The field must be an expression here");
+    //--------------------------------------------------------------------------
+    if (!IsAField(field)) {
+        // add the field
+        fields_[field->name()] = field;
+        // allocate the field on every block
+        DoOpTree(nullptr, &GridBlock::SetExpr, this, field, expr);
+        m_verb("field %s has been added to the grid", field->name().c_str());
+    } else {
+        m_verb("field %s is already in the grid", field->name().c_str());
+    }
+    //--------------------------------------------------------------------------
+    m_end;
+}
+
 /**
  * @brief unregister a field in the current grid and free the associated memory on each block
  * 

@@ -84,6 +84,8 @@ class Grid : public ForestGrid {
     void DeleteField(const Field* field);
     void ResetFields(const std::map<std::string, Field*>* fields);
 
+    void SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr);
+
     /**@}*/
 
     /**

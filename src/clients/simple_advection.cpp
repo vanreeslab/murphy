@@ -20,11 +20,14 @@ static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>
 static const real_t center[3]   = {1.5, 1.5, 0.5};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 
-static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
-    m_assert(fid->lda() == 3, "the velocity field must be a vector");
-    block->data(fid, 0)(i0, i1, i2) = velocity[0];
-    block->data(fid, 1)(i0, i1, i2) = velocity[1];
-    block->data(fid, 2)(i0, i1, i2) = velocity[2];
+// static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+//     m_assert(fid->lda() == 3, "the velocity field must be a vector");
+//     block->data(fid, 0)(i0, i1, i2) = velocity[0];
+//     block->data(fid, 1)(i0, i1, i2) = velocity[1];
+//     block->data(fid, 2)(i0, i1, i2) = velocity[2];
+// };
+static const lambda_i3_t<real_t,lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2,const lda_t ida) -> real_t {
+    return (ida==2);
 };
 
 SimpleAdvection::~SimpleAdvection() {
@@ -117,10 +120,11 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     // set the velocity field
     vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
-    vel_->is_temp(true);
-    grid_->AddField(vel_);
-    SetValue set_velocity(lambda_velocity, ghost_len_interp);
-    set_velocity(grid_, vel_);
+    vel_->is_expr(true);
+    grid_->SetExpr(vel_,lambda_velocity);
+    // grid_->AddField(vel_);
+    // SetValue set_velocity(lambda_velocity, ghost_len_interp);
+    // set_velocity(grid_, vel_);
 
     tstart_ = param->time_start;
     tfinal_ = param->time_final;
@@ -186,9 +190,11 @@ void SimpleAdvection::Run() {
                 // set the velocity field
                 const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
                                                     m_max(grid_->interp()->nghost_back(), 3)};
-                SetValue     set_velocity(lambda_velocity, ghost_len_interp);
-                set_velocity(grid_, vel_);
+                // SetValue     set_velocity(lambda_velocity, ghost_len_interp);
+                // set_velocity(grid_, vel_);
+                grid_->SetExpr(vel_,lambda_velocity);
                 m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
+                
                 m_profStop(prof_, "set velocity");
                 m_log_level_minus;
             }
