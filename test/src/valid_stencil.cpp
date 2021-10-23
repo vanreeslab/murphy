@@ -78,7 +78,7 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
         Field dtest(diffName, 1);
         grid.AddField(&test);
         // grid.AddField(&sol);
-        grid.AddField(&vel);
+        // grid.AddField(&vel);
         grid.AddField(&dtest);
 
         // set a constant velocity
