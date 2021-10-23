@@ -187,8 +187,10 @@ void CartBlock::AddField(const Field* fid) {
 void CartBlock::AddFields(const std::map<string, Field*>* fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
-    for (const auto fid : (*fields) ) {
-        AddField(fid.second);
+    for (const auto fid : (*fields)) {
+        if (!fid.second->is_expr()) {
+            AddField(fid.second);
+        }
     }
     //-------------------------------------------------------------------------
 }
