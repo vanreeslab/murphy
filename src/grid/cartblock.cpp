@@ -99,15 +99,10 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
 Data<const real_t>* CartBlock::ConstDataPtr(const Field* const fid, const lda_t ida) const noexcept {
     //-------------------------------------------------------------------------
     if (fid->is_expr()) {
-#ifndef NDEBUG
-        // check the field validity
+        // we could use the at to be faster but the find returns the correct address, which is nice
         auto it = expr_map_.find(fid->name());
         m_assert(it != expr_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
         return new ExprData(&it->second, ida);
-#else
-        auto ptr = expr_map_.at(fid->name());
-        return new ExprData(&ptr,ida);
-#endif
     } else {
         MemLayout myself = BlockLayout();
 #ifndef NDEBUG
