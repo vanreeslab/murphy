@@ -6,6 +6,7 @@
 #include "core/macros.hpp"
 #include "core/memspan.hpp"
 #include "core/types.hpp"
+#include "core/data.hpp"
 
 // defines a function that takes 3 arguments and returns an offset
 // using accessor_t = std::function<bidx_t(const bidx_t, const bidx_t, const bidx_t)>;
@@ -38,7 +39,7 @@ struct MemPtr {
  * @tparam T 
  */
 template <typename T>
-class RestrictData {
+class RestrictData : public Data<T> {
     //--------------------------------------------------------------------------
    private:
     T* __restrict const data_;
@@ -81,45 +82,70 @@ class RestrictData {
     template <typename T2>
     explicit RestrictData(const RestrictData<T2>& other, T2* const data) : data_(data), stride_{other.stride_[0], other.stride_[1]} {};
 
+    // this one is very usefull to create a pointer that will directly point towards a unique variable (usefull... yes!)
+    template <typename T2>
+    explicit RestrictData(T2* const data) : data_(data), stride_{0, 0} {};
+
     //--------------------------------------------------------------------------
     // this is convenient and a bit ugly
     [[nodiscard]] inline bool is_null() const { return data_ == nullptr; };
 
-    //--------------------------------------------------------------------------
-    RestrictData<T> shift(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept{
-        return RestrictData<T>(ptr(i0,i1,i2));
+    /**
+     * @brief return a reference to the data located at (i0,i1,i2) position
+     * 
+     */
+    M_INLINE T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+        m_assert(nullptr != data_,"the data cannot be null");
+        return data_[i0 + stride_[0] * (i1 + stride_[1] * i2)];
     }
 
-    //--------------------------------------------------------------------------
-    // force the inline! hopefully will do it
     /**
-     * @brief returns the offset of a point (i0, i1, i2)
+     * @brief return a reference to the data located at (i0,i1,i2) position + a shift in the given dimension
+     * 
      */
-    __attribute__((always_inline)) inline bidx_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
-        return (i0 + stride_[0] * (i1 + stride_[1] * i2));
-    };
+    M_INLINE T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t shift, const lda_t ida) const noexcept {
+        m_assert(nullptr != data_, "the data cannot be null");
+        const bidx_t idx[3] = {
+            i0 + shift * (ida == 0),
+            i1 + shift * (ida == 1),
+            i2 + shift * (ida == 2)};
+        return data_[idx[0] + stride_[0] * (idx[1] + stride_[1] * idx[2])];
+    }
 
     /**
      * @brief return the data located at (i0,i1,i2) position wrt a reference point given by offset_ref
      * 
      */
-    __attribute__((always_inline)) inline T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
+    M_INLINE T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref) const noexcept {
+        m_assert(nullptr != data_, "the data cannot be null");
         return data_[offset_ref + i0 + stride_[0] * (i1 + stride_[1] * i2)];
     }
 
     /**
-     * @brief return the data located at (i * ida==0, i * ida==1, i * ida==2) position typically used in stencil operations
-     * 
+     * @brief return the value of the data located at (i0,i1,i2) position
+     * this function overloads the Data<T> but we couldn't name is as an operator()
+     * the obtained error is "functions that differ only in their return type cannot be overloaded"
      */
-    __attribute__((always_inline)) inline T& Stencil(const bidx_t i, const lda_t ida) const noexcept {
-        return data_[(i * (ida == 0)) + stride_[0] * ((i * (ida == 1)) + stride_[1] * (i * (ida == 2)))];
+    M_INLINE T at(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept override {
+        m_assert(nullptr != data_,"the data cannot be null");
+        return data_[i0 + stride_[0] * (i1 + stride_[1] * i2)];
     }
+
+    // /**
+    //  * @brief return the data located at (i * ida==0, i * ida==1, i * ida==2) position typically used in stencil operations
+    //  * 
+    //  */
+    // M_INLINE T& Stencil(const bidx_t i, const lda_t ida) const noexcept override {
+    //     m_assert(nullptr != data_,"the data cannot be null");
+    //     return data_[(i * (ida == 0)) + stride_[0] * ((i * (ida == 1)) + stride_[1] * (i * (ida == 2)))];
+    // }
 
     /**
      * @brief return the pointer to the data located at (i0,i1,i2) position wrt a reference point given by offset_ref
      * 
      */
-    __attribute__((always_inline)) inline T* __restrict ptr(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
+    M_INLINE T* __restrict ptr(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
+        m_assert(nullptr != data_,"the data cannot be null");
         return data_ + offset_ref + (i0 + stride_[0] * (i1 + stride_[1] * i2));
     }
 };

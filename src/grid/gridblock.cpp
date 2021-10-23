@@ -11,6 +11,7 @@
 #include "p8est_iterate.h"
 #include "tools/toolsp4est.hpp"
 #include "tools/toolsmpi.hpp"
+#include "core/memdata.hpp"
 
 using std::string;
 

@@ -496,18 +496,19 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const ga     = ga_<TN, TNT> + ga_lim;
 
         // check if we need to store some value -> get the target pointer
-        bool          store         = !(ctx->tdata->is_null());
-        bool          store_on_mask = (ctx->alpha < 0.0) && store;
-        real_t        temp          = 0.0;
-        real_t* const tdata         = (store) ? (ctx->tdata->ptr(0, 0, 0)) : (&temp);
-        // real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
+        bool store         = !(ctx->tdata->is_null());
+        bool store_on_mask = (ctx->alpha < 0.0) && store;
+        // we need to create a proxy to the store data in case the pointer is null
+        // we don't need something fancy here, just not nullptr being accessed when doing store_data(0,0,0)
+        real_t   trash;
+        MemData  trash_data(&trash);
+        const MemData* store_data = (store) ? (ctx->tdata) : &trash_data;
 
         // get the source pointer
-        // const real_t* const sdata = ctx->sdata.Read();
         const ConstMemData sdata = ctx->sdata[0];
 
         // go
-        auto op = [=, &tdata, &details](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=, &store_data, &details](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get if we are odd or even in the cupgridblockrrent location
             const short_t odd_x = m_sign(i0) * (i0 % 2);
             const short_t odd_y = m_sign(i1) * (i1 % 2);
@@ -553,11 +554,14 @@ class InterpolatingWavelet : public Wavelet {
             details[0] = m_max(fabs(detail), details[0]);
             details[1] = m_min(fabs(detail), details[1]);
 
-            // store if needed, the index is 0 if not store
-            // const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->tdata.stride());
-            const bidx_t store_id = store * ctx->tdata->offset(i0, i1, i2);
-            const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
-            tdata[store_id]       = value;
+            // get the storing policy:
+            // the problem is that tdata can be nullptr and we want to avoid a bad access in that case
+            // so we just access the storedata with 0 index in case we don't wanna store
+            real_t* const lstore = store_data->ptr(i0 * store, i1 * store, i2 * store);
+            // if store on mask is true, store is true as well (cfr above)
+            const real_t value = (store_on_mask) ? (detail * lstore[0]) : (detail * (fabs(detail) < ctx->alpha));
+            // do the actual store
+            lstore[0] = value;
         };
 
         // reset the detail max (to be sure)
@@ -565,9 +569,6 @@ class InterpolatingWavelet : public Wavelet {
         details[1] = std::numeric_limits<real_t>::max();  // will be min
         // let's go
         for_loop(&op, ctx->tspan);
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        // for_loop(&op, start, end);
     };
 
     // void ForwardWaveletTransform_(const InterpCtx* const  ctx, real_t* const  details_max) const override {

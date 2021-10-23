@@ -9,6 +9,7 @@
 #include "core/memdata.hpp"
 #include "core/types.hpp"
 #include "grid/field.hpp"
+#include "core/data.hpp"
 
 // /**
 //  * @brief returns the memory size (in # of elements) of a cartesian block
@@ -42,6 +43,7 @@ class CartBlock {
     real_t  hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
 
     std::map<std::string, MemPtr> mem_map_;  //<! a map of the pointers to the actual data
+    std::map<std::string, lambda_i3_t<real_t,lda_t> > expr_map_;  //<! a map of the expression that might have been stored
 
    public:
     explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level) noexcept;
@@ -87,9 +89,10 @@ class CartBlock {
      */
     MemData                 data(const Field* fid, const lda_t ida) const noexcept;
     ConstMemData            ConstData(const Field* fid, const lda_t ida) const noexcept;
-    real_t *     __restrict RawPointer(const Field* const fid, const lda_t ida) const noexcept;
-    // MemData data(const Field* fid, const lda_t ida = 0) const noexcept;
-    
+    real_t* __restrict RawPointer(const Field* const fid, const lda_t ida) const noexcept;
+
+    Data<const real_t>* ConstDataPtr(const Field* const fid, const lda_t ida) const noexcept;
+
     /** @} */
 
     /**
@@ -101,12 +104,13 @@ class CartBlock {
     void DeleteField(const Field* fid);
     void AddFields(const std::map<std::string, Field*>* fields);
     bool IsFieldOwned(const std::string& name) const;
+    void SetExpr(const Field* field, const lambda_i3_t<real_t,lda_t> expr);
     /** @} */
 };
 
 // /**
 //  * @brief copy the values of a given CartBlock to the temp array
-//  * 
+//  *
 //  * @param layout the layout to be copied, everything outside the layout is set to 0
 //  * @param data the initial data
 //  * @param temp the temporary data (of size @ref CartBlockMemNum(1))

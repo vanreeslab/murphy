@@ -130,7 +130,7 @@ void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* m
 void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const {
     //--------------------------------------------------------------------------
     // get the starting pointer:
-    const real_t* h    = block->hgrid();
+    const real_t*      h    = block->hgrid();
     const ConstMemData data = block->data(fid_x, ida);
 
     real_t lmoment0    = 0.0;
@@ -140,17 +140,16 @@ void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, 
     auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         // get the position
         real_t origin[3];
-        block->pos(i0,i1,i2,origin);
+        block->pos(i0, i1, i2, origin);
         // m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
-        
 
-        constexpr real_t coef = 0.125;  
-        const bidx_t offset = data.offset(i0, i1, i2);
-    
-    #pragma unroll 8
+        constexpr real_t coef = 0.125;
+        const LocalData  ldata(&data, i0, i1, i2);
+
+#pragma unroll 8
         for (lda_t id = 0; id < 8; ++id) {
             const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
-            const real_t value     = data(is_dim[0], is_dim[1], is_dim[2], offset);
+            const real_t value     = ldata(is_dim[0], is_dim[1], is_dim[2]);
 
             lmoment0 += coef * value;
             lmoment1[0] += coef * value * (origin[0] + h[0] * is_dim[0]);
