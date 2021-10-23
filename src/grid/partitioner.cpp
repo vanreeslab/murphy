@@ -65,15 +65,15 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
     if (destructive_) {
         // if destructive, we move all the fields
         m_assert(fields->size() == grid->NField(), "the number of fields must match so we don't loose information during the partitioning");
-        for (const auto fid : *fields){
+        for (const auto fid : *fields) {
             // add the total count
-            n_lda_ += fid.second->lda();
+            n_lda_ += fid.second->lda() * (!fid.second->is_expr());
             m_assert(grid->IsAField(fid.second), "the field MUST be present in the grid");
         }
     } else {
         // create the struct to send the max out of the fields
         for (const auto fid : *fields) {
-            n_lda_ = m_max(n_lda_, fid.second->lda());
+            n_lda_ = m_max(n_lda_, fid.second->lda() * (!fid.second->is_expr()));
             // m_assert(grid->IsAField(fid->second),"the field MUST be present in the grid");
         }
     }
@@ -471,9 +471,11 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
                 const size_t block_size = blocklayout.n_elem;
                 real_t *     lbuf       = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
-                memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
-                // update the counters
-                idacount += fid->lda();
+                if (!fid->is_expr()) {
+                    memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
+                    // update the counters
+                    idacount += fid->lda();
+                }
 
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
             }
@@ -509,9 +511,11 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 const real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
-                memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
-                // update the counters
-                idacount += fid->lda();
+                if (!fid->is_expr()) {
+                    memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
+                    // update the counters
+                    idacount += fid->lda();
+                }
             }
         }
         m_verb("I have finished the recv of request %d", ir);
@@ -640,9 +644,11 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
                 // real_t* data = ;
                 real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
+                if (!fid->is_expr()) {
                 memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
                 // update the counters
                 idacount += fid->lda();
+                }
             }
         }
         // start the send
@@ -731,9 +737,11 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 const real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
+                if (!fid->is_expr()) {
                 memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
                 // update the counters
                 idacount += fid->lda();
+                }
             }
 
             // if (destructive_) {

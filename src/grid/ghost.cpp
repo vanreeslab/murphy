@@ -507,6 +507,7 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
  */
 void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     m_begin;
+    m_assert(!field->is_expr(),"I cannot ghost an expression");
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
@@ -557,6 +558,7 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
  */
 void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     m_begin;
+    m_assert(!field->is_expr(),"I cannot ghost an expression");
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(cur_ida_ == ida, "the ongoing dimension (%d) must be over first", cur_ida_);
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
