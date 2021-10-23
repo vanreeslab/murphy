@@ -24,7 +24,7 @@ void MemPtr::Free() {
     m_assert(is_allocated, "the memory must have been allocated before being free'ed");
     is_allocated = false;
 #endif
-    free(ptr);
+    m_free(ptr);
     size = 0;
     //--------------------------------------------------------------------------
 };
