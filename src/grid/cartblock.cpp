@@ -105,8 +105,8 @@ Data<const real_t>* CartBlock::ConstDataPtr(const Field* const fid, const lda_t 
         m_assert(it != expr_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
         return new ExprData(&it->second, ida);
 #else
-        MemPtr ptr = mem_map_.at(fid->name());
-        return new ConstData(&ptr, &myself, ida);
+        auto ptr = expr_map_.at(fid->name());
+        return new ExprData(&ptr,ida);
 #endif
     } else {
         MemLayout myself = BlockLayout();
@@ -117,7 +117,7 @@ Data<const real_t>* CartBlock::ConstDataPtr(const Field* const fid, const lda_t 
         return new ConstMemData(&it->second, &myself, ida);
 #else
         MemPtr ptr = mem_map_.at(fid->name());
-        return new ConstData(&ptr, &myself, ida);
+        return new ConstMemData(&ptr, &myself, ida);
 #endif
     }
     //--------------------------------------------------------------------
