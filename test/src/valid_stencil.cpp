@@ -89,9 +89,6 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
 
             vel.is_expr(true);
             grid.SetExpr(&vel,set_vel);
-            // const bidx_t ghost_len[2] = {3, 3};
-            // SetValue     field_init(pol_op, ghost_len);
-            // field_init(&grid, &vel);
         }
 
         // set the test field

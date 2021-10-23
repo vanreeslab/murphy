@@ -462,7 +462,10 @@ void cback_AllocateOnly(p8est_t* forest, p4est_topidx_t which_tree, int num_outg
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
-            block->AddField(fid->second);
+            auto current_fid = fid->second;
+            if (!current_fid->is_expr()) {
+                block->AddField(current_fid);
+            }
         }
 
         // assign the status
@@ -525,7 +528,10 @@ void cback_ValueFill(p8est_t* forest, p4est_topidx_t which_tree, int num_outgoin
         // for every field, we allocate the memory
         for (auto fid = f_start; fid != f_end; fid++) {
             // allocate the new field
-            block->AddField(fid->second);
+            auto current_fid = fid->second;
+            if (!current_fid->is_expr()) {
+                block->AddField(current_fid);
+            }
         }
         // fill the new block with the analytical value
         expr->FillGridBlock(nullptr, block, field);

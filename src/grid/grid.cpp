@@ -207,7 +207,7 @@ bool Grid::IsAField(const Field* const field) const {
  */
 void Grid::AddField(Field* field) {
     m_begin;
-    // m_assert(!field.IsOwned(), "The field cannot be owned as it has not been created here");
+    m_assert(!field->is_expr(), "The field must be an expression here");
     //--------------------------------------------------------------------------
     if (!IsAField(field)) {
         // add the field
@@ -246,6 +246,7 @@ void Grid::SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr) {
  */
 void Grid::DeleteField(const Field* field) {
     m_begin;
+    m_assert(!field->is_expr(), "The field must be an expression here");
     //--------------------------------------------------------------------------
     if (IsAField(field)) {
         // remove the field to everyblock
