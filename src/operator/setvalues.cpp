@@ -15,7 +15,7 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t>
 };
 
 /**
- * @brief returns the value of a scalar tube perpendicular aligned with the normal direction
+ * @brief returns the value of a scalar exponential tube aligned with the normal direction
  * 
  */
 lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>
@@ -27,6 +27,27 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>
     const real_t rad1 = pow(pos[idx] - (center[idx]), 2) + pow(pos[idy] - center[idy], 2);
     const real_t vort = std::exp(-rad1 * oo_sigma2);
 
+    return vort;
+};
+
+/**
+ * @brief returns the value of a scalar compactly supported tube aligned with the normal direction
+ * 
+ */
+lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const lda_t>
+    scalar_compact_tube = [](const real_t pos[3], const real_t center[3], const real_t sigma, const real_t beta, const lda_t normal) -> real_t {
+    const lda_t idx = (normal + 1) % 3;
+    const lda_t idy = (normal + 2) % 3;
+
+    const real_t gamma     = beta * sigma;
+    const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+    const real_t oo_gamma2 = 1.0 / (gamma * gamma);
+    // compute the gaussian
+    const real_t rad_sq = pow(pos[idx] - center[idx], 2) + pow(pos[idy] - center[idy], 2);
+
+    const real_t rho1 = rad_sq * oo_sigma2;
+    const real_t rho2 = rad_sq * oo_gamma2;
+    const real_t vort = (rho2 < 1.0) ? exp(-rho1 / (1.0 - rho2)) : 0.0;
     return vort;
 };
 

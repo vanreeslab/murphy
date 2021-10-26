@@ -11,6 +11,10 @@
 using std::string;
 using std::to_string;
 
+#define CASE_TUBE
+#define TUBE_N 3
+
+#ifdef CASE_RING
 static const lda_t  ring_normal = 2;
 static const real_t sigma       = 0.05;
 static const real_t radius      = 0.5;
@@ -19,13 +23,18 @@ static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t
 static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
 static const real_t center[3]   = {1.5, 1.5, 0.5};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
+#endif
+#ifdef CASE_TUBE
+static const lda_t  ring_normal = 0;
+static const real_t sigma       = 0.125;
+static const real_t radius      = 0.5;
+static const real_t beta        = 3;
+static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
+static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
+static const real_t center[3]   = {0.0, TUBE_N/2.0, TUBE_N/2.0};
+static const real_t velocity[3] = {0.0, 0.0, 1.0};
+#endif
 
-// static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
-//     m_assert(fid->lda() == 3, "the velocity field must be a vector");
-//     block->data(fid, 0)(i0, i1, i2) = velocity[0];
-//     block->data(fid, 1)(i0, i1, i2) = velocity[1];
-//     block->data(fid, 2)(i0, i1, i2) = velocity[2];
-// };
 static const lambda_i3_t<real_t,lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2,const lda_t ida) -> real_t {
     return (ida==2);
 };
@@ -74,9 +83,16 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
     m_profStart(prof_, "init");
 
-    // setup the grid
+// setup the grid
+#ifdef CASE_RING
     bidx_t length[3] = {3, 3, 2};
     grid_            = new Grid(param->init_lvl, param->period, length, MPI_COMM_WORLD, prof_);
+#endif
+#ifdef CASE_TUBE
+    bidx_t length[3] = {1, TUBE_N, 2 * TUBE_N};
+    bool   period[3] = {true, false, false};
+    grid_            = new Grid(param->init_lvl, period, length, MPI_COMM_WORLD, prof_);
+#endif
 
     // set the min/max level
     grid_->level_limit(param->level_min, param->level_max);
@@ -92,8 +108,13 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-        // block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
+// block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
+#ifdef CASE_RING
         block->data(fid, 0)(i0, i1, i2) = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
+#endif
+#ifdef CASE_TUBE
+        block->data(fid, 0)(i0, i1, i2) = scalar_compact_tube(pos, center, sigma, beta, ring_normal);
+#endif
     };
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
                                         m_max(grid_->interp()->nghost_back(), 3)};
@@ -121,13 +142,15 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
     vel_->is_expr(true);
-    grid_->SetExpr(vel_,lambda_velocity);
-    // grid_->AddField(vel_);
-    // SetValue set_velocity(lambda_velocity, ghost_len_interp);
-    // set_velocity(grid_, vel_);
+    grid_->SetExpr(vel_, lambda_velocity);
 
     tstart_ = param->time_start;
+#ifdef CASE_RING
     tfinal_ = param->time_final;
+#endif
+#ifdef CASE_TUBE
+    tfinal_ = 1.0 * TUBE_N;
+#endif
     m_profStop(prof_, "init");
     //-------------------------------------------------------------------------
 }
@@ -287,7 +310,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
+#ifdef CASE_RING
         return scalar_compact_ring(pos, new_center, ring_normal, radius, sigma, beta, freq, amp);
+#endif
+#ifdef CASE_TUBE
+        return scalar_compact_tube(pos, new_center, sigma, beta, ring_normal);
+#endif
     };
     // compute the error
     real_t err2, erri;
@@ -374,3 +402,47 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     //-------------------------------------------------------------------------
     m_end;
 }
+
+
+// void SimpleAdvection::GridDetErr(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
+//     m_begin;
+//     m_assert(scal_->lda() == 1, "the scalar field must be scalar");
+//     //-------------------------------------------------------------------------
+//     rank_t rank;
+//     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+//     //................................................
+//     // get the solution at the given time
+
+//     const real_t new_center[3] = {center[0] + time * velocity[0],
+//                                   center[1] + time * velocity[1],
+//                                   center[2] + time * velocity[2]};
+
+//     lambda_error_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+//         // get the position
+//         real_t pos[3];
+//         block->pos(i0, i1, i2, pos);
+// #ifdef CASE_RING
+//         return scalar_compact_ring(pos, new_center, ring_normal, radius, sigma, beta, freq, amp);
+// #endif
+// #ifdef CASE_TUBE
+//         return scalar_compact_tube(pos, new_center, sigma, beta, ring_normal);
+// #endif
+//     };
+    
+//     // tag
+//     lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
+//     string weno_name  = fix_weno_ ? "_cons" : "_weno";
+//     int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log10(grid_->ctol()) - log10(grid_->rtol())) : -0;
+//     string adapt_tag  = (refine_only_) ? ("_r") : ("_a");
+//     string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol" + to_string(-log_ratio);
+
+//     if ((iter % iter_adapt() == 0) ||(iter % iter_adapt() == 1)) {
+//         m_profStart(prof_, "dump det histogram");
+//         DetailVsError distr(grid_->interp());
+//         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
+//         m_profStop(prof_, "dump det histogram");
+//     }
+//     //-------------------------------------------------------------------------
+//     m_end;
+// }
