@@ -44,10 +44,9 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, con
     const real_t oo_gamma2 = 1.0 / (gamma * gamma);
     // compute the gaussian
     const real_t rad_sq = pow(pos[idx] - center[idx], 2) + pow(pos[idy] - center[idy], 2);
-
     const real_t rho1 = rad_sq * oo_sigma2;
     const real_t rho2 = rad_sq * oo_gamma2;
-    const real_t vort = (rho2 < 1.0) ? exp(-rho1 / (1.0 - rho2)) : 0.0;
+    const real_t vort = (rho2 < 1.0) ? (exp(-rho1 / (1.0 - rho2))) : 0.0;
     return vort;
 };
 

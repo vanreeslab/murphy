@@ -12,7 +12,7 @@ using std::string;
 using std::to_string;
 
 #define CASE_TUBE
-#define TUBE_N 3
+#define TUBE_N 2
 
 #ifdef CASE_RING
 static const lda_t  ring_normal = 2;
@@ -26,12 +26,12 @@ static const real_t velocity[3] = {0.0, 0.0, 1.0};
 #endif
 #ifdef CASE_TUBE
 static const lda_t  ring_normal = 0;
-static const real_t sigma       = 0.125;
+static const real_t sigma       = 0.125 * TUBE_N;
 static const real_t radius      = 0.5;
 static const real_t beta        = 3;
 static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
 static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
-static const real_t center[3]   = {0.0, TUBE_N/2.0, TUBE_N/2.0};
+static const real_t center[3]   = {0.0, TUBE_N / 2.0, TUBE_N / 2.0};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 #endif
 
@@ -377,7 +377,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     }
 
     m_profStart(prof_, "dump field");
-    if (iter % iter_dump() == 0 && iter != 0) {
+    if (iter % iter_dump() == 0 ) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_, ghost_len_ioh5);
