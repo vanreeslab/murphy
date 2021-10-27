@@ -15,6 +15,26 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t>
 };
 
 /**
+ * @brief returns the value of an compact exponential blob between 0 and 1 (given its sigma and its center)
+ * 
+ */
+lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t>
+    scalar_compact_exp = [](const real_t pos[3], const real_t center[3], const real_t sigma, const real_t beta) -> real_t {
+    const real_t gamma     = beta * sigma;
+    const real_t oo_sigma2 = 1.0 / (sigma * sigma);
+    const real_t oo_gamma2 = 1.0 / (gamma * gamma);
+    // compute the gaussian
+    const real_t x      = (pos[0] - center[0]);
+    const real_t y      = (pos[1] - center[1]);
+    const real_t z      = (pos[2] - center[2]);
+    const real_t rad_sq = x * x + y * y + z * z;
+    const real_t rho1   = rad_sq * oo_sigma2;
+    const real_t rho2   = rad_sq * oo_gamma2;
+    const real_t vort   = (rho2 < 1.0) ? (exp(-rho1 / (1.0 - rho2))) : 0.0;
+    return vort;
+};
+
+/**
  * @brief returns the value of a scalar exponential tube aligned with the normal direction
  * 
  */

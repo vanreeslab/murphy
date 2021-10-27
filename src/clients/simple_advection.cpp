@@ -12,7 +12,7 @@ using std::string;
 using std::to_string;
 
 #define CASE_TUBE
-#define TUBE_N 2
+#define TUBE_N 1
 
 #ifdef CASE_RING
 static const lda_t  ring_normal = 2;
@@ -90,7 +90,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 #endif
 #ifdef CASE_TUBE
     bidx_t length[3] = {1, TUBE_N, 2 * TUBE_N};
-    bool   period[3] = {true, false, false};
+    bool   period[3] = {false, false, false};
     grid_            = new Grid(param->init_lvl, period, length, MPI_COMM_WORLD, prof_);
 #endif
 
@@ -113,7 +113,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         block->data(fid, 0)(i0, i1, i2) = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
 #endif
 #ifdef CASE_TUBE
-        block->data(fid, 0)(i0, i1, i2) = scalar_compact_tube(pos, center, sigma, beta, ring_normal);
+        // block->data(fid, 0)(i0, i1, i2) = scalar_compact_tube(pos, center, sigma, beta, ring_normal);
+        block->data(fid, 0)(i0, i1, i2) = scalar_compact_exp(pos, center, sigma, beta);
 #endif
     };
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
@@ -314,7 +315,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
         return scalar_compact_ring(pos, new_center, ring_normal, radius, sigma, beta, freq, amp);
 #endif
 #ifdef CASE_TUBE
-        return scalar_compact_tube(pos, new_center, sigma, beta, ring_normal);
+        // return scalar_compact_tube(pos, new_center, sigma, beta, ring_normal);
+        return scalar_compact_exp(pos, new_center, sigma, beta);
 #endif
     };
     // compute the error
