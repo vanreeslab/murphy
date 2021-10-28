@@ -41,7 +41,8 @@ static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, 
     // get the position
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
-    block->data(fid,0)(i0,i1,i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    // block->data(fid,0)(i0,i1,i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    block->data(fid,0)(i0,i1,i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta);
     // real_t* data = block->data(fid).Write(i0, i1, i2);
     // // set value
     // // data[0] = scalar_exp(pos, center, sigma);
@@ -52,7 +53,8 @@ static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const 
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
     // set value
-    return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    return scalar_compact_ring(pos, center, 2, radius, sigma, beta);
+    // return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
 };
 
 void EpsilonTest::Run() {

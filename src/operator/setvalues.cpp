@@ -106,10 +106,9 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, con
  * we define beta = gamma/sigma
  * 
  */
-lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, const real_t, const real_t, const std::vector<short_t>, const std::vector<real_t> >
+lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, const real_t, const real_t>
     scalar_compact_ring = [](const real_t pos[3], const real_t center[3],
-                             const lda_t normal, const real_t radius, const real_t sigma, const real_t beta,
-                             const std::vector<short_t> freq_rad, const std::vector<real_t> amp_rad) -> real_t {
+                             const lda_t normal, const real_t radius, const real_t sigma, const real_t beta) -> real_t {
     //-------------------------------------------------------------------------
     m_assert(beta > 1, "the beta parameter = %f must be >1", beta);
     m_assert((beta * sigma) < radius, "to avoid cross combinatin, we must have that alpha < radius");
@@ -131,10 +130,10 @@ lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, cons
 
     // add the modes
     real_t        z_center = center[idz];
-    const short_t n_mode   = freq_rad.size();
-    for (short_t id = 0; id < n_mode; ++id) {
-        z_center += amp_rad[id] * radius * 1.0 / n_mode * sin(freq_rad[id] * alpha);
-    }
+    // const short_t n_mode   = freq_rad.size();
+    // for (short_t id = 0; id < n_mode; ++id) {
+    //     z_center += amp_rad[id] * radius * 1.0 / n_mode * sin(freq_rad[id] * alpha);
+    // }
     const real_t z = pos[idz] - z_center;
 
     // compute the gaussian

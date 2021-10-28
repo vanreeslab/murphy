@@ -53,7 +53,8 @@ static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, 
     block->pos(i0, i1, i2, pos);
     // set value
     // data[0] = scalar_exp(pos, center, sigma);
-    block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    // block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta);
 };
 static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     // get the position
@@ -62,7 +63,8 @@ static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const 
     // set value
     // const real_t rhox = (pos[0] - center[0]) / sigma;
     // return std::exp(-rhox * rhox);
-    return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    // return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    return scalar_compact_ring(pos, center, 2, radius, sigma, beta);
 };
 
 void ConvergenceWeno::Run() {

@@ -11,29 +11,18 @@
 using std::string;
 using std::to_string;
 
-#define CASE_TUBE
-#define TUBE_N 1
-
-#ifdef CASE_RING
-static const lda_t  ring_normal = 2;
-static const real_t sigma       = 0.05;
-static const real_t radius      = 0.5;
-static const real_t beta        = 3;
-static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
-static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
-static const real_t center[3]   = {1.5, 1.5, 0.5};
-static const real_t velocity[3] = {0.0, 0.0, 1.0};
-#endif
-#ifdef CASE_TUBE
-static const lda_t  ring_normal = 0;
-static const real_t sigma       = 0.125 * TUBE_N;
-static const real_t radius      = 0.5;
-static const real_t beta        = 3;
-static const auto   freq        = std::vector<short_t>{};  //std::vector<short_t>{5, 25};
-static const auto   amp         = std::vector<real_t>{};   //std::vector<real_t>{0.0, 0.1};
-static const real_t center[3]   = {0.0, TUBE_N / 2.0, TUBE_N / 2.0};
-static const real_t velocity[3] = {0.0, 0.0, 1.0};
-#endif
+// ring
+static const lda_t  ring_normal    = 2;
+static const real_t ring_sigma     = 0.05;
+static const real_t ring_radius    = 0.75;
+static const real_t ring_beta      = 2;
+static const real_t ring_center[3] = {1.5, 1.5, 0.5};
+// exponential
+static const real_t exp_sigma      = 0.25;
+static const real_t exp_beta       = 2;
+static const real_t exp_center[3]  = {1.5, 1.5, 2.5};
+// pure advection in Z
+static const real_t velocity[3]    = {0.0, 0.0, 1.0};
 
 static const lambda_i3_t<real_t,lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2,const lda_t ida) -> real_t {
     return (ida==2);
@@ -83,16 +72,10 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     }
     m_profStart(prof_, "init");
 
-// setup the grid
-#ifdef CASE_RING
-    bidx_t length[3] = {3, 3, 2};
-    grid_            = new Grid(param->init_lvl, param->period, length, MPI_COMM_WORLD, prof_);
-#endif
-#ifdef CASE_TUBE
-    bidx_t length[3] = {1, TUBE_N, 2 * TUBE_N};
+    // setup the grid
+    bidx_t length[3] = {3,3,5};
     bool   period[3] = {false, false, false};
-    grid_            = new Grid(param->init_lvl, period, length, MPI_COMM_WORLD, prof_);
-#endif
+    grid_          = new Grid(param->init_lvl, period, length, MPI_COMM_WORLD, prof_);
 
     // set the min/max level
     grid_->level_limit(param->level_min, param->level_max);
@@ -108,15 +91,13 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-// block->data(fid).Write(i0, i1, i2)[0] = scalar_ring(pos, center, radius, sigma, ring_normal);
-#ifdef CASE_RING
-        block->data(fid, 0)(i0, i1, i2) = scalar_compact_ring(pos, center, ring_normal, radius, sigma, beta, freq, amp);
-#endif
-#ifdef CASE_TUBE
-        // block->data(fid, 0)(i0, i1, i2) = scalar_compact_tube(pos, center, sigma, beta, ring_normal);
-        block->data(fid, 0)(i0, i1, i2) = scalar_compact_exp(pos, center, sigma, beta);
-#endif
+
+        real_t value = 0.0;
+         value += scalar_compact_ring(pos, ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
+         value += scalar_compact_exp(pos, exp_center, exp_sigma, exp_beta);
+         block->data(fid, 0)(i0, i1, i2) = value;
     };
+
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
                                         m_max(grid_->interp()->nghost_back(), 3)};
     SetValue     ring(lambda_ring, ghost_len_interp);
@@ -146,12 +127,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->SetExpr(vel_, lambda_velocity);
 
     tstart_ = param->time_start;
-#ifdef CASE_RING
-    tfinal_ = param->time_final;
-#endif
-#ifdef CASE_TUBE
-    tfinal_ = 1.0 * TUBE_N;
-#endif
+    tfinal_ = 1.0;
     m_profStop(prof_, "init");
     //-------------------------------------------------------------------------
 }
@@ -302,22 +278,19 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
 
     //................................................
     // get the solution at the given time
-
-    const real_t new_center[3] = {center[0] + time * velocity[0],
-                                  center[1] + time * velocity[1],
-                                  center[2] + time * velocity[2]};
-
-    lambda_error_t lambda_ring = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
+    const real_t   center_shift[3] = {time * velocity[0], time * velocity[1], time * velocity[2]};
+    lambda_error_t lambda_ring     = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
         // get the position
         real_t pos[3];
         block->pos(i0, i1, i2, pos);
-#ifdef CASE_RING
-        return scalar_compact_ring(pos, new_center, ring_normal, radius, sigma, beta, freq, amp);
-#endif
-#ifdef CASE_TUBE
-        // return scalar_compact_tube(pos, new_center, sigma, beta, ring_normal);
-        return scalar_compact_exp(pos, new_center, sigma, beta);
-#endif
+
+        real_t new_ring_center[3] = {ring_center[0] + center_shift[0], ring_center[1] + center_shift[1], ring_center[2] + center_shift[2]};
+        real_t new_exp_center[3]  = {exp_center[0] + center_shift[0], exp_center[1] + center_shift[1], exp_center[2] + center_shift[2]};
+
+        real_t value = 0.0;
+        value += scalar_compact_ring(pos, new_ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
+        value += scalar_compact_exp(pos, new_exp_center, exp_sigma, exp_beta);
+        return value;
     };
     // compute the error
     real_t err2, erri;
