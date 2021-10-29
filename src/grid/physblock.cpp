@@ -23,8 +23,8 @@ PhysBlock::PhysBlock(const bidx_t (*const ghost_len)[2],
         start[id] = block->start[id];
         end[id]   = block->end[id];
 
-        scale_dir_start_[id] = true;
-        scale_dir_end_[id]   = true;
+        is_ghost_dir_start_[id] = true;
+        is_ghost_dir_end_[id]   = true;
 
         m_assert(start[id] == 0, "the start %d must be %d", start[id], 0);
         m_assert(end[id] == M_N, "the start %d must be %d", end[id], M_N);
@@ -39,7 +39,7 @@ PhysBlock::PhysBlock(const bidx_t (*const ghost_len)[2],
     end[dir]   = (sign == 0) ? 1 : end[dir];  // 1 to ensure that we visit the 0th point
 
     // only scale in the direction of the face!
-    scale_dir_start_[dir] = (sign == 0);
-    scale_dir_end_[dir]   = (sign == 1);
+    is_ghost_dir_start_[dir] = (sign == 0);
+    is_ghost_dir_end_[dir]   = (sign == 1);
     //-------------------------------------------------------------------------
 }
