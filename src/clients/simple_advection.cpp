@@ -18,9 +18,9 @@ static const real_t ring_radius    = 0.75;
 static const real_t ring_beta      = 2;
 static const real_t ring_center[3] = {1.5, 1.5, 0.5};
 // exponential
-static const real_t exp_sigma      = 0.25;
-static const real_t exp_beta       = 2;
-static const real_t exp_center[3]  = {1.5, 1.5, 2.5};
+static const real_t exp_sigma      = 0.2;
+static const real_t exp_beta       = 6;
+static const real_t exp_center[3]  = {1.5, 1.5, 1.5};
 // pure advection in Z
 static const real_t velocity[3]    = {0.0, 0.0, 1.0};
 
@@ -73,7 +73,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     m_profStart(prof_, "init");
 
     // setup the grid
-    bidx_t length[3] = {3,3,5};
+    bidx_t length[3] = {3,3,4};
     bool   period[3] = {false, false, false};
     grid_          = new Grid(param->init_lvl, period, length, MPI_COMM_WORLD, prof_);
 
@@ -93,7 +93,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
         block->pos(i0, i1, i2, pos);
 
         real_t value = 0.0;
-         value += scalar_compact_ring(pos, ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
+        //  value += scalar_compact_ring(pos, ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
          value += scalar_compact_exp(pos, exp_center, exp_sigma, exp_beta);
          block->data(fid, 0)(i0, i1, i2) = value;
     };
@@ -288,7 +288,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
         real_t new_exp_center[3]  = {exp_center[0] + center_shift[0], exp_center[1] + center_shift[1], exp_center[2] + center_shift[2]};
 
         real_t value = 0.0;
-        value += scalar_compact_ring(pos, new_ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
+        // value += scalar_compact_ring(pos, new_ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
         value += scalar_compact_exp(pos, new_exp_center, exp_sigma, exp_beta);
         return value;
     };
