@@ -94,14 +94,16 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
         real_t value = 0.0;
         //  value += scalar_compact_ring(pos, ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
-         value += scalar_compact_exp(pos, exp_center, exp_sigma, exp_beta);
-         block->data(fid, 0)(i0, i1, i2) = value;
+        value += scalar_compact_exp(pos, exp_center, exp_sigma, exp_beta);
+        block->data(fid, 0)(i0, i1, i2) = value;
     };
 
     const bidx_t ghost_len_interp[2] = {m_max(grid_->interp()->nghost_front(), 3),
                                         m_max(grid_->interp()->nghost_back(), 3)};
     SetValue     ring(lambda_ring, ghost_len_interp);
     ring(grid_, scal_);
+
+    m_log("set values with center = %f %f %f, sigma = %f, beta = %f", exp_center[0], exp_center[1], exp_center[2], exp_sigma, exp_beta);
 
     // reinterpret the coarsen tol
     real_t coarsen_tol = (param->coarsen_tol < 0.0) ? 0.0 : (param->coarsen_tol);

@@ -38,12 +38,26 @@ void WriteInfo(int argc, char** argv) {
         fprintf(file, "\tM_GS = %d\n", M_GS);
         fprintf(file, "\tM_WAVELET_N = %d\n", M_WAVELET_N);
         fprintf(file, "\tM_WAVELET_NT = %d\n", M_WAVELET_NT);
+#ifdef M_MPI_AGGRESSIVE
+        fprintf(file, "\tM_MPI_AGGRESSIVE ? yes\n");
+#endif
+#ifndef NDEBUG
+        fprintf(file, "\tNDEBUG ? no\n");
+#endif
         fprintf(file, "- argument list:\n");
         for (int i = 0; i < argc; ++i) {
             fprintf(file, "\t%s\n", argv[i]);
         }
         fclose(file);
     }
+    m_log("-------------------------------------------------------------------");
+    m_log("MURPHY - (c) MIT");
+#ifdef M_MPI_AGGRESSIVE
+    m_log("commit = %s - MPI aggressive", M_GIT_COMMIT);
+#else
+    m_log("commit = %s - MPI non-aggressive", M_GIT_COMMIT);
+#endif
+    m_log("-------------------------------------------------------------------");
 }
 
 TestCase* MurphyInit(int argc, char** argv) {
