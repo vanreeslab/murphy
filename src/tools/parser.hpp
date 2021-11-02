@@ -28,6 +28,7 @@ struct ParserArguments {
     real_t reynolds    = 0.0;
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
+    bool   optimal_tol = false;
 
     real_t time_start = 0.0;
     real_t time_final = 0.5;

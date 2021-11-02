@@ -390,6 +390,7 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     // if ctol is smaller than epsilon, just remember epsilon
     ctol_ = m_max(coarsen_tol, std::numeric_limits<real_t>::epsilon());
     rtol_ = refine_tol;
+    m_log("reset the tolerances to  rtol = %e and ctol = %e -> ratio = %f",rtol_,ctol_,rtol_/ctol_);
     //--------------------------------------------------------------------------
     m_end;
 }

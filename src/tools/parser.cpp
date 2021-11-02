@@ -123,6 +123,7 @@ static struct argp_option options[] = {
     {"level-max", 2009, "level", 0, "the maximum level on the grid (integer: num)"},
     {"tstart", 2010, "value", 0, "the start time of the simulation"},
     {"tfinal", 2011, "value", 0, "the final time of the simulation"},
+    {"opt-tol", 2012, 0, OPTION_ARG_OPTIONAL, "use the optimal tolerance rule to determine ctol"},
 
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
@@ -249,6 +250,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err  = atof_list(1, arg, time);
             m_log("final time: %f", time[0]);
             return err;
+        }
+        case 2012: { /* optimal tol */
+            arguments->optimal_tol = true;
+            m_log("optimal tol rule used");
+            return 0;
         }
         //................................................
         case 3001: { /* Reynolds */

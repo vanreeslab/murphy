@@ -106,7 +106,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     m_log("set values with center = %f %f %f, sigma = %f, beta = %f", exp_center[0], exp_center[1], exp_center[2], exp_sigma, exp_beta);
 
     // reinterpret the coarsen tol
-    real_t coarsen_tol = (param->coarsen_tol < 0.0) ? 0.0 : (param->coarsen_tol);
+    optimal_tol_       = param->optimal_tol;
+    real_t coarsen_tol = (param->coarsen_tol < 0.0) ? 0.0 : ((optimal_tol_) ? (param->refine_tol / pow(2.0, M_WAVELET_N)) : (param->coarsen_tol));
     refine_only_       = (param->coarsen_tol < 0.0);
 
     grid_->SetTol(param->refine_tol, coarsen_tol);
@@ -312,9 +313,10 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     // tag
     lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
     string weno_name  = fix_weno_ ? "_cons" : "_weno";
-    int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log10(grid_->ctol()) - log10(grid_->rtol())) : -0;
+    int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log(grid_->ctol()) / log(2.0) - log(grid_->rtol()) / log(2.0)) : -0;
     string adapt_tag  = (refine_only_) ? ("_r") : ("_a");
-    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + "_tol" + to_string(-log_ratio);
+    string tol_tag    = (optimal_tol_) ? ("_opt") : ("_tol");
+    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + tol_tag + to_string(-log_ratio);
 
     // open the file
     m_profStart(prof_, "dump diag");

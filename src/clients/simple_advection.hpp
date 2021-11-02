@@ -13,6 +13,7 @@ class SimpleAdvection : public TestCase {
     int  weno_;
     bool fix_weno_;
     bool refine_only_ = false;
+    bool optimal_tol_ = false;
 
     real_t tstart_ = 0.0;
     real_t tfinal_ = 0.0;
