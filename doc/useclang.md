@@ -26,7 +26,7 @@ For more information, refer to the [clang documentation](https://clang.llvm.org/
 ### Use `valgrind`
 
 Please, use the `fsanitize` instead! It's much more powerfull and robust.
-The classical vagrind is usefull but sometimes not enough (see the sanitize). To run it:
+The classical vagrind is useful but sometimes not enough (see the sanitize). To run it:
 
 ```bash
 mpirun -n X valgrind ./murphy...
@@ -102,6 +102,6 @@ VSCode has an extension that allows you to visualize the output directly in the 
 
 
 ### Clang resources:
-Other usefull resources
+Other useful resources
 - [clang pragma's](https://clang.llvm.org/docs/LanguageExtensions.html#id30)
 - [auto-vectorization](https://llvm.org/docs/Vectorizers.html)

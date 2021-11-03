@@ -43,7 +43,7 @@
 //     };
 
 //     //-------------------------------------------------------------------------
-//     // additional usefull constructors
+//     // additional useful constructors
 
 //     /** @brief nullptr constructor: any pointer can be initialized to nullptr, no ownership */
 //     m_ptr(const std::nullptr_t* ptr) noexcept : data_(ptr), is_owned_(false){};
