@@ -112,14 +112,12 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     grid_->SetTol(param->refine_tol, coarsen_tol);
     // adapt the grid
+    // the refine only starts from the lossless compression
     if (!no_adapt_) {
         // if the ctol is smaller than epsilon, just put epsilon
         grid_->SetRecursiveAdapt(true);
-        if (refine_only_) {
-            grid_->Refine(scal_, &ring);
-        } else {
-            grid_->Adapt(scal_, &ring);
-        }
+        m_assert(!(refine_only_ && grid_->ctol() > std::numeric_limits<real_t>::epsilon()), "If I am refine only, my coarsening tolerance MUST BE lossless (i.e. 0.0)");
+        grid_->Adapt(scal_, &ring);
     }
 
     //-------------------------------------------------------------------------
