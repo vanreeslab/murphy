@@ -313,10 +313,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     // tag
     lid_t  adapt_freq = no_adapt_ ? 0 : iter_adapt();
     string weno_name  = fix_weno_ ? "_cons" : "_weno";
-    int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log(grid_->ctol()) - log(grid_->rtol())) : -0;
+    // int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (log(grid_->ctol()) - log(grid_->rtol())) : -0;
+    int    log_ratio  = (grid_->ctol() > std::numeric_limits<real_t>::epsilon()) ? (grid_->rtol()/grid_->ctol()) : 0;
     string adapt_tag  = (refine_only_) ? ("_r") : ("_a");
     string tol_tag    = (optimal_tol_) ? ("_opt") : ("_tol");
-    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + tol_tag + to_string(-log_ratio);
+    // string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + tol_tag + to_string(-log_ratio);
+    string tag        = "w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + adapt_tag + to_string(adapt_freq) + weno_name + to_string(weno_) + tol_tag + to_string(log_ratio);
 
     // open the file
     m_profStart(prof_, "dump diag");
