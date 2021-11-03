@@ -378,6 +378,10 @@ void Grid::GhostPull(Field* field, const bidx_t ghost_len_usr[2]) const {
 /**
  * @brief sets the refinement tolerance for grid adaptation (see @ref Adapt)
  * 
+ * the actual coarsening tolerance might not be the given one:
+ * - if coarsen tol < epsilon machine, we keep epsilon
+ * - if refine tol / coarsen tol < 2^M_WAVELET_N we keep coarsen = refine tol / (1<<M_WAVELET_N)
+ * 
  * @param refine_tol we refine if criterion > refine_tol
  * @param coarsen_tol we coarsen if criterion < coarsen_tol
  */
@@ -388,9 +392,12 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     m_assert(coarsen_tol >= 0.0, "The coarsening tolerance = %e must be >= 0.0", coarsen_tol);
     //--------------------------------------------------------------------------
     // if ctol is smaller than epsilon, just remember epsilon
-    ctol_ = m_max(coarsen_tol, std::numeric_limits<real_t>::epsilon());
+    // also, having a coarsening tolerance too close to the refinement one makes no sense.
+    // so we need to make sure the tolerances are wide enough.
+    // as detail = C * h^N (N = wavelet N), we must have that refine_tol/coarsen_tol
+    ctol_ = m_max(m_min(coarsen_tol, refine_tol / (1 << M_WAVELET_N)), std::numeric_limits<real_t>::epsilon());
     rtol_ = refine_tol;
-    m_log("reset the tolerances to  rtol = %e and ctol = %e -> ratio = %f",rtol_,ctol_,rtol_/ctol_);
+    m_log("reset the tolerances to  rtol = %e and ctol = %e -> ratio = %f", rtol_, ctol_, rtol_ / ctol_);
     //--------------------------------------------------------------------------
     m_end;
 }
