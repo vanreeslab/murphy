@@ -135,7 +135,7 @@ class CartBlock {
 // }
 
 //-------------------------------------------------------------------------
-// defines code-wide usefull lambda functions
+// defines code-wide useful lambda functions
 // using lambda_i3_t      = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2)>;
 // using lambda_i3block_t = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block)>;
 

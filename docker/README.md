@@ -22,14 +22,14 @@ docker run --rm -it vanreeslab/murphy_base
 ### Continuous integration container
 The continuous integration container relies on the base container and adds the needed dependencies (`p4est`, `flups`, etc).
 ```bash
-docker build -f Dockerfile_ci -t vanreeslab/murphy_ci:v1.10 .
+docker build -f Dockerfile_ci -t vanreeslab/murphy_ci:v1.11 .
 
 # register and put is on DockerHub
 docker login
-docker push vanreeslab/murphy_ci:v1.10
+docker push vanreeslab/murphy_ci:v1.11
 
 # to test it
-docker run --rm -it vanreeslab/murphy_ci:v1.10
+docker run --rm -it vanreeslab/murphy_ci:v1.11
 ```
 
 ### Daily used container
@@ -38,14 +38,14 @@ Finally for the beauty of it we add a user to the CI container and install `clan
 :warning: don't forget to update the version in the first line of the `Dockerfile_daily` accrodingly
 
 ```bash
-docker build -f Dockerfile_daily -t vanreeslab/murphy:v1.10 .
+docker build -f Dockerfile_daily -t vanreeslab/murphy:v1.11 .
 
 # register and put is on DockerHub
 docker login
-docker push vanreeslab/murphy:v1.10
+docker push vanreeslab/murphy:v1.11
 
 # to test it
-docker run --rm -it vanreeslab/murphy:v1.10
+docker run --rm -it vanreeslab/murphy:v1.11
 ```
 
 
