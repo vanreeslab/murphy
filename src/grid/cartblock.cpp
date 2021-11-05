@@ -90,7 +90,7 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
  * @param ida the required dimension
  * 
  * @return real_t* the raw pointer corresponding to the given field. 
- *         usefull for partitionning and for the IO
+ *         useful for partitionning and for the IO
  *
  * @warning Do not use this function unless you are sure about what you are doing 
  * 

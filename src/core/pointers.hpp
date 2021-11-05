@@ -39,7 +39,7 @@
 //     };
 
 //     //-------------------------------------------------------------------------
-//     // additional usefull constructors
+//     // additional useful constructors
 
 //     /** @brief nullptr constructor: any pointer can be initialized to nullptr */
 //     m_ptr(const std::nullptr_t* ptr) noexcept : data_(ptr){};

@@ -148,7 +148,7 @@ void TimerBlock::Disp(FILE* file, const level_t level, const real_t total_time, 
     int total_count = 0;
     MPI_Allreduce(&count_, &total_count, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-    // get the size and usefull stuffs
+    // get the size and useful stuffs
     int comm_size, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

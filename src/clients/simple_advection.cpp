@@ -177,7 +177,7 @@ void SimpleAdvection::Run() {
             m_profStop(prof_, "set velocity");
             m_log_level_minus;
         }
-        // we run the first diagnostic if not done yet, it's usefull to get a sense of what is going on with the adaptation
+        // we run the first diagnostic if not done yet, it's useful to get a sense of what is going on with the adaptation
         if (iter == 0) {
             m_profStart(prof_, "diagnostics");
             m_log("---- run diag");
