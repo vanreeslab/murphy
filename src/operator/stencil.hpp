@@ -106,7 +106,4 @@ class Stencil : public BlockOperator {
     virtual void DoMagic(const qid_t*  qid, BlockType*  block, const bool is_outer, const Field*  fid_src, Field*  fid_trg) const = 0;
 };
 
-// Explicit instantiation of the class we will use 
-template class Stencil<GridBlock>;
-
 #endif  // SRC_OPERATOR_STENCIL_HPP_
