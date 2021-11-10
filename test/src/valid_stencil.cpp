@@ -56,7 +56,7 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
 
     for (level_t il = 0; il < 2; ++il) {
         level_t clevel = il;
-        Grid    grid(clevel, period, L, MPI_COMM_WORLD, nullptr);
+        Grid    grid(clevel, period, L,M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         // adapt
         {
             list<Patch> patch_list;
