@@ -99,7 +99,7 @@ void WeakScalability::Run() {
 
     //..........................................................................
     // advection
-    Advection<M_CONS, 3> adv_stencil(&vel, prof_);
+    Advection<M_CONS, 3> adv_stencil(&vel,0.0, prof_);
 
     // time integration
     iter_t        iter = 0;

@@ -27,15 +27,18 @@ constexpr real_t alpha_js(const real_t gamma, const real_t beta) {
  * 
  */
 using lambda_flux_weno_z_t = std::function<void(const lda_t ida, const LocalData* src, const LocalData* vel, real_t* const flux)>;
+using lambda_flux_diff_t = std::function<void(const LocalData* src, real_t* const flux)>;
 
 /**
  * @brief Given a flux function, do the magic for the WENO_Z schemes
  * 
  */
 static void DoMagic_Flux(/* param */ const bidx_t                    nghost,
-                         /* flux weno */ const lambda_flux_weno_z_t* flux_weno,
+                         /* flux weno */ const lambda_flux_weno_z_t* flux_weno, const lambda_flux_diff_t* flux_diff,
                          /* fields */ Data<const real_t>* data_vel[3], ConstMemData* data_src, MemData* data_trg,
-                         /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3]) noexcept {
+                         /* factors */ const bool is_outer, const real_t alpha, const real_t oneoh[3], const real_t nu) noexcept {
+    m_assert(flux_weno != nullptr,"The flux weno must be non-null");
+    m_assert(flux_diff != nullptr,"The flux weno must be non-null");
     //-------------------------------------------------------------------------
     auto op = [&](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         const bidx_t    idx[3] = {i0, i1, i2};
@@ -59,6 +62,10 @@ static void DoMagic_Flux(/* param */ const bidx_t                    nghost,
             (*data_trg)(i0, i1, i2, +0, ida) += oneoh[ida] * (fluxes[0] - fluxes[1]);
             (*data_trg)(i0, i1, i2, +1, ida) += oneoh[ida] * fluxes[1] * flux_apply_right;
         }
+        // only the center cell is updated by the diffusion
+        real_t diff_flux = 0.0;
+        (*flux_diff)(&lsrc, &diff_flux);
+        (*data_trg)(i0,i1,i2) += nu * diff_flux;
     };
 
     if (!is_outer) {
@@ -123,6 +130,14 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
 
+    // lambda for second-order FD
+    lambda_flux_diff_t flux_diff_2 = [=](const LocalData* src, real_t* const flux) -> void {
+        // get the values
+        flux[0] = ((*src)(-1, 0) - 2.0 * (*src)(0, 0) + (*src)(+1, 0)) / (h[0] * h[0]) +
+                  ((*src)(-1, 1) - 2.0 * (*src)(0, 1) + (*src)(+1, 1)) / (h[1] * h[1]) +
+                  ((*src)(-1, 2) - 2.0 * (*src)(0, 2) + (*src)(+1, 2)) / (h[2] * h[2]);
+    };
+
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
     // the flux computed is the one in i+1/2!
     lambda_flux_weno_z_t flux_weno_3 = [=](const lda_t ida, const LocalData* src, const LocalData* vel, real_t* const flux) -> void {
@@ -183,9 +198,9 @@ void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const b
     ConstMemData        data_src    = block->ConstData(fid_src, ida_);
     MemData             data_trg    = block->data(fid_trg, ida_);
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
-                 &flux_weno_3,
+                 &flux_weno_3, &flux_diff_2,
                  data_vel, &data_src, &data_trg,
-                 is_outer, alpha, oneoh);
+                 is_outer, alpha, oneoh, nu_);
 
     // free the allocated mem
     for (lda_t ida = 0; ida < 3; ++ida) {
@@ -199,6 +214,14 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
     m_assert(u_->ghost_status(ghost_len_need_), "the ghost values of the velocity must be known! expected: %d %d, known: %d %d", ghost_len_need_[0], ghost_len_need_[1], u_->get_ghost_len(0), u_->get_ghost_len(1));
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
+
+    // lambda for second-order FD
+    lambda_flux_diff_t flux_diff_4 = [=](const LocalData* src, real_t* const flux) -> void {
+        // get the values
+        flux[0] = (-1.0 / 12.0 * (*src)(-2, 0) + 4.0 / 3.0 * (*src)(-1, 0) - 5.0 / 2.0 * (*src)(0, 0) + 4.0 / 3.0 * (*src)(+1, 0) - 1.0 / 12.0 * (*src)(+2, 0)) / (h[0] * h[0]) +
+                  (-1.0 / 12.0 * (*src)(-2, 1) + 4.0 / 3.0 * (*src)(-1, 1) - 5.0 / 2.0 * (*src)(0, 1) + 4.0 / 3.0 * (*src)(+1, 1) - 1.0 / 12.0 * (*src)(+2, 1)) / (h[1] * h[1]) +
+                  (-1.0 / 12.0 * (*src)(-2, 2) + 4.0 / 3.0 * (*src)(-1, 2) - 5.0 / 2.0 * (*src)(0, 2) + 4.0 / 3.0 * (*src)(+1, 2) - 1.0 / 12.0 * (*src)(+2, 2)) / (h[2] * h[2]);
+    };
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
     lambda_flux_weno_z_t flux_weno_5 = [=](const lda_t ida, const LocalData* src, const LocalData* vel, real_t* const flux) -> void {
@@ -272,9 +295,9 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
     MemData             data_trg    = block->data(fid_trg, ida_);
     // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
-                 &flux_weno_5,
+                 &flux_weno_5,&flux_diff_4,
                  data_vel, &data_src, &data_trg,
-                 is_outer, alpha, oneoh);
+                 is_outer, alpha, oneoh,nu_);
     // free the allocated mem
     for (lda_t ida = 0; ida < 3; ++ida) {
         delete (data_vel[ida]);
@@ -287,6 +310,14 @@ void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     m_assert(u_->ghost_status(ghost_len_need_), "the ghost values of the velocity must be known! expected: %d %d, known: %d %d", ghost_len_need_[0], ghost_len_need_[1], u_->get_ghost_len(0), u_->get_ghost_len(1));
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
+
+    // lambda for second-order FD
+    lambda_flux_diff_t flux_diff_2 = [=](const LocalData* src, real_t* const flux) -> void {
+        // get the values
+        flux[0] = ((*src)(-1, 0) - 2.0 * (*src)(0, 0) + (*src)(+1, 0)) / (h[0] * h[0]) +
+                  ((*src)(-1, 1) - 2.0 * (*src)(0, 1) + (*src)(+1, 1)) / (h[1] * h[1]) +
+                  ((*src)(-1, 2) - 2.0 * (*src)(0, 2) + (*src)(+1, 2)) / (h[2] * h[2]);
+    };
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
     // the flux computed is the one in i+1/2!
@@ -320,9 +351,9 @@ void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     MemData             data_trg    = block->data(fid_trg, ida_);
     // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
-                 &flux_weno_3,
+                 &flux_weno_3, &flux_diff_2,
                  data_vel, &data_src, &data_trg,
-                 is_outer, alpha, oneoh);
+                 is_outer, alpha, oneoh, nu_);
     // free the allocated mem
     for (lda_t ida = 0; ida < 3; ++ida) {
         delete (data_vel[ida]);
@@ -335,6 +366,13 @@ void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     m_assert(u_->ghost_status(ghost_len_need_), "the ghost values of the velocity must be known! expected: %d %d, known: %d %d", ghost_len_need_[0], ghost_len_need_[1], u_->get_ghost_len(0), u_->get_ghost_len(1));
     //-------------------------------------------------------------------------
     const real_t h[3] = {block->hgrid(0), block->hgrid(1), block->hgrid(2)};
+
+    lambda_flux_diff_t flux_diff_4 = [=](const LocalData* src, real_t* const flux) -> void {
+        // get the values
+        flux[0] = (-1.0 / 12.0 * (*src)(-2, 0) + 4.0 / 3.0 * (*src)(-1, 0) - 5.0 / 2.0 * (*src)(0, 0) + 4.0 / 3.0 * (*src)(+1, 0) - 1.0 / 12.0 * (*src)(+2, 0)) / (h[0] * h[0]) +
+                  (-1.0 / 12.0 * (*src)(-2, 1) + 4.0 / 3.0 * (*src)(-1, 1) - 5.0 / 2.0 * (*src)(0, 1) + 4.0 / 3.0 * (*src)(+1, 1) - 1.0 / 12.0 * (*src)(+2, 1)) / (h[1] * h[1]) +
+                  (-1.0 / 12.0 * (*src)(-2, 2) + 4.0 / 3.0 * (*src)(-1, 2) - 5.0 / 2.0 * (*src)(0, 2) + 4.0 / 3.0 * (*src)(+1, 2) - 1.0 / 12.0 * (*src)(+2, 2)) / (h[2] * h[2]);
+    };
 
     // get the lambda to compute a flux: ida = direction of the flux, fvel = velocity on the face
     lambda_flux_weno_z_t flux_weno_5 = [=](const lda_t ida, const LocalData* src, const LocalData* vel, real_t* const flux) -> void {
@@ -374,9 +412,9 @@ void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const boo
     MemData             data_trg    = block->data(fid_trg, ida_);
     // m_profStart(prof_,"do magic");
     DoMagic_Flux(m_max(ghost_len_need_[0], ghost_len_need_[1]),
-                 &flux_weno_5,
+                 &flux_weno_5,&flux_diff_4,
                  data_vel, &data_src, &data_trg,
-                 is_outer, alpha, oneoh);
+                 is_outer, alpha, oneoh,nu_);
     // free the allocated mem
     for (lda_t ida = 0; ida < 3; ++ida) {
         delete (data_vel[ida]);

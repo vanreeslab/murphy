@@ -18,8 +18,10 @@ class Field {
     const lda_t       lda_  = 0;          //!< indicate how many dimension is in the field [0,lda_[
     const std::string name_ = "default";  //!< the name of the field, used throughout the field management, must be unique
 
-    bool   is_expr_      = false;   //!< indicate if a field is an analytical expression
-    bool   is_temp_      = false;   //!< indicate if a field is a temporary field and therefore will not be interpolated during the adaptation
+    bool is_expr_ = false;  //!< indicate if a field is an analytical expression
+    bool is_temp_ = false;  //!< indicate if a field is a temporary field and therefore will not be interpolated during the adaptation
+
+    bool   expr_status_  = false;   //!< indicate if the expression is ready to be used
     bool   ghost_status_ = false;   //!< indicate if the field has up-to-date ghosts or not
     bidx_t ghost_len_[2] = {0, 0};  //!< the number of ghostpoints actually up to date
 

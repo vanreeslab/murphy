@@ -375,7 +375,7 @@ void Grid::SetTol(const real_t refine_tol, const real_t coarsen_tol) {
     // as detail = C * h^N (N = wavelet N), we must have that refine_tol/coarsen_tol
     ctol_ = m_max(m_min(coarsen_tol, refine_tol / (1 << M_WAVELET_N)), std::numeric_limits<real_t>::epsilon());
     rtol_ = refine_tol;
-    m_log("reset the tolerances to  rtol = %e and ctol = %e -> ratio = %f", rtol_, ctol_, rtol_ / ctol_);
+    m_log("reset the tolerances to  rtol = %e and ctol = %e -> ratio = %.0f", rtol_, ctol_, rtol_ / ctol_);
     //--------------------------------------------------------------------------
     m_end;
 }

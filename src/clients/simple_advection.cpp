@@ -2,14 +2,16 @@
 
 #include "operator/advection.hpp"
 #include "operator/blas.hpp"
+#include "operator/diagnostics.hpp"
 #include "operator/error.hpp"
 #include "operator/xblas.hpp"
 #include "time/rk3_tvd.hpp"
 #include "tools/ioh5.hpp"
-#include "operator/diagnostics.hpp"
 
 using std::string;
 using std::to_string;
+
+#define M_DIFF_ONLY 1
 
 // ring
 static const lda_t  ring_normal    = 2;
@@ -18,14 +20,22 @@ static const real_t ring_radius    = 0.75;
 static const real_t ring_beta      = 2;
 static const real_t ring_center[3] = {1.5, 1.5, 0.5};
 // exponential
-static const real_t exp_sigma      = 0.2;
-static const real_t exp_beta       = 6;
-static const real_t exp_center[3]  = {1.5, 1.5, 1.5};
+static const real_t exp_sigma     = 0.2;
+static const real_t exp_beta      = 6;
+static const real_t exp_center[3] = {1.5, 1.5, 1.5};
 // pure advection in Z
-static const real_t velocity[3]    = {0.0, 0.0, 1.0};
+#if M_DIFF_ONLY
+static const real_t velocity[3] = {0.0, 0.0, 0.0};
+#else
+static const real_t velocity[3] = {0.0, 0.0, 1.0};
+#endif
 
-static const lambda_i3_t<real_t,lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2,const lda_t ida) -> real_t {
-    return (ida==2);
+static const lambda_i3_t<real_t, lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) -> real_t {
+#if M_DIFF_ONLY
+    return 0.0;
+#else
+    return (ida == 2);
+#endif
 };
 
 SimpleAdvection::~SimpleAdvection() {
@@ -64,6 +74,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     cfl_ = param->cfl_max;
     // diffusion: Re = U * L / nu if neg it means no diffusion
     nu_ = (param->reynolds < 0.0) ? 0.0 : ((1.0 * exp_sigma) / param->reynolds);
+    m_log("nu = %e",nu_);
 
     // the the standard stuffs
     if (param->profile) {
@@ -96,7 +107,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
         real_t value = 0.0;
         //  value += scalar_compact_ring(pos, ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
-        value += scalar_compact_exp(pos, exp_center, exp_sigma, exp_beta);
+        value += scalar_diff_exp(pos, exp_center, exp_sigma,nu_,0.0);
         block->data(fid, 0)(i0, i1, i2) = value;
     };
 
@@ -141,16 +152,16 @@ void SimpleAdvection::Run() {
     // advection
     RKFunctor* advection;
     if (weno_ == 3 && !fix_weno_) {
-        advection = new Advection<M_WENO_Z, 3>(vel_, prof_);
+        advection = new Advection<M_WENO_Z, 3>(vel_, nu_, prof_);
         m_log("WENO-Z order 3 (cfl = %f)", advection->cfl_rk3());
     } else if (weno_ == 5 && !fix_weno_) {
-        advection = new Advection<M_WENO_Z, 5>(vel_, prof_);
+        advection = new Advection<M_WENO_Z, 5>(vel_, nu_, prof_);
         m_log("WENO-Z order 5 (cfl = %f)", advection->cfl_rk3());
     } else if (weno_ == 3 && fix_weno_) {
-        advection = new Advection<M_CONS, 3>(vel_, prof_);
+        advection = new Advection<M_CONS, 3>(vel_, nu_, prof_);
         m_log("CONS order 3 (cfl = %f)", advection->cfl_rk3());
     } else if (weno_ == 5 && fix_weno_) {
-        advection = new Advection<M_CONS, 5>(vel_, prof_);
+        advection = new Advection<M_CONS, 5>(vel_, nu_, prof_);
         m_log("CONS order 5 (cfl = %f)", advection->cfl_rk3());
     } else {
         advection = nullptr;
@@ -220,7 +231,11 @@ void SimpleAdvection::Run() {
         //................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
-        dt = rk3.ComputeDt(advection, 1.0);
+#if M_DIFF_ONLY
+        dt = rk3.ComputeDt(advection, 0.0, nu_);
+#else
+        dt = rk3.ComputeDt(advection, 1.0, nu_);
+#endif
         m_profStop(prof_, "compute dt");
 
         // dump some info
@@ -292,7 +307,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
 
         real_t value = 0.0;
         // value += scalar_compact_ring(pos, new_ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
-        value += scalar_compact_exp(pos, new_exp_center, exp_sigma, exp_beta);
+        // value += scalar_compact_exp(pos, new_exp_center, exp_sigma, exp_beta);
+        value += scalar_diff_exp(pos, exp_center, exp_sigma,nu_,time);
         return value;
     };
     // compute the error

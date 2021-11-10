@@ -24,12 +24,13 @@ typedef enum AdvectionType_t {
 template <AdvectionType_t type, short_t order>
 class Advection : public Stencil<GridBlock>, public RKFunctor {
    protected:
-    bool         accumulate_ = false;    //!<  used to determine if we accumuate or not the solution
+   bool         accumulate_ = false;    //!<  used to determine if we accumuate or not the solution
+    const real_t nu_ = 0.0;
     const Field* u_          = nullptr;  //!< velocity field used for the advection
 
    public:
     // create the advection, just store the u field
-    explicit Advection(const Field* u, Prof* profiler = nullptr) : u_(u), Stencil<GridBlock>(), RKFunctor() {
+    explicit Advection(const Field* u, const real_t nu = 0.0, Prof* profiler = nullptr) : u_(u), Stencil<GridBlock>(), RKFunctor(), nu_(nu) {
         if constexpr (order == 3) {
             // we need one point outside the domain that need 1 ghost point
             ghost_len_need_[0] = 2;
@@ -52,8 +53,11 @@ class Advection : public Stencil<GridBlock>, public RKFunctor {
 
     /**
      * @brief returns the max rdiff coefficient
+     * in 1D, second order is 5/2 <= 4 * r => r = 5/8 = 0.625
+     * in 1D, fourth order is 5/2 <= 16/3 * r => r = 15/32 = 0.46875
+     * in 3D, the diffusion sums up! -> /3.0
      */
-    real_t rdiff() const override { return std::numeric_limits<real_t>::max(); };  // no limit, return +inf
+    real_t rdiff_rk3() const override { return std::numeric_limits<real_t>::max(); };  // no limit, return +inf
 
     // return the number of ghost points, needed, depend on the stencil etc
     // lid_t NGhost() const override { return 0; };
@@ -89,11 +93,15 @@ class Advection : public Stencil<GridBlock>, public RKFunctor {
 template <>
 inline real_t Advection<M_WENO_Z, 3>::cfl_rk3() const { return 1.6; };
 template <>
+inline real_t Advection<M_WENO_Z, 3>::rdiff_rk3() const { return 0.625 / 3.0; };
+template <>
 void Advection<M_WENO_Z, 3>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
 
 //------------------------------------------------------------------------------
 template <>
 inline real_t Advection<M_WENO_Z, 5>::cfl_rk3() const { return 1.4; };
+template <>
+inline real_t Advection<M_WENO_Z, 5>::rdiff_rk3() const { return 0.46875 / 3.0; };
 template <>
 void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
 
@@ -101,11 +109,15 @@ void Advection<M_WENO_Z, 5>::DoMagic(const qid_t* qid, GridBlock* block, const b
 template <>
 inline real_t Advection<M_CONS, 3>::cfl_rk3() const { return 1.6; };
 template <>
+inline real_t Advection<M_CONS, 3>::rdiff_rk3() const { return 0.625 / 3.0; };
+template <>
 void Advection<M_CONS, 3>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
 
 //------------------------------------------------------------------------------
 template <>
 inline real_t Advection<M_CONS, 5>::cfl_rk3() const { return 1.4; };
+template <>
+inline real_t Advection<M_CONS, 5>::rdiff_rk3() const { return 0.46875 / 3.0; };
 template <>
 void Advection<M_CONS, 5>::DoMagic(const qid_t* qid, GridBlock* block, const bool is_outer, const Field* fid_src, Field* fid_trg) const;
 

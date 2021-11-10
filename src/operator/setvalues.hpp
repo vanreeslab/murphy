@@ -90,6 +90,7 @@ class SetValue : public BlockOperator {
 // declare later defined functions as lambdas
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t>               scalar_exp;
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t> scalar_compact_exp;
+extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const real_t> scalar_diff_exp;
 
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>               scalar_tube;
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const lda_t> scalar_compact_tube;

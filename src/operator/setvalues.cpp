@@ -6,12 +6,32 @@
  */
 lambda_t<real_t, const real_t[], const real_t[], const real_t>
     scalar_exp = [](const real_t pos[3], const real_t center[3], const real_t sigma) -> real_t {
+    const real_t fact = 1.0;  //sqrt(M_PI*sigma*sigma) / sqrt(M_PI * diff_sigma2 );
     // compute the gaussian
     const real_t rhox = (pos[0] - center[0]) / sigma;
     const real_t rhoy = (pos[1] - center[1]) / sigma;
     const real_t rhoz = (pos[2] - center[2]) / sigma;
     const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
-    return std::exp(-rho);
+    return fact * std::exp(-rho);
+};
+
+/**
+ * @brief diffusive exponential
+ * 
+ * the integral of the values is sqrt(M_PI * sigma^2)
+ */
+lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const real_t>
+    scalar_diff_exp = [](const real_t pos[3], const real_t center[3], const real_t sigma, const real_t time, const real_t nu) -> real_t {
+    const real_t sigma2      = sigma * sigma;
+    const real_t diff_sigma2 = sigma2 + 4.0 * nu * time;
+    const real_t fact        = sqrt(M_PI * sigma2) / sqrt(M_PI * diff_sigma2);
+
+    // compute the gaussian
+    const real_t rhox = (pos[0] - center[0]);
+    const real_t rhoy = (pos[1] - center[1]);
+    const real_t rhoz = (pos[2] - center[2]);
+    const real_t rho  = (rhox * rhox + rhoy * rhoy + rhoz * rhoz) / diff_sigma2;
+    return fact * std::exp(-rho);
 };
 
 /**
@@ -40,8 +60,8 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t>
  */
 lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>
     scalar_tube = [](const real_t pos[3], const real_t center[3], const real_t sigma, const lda_t normal) -> real_t {
-    const lda_t idx = (normal + 1) % 3;
-    const lda_t idy = (normal + 2) % 3;
+    const lda_t  idx       = (normal + 1) % 3;
+    const lda_t  idy       = (normal + 2) % 3;
     const real_t oo_sigma2 = 1.0 / (sigma * sigma);
     // compute the gaussian
     const real_t rad1 = pow(pos[idx] - (center[idx]), 2) + pow(pos[idy] - center[idy], 2);
@@ -64,9 +84,9 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, con
     const real_t oo_gamma2 = 1.0 / (gamma * gamma);
     // compute the gaussian
     const real_t rad_sq = pow(pos[idx] - center[idx], 2) + pow(pos[idy] - center[idy], 2);
-    const real_t rho1 = rad_sq * oo_sigma2;
-    const real_t rho2 = rad_sq * oo_gamma2;
-    const real_t vort = (rho2 < 1.0) ? (exp(-rho1 / (1.0 - rho2))) : 0.0;
+    const real_t rho1   = rad_sq * oo_sigma2;
+    const real_t rho2   = rad_sq * oo_gamma2;
+    const real_t vort   = (rho2 < 1.0) ? (exp(-rho1 / (1.0 - rho2))) : 0.0;
     return vort;
 };
 
@@ -129,7 +149,7 @@ lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, cons
     const real_t alpha = atan2(y, x);
 
     // add the modes
-    real_t        z_center = center[idz];
+    real_t z_center = center[idz];
     // const short_t n_mode   = freq_rad.size();
     // for (short_t id = 0; id < n_mode; ++id) {
     //     z_center += amp_rad[id] * radius * 1.0 / n_mode * sin(freq_rad[id] * alpha);
