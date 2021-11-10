@@ -36,6 +36,8 @@ void ConvergenceWeno::InitParam(ParserArguments* param) {
 
     eps_start_ = param->eps_start;
     delta_eps_ = param->delta_eps;
+
+    // nu_ = (param->reynolds < 0.0) ? 0.0 : ((1.0) / param->reynolds);
     //--------------------------------------------------------------------------
 }
 

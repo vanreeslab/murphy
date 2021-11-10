@@ -30,9 +30,10 @@ void TwoLevelConvWeno::InitParam(ParserArguments* param) {
     fix_weno_ = param->fix_weno;
 
     // get the level
-    level_start_ = param->init_lvl;
     level_min_   = param->level_min;
     level_max_   = param->level_max;
+
+    nu_ = (param->reynolds < 0.0) ? 0.0 : ((1.0) / param->reynolds);
     //-------------------------------------------------------------------------
 }
 
@@ -75,11 +76,15 @@ void TwoLevelConvWeno::Run() {
         // call the function
         return (-rand_vel[0]) * (4.0 * M_PI / ((real_t)grid_len[0])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[0]) * pos[0]) +
                (-rand_vel[1]) * (4.0 * M_PI / ((real_t)grid_len[1])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[1]) * pos[1]) +
-               (-rand_vel[2]) * (4.0 * M_PI / ((real_t)grid_len[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[2]) * pos[2]);
+               (-rand_vel[2]) * (4.0 * M_PI / ((real_t)grid_len[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[2]) * pos[2]) +
+                (-nu_) *(
+                    pow(4.0 * M_PI / ((real_t)grid_len[0]),2)* sin(4.0 * M_PI / ((real_t)grid_len[0]) * pos[0])+
+                    pow(4.0 * M_PI / ((real_t)grid_len[1]),2)* sin(4.0 * M_PI / ((real_t)grid_len[1]) * pos[1])+
+                    pow(4.0 * M_PI / ((real_t)grid_len[2]),2)* sin(4.0 * M_PI / ((real_t)grid_len[2]) * pos[2]));
     };
 
     //......................................................................
-    for(level_t il=level_min_; il< (level_max_-1); ++il){
+    for(level_t il=level_min_; il<= (level_max_-1); ++il){
         m_log("================================================================================");
         m_log("levels = %d and %d", il,il+1);
         //......................................................................
@@ -139,10 +144,10 @@ void TwoLevelConvWeno::Run() {
 
         {  // WENO 3
             if (fix_weno_) {
-                Advection<M_CONS, 3> adv(&vel);
+                Advection<M_CONS, 3> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             } else {
-                Advection<M_WENO_Z, 3> adv(&vel);
+                Advection<M_WENO_Z, 3> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             }
             m_log("error weno 3");
@@ -168,10 +173,10 @@ void TwoLevelConvWeno::Run() {
         }
         {  // WENO 5
             if (fix_weno_) {
-                Advection<M_CONS, 5> adv(&vel);
+                Advection<M_CONS, 5> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             } else {
-                Advection<M_WENO_Z, 5> adv(&vel);
+                Advection<M_WENO_Z, 5> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             }
             // now, we need to check
