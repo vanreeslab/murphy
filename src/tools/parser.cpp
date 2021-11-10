@@ -127,7 +127,7 @@ static struct argp_option options[] = {
 
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
-    {"reynolds", 3001, "double", 0, "the Reynolds number"},
+    {"reynolds", 3001, "double", 0, "the Reynolds number (u * L)/nu (negative value means no diffusion)"},
     {"vr-normal", 3002, "dir", 0, "vortex ring normal"},
     {"vr-center", 3003, "c_x,c_y,c_z", 0, "vortex ring center"},
     {"vr-radius", 3004, "rad", 0, "vortex ring radius"},

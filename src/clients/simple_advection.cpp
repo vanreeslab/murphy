@@ -62,6 +62,8 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
 
     // cfl
     cfl_ = param->cfl_max;
+    // diffusion: Re = U * L / nu if neg it means no diffusion
+    nu_ = (param->reynolds < 0.0) ? 0.0 : ((1.0 * exp_sigma) / param->reynolds);
 
     // the the standard stuffs
     if (param->profile) {

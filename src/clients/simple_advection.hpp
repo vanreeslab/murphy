@@ -19,6 +19,7 @@ class SimpleAdvection : public TestCase {
     real_t tfinal_ = 0.0;
 
     real_t cfl_ = 0.0;
+    real_t nu_= 0.0;
 
     level_t level_min_ = 0;
     level_t level_max_ = P8EST_QMAXLEVEL;

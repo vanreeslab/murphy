@@ -25,7 +25,7 @@ struct ParserArguments {
     bool do_2lvl_weno     = false;
     bool do_weak_scal     = false;
 
-    real_t reynolds    = 0.0;
+    real_t reynolds    = -1.0; //!< Reynolds number, negative values means no diffusion
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
     bool   optimal_tol = false;
