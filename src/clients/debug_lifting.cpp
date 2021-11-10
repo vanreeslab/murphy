@@ -71,7 +71,7 @@ void DebugLifting::Run() {
     // bool period[3] = {false, false, false};
     bool  period[3]   = {false, true, true};
     lid_t grid_len[3] = {2, 1, 1};
-    Grid  grid(1, period, grid_len, MPI_COMM_WORLD, nullptr);
+    Grid  grid(1, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
     grid.level_limit(0, 1);
 
     // add the field

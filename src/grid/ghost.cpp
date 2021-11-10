@@ -146,7 +146,7 @@ void Ghost::InitList_() {
             iblock_t local_id = mirror->p.piggy3.local_num;
             m_assert(local_id >= 0, "the address cannot be negative");
             m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
-            const GridBlock* mirror_block = p4est_GetGridBlock(mirror_quad);
+            const GridBlock* mirror_block = p4est_GetBlock<GridBlock>(mirror_quad);
 #ifndef NDEBUG
             size_t id = active_mirror_count * mirror_block->BlockLayout().n_elem;
             m_assert(id < std::numeric_limits<MPI_Aint>::max(), "the value must be lower than the max value of int");
@@ -174,9 +174,9 @@ void Ghost::InitList_() {
 #endif
 
     // init the list on every active block that matches the level requirements
-    const ForestGrid* mygrid = grid_;
+    const p4est_Essentials essential = grid_->p4estEssentials();
     for (level_t il = min_level_; il <= max_level_; il++) {
-        DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, mygrid, interp_, local2disp_window);
+        DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, &essential, interp_, local2disp_window);
     }
 
 // complete the epoch and wait for the exposure one
@@ -240,7 +240,7 @@ void Ghost::InitComm_() {
         // update the counters if the mirror is admissible (i.e. it satisfies the requirements)
         // we need to have called the function p4est_balance()!!
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
-            GridBlock* mirror_block = p4est_GetGridBlock(mirror_quad);
+            GridBlock* mirror_block = p4est_GetBlock<GridBlock>(mirror_quad);
             mirror_to_send_size += mirror_block->BlockLayout().n_elem;
             n_mirror_to_send += 1;
         }
@@ -729,7 +729,7 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, const Field* field) {
             // use it to retreive the actual quadrant in the correct tree
             p8est_quadrant_t* quad = p8est_quadrant_array_index(&tree->quadrants, myid.cid - tree->quadrants_offset);
             // GridBlock*        block = *(reinterpret_cast<GridBlock**>(quad->p.user_data));
-            GridBlock* block = p4est_GetGridBlock(quad);
+            GridBlock* block = p4est_GetBlock<GridBlock>(quad);
             // send the task
             (this->*op)(&myid, block, field);
         }

@@ -9,7 +9,7 @@ jobs:
     runs-on: yoda
     timeout-minutes: 20
     container:
-      image: vanreeslab/murphy_ci:v1.10
+      image: vanreeslab/murphy_ci:v1.11
     # define the steps
     steps:
       #checkout the repo

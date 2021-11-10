@@ -85,7 +85,7 @@ void TwoLevelConvWeno::Run() {
         //......................................................................
         // create a grid
         bool  period[3]   = {true, true, true};
-        Grid  grid(il, period, grid_len, MPI_COMM_WORLD, nullptr);
+        Grid  grid(il, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         // adapt
         if (adapt_) {
             list<Patch> patch_list;

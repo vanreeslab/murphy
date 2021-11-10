@@ -87,7 +87,7 @@ TEST_P(Epsilon, periodic) {
     // let's go
     bool  period[3]   = {true, true, true};
     lid_t grid_len[3] = {1, 1, 1};
-    Grid  grid(level_start, period, grid_len, MPI_COMM_WORLD, nullptr);
+    Grid  grid(level_start, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
     grid.level_limit(0, level_start);
 
     Field scal("scalar", 1);
@@ -217,7 +217,7 @@ TEST_P(Epsilon, extrap) {
     // let's go
     bool  period[3]   = {false, false, false};
     lid_t grid_len[3] = {1, 1, 1};
-    Grid  grid(level_start, period, grid_len, MPI_COMM_WORLD, nullptr);
+    Grid  grid(level_start, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
     grid.level_limit(0, level_start);
 
 

@@ -1,9 +1,8 @@
 # Makefile MURPHY
 #------------------------------------------------------------------------------
-# usefull links: 
+# useful links: 
 # - automatic vars: https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html
 # - file names: https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html
-# 
 #------------------------------------------------------------------------------
 
 ################################################################################
@@ -17,7 +16,7 @@ endif
 
 ################################################################################
 # FROM HERE, DO NOT CHANGE
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 PREFIX ?= ./
 NAME := murphy
 # library naming
@@ -25,14 +24,13 @@ TARGET := $(NAME)
 # git commit
 GIT_COMMIT ?= $(shell git describe --always --dirty)
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # get a list of all the source directories + the main one
 SRC_DIR := src $(shell find src/** -type d)
-# SUB_DIR := $(shell find $(SRC_DIR)/** -type d| sed 's/$(SRC_DIR)\///1')
 TEST_DIR := test
 OBJ_DIR := build
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # the sources/headers are listed without the folder, vpath will find them
 SRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.cpp)))
 HEAD := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.hpp)))
@@ -52,7 +50,7 @@ TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
 TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
 TCDB := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o.json)
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # add the folders to the includes and to the vpath
 
 ## add the source dirs to the includes flags
@@ -63,7 +61,7 @@ TINC := $(foreach dir,$(TEST_DIR)/$(SRC_DIR),-I$(dir))
 vpath %.hpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
 vpath %.cpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # LIBRARIES
 #---- HDF5
 HDF5_INC ?= /usr/include
@@ -88,9 +86,10 @@ GTEST_LIBNAME ?= -lgtest
 # mandatory flags
 M_FLAGS := -std=c++17 -fPIC -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
+#-------------------------------------------------------------------------------
 # compile + dependence + json file
 $(OBJ_DIR)/%.o : %.cpp $(HEAD)
-ifeq ($(CXX),clang)
+ifeq ($(shell $(CXX) -v 2>&1 | grep -c "clang"), 1)
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -MF $(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
 else
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -c $< -o $@
@@ -100,19 +99,21 @@ endif
 $(OBJ_DIR)/%.o.json :  %.cpp $(HEAD)
 	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MJ $@ -E $< -o $(OBJ_DIR)/$*.ii
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # tests
 # compile + dependence + json
 $(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
-	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MMD -MF$(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
+ifeq ($(shell $(CXX) -v 2>&1 | grep -c "clang"), 1)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MMD -MF $(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
+else
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MMD -c $< -o $@
+endif
 
 # json only
 $(TEST_DIR)/$(OBJ_DIR)/%.o.json : %.cpp $(HEAD) $(THEAD)
 	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MJ $@ -E $< -o $(TEST_DIR)/$(OBJ_DIR)/$*.ii
 
 # clang-tidy files, define the MPI_INC which is only for this target
-# $(OBJ_DIR)/%.tidy : MPI_INC = $(shell $(CXX) --showme:compile)
- 	# clang-tidy $< --format-style=.clang-format --checks=mpi-*,openmp-*,google-*,performance-* -- $(MPI_INC) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(MPI_INC) $(M_FLAGS)
 $(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
 	clang-tidy $< --format-style=.clang-format --checks=all*
 
@@ -123,9 +124,13 @@ default: $(TARGET)
 .PHONY: all
 all: $(TARGET) compdb
 
+#-------------------------------------------------------------------------------
+# the main target
 $(TARGET): $(OBJ)
 	$(CXX) $(LDFLAGS) $^ $(LIB) -o $@
 
+#-------------------------------------------------------------------------------
+# clang stuffs
 .PHONY: tidy
 tidy: $(TIDY)
 
@@ -139,30 +144,22 @@ compdb: $(CDB)
 compdb_full: $(CDB) $(TCDB)
 	sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $^ > compile_commands.json
 
-# .PHONY: dep 
-# dep: $(DEP)
-
+#-------------------------------------------------------------------------------
 .PHONY: test 
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
+#-------------------------------------------------------------------------------
 #clean
 .PHONY: clean 
 clean:
 	@rm -rf $(OBJ_DIR)/*
-	@rm -rf $(OBJ_DIR)/*.tidy
-	@rm -rf $(TARGET)
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
-	@rm -rf $(TARGET)_test
-
-# destroy = clean but even more aggressive
-.PHONY: destroy
-destroy:
 	@rm -rf $(OBJ_DIR)/*
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*
+	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
 	@rm -rf $(TARGET)
 	@rm -rf $(TARGET)_test
 
+#-------------------------------------------------------------------------------
 .PHONY: logo info
 info: logo
 	$(info prefix = $(PREFIX)/lib )

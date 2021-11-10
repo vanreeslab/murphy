@@ -22,14 +22,14 @@ typedef enum AdvectionType_t {
  * @tparam length the size of the advection stencil. (e.g. 3 for 2nd order and 5 for 4th order)
  */
 template <AdvectionType_t type, short_t order>
-class Advection : public Stencil, public RKFunctor {
+class Advection : public Stencil<GridBlock>, public RKFunctor {
    protected:
     bool         accumulate_ = false;    //!<  used to determine if we accumuate or not the solution
     const Field* u_          = nullptr;  //!< velocity field used for the advection
 
    public:
     // create the advection, just store the u field
-    explicit Advection(const Field* u, Prof* profiler = nullptr) : u_(u), Stencil(), RKFunctor() {
+    explicit Advection(const Field* u, Prof* profiler = nullptr) : u_(u), Stencil<GridBlock>(), RKFunctor() {
         if constexpr (order == 3) {
             // we need one point outside the domain that need 1 ghost point
             ghost_len_need_[0] = 2;
@@ -61,14 +61,14 @@ class Advection : public Stencil, public RKFunctor {
     void RhsSet(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         // -------------------------------------------------------------------------
         accumulate_ = false;
-        Stencil::operator()(grid, field_u, field_y);
+        Stencil<GridBlock>::operator()(grid, field_u, field_y);
         accumulate_ = false;  // reset the value to false for other calls
         // -------------------------------------------------------------------------
     };
     void RhsAcc(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         // -------------------------------------------------------------------------
         accumulate_ = true;
-        Stencil::operator()(grid, field_u, field_y);
+        Stencil<GridBlock>::operator()(grid, field_u, field_y);
         accumulate_ = false;  // reset the value to false for other calls
         // -------------------------------------------------------------------------
     };

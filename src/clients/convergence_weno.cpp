@@ -95,7 +95,7 @@ void ConvergenceWeno::Run() {
 
         lid_t         grid_len[3] = {1, 1, 1};
         const level_t init_level  = (!adapt_) ? (level_min_ + id_counter) : (ilevel_);
-        Grid          grid(init_level, period, grid_len, MPI_COMM_WORLD, nullptr);
+        Grid          grid(init_level, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
 
         //......................................................................

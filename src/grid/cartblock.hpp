@@ -47,29 +47,60 @@ class CartBlock {
 
    public:
     explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level) noexcept;
-    ~CartBlock();
+    virtual ~CartBlock();
 
     /**
      * @brief returns a MemLayout corresponding to the this block
      */
-    __attribute__((always_inline)) inline MemLayout BlockLayout() const {
+    M_INLINE MemLayout BlockLayout() const {
+        //----------------------------------------------------------------------
         return MemLayout(M_LAYOUT_BLOCK, M_GS, M_N);
+        //----------------------------------------------------------------------
     }
     /**
      * @brief returns a MemSpan for the interior of this block
      */
-    __attribute__((always_inline)) inline MemSpan BlockSpan() const {
+    M_INLINE MemSpan BlockSpan() const {
+        //----------------------------------------------------------------------
         return MemSpan(0, M_N);
+        //----------------------------------------------------------------------
     }
 
     /**
      * @brief returns the absolute position of a given points (i0, i1, i2)
      */
-    __attribute__((always_inline)) inline void pos(const bidx_t i0, const bidx_t i1, const bidx_t i2, real_t m_pos[3]) const {
+    M_INLINE void pos(const bidx_t i0, const bidx_t i1, const bidx_t i2, real_t m_pos[3]) const {
+        //----------------------------------------------------------------------
         m_pos[0] = i0 * hgrid_[0] + xyz_[0];
         m_pos[1] = i1 * hgrid_[1] + xyz_[1];
         m_pos[2] = i2 * hgrid_[2] + xyz_[2];
+        //----------------------------------------------------------------------
     }
+
+    /**
+     * @brief return the offset for the partitioning buffer
+     * 
+     * @warning the offset is measured in number of real_t
+     */
+    virtual size_t PartitionDataOffset() const { return 0; }
+
+    /**
+     * @brief pack (store) the needed information in the partitioner buffer
+     * 
+     * The data will be sent over to another rank during partitioning and recoverd by PartitionDataUnPack()
+     * 
+     * @warning the information MUST be cast to a real_t
+     */
+    virtual void PartitionDataPack(real_t* buff) const {};
+
+    /**
+     * @brief unpack the needed information from the partitioner buffer
+     * 
+     * The data has been stored by PartitionDataPack() and send over to another rank
+     * 
+     * @warning the information MUST be uncast from a real_t
+     */
+    virtual void PartitionDataUnPack(const real_t* buff){};
 
     /**
      * @name CartBlock utility functions
@@ -139,7 +170,7 @@ class CartBlock {
 // }
 
 //-------------------------------------------------------------------------
-// defines code-wide usefull lambda functions
+// defines code-wide useful lambda functions
 // using lambda_i3_t      = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2)>;
 // using lambda_i3block_t = std::function<real_t(const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block)>;
 

@@ -43,7 +43,7 @@ struct MemLayout {
     /**
      * @brief returns the offset of the position (0,0,0) of a given dimension from the RAW pointer expressed as a # of elements (>=0 number)
      */
-    __attribute__((always_inline)) inline size_t offset(const lda_t ida = 0) const noexcept {
+    M_INLINE size_t offset(const lda_t ida = 0) const noexcept {
         m_assert(0 <= ida, "ida = %d cannot be <0", ida);
         return shift + gs + stride[0] * (gs + stride[1] * (gs + stride[1] * ida));
     };
@@ -51,7 +51,7 @@ struct MemLayout {
     /**
      * @brief returns the offset of the position (i0,i1,i2) from the RAW pointer expressed as a # of elements (>=0 number)
      */
-    __attribute__((always_inline)) inline size_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+    M_INLINE size_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
         m_assert(0 <= (gs + i0) && (gs + i0) < stride[1], "we cannot be <0 or > stride from the user");
         m_assert(0 <= (gs + i1) && (gs + i1) < stride[1], "we cannot be <0 or > stride from the user");
         m_assert(0 <= (gs + i2) && (gs + i2) < stride[1], "we cannot be <0 or > stride from the user");

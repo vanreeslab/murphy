@@ -17,7 +17,7 @@ void Dset::operator()(const ForestGrid* grid, const real_t value, Field* fid_x) 
     m_end;
 }
 
-void Dset::ComputeDsetGridBlock(const qid_t* qid, const GridBlock* block, Field* fid_x) {
+void Dset::ComputeDsetGridBlock(const qid_t* qid, const CartBlock* block, Field* fid_x) {
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
 
@@ -46,7 +46,7 @@ void Dcopy::operator()(const ForestGrid* grid, const Field* fid_x, Field* fid_y)
     m_end;
 }
 
-void Dcopy::ComputeDcopyGridBlock(const qid_t* qid, GridBlock* block, const Field* fid_x, Field* fid_y) {
+void Dcopy::ComputeDcopyGridBlock(const qid_t* qid, CartBlock* block, const Field* fid_x, Field* fid_y) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
     const sid_t lda = fid_x->lda();
@@ -80,7 +80,7 @@ void Daxpy::operator()(const ForestGrid* grid, const real_t alpha, const Field* 
     m_end;
 }
 
-void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, const GridBlock* block, const Field* fid_x, const Field* fid_y, Field* fid_z) {
+void Daxpy::ComputeDaxpyGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const Field* fid_y, Field* fid_z) {
     m_assert(fid_x->lda() == fid_y->lda(), "the dimensions must match");
     m_assert(fid_y->lda() == fid_z->lda(), "the dimensions must match");
     //-------------------------------------------------------------------------
@@ -115,7 +115,7 @@ void Dscale::operator()(const ForestGrid* grid, const real_t alpha, Field* fid_x
     m_end;
 }
 
-void Dscale::ComputeDscaleGridBlock(const qid_t* qid, GridBlock* block, Field* fid_x) {
+void Dscale::ComputeDscaleGridBlock(const qid_t* qid, CartBlock* block, Field* fid_x) {
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must have enough valid ghost points", fid_x->name().c_str());
     //-------------------------------------------------------------------------
     const lda_t lda = fid_x->lda();
