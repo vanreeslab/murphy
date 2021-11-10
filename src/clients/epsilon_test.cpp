@@ -68,7 +68,7 @@ void EpsilonTest::Run() {
         // create a grid, put a ring on it on the fixel level
         bool  period[3]   = {false, false, false};
         lid_t grid_len[3] = {3, 3, 1};
-        Grid  grid(level_start_, period, grid_len, MPI_COMM_WORLD, nullptr);
+        Grid  grid(level_start_, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
 
         Field scal("scalar", 1);
