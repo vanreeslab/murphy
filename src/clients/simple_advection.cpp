@@ -80,7 +80,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     if (param->profile) {
         int comm_size;
         MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-        string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+        string name = string("SimpleAdvection") + to_string(comm_size) + string("ranks") + string("_w") + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_re" + to_string(param->reynolds);;
         prof_       = new Prof(name);
     }
     m_profStart(prof_, "init");

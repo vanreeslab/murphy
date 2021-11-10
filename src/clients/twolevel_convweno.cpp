@@ -158,7 +158,7 @@ void TwoLevelConvWeno::Run() {
             error.Norms(&grid, &dtest, &lambda_sol_rhs, &err2, &erri);
 
             const string scheme_name = (fix_weno_) ? "cons3" : "weno3";
-            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_nu" + to_string(nu_);
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
@@ -185,7 +185,7 @@ void TwoLevelConvWeno::Run() {
             error.Norms(&grid, &dtest, &lambda_sol_rhs, &err2, &erri);
 
             const string scheme_name = (fix_weno_) ? "cons5" : "weno5";
-            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_nu" + to_string(nu_);
 
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
