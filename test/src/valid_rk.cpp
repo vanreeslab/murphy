@@ -30,7 +30,7 @@ class RKRhs : public RKFunctor {
 
     // rk functor
     real_t cfl_rk3() const override { return 1.0; }
-    real_t rdiff() const override { return 1.0; }
+    real_t rdiff_rk3() const override { return 1.0; }
 
     void RhsSet(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         m_log("evaluation in field %s", field_y->name().c_str());
