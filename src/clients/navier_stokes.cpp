@@ -56,7 +56,7 @@ void NavierStokes::InitParam(ParserArguments* param) {
     }
 
     // setup the grid
-    grid_ = new Grid(param->init_lvl, param->period, param->length, MPI_COMM_WORLD, prof_);
+    grid_ = new Grid(param->init_lvl, param->period, param->length, M_GRIDBLOCK, MPI_COMM_WORLD, prof_);
 
     // the vorticity with the vortex ring
     vort_ = new Field("vorticity", 3);

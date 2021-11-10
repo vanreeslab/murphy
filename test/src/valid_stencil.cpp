@@ -54,7 +54,7 @@ TEST_P(Adapt, weno_periodic_cosinus) {
 
     for (level_t il = 0; il < 2; ++il) {
         level_t clevel = il;
-        Grid    grid(clevel, period, L, MPI_COMM_WORLD, nullptr);
+        Grid    grid(clevel, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         // adapt
         {
             list<Patch> patch_list;
@@ -248,7 +248,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
     for (level_t il = 0; il < 2; ++il) {
-        Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+        Grid grid(il, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
         // do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
         // do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;
@@ -437,7 +437,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 //     m_log("velocity is %e %e %e", rand_vel[0], rand_vel[1], rand_vel[2]);
 
 //     for (level_t il = 0; il < 2; ++il) {
-//         Grid grid(il, period, L, MPI_COMM_WORLD, nullptr);
+//         Grid grid(il, period, L, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
 
 //         do_weno_3 = grid.NGhostFront() >= 2 && grid.NGhostBack() >= 2;
 //         do_weno_5 = grid.NGhostFront() >= 3 && grid.NGhostBack() >= 3;

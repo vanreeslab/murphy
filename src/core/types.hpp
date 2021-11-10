@@ -66,6 +66,19 @@ typedef enum m_direction_t {
     M_BACKWARD
 } m_direction_t;
 
+/**
+ * @brief indicates the type of block managed by a grid.
+ * 
+ * Inheritance is built into the labels: (M_BLK1 % M_BLK2) == 0 iff Block1* can be safely cast to Block2*.
+ * To add a new block with single inheritance, multiply its parent by a new prime number
+ * To add a new block type with multiple inheritance, take the least common multiple of its parents
+ */
+typedef enum BlockDataType {
+    M_NULLTYPE  = 0,
+    M_CARTBLOCK = 1,
+    M_GRIDBLOCK = 2
+} BlockDataType;
+
 //-------------------------------------------------------------------------
 // must be removed from the code
 typedef int  lid_t;

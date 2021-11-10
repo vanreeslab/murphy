@@ -95,7 +95,7 @@ class RestrictData {
     /**
      * @brief returns the offset of a point (i0, i1, i2)
      */
-    __attribute__((always_inline)) inline bidx_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
+    M_INLINE bidx_t offset(const bidx_t i0, const bidx_t i1, const bidx_t i2) const noexcept {
         return (i0 + stride_[0] * (i1 + stride_[1] * i2));
     };
 
@@ -103,7 +103,7 @@ class RestrictData {
      * @brief return the data located at (i0,i1,i2) position wrt a reference point given by offset_ref
      * 
      */
-    __attribute__((always_inline)) inline T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
+    M_INLINE T& operator()(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
         return data_[offset_ref + i0 + stride_[0] * (i1 + stride_[1] * i2)];
     }
 
@@ -111,7 +111,7 @@ class RestrictData {
      * @brief return the data located at (i * ida==0, i * ida==1, i * ida==2) position typically used in stencil operations
      * 
      */
-    __attribute__((always_inline)) inline T& Stencil(const bidx_t i, const lda_t ida) const noexcept {
+    M_INLINE T& Stencil(const bidx_t i, const lda_t ida) const noexcept {
         return data_[(i * (ida == 0)) + stride_[0] * ((i * (ida == 1)) + stride_[1] * (i * (ida == 2)))];
     }
 
@@ -119,7 +119,7 @@ class RestrictData {
      * @brief return the pointer to the data located at (i0,i1,i2) position wrt a reference point given by offset_ref
      * 
      */
-    __attribute__((always_inline)) inline T* __restrict ptr(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
+    M_INLINE T* __restrict ptr(const bidx_t i0, const bidx_t i1, const bidx_t i2, const bidx_t offset_ref = 0) const noexcept {
         return data_ + offset_ref + (i0 + stride_[0] * (i1 + stride_[1] * i2));
     }
 };

@@ -27,9 +27,10 @@ Grid::Grid() : ForestGrid(), prof_(nullptr), ghost_(nullptr), interp_(nullptr){}
  * @param comm the MPI communicator used
  * @param prof the profiler pointer if any (can be nullptr)
  */
-Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm comm, Prof* const prof)
-    : ForestGrid(ilvl, isper, l, sizeof(GridBlock*), comm) {
+Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataType block_type, MPI_Comm comm, Prof* const prof)
+    : ForestGrid(ilvl, isper, l, block_type, comm) {
     m_begin;
+    m_assert(IsCompatibleBlockType(M_GRIDBLOCK, block_type), "You can not instantiate a Grid with Blocks which don't have ghosting capabilities");
     //-------------------------------------------------------------------------
     // profiler
     prof_ = prof;
@@ -37,12 +38,11 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
     interp_ = new InterpolatingWavelet();
 
     // create the associated blocks
-    p8est_iterate(p4est_forest_, nullptr, nullptr, cback_CreateBlock, nullptr, nullptr, nullptr);
+    p8est_iter_volume_t callback_create = get_cback_CreateBlock(block_type);
+    p8est_iterate(p4est_forest_, nullptr, nullptr, callback_create, nullptr, nullptr, nullptr);
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
-    // part.Start(&fields_, M_FORWARD);
-    // part.End(&fields_, M_FORWARD);
     part.SendRecv(&fields_, M_FORWARD);
 
     // setup the ghost stuctures as the mesh will not change anymore
@@ -51,27 +51,6 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], MPI_Comm c
     m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
     m_end;
 }
-
-// /**
-//  * @brief Copy the ForestGrid part from a grid
-//  *
-//  * @param grid the source grid
-//  */
-// void Grid::CopyFrom(const Grid* grid) {
-//     m_begin;
-//     //-------------------------------------------------------------------------
-//     this->ForestGrid::CopyFrom(grid);
-//     // copy the field mapping
-//     for (auto iter = grid->FieldBegin(); iter != grid->FieldEnd(); iter++) {
-//         string name   = iter->first;
-//         Field* fid    = iter->second;
-//         fields_[name] = fid;
-//     }
-//     // copy the profiler
-//     prof_ = grid->profiler();
-//     //-------------------------------------------------------------------------
-//     m_end;
-// }
 
 /**
  * @brief Destroy the Grid, frees all the blocks and the fields contained (if not done)
@@ -92,7 +71,8 @@ Grid::~Grid() {
     DestroyMeshGhost();
     // destroy the remaining blocks
     if (is_connect_owned_) {
-        p8est_iterate(p4est_forest_, nullptr, nullptr, cback_DestroyBlock, nullptr, nullptr, nullptr);
+        p8est_iter_volume_t callback_destroy = get_cback_DestroyBlock(this->block_type());
+        p8est_iterate(p4est_forest_, nullptr, nullptr, callback_destroy, nullptr, nullptr, nullptr);
     }
     //-------------------------------------------------------------------------
     m_end;
@@ -163,8 +143,6 @@ size_t Grid::LocalMemSize() const {
 
     memsize += sizeof(fields_);
     memsize += sizeof(prof_);
-    // memsize += ghost_->LocalMemSize();
-    // memsize += interp_->LocalMemSize();
     for (const auto fid : fields_) {
         memsize += p4est_forest_->local_num_quadrants * (M_N * M_N * M_N) * fid.second->lda() * sizeof(real_t);
     }
@@ -390,16 +368,6 @@ void Grid::Refine(Field* field) {
     m_assert(IsAField(field), "the field must already exist on the grid!");
     m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // get the ghost length
-    const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // compute the ghost needed by the interpolation of every other field in the grid
-    for (auto fid : fields_) {
-        Field* cur_field = fid.second;
-        if (!cur_field->is_temp()) {
-            GhostPull(cur_field, ghost_len);
-        }
-    }
-
     AdaptMagic(field, nullptr, nullptr, &cback_StatusCheck, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
@@ -415,18 +383,7 @@ void Grid::Refine(Field* field) {
 void Grid::Coarsen(Field* field) {
     m_begin;
     m_assert(IsAField(field), "the field must already exist on the grid!");
-    // m_assert(!recursive_adapt(), "we cannot refine recursivelly here");
     //-------------------------------------------------------------------------
-    // // get the ghost length
-    // const bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
-    // // compute the ghost needed by the interpolation of every other field in the grid
-    // for (auto* fid : fields_) {
-    //     Field* cur_field = fid.second;
-    //     if (!cur_field->is_temp()) {
-    //         GhostPull(cur_field, ghost_len);
-    //     }
-    // }
-
     AdaptMagic(field, nullptr, &cback_StatusCheck, nullptr, nullptr, &cback_UpdateDependency, nullptr);
     //-------------------------------------------------------------------------
     m_end;
@@ -523,7 +480,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
     m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
-    // m_assert(!(recursive_adapt() && interp_fct == &cback_UpdateDependency), "we cannot use the update dependency in a recursive mode");
+    // m_assert(!(recursive_adapt() && interp_fct == get_cback_UpdateDependency(block_type_), "we cannot use the update dependency in a recursive mode");
     //-------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
     //................................................
@@ -580,7 +537,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_assert(!field_detail->is_temp(), "The criterion field cannot be temporary");
             // ghost the dimension 0
             m_profStart(prof_, "ghost for criterion");
-            
+
             // get the length
             bidx_t ghost_len[2] = {interp_->nghost_front(), interp_->nghost_back()};
             GhostPull_SetLength(field_detail, ghost_len);
@@ -793,10 +750,10 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert(cback_criterion_ptr_ == nullptr, "the pointer `cback_criterion_ptr` must be  nullptr");
     m_assert(cback_interpolate_ptr_ == nullptr, "the pointer `cback_interpolate_ptr` must be  nullptr");
     m_assert(p4est_forest_->user_pointer == nullptr, "we must reset the user_pointer to nullptr");
-    const level_t min_level   = this->MinLevel();
-    const level_t max_level   = this->MaxLevel();
+    const level_t   min_level = this->MinLevel();
+    const level_t   max_level = this->MaxLevel();
     const MemLayout block_layout(M_LAYOUT_BLOCK, M_GS, M_N);
-    const real_t  mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
+    const real_t    mem_per_dim = p4est_forest_->global_num_quadrants * block_layout.n_elem * sizeof(real_t) / 1.0e+9;
 
     // m_log_level_minus;
     m_log("--> grid adaptation done: now %ld blocks (%.2e Gb/dim) on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, mem_per_dim, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
