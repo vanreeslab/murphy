@@ -108,6 +108,10 @@ void TwoLevelConvWeno::Run() {
         SetValue init(lambda_initcond);
         init(&grid, &test);
 
+        // need to ghost
+        const bidx_t ghost_len[2] = {grid.interp()->nghost_front(), grid.interp()->nghost_back()};
+        grid.GhostPull(&test, ghost_len);
+
         // we need to adapt the grid, coarsen one block
         if (adapt_) {
             list<Patch> patch_list;
