@@ -27,6 +27,7 @@
 class Grid : public ForestGrid {
    protected:
     std::map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::map<std::string, lambda_i3_t<real_t,lda_t> > expr_; //!< map of every expression registered to this grid (the key is the field name, `field->name()`)
 
     Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -35,17 +36,14 @@ class Grid : public ForestGrid {
     bool   recursive_adapt_   = false;   //!< recursive adaptation or not
     real_t rtol_              = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_              = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
-    lid_t  n_quad_to_refine_  = 0;
-    lid_t  n_quad_to_coarsen_ = 0;
+    lid_t  n_quad_to_refine_  = 0; //!< number of quadrant going to be refined
+    lid_t  n_quad_to_coarsen_ = 0; //!< number of quadrant going to be coarsened
 
-    level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the mesh
-    level_t level_limit_min_ = 0;                //!< min level of a quadrant
+    level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the grind
+    level_t level_limit_min_ = 0;                //!< min level of a quadrant in the grid
 
     void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
-
-    // MPI_Win neighbor_status_window_ = MPI_WIN_NULL;  //!< window to access the status of ghost blocks
-    // short*  neighbor_status_        = nullptr;       //!< status of every block: true = coarsen, false = do not coarsen
 
    public:
     explicit Grid();

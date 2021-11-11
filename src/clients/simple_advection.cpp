@@ -11,7 +11,7 @@
 using std::string;
 using std::to_string;
 
-#define M_DIFF_ONLY 1
+#define M_DIFF_ONLY 0
 
 // ring
 static const lda_t  ring_normal    = 2;
@@ -206,7 +206,7 @@ void SimpleAdvection::Run() {
                                                     m_max(grid_->interp()->nghost_back(), 3)};
                 // SetValue     set_velocity(lambda_velocity, ghost_len_interp);
                 // set_velocity(grid_, vel_);
-                grid_->SetExpr(vel_,lambda_velocity);
+                // grid_->SetExpr(vel_,lambda_velocity);
                 m_assert(vel_->ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
                 
                 m_profStop(prof_, "set velocity");

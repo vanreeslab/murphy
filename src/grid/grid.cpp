@@ -200,13 +200,20 @@ void Grid::AddField(Field* field) {
     m_end;
 }
 
+/**
+ * @brief Store an analytical expression on the field (by copy!)
+ * 
+ * @param field the pointer of the field associated with the expression
+ * @param expr the expression ot be set
+ */
 void Grid::SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr) {
     m_begin;
     m_assert(field->is_expr(), "The field must be an expression here");
     //--------------------------------------------------------------------------
     // the field might be existing but we need to overwrite it (if after adapt)
     // add the field
-    fields_[field->name()] = field;
+    expr_[field->name()] = expr; // copy the expression
+    fields_[field->name()] = field; // copy the pointer to the field
     // allocate the field on every block
     DoOpTree(nullptr, &GridBlock::SetExpr, this, field, expr);
     m_verb("field %s has been added to the grid", field->name().c_str());
@@ -511,15 +518,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_assert((field_detail == nullptr) || (patches == nullptr), "you cannot give both a field for detail computation and a patch list");
     //--------------------------------------------------------------------------
     m_profStart(prof_, "adaptation");
-    //................................................
-    // pre-assigne the profiling in case every cpu doesn't enter it
-    // m_profInitLeave(prof_, "criterion detail");
-    // m_profInitLeave(prof_, "patch");
-    // m_profInitLeave(prof_, "solve dependency");
-    // m_profInitLeave(prof_, "smooth jump");
 
-    // inform we start the mess
-    // string msg = "grid adaptation started... (recursive = %d, ";
+    //..........................................................................
     string msg = "grid";
     if (coarsen_cback != nullptr && refine_cback != nullptr) {
         msg += " adaptation";
@@ -538,7 +538,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     msg += ") -> %d fields";
     m_log(msg.c_str(), recursive_adapt(), fields_.size());
 
-    //................................................
+    //..........................................................................
     // store the ptrs and the grid
     cback_criterion_ptr_        = coarseref_cback_ptr;
     cback_interpolate_ptr_      = interpolate_ptr;
@@ -549,7 +549,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     DoOpMesh(nullptr, &GridBlock::StatusReset, this);
     m_profStop(prof_, "reset");
 
-    //................................................
+    //..........................................................................
     // coarsening, need to have the 8 children on the same rank
     iter_t   iteration              = 0;
     iblock_t global_n_quad_to_adapt = 0;
@@ -567,7 +567,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_log("--> iteration on a grid with %ld blocks on %ld trees using %d ranks and %d threads (level from %d to %d)", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads(), min_level, max_level);
         }
 #endif
-
         //......................................................................
         // get the desired status
         if (!(field_detail == nullptr)) {
@@ -616,6 +615,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             DoOpMesh(nullptr, &GridBlock::UpdateStatusFromPatches, this, interp_, patches);
             m_profStop(prof_, "patch");
         }
+
         //......................................................................
 #ifndef NDEBUG
         m_profStart(prof_, "assert rtol");
@@ -663,14 +663,14 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
             m_profStop(prof_, "update status");
         }
 
-        //................................................
+        //......................................................................
         // after this point, we cannot access the old blocks anymore, p4est will destroy the access.
         // we still save them as dependencies but all the rest is gone.
         m_profStart(prof_, "destroy mesh and ghost");
         DestroyMeshGhost();
         m_profStop(prof_, "destroy mesh and ghost");
 
-        //................................................
+        //......................................................................
         // reset the adapt counter, it will be updated in the interpolate fct
         n_quad_to_refine_  = 0;
         n_quad_to_coarsen_ = 0;
@@ -708,7 +708,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         m_profStop(prof_, "compute nblocks");
 #endif
 
-        //................................................
+        //......................................................................
         // solve the dependencies on the grid
         // warn the user that we do not interpolate a temporary field
         for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
@@ -718,31 +718,30 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "solve dependency");
 
-        //................................................
-        // update the rank partitioning and check for new block to change
+        //......................................................................
+        // update the partitioning and check for new block to change
         m_profStart(prof_, "partition init");
         Partitioner partition(&fields_, this, true);
         m_profStop(prof_, "partition init");
         m_profStart(prof_, "partition comm");
         partition.SendRecv(&fields_, M_FORWARD);
-        // partition.Start(&fields_, M_FORWARD);
-        // partition.End(&fields_, M_FORWARD);
         m_profStop(prof_, "partition comm");
 
-        //................................................
+        //......................................................................
         // create a new ghost and mesh as the partioning is done
         m_profStart(prof_, "setup mesh and ghost");
         SetupMeshGhost();
         m_profStop(prof_, "setup mesh and ghost");
 
-        //................................................
-        // solve the jump in resolution
+        //......................................................................
+        // solve the jump in resolution: we need to smooth now
+        // it cannot be done earlier because we need the new ghost structure
+        // which comes after the partitioning -> partitioning must send the GP
         m_profStart(prof_, "update status");
         // get to know the status of my neighbors
         ghost_->SyncStatusInit();
         ghost_->SyncStatusFill();
         ghost_->SyncStatusUpdate();
-        // ghost_->SyncStatusFinalize();
         m_profStop(prof_, "update status");
 
         // solve resolution jump if needed
@@ -755,9 +754,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         ghost_->SyncStatusFinalize();
         m_profStop(prof_, "finalize status");
 
-        //................................................
+        //......................................................................
         // sum over the ranks and see if we keep going
-
         m_profStart(prof_, "compute nblocks");
 #ifdef M_MPI_AGGRESSIVE
         MPI_Wait(&n_adapt_request, MPI_STATUS_IGNORE);
@@ -774,6 +772,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         m_log("we have coarsened %d blocks and refined %d blocks -> %d new blocks", global_n_adapt[0], global_n_adapt[1], global_n_adapt[0] / 8 + 8 * global_n_adapt[1]);
         m_profStop(prof_, "compute nblocks");
 
+        //......................................................................
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
             for (auto fid : fields_) {
@@ -800,7 +799,16 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         ++iteration;
     } while (global_n_quad_to_adapt > 0 && recursive_adapt() && iteration < P8EST_QMAXLEVEL);
 
-    //................................................
+    //..........................................................................
+    // reset the analytical expression
+    m_verb("resetting the analytical expression");
+    for (auto expr_it : expr_) {
+        string field_name = expr_it.first;
+        m_log("field name = %s",field_name.c_str());
+        DoOpTree(nullptr, &GridBlock::SetExpr, this, fields_[field_name], expr_it.second);
+    }
+
+    //..........................................................................
     // reset the forest pointer
     cback_criterion_ptr_        = nullptr;
     cback_interpolate_ptr_      = nullptr;

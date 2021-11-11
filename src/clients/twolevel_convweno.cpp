@@ -130,7 +130,7 @@ void TwoLevelConvWeno::Run() {
             block->data(fid, 1)(i0, i1, i2) = rand_vel[1];
             block->data(fid, 2)(i0, i1, i2) = rand_vel[2];
         };
-        const bidx_t ghost_len[2] = {3, 3};
+        // const bidx_t ghost_len[2] = {3, 3};
         SetValue     vel_init(lambda_vel, ghost_len);
         vel_init(&grid, &vel);
         
