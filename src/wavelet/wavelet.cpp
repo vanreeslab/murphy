@@ -93,7 +93,8 @@ void Wavelet::DoMagic_(const level_t dlvl, const bool force_copy, const bidx_t s
     // get the shifted memory for the source
     const real_t* __restrict src_ptr = data_src->ptr(shift[0], shift[1], shift[2]);
     ConstMemData sdata(*data_src, src_ptr);
-    MemSpan shifted_sspan(span_src, shift);
+    const bidx_t span_shift[2][3] = {{shift[0],shift[1],shift[2]},{shift[0],shift[1],shift[2]}};
+    MemSpan shifted_sspan(span_src, span_shift);
 
     // get the interpolation context
     InterpCtx ctx(alpha, &shifted_sspan, &sdata, span_trg, data_trg);

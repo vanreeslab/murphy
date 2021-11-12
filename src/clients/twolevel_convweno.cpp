@@ -10,6 +10,7 @@
 #include "grid/grid.hpp"
 #include "operator/advection.hpp"
 #include "operator/error.hpp"
+#include "operator/xblas.hpp"
 
 using std::list;
 using std::string;
@@ -113,6 +114,13 @@ void TwoLevelConvWeno::Run() {
                                      m_max(3, grid.interp()->nghost_back())};
         grid.GhostPull(&test, ghost_len);
 
+        // compute the moments
+        real_t  moment0    = 0.0;
+        real_t  moment1[3] = {0.0, 0.0, 0.0};
+        BMoment moment;
+        moment(&grid, &test, &moment0, moment1);
+        m_log("moments are %e",moment0);
+
         // we need to adapt the grid, coarsen one block
         if (adapt_) {
             list<Patch> patch_list;
@@ -122,6 +130,14 @@ void TwoLevelConvWeno::Run() {
             patch_list.push_back(Patch(origin, length, il));
             grid.Adapt(&patch_list);
         }
+
+        grid.GhostPull(&test, ghost_len);
+
+        real_t  adapted_moment0    = 0.0;
+        real_t  adapted_moment1[3] = {0.0, 0.0, 0.0};
+        moment(&grid, &test, &adapted_moment0, adapted_moment1);
+        m_log("error moment after adaptation = %e",adapted_moment0-moment0);
+
 
         // velocity
         Field vel("vel", 3);

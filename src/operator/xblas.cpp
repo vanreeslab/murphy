@@ -136,28 +136,43 @@ void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, 
     real_t lmoment0    = 0.0;
     real_t lmoment1[3] = {0.0, 0.0, 0.0};
 
+    bidx_t limits_front[3] = {span_.start[0], span_.start[1], span_.start[2]};
+    bidx_t limits_back[3]  = {span_.end[0], span_.end[1], span_.end[2]};
+
     // let's go!
     auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
         // get the position
         real_t origin[3];
         block->pos(i0, i1, i2, origin);
-        // m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
+        
+        // get the local data
+        const short_t id_edge = ((i0 == limits_front[0]) || (i0 == limits_back[0])) +
+                                ((i1 == limits_front[1]) || (i1 == limits_back[1])) +
+                                ((i2 == limits_front[2]) || (i2 == limits_back[2]));
 
-        constexpr real_t coef = 0.125;
-        const LocalData  ldata(&data, i0, i1, i2);
+        const real_t coef  = pow(0.5, id_edge);
+        const real_t value = data(i0, i1, i2);
 
-#pragma unroll 8
-        for (lda_t id = 0; id < 8; ++id) {
-            const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
-            const real_t value     = ldata(is_dim[0], is_dim[1], is_dim[2]);
+        lmoment0 += coef * value;
+        lmoment1[0] += coef * value * (origin[0]);
+        lmoment1[1] += coef * value * (origin[1]);
+        lmoment1[2] += coef * value * (origin[2]);
 
-            lmoment0 += coef * value;
-            lmoment1[0] += coef * value * (origin[0] + h[0] * is_dim[0]);
-            lmoment1[1] += coef * value * (origin[1] + h[1] * is_dim[1]);
-            lmoment1[2] += coef * value * (origin[2] + h[2] * is_dim[2]);
-        }
+        // #pragma unroll 8
+        //         for (lda_t id = 0; id < 8; ++id) {
+        //             const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
+        //             const real_t value     = ldata(is_dim[0], is_dim[1], is_dim[2]);
+
+        //             lmoment0 += coef * value;
+        //             lmoment1[0] += coef * value * (origin[0] + h[0] * is_dim[0]);
+        //             lmoment1[1] += coef * value * (origin[1] + h[1] * is_dim[1]);
+        //             lmoment1[2] += coef * value * (origin[2] + h[2] * is_dim[2]);
+        //         }
     };
-    for_loop(&op, span_);
+    // create a new span that will take 1 GP
+    const bidx_t span_shift[2][3] = {{0, 0, 0}, {-1, -1, -1}};
+    MemSpan      moment_span(&span_, span_shift);
+    for_loop(&op, moment_span);
 
     const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
     moments[0] += vol * lmoment0;

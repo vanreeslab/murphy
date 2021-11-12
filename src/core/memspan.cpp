@@ -110,12 +110,12 @@ MemSpan::MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept {
 /**
  * @brief Construct a new MemSpan from an old Span and substract a shift from it
  */
-MemSpan::MemSpan(const MemSpan* old_span, const bidx_t shift[3]) noexcept {
+MemSpan::MemSpan(const MemSpan* old_span, const bidx_t shift[2][3]) noexcept {
     //--------------------------------------------------------------------------
 #pragma unroll 3
     for (lda_t ida = 0; ida < 3; ++ida) {
-        start[ida] = old_span->start[ida] - shift[ida];
-        end[ida]   = old_span->end[ida] - shift[ida];
+        start[ida] = old_span->start[ida] - shift[0][ida];
+        end[ida]   = old_span->end[ida] - shift[1][ida];
     }
     //--------------------------------------------------------------------------
 }
