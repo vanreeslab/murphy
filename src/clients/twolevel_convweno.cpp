@@ -30,9 +30,10 @@ void TwoLevelConvWeno::InitParam(ParserArguments* param) {
     fix_weno_ = param->fix_weno;
 
     // get the level
-    level_start_ = param->init_lvl;
     level_min_   = param->level_min;
     level_max_   = param->level_max;
+
+    nu_ = (param->reynolds < 0.0) ? 0.0 : ((1.0) / param->reynolds);
     //-------------------------------------------------------------------------
 }
 
@@ -75,33 +76,52 @@ void TwoLevelConvWeno::Run() {
         // call the function
         return (-rand_vel[0]) * (4.0 * M_PI / ((real_t)grid_len[0])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[0]) * pos[0]) +
                (-rand_vel[1]) * (4.0 * M_PI / ((real_t)grid_len[1])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[1]) * pos[1]) +
-               (-rand_vel[2]) * (4.0 * M_PI / ((real_t)grid_len[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[2]) * pos[2]);
+               (-rand_vel[2]) * (4.0 * M_PI / ((real_t)grid_len[2])) * cos(2.0 * M_PI * 2.0 / ((real_t)grid_len[2]) * pos[2]) +
+                (-nu_) *(
+                    pow(4.0 * M_PI / ((real_t)grid_len[0]),2)* sin(4.0 * M_PI / ((real_t)grid_len[0]) * pos[0])+
+                    pow(4.0 * M_PI / ((real_t)grid_len[1]),2)* sin(4.0 * M_PI / ((real_t)grid_len[1]) * pos[1])+
+                    pow(4.0 * M_PI / ((real_t)grid_len[2]),2)* sin(4.0 * M_PI / ((real_t)grid_len[2]) * pos[2]));
     };
 
     //......................................................................
-    for(level_t il=level_min_; il< (level_max_-1); ++il){
+    for(level_t il=level_min_; il<= (level_max_-1); ++il){
         m_log("================================================================================");
-        m_log("levels = %d and %d", il,il+1);
+        m_log("levels = %d and %d", il, il + 1);
         //......................................................................
-        // create a grid
-        bool  period[3]   = {true, true, true};
-        Grid  grid(il, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
-        // adapt
+        // create a uniform grid at level L+1
+        bool period[3] = {true, true, true};
+        Grid grid(il + 1, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
+        // // adapt
+        // if (adapt_) {
+        //     list<Patch> patch_list;
+        //     // upgrade one of the block
+        //     real_t origin[3] = {0.0, 0.0, 0.0};
+        //     real_t length[3] = {1.0, 1.0, 1.0};
+        //     patch_list.push_back(Patch(origin, length, il + 1));
+        //     grid.Adapt(&patch_list);
+        // }
+        //......................................................................
+        // create the scalar field and adapt if needed
+        Field test("scalar", 1);
+        grid.AddField(&test);
+
+        SetValue init(lambda_initcond);
+        init(&grid, &test);
+
+        // need to ghost
+        const bidx_t ghost_len[2] = {m_max(3, grid.interp()->nghost_front()),
+                                     m_max(3, grid.interp()->nghost_back())};
+        grid.GhostPull(&test, ghost_len);
+
+        // we need to adapt the grid, coarsen one block
         if (adapt_) {
             list<Patch> patch_list;
             // upgrade one of the block
             real_t origin[3] = {0.0, 0.0, 0.0};
             real_t length[3] = {1.0, 1.0, 1.0};
-            patch_list.push_back(Patch(origin, length, il + 1));
+            patch_list.push_back(Patch(origin, length, il));
             grid.Adapt(&patch_list);
         }
-        //......................................................................
-        // create the scalar field and adapt if needed
-        Field test("scalar", 1);
-        grid.AddField(&test);
-        
-        SetValue init(lambda_initcond);
-        init(&grid, &test);
 
         // velocity
         Field vel("vel", 3);
@@ -111,7 +131,7 @@ void TwoLevelConvWeno::Run() {
             block->data(fid, 1)(i0, i1, i2) = rand_vel[1];
             block->data(fid, 2)(i0, i1, i2) = rand_vel[2];
         };
-        const bidx_t ghost_len[2] = {3, 3};
+        // const bidx_t ghost_len[2] = {3, 3};
         SetValue     vel_init(lambda_vel, ghost_len);
         vel_init(&grid, &vel);
         
@@ -133,16 +153,16 @@ void TwoLevelConvWeno::Run() {
         const long    global_num_quad = grid.global_num_quadrants();
 
         {
-            const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+            const string id_name = "a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT)+ "_nu" + to_string(nu_);
             grid.DumpLevels(il, "data", id_name);
         }
 
         {  // WENO 3
             if (fix_weno_) {
-                Advection<M_CONS, 3> adv(&vel);
+                Advection<M_CONS, 3> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             } else {
-                Advection<M_WENO_Z, 3> adv(&vel);
+                Advection<M_WENO_Z, 3> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             }
             m_log("error weno 3");
@@ -153,7 +173,7 @@ void TwoLevelConvWeno::Run() {
             error.Norms(&grid, &dtest, &lambda_sol_rhs, &err2, &erri);
 
             const string scheme_name = (fix_weno_) ? "cons3" : "weno3";
-            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_nu" + to_string(nu_);
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";
                 FILE*  file_diag = fopen(fname.c_str(), "a+");
@@ -168,10 +188,10 @@ void TwoLevelConvWeno::Run() {
         }
         {  // WENO 5
             if (fix_weno_) {
-                Advection<M_CONS, 5> adv(&vel);
+                Advection<M_CONS, 5> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             } else {
-                Advection<M_WENO_Z, 5> adv(&vel);
+                Advection<M_WENO_Z, 5> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
             }
             // now, we need to check
@@ -180,7 +200,7 @@ void TwoLevelConvWeno::Run() {
             error.Norms(&grid, &dtest, &lambda_sol_rhs, &err2, &erri);
 
             const string scheme_name = (fix_weno_) ? "cons5" : "weno5";
-            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT);
+            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_nu" + to_string(nu_);
 
             if (rank == 0) {
                 string fname     = "data/conv_" + id_name + ".data";

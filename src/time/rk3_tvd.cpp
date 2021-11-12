@@ -134,27 +134,50 @@ void RK3_TVD::DoDt(const real_t dt, real_t* time) const {
  * 
  * @return real_t 
  */
-real_t RK3_TVD::ComputeDt(const RKFunctor*  rhs, const Field*  velocity) const {
+real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const Field* velocity, const real_t nu) const {
     m_begin;
     //-------------------------------------------------------------------------
-    // get the max velocity and the finest h
+    // get the max velocity
+    m_profStart(prof_, "u max");
     BMax   getmax;
     real_t max_vel = getmax(grid_, velocity);
-    real_t h_fine  = grid_->FinestH();
+    m_profStop(prof_, "u max");
+
+    real_t cfl_dt = ComputeDt(rhs, max_vel,nu);
+    //-------------------------------------------------------------------------
+    m_end;
+    return cfl_dt;
+}
+
+/**
+ * @brief compute the permited time-step
+ * 
+ * @return real_t 
+ */
+real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const real_t max_vel, const real_t nu) const {
+    m_begin;
+    //-------------------------------------------------------------------------
+    // get the finest h
+    m_profStart(prof_, "h max");
+    real_t h_fine = grid_->FinestH();
+    m_profStop(prof_, "h max");
     m_assert(h_fine > 0.0, "the finest h = %e must be positive", h_fine);
     m_assert(max_vel >= 0.0, "the velocity must be >=0 instead of %e", max_vel);
 
     // know the limits from the rhs directly
     real_t cfl_limit = m_min(rhs->cfl_rk3(), cfl_max_);  // CFL = max_vel * dt / h
-    // real_t rdiff_limit = 0.8 * rhs->rdiff(); // rdiff limit
-    // get the finest h in the grid
+    real_t r_limit   = rhs->rdiff_rk3();                 // r = nu * dt / h^2
 
     // get the fastest velocity
     real_t cfl_dt = cfl_limit * h_fine / max_vel;
+    real_t r_dt   = r_limit * (h_fine * h_fine) / nu;
     m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
+    m_assert(r_dt > 0.0, "the r dt = %e must be positive", r_dt);
 
-    m_log("RK3-TVD: dt = %e, using h = %e and CFL limit = %e and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
+    m_verb("RK3-TVD: advection dt = %e, using h = %e, CFL limit = %e, and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
+    m_verb("RK3-TVD: diffusion dt = %e, using h = %e, r limit = %e, and nu = %e", r_dt, h_fine, r_limit, nu);
+    m_log("RK3-TVD: final dt = %e -> min(%e , %e)",m_min(cfl_dt, r_dt),cfl_dt,r_dt);
     //-------------------------------------------------------------------------
     m_end;
-    return cfl_dt;
+    return m_min(cfl_dt, r_dt);
 }

@@ -1,4 +1,5 @@
 #include "cartblock.hpp"
+#include "core/exprdata.hpp"
 
 using std::string;
 
@@ -41,6 +42,7 @@ CartBlock::~CartBlock() {
  * @return MemData the MemData corresponding to the origin of the block, i.e. (0,0,0), for the given dimension.
  */
 MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
+    m_assert(!fid->is_expr(),"unable to perform that action on an expression");
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
@@ -52,7 +54,8 @@ MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     MemData data_out(&it->second, &myself, ida);
 #else
-    MemData data_out(&mem_map_[fid->name()],&myself, ida);
+    MemPtr       ptr = mem_map_.at(fid->name());
+    MemData      data_out(&ptr, &myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
@@ -65,6 +68,7 @@ MemData CartBlock::data(const Field* fid, const lda_t ida) const noexcept {
  * @return ConstMemData the ConstMemData corresponding to the origin of the block, i.e. (0,0,0), for the given dimension.
  */
 ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexcept {
+    m_assert(!fid->is_expr(),"unable to perform that action on an expression");
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
@@ -76,12 +80,43 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
     m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
     ConstMemData data_out(&it->second, &myself, ida);
 #else
-    ConstMemData data_out(&mem_map_[fid->name()], &myself, ida);
+    MemPtr       ptr = mem_map_.at(fid->name());
+    ConstMemData data_out(&ptr, &myself, ida);
 #endif
     return data_out;
     //-------------------------------------------------------------------------
 }
 
+/**
+ * @brief create a Data<const real_t>* that has the correct type given the field
+ * 
+ * @warning you MUST free it once done with it
+ * 
+ * @param fid 
+ * @param ida 
+ * @return Data<const real_t>* 
+ */
+Data<const real_t>* CartBlock::ConstDataPtr(const Field* const fid, const lda_t ida) const noexcept {
+    //-------------------------------------------------------------------------
+    if (fid->is_expr()) {
+        // we could use the at to be faster but the find returns the correct address, which is nice
+        auto it = expr_map_.find(fid->name());
+        m_assert(it != expr_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+        return new ExprData(&it->second, ida);
+    } else {
+        MemLayout myself = BlockLayout();
+#ifndef NDEBUG
+        // check the field validity
+        auto it = mem_map_.find(fid->name());
+        m_assert(it != mem_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
+        return new ConstMemData(&it->second, &myself, ida);
+#else
+        MemPtr ptr = mem_map_.at(fid->name());
+        return new ConstMemData(&ptr, &myself, ida);
+#endif
+    }
+    //--------------------------------------------------------------------
+}
 
 /**
  * @brief returns the raw pointer corresponding to a field
@@ -96,6 +131,7 @@ ConstMemData CartBlock::ConstData(const Field* fid, const lda_t ida) const noexc
  * 
  */
 real_t* __restrict CartBlock::RawPointer(const Field* fid, const lda_t ida) const noexcept { 
+    m_assert(!fid->is_expr(),"unable to perform that action on an expression");
     // warning, from cpp reference
     // Non-throwing functions are permitted to call potentially-throwing functions.
     // Whenever an exception is thrown and the search for a handler encounters the outermost block of a non-throwing function, the function std::terminate or std::unexpected (until C++17) is called
@@ -115,6 +151,7 @@ real_t* __restrict CartBlock::RawPointer(const Field* fid, const lda_t ida) cons
  * @param fid the pointer to the field to add
  */
 void CartBlock::AddField(const Field* fid) {
+    m_assert(!fid->is_expr(),"unable to perform that action on an expression");
     //-------------------------------------------------------------------------
     string name = fid->name();
     // try to find the field
@@ -145,8 +182,10 @@ void CartBlock::AddField(const Field* fid) {
 void CartBlock::AddFields(const std::map<string, Field*>* fields) {
     //-------------------------------------------------------------------------
     // remember if I need to free the memory:
-    for (const auto fid : (*fields) ) {
-        AddField(fid.second);
+    for (const auto fid : (*fields)) {
+        if (!fid.second->is_expr()) {
+            AddField(fid.second);
+        }
     }
     //-------------------------------------------------------------------------
 }
@@ -182,4 +221,16 @@ void CartBlock::DeleteField(const Field* fid) {
         m_verb("no field <%s> in the block", name.c_str());
     }
     //-------------------------------------------------------------------------
+}
+
+void CartBlock::SetExpr(const Field* field, const lambda_i3_t<real_t, lda_t> expr) {
+    m_assert(field->is_expr(), "unable to perform that action on a normal field");
+    //-------------------------------------------------------------------------
+    string name = field->name();
+    // try to find the field
+    auto it = expr_map_.find(name);
+    // create an empty pointer, a copy is happening here!
+    expr_map_[name] = expr;
+    m_verb("adding field <%s> to the block (dim = %d)", name.c_str(), field->lda());
+    //--------------------------------------------------------------------------
 }

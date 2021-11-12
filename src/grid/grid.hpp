@@ -27,6 +27,7 @@
 class Grid : public ForestGrid {
    protected:
     std::map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
+    std::map<std::string, lambda_i3_t<real_t,lda_t> > expr_; //!< map of every expression registered to this grid (the key is the field name, `field->name()`)
 
     Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -35,17 +36,14 @@ class Grid : public ForestGrid {
     bool   recursive_adapt_   = false;   //!< recursive adaptation or not
     real_t rtol_              = 1.0e-2;  //!< refinement tolerance, see @ref SetTol()
     real_t ctol_              = 1.0e-4;  //!< coarsening tolerance, see @ref SetTol()
-    lid_t  n_quad_to_refine_  = 0;
-    lid_t  n_quad_to_coarsen_ = 0;
+    lid_t  n_quad_to_refine_  = 0; //!< number of quadrant going to be refined
+    lid_t  n_quad_to_coarsen_ = 0; //!< number of quadrant going to be coarsened
 
-    level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the mesh
-    level_t level_limit_min_ = 0;                //!< min level of a quadrant
+    level_t level_limit_max_ = P8EST_QMAXLEVEL;  //!< max level of a quadrant in the grind
+    level_t level_limit_min_ = 0;                //!< min level of a quadrant in the grid
 
     void* cback_criterion_ptr_   = nullptr;  //!< temporary pointer to be used in the criterion callback functions
     void* cback_interpolate_ptr_ = nullptr;  //!< temporary pointer to be used in the interpolation callback functions
-
-    // MPI_Win neighbor_status_window_ = MPI_WIN_NULL;  //!< window to access the status of ghost blocks
-    // short*  neighbor_status_        = nullptr;       //!< status of every block: true = coarsen, false = do not coarsen
 
    public:
     explicit Grid();
@@ -83,6 +81,8 @@ class Grid : public ForestGrid {
     void AddField(Field* field);
     void DeleteField(const Field* field);
     void ResetFields(const std::map<std::string, Field*>* fields);
+
+    void SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr);
 
     /**@}*/
 
@@ -132,16 +132,17 @@ class Grid : public ForestGrid {
     void SetTol(const real_t refine_tol, const real_t coarsen_tol);
     void SetRecursiveAdapt(const bool recursive_adapt) { recursive_adapt_ = recursive_adapt; }
 
-    void Refine(Field* field);
-    void Coarsen(Field* field);
     void StoreDetails(Field* criterion, Field* details);
     void MaxMinDetails(Field* criterion, real_t maxmin[2]);
-    void DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
-                             const short_t n_cat, const real_t max_category);
+    // void DistributionDetails(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+    //                          const short_t n_cat, const real_t max_category);
+    // void DistributionDetailsInfiniteNorm(const iter_t id, const std::string folder, const std::string suffix, Field* criterion,
+                            //  const short_t n_cat, const real_t max_category);
 
-    void Adapt(Field* field);
-    // void Adapt(Field* field, const setvalue_gridop_t* expr_grid, const setvalue_blockop_t* expr_block);
-    void Adapt(Field* field, const SetValue* expr);
+    void Refine(Field* field, const SetValue* expr = nullptr);
+    void Coarsen(Field* field, const SetValue* expr = nullptr);
+    void Adapt(Field* field, const SetValue* expr = nullptr);
+
     void Adapt(std::list<Patch>* patches);
 
     // void AdaptMagic(Field*  field, list<Patch*  > patches, cback_coarsen_citerion_t coarsen_crit, cback_refine_criterion_t refine_crit, void* criterion_ptr, cback_interpolate_t interp_fct, void* interp_ptr);

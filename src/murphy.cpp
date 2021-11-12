@@ -3,13 +3,14 @@
 
 #include <string>
 
+#include "clients/convergence_weno.hpp"
 #include "clients/debug_lifting.hpp"
 #include "clients/epsilon_test.hpp"
 #include "clients/flow_abc.hpp"
 #include "clients/navier_stokes.hpp"
 #include "clients/simple_advection.hpp"
-#include "clients/convergence_weno.hpp"
 #include "clients/twolevel_convweno.hpp"
+#include "clients/weak_scalability.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -37,29 +38,44 @@ void WriteInfo(int argc, char** argv) {
         fprintf(file, "\tM_GS = %d\n", M_GS);
         fprintf(file, "\tM_WAVELET_N = %d\n", M_WAVELET_N);
         fprintf(file, "\tM_WAVELET_NT = %d\n", M_WAVELET_NT);
+#ifdef M_MPI_AGGRESSIVE
+        fprintf(file, "\tM_MPI_AGGRESSIVE ? yes\n");
+#endif
+#ifndef NDEBUG
+        fprintf(file, "\tNDEBUG ? no\n");
+#endif
         fprintf(file, "- argument list:\n");
         for (int i = 0; i < argc; ++i) {
             fprintf(file, "\t%s\n", argv[i]);
         }
         fclose(file);
     }
+    m_log("-------------------------------------------------------------------");
+    m_log("MURPHY - (c) MIT");
+#ifdef M_MPI_AGGRESSIVE
+    m_log("commit = %s - MPI aggressive", M_GIT_COMMIT);
+#else
+    m_log("commit = %s - MPI non-aggressive", M_GIT_COMMIT);
+#endif
+    m_log("-------------------------------------------------------------------");
 }
 
 TestCase* MurphyInit(int argc, char** argv) {
     //-------------------------------------------------------------------------
     MPI_Init(&argc, &argv);
     MPI_Comm comm = MPI_COMM_WORLD;
-
-    sc_init(comm,0,0,NULL,SC_LP_SILENT);
+    sc_init(comm, 0, 0, NULL, SC_LP_SILENT);
     p4est_init(NULL, SC_LP_SILENT);
 
-    // set some properties on the COMM_WORLD
+#ifdef M_MPI_AGGRESSIVE
+    // set some properties on the COMM_WORLD to be more aggressive
     MPI_Info info;
     MPI_Info_create(&info);
-    MPI_Info_set(info,"mpi_assert_exact_length","true");
-    MPI_Info_set(info,"mpi_assert_allow_overtaking","true");
-    MPI_Comm_set_info(MPI_COMM_WORLD,info);
+    MPI_Info_set(info, "mpi_assert_exact_length", "true");
+    MPI_Info_set(info, "mpi_assert_allow_overtaking", "true");
+    MPI_Comm_set_info(MPI_COMM_WORLD, info);
     MPI_Info_free(&info);
+#endif
 
     // so dome checks for the aligment, the constants etc
     m_assert((M_N % 2) == 0, "the number of points must be odd");
@@ -102,6 +118,10 @@ TestCase* MurphyInit(int argc, char** argv) {
         return testcase;
     } else if (argument.do_2lvl_weno) {
         testcase = new TwoLevelConvWeno();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else if (argument.do_weak_scal) {
+        testcase = new WeakScalability();
         testcase->InitParam(&argument);
         return testcase;
     } else {

@@ -1,0 +1,22 @@
+CXX = CC
+CC = cc
+
+# flags
+CXXFLAGS := -O3 -g -fopenmp
+LDFLAGS := -fopenmp
+
+# in case of trouble with MPI: -DMPI_NONASYNC
+
+# hdf5
+HDF5_INC := ${CRAY_HDF5_PARALLEL_PREFIX}/include
+HDF5_LIB := ${CRAY_HDF5_PARALLEL_PREFIX}/lib
+
+# p4est
+P4EST_INC := /global/homes/t/tgillis/p4est-2.3.2-gcc10.1.0-openmpi4.1.1/include
+P4EST_LIB := /global/homes/t/tgillis/p4est-2.3.2-gcc10.1.0-openmpi4.1.1/lib
+
+
+
+# do not change this line
+OPTS += -DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6
+

@@ -325,7 +325,7 @@ void GridBlock::SyncStatusFill(const qid_t* qid, short_t* const coarsen_vec) {
  * allocate the @ref status_siblings_neighbors_ array, which will be destroyed in the @ref SolveNeighbor function.
  */
 void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status_window) {
-    //---------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     const iblock_t n_coarser = local_parent_.size() + ghost_parent_.size();
     const iblock_t n_finer   = local_children_.size() + local_children_.size();
     const iblock_t n_local_coarser  = local_parent_.size();
@@ -384,7 +384,7 @@ void GridBlock::SyncStatusUpdate(const short_t* const status_vec, MPI_Win status
             ++count;
         }
     }
-    //---------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 }
 
 void GridBlock::SyncStatusFinalize() {
@@ -533,8 +533,6 @@ void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, rea
                               bidx_t* max_blocks, const real_t max_cat, const real_t min_cat, const short_t n_cat) {
     m_assert(criterion->lda() == 1, "field must be a scalar");
     //-------------------------------------------------------------------------
-    // SubBlock block_src(this->gs(), this->stride(), -interp->nghost_front(), M_N + interp->nghost_back());
-
     real_t block_maxmin[2] = {0.0, 0.0};
 
     const MemSpan span_src(-interp->nghost_front(), M_N + interp->nghost_back());
@@ -554,8 +552,6 @@ void GridBlock::MaxMinDetails(const Wavelet* interp, const Field* criterion, rea
 
         // got
         m_assert(n_cat > id_cat && id_cat >= 0, "the cat id = %d must be >=0 and < %d", id_cat, n_cat);
-        // m_assert(log10(block_maxmin[0]) >= pow(10, id_cat * h_cat), "the category id doens't match: %e with h_cat=%e from %e to %e (%d cats)", block_maxmin[0], h_cat, min_cat, max_cat, n_cat);
-        // m_assert(log10(block_maxmin[0]) >= pow(10, (id_cat + 1) * h_cat), "the category id doens't match: %e with h_cat=%e from %e to %e (%d cats)", block_maxmin[0], h_cat, min_cat, max_cat, n_cat);
         max_blocks[id_cat] += 1;
     }
     //--------------------------------------------------------------------------
@@ -619,20 +615,22 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
         for (auto fid = field_start; fid != field_end; ++fid) {
             auto current_field = fid->second;
             // allocate the field on me (has not been done yet)
-            this->AddField(current_field);
-            // refine for every dimension, if the field is not temp
-            if (!current_field->is_temp()) {
-                // check the ghost ability
-                const bidx_t ghost_len[2] = {interp->nghost_front_refine(), interp->nghost_back_refine()};
-                m_assert(current_field->ghost_status(ghost_len), "The field <%s> must have enough valid GP for the refinement - required %d %d, known %d %d", current_field->name().c_str(), ghost_len[0], ghost_len[1], current_field->get_ghost_len(0), current_field->get_ghost_len(1));
-                for (sid_t ida = 0; ida < current_field->lda(); ida++) {
-                    // get the pointers
-                    // interp->Interpolate(-1, shift, &mem_src, root->data(current_field, ida), this, this->data(current_field, ida));
-                    // MemData
-                    const ConstMemData data_src = root->ConstData(current_field, ida);
-                    const MemSpan      span_trg = this->BlockSpan();
-                    const MemData      data_trg = this->data(current_field, ida);
-                    interp->Interpolate(-1, shift, &span_src, &data_src, &span_trg, &data_trg);
+            if (!current_field->is_expr()) {
+                this->AddField(current_field);
+                // refine for every dimension, if the field is not temp
+                if (!current_field->is_temp()) {
+                    // check the ghost ability
+                    const bidx_t ghost_len[2] = {interp->nghost_front_refine(), interp->nghost_back_refine()};
+                    m_assert(current_field->ghost_status(ghost_len), "The field <%s> must have enough valid GP for the refinement - required %d %d, known %d %d", current_field->name().c_str(), ghost_len[0], ghost_len[1], current_field->get_ghost_len(0), current_field->get_ghost_len(1));
+                    for (sid_t ida = 0; ida < current_field->lda(); ida++) {
+                        // get the pointers
+                        // interp->Interpolate(-1, shift, &mem_src, root->data(current_field, ida), this, this->data(current_field, ida));
+                        // MemData
+                        const ConstMemData data_src = root->ConstData(current_field, ida);
+                        const MemSpan      span_trg = this->BlockSpan();
+                        const MemData      data_trg = this->data(current_field, ida);
+                        interp->Interpolate(-1, shift, &span_src, &data_src, &span_trg, &data_trg);
+                    }
                 }
             }
         }
@@ -653,7 +651,9 @@ void GridBlock::SolveDependency(const Wavelet* interp, std::map<std::string, Fie
         for (auto fid = field_start; fid != field_end; ++fid) {
             auto current_field = fid->second;
             // allocate the field on me (has not been done yet)
-            this->AddField(current_field);
+            if (!current_field->is_expr()) {
+                this->AddField(current_field);
+            }
         }
 
         // I am a parent and I need to fillout my children
@@ -808,7 +808,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
             const iblock_t ngh_cum_id = bid_list.back();
             const rank_t   ngh_rank   = rank_list.back();
             const bool     isghost    = (ngh_rank != my_rank);
-            m_verb("reading th list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
+            m_verb("reading the list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
 
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
             real_t sign[3];
@@ -925,6 +925,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
                     gb->Intersect(/* source */ nghq->level, ngh_pos, ngh_hgrid, ngh_len,
                                   /* target */ level(), xyz(), hgrid(), block_ghost_len, block_core_len);  // block_min, block_max);
                     // ask the displacement (will be available later, when completing the call)
+                    m_assert(sizeof(bidx_t) == sizeof(int), "the two sizes must match");
                     MPI_Get(gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_sibling_.push_back(gb);
@@ -948,7 +949,6 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
                     MPI_Get(invert_gb->data_src_ptr(), 1, MPI_AINT, ngh_rank, ngh_cum_id, 1, MPI_AINT, local2disp_window);
                     //#pragma omp critical
                     ghost_parent_reverse_.push_back(invert_gb);
-
                 }
                 //................................................
                 else if (nghq->level > level_) {
@@ -1313,17 +1313,17 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
                 // create the start and end indexes from the current block
                 MemSpan smooth_span = block_span;
                 // bidx_t smooth_start[3], smooth_end[3];
-                for (lda_t ida = 0; ida < 3; ++ida) {
-                    if (sign[ida] > 0.5) {
+                for (lda_t id = 0; id < 3; ++id) {
+                    if (sign[id] > 0.5) {
                         // my ngh assumed 0 details in my block
-                        smooth_span.start[ida] = block_span.end[ida] -interp->ndetail_citerion_extend_front(); 
+                        smooth_span.start[id] = block_span.end[id] -interp->ndetail_citerion_extend_front(); 
                         // the number of my ngh details influencing my values
-                        smooth_span.end[ida] = block_span.end[ida];
-                    } else if (sign[ida] < (-0.5)) {
+                        smooth_span.end[id] = block_span.end[id];
+                    } else if (sign[id] < (-0.5)) {
                         // my ngh assumed 0 details in my block
-                        smooth_span.start[ida] = block_span.start[ida]; 
+                        smooth_span.start[id] = block_span.start[id]; 
                         // the number of my ngh details influencing my values
-                        smooth_span.end[ida] = block_span.start[ida] + interp->ndetail_citerion_extend_back();
+                        smooth_span.end[id] = block_span.start[id] + interp->ndetail_citerion_extend_back();
                     }
                 }
                 m_assert(ghost_len_[0] >= interp->nghost_front_overwrite(), "the ghost length does not support overwrite: %d vs %d", ghost_len_[0], interp->nghost_front_overwrite());

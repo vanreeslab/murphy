@@ -17,6 +17,7 @@ constexpr void face_sign(const bool mask_bool, const iface_t iface, iface_t* fac
     sign[(dir + 2) % 3] += 0.0;
     //-------------------------------------------------------------------------
 }
+
 constexpr void edge_sign(const bool mask_bool, const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
     /*
     the plane convention for the sign variable convention for the sign
@@ -33,8 +34,6 @@ constexpr void edge_sign(const bool mask_bool, const iface_t iedge, iface_t* edg
     const iface_t dir  = (iedge / 4) * mask;                  // this is the direction of the edge
     const iface_t dir1 = static_cast<iface_t>(dir == 0);      // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
     const iface_t dir2 = 2 - static_cast<iface_t>(dir == 2);  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-    // iface_t dir1 = (dir == 0) ? 1 : 0;  // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
-    // iface_t dir2 = (dir == 2) ? 1 : 2;  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
     // store the dir
     (*edge_dir) += mask * dir;
     // update the sign
@@ -43,6 +42,7 @@ constexpr void edge_sign(const bool mask_bool, const iface_t iedge, iface_t* edg
     sign[dir2] += mask * (((iedge % 4) / 2) == 1 ? +1.0 : -1.0);
     //-------------------------------------------------------------------------
 }
+
 constexpr void corner_sign(const bool mask_bool, const iface_t icorner, real_t sign[3]) {
     //-------------------------------------------------------------------------
     const real_t mask = static_cast<real_t>(mask_bool);
@@ -59,21 +59,7 @@ constexpr void corner_sign(const bool mask_bool, const iface_t icorner, real_t s
  * @param sign the sign of the outgoing normal
  */
 static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
-    // m_assert(0 <= ibidule && ibidule < 26, "ibidule must be 0 <= %d < 26", ibidule);
     //-------------------------------------------------------------------------
-    // check depending on the plane, the edge of the corner
-    // if (ibidule < 6) {
-    //     iface_t dir;
-    //     face_sign(ibidule, &dir, sign);
-    //     m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 1, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
-    // } else if (ibidule < 18) {
-    //     iface_t dir;
-    //     edge_sign(ibidule - 6, &dir, sign);
-    //     m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 2, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d, dir = %d)", sign[0], sign[1], sign[2], ibidule, dir);
-    // } else {
-    //     corner_sign(ibidule - 18, sign);
-    //     m_assert(fabs(sign[0]) + fabs(sign[1]) + fabs(sign[2]) == 3, "we cannot have more than 1 nonzero sign: %f %f %f (bidule=%d)", sign[0], sign[1], sign[2], ibidule);
-    // }
     iface_t dir = 0;
     for (iface_t i = 0; i < 3; ++i) {
         sign[i] = 0.0;
@@ -101,10 +87,6 @@ static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
 template <typename T>
 class NeighborBlock : public GhostBlock {
    private:
-    // indexing
-    // bool scale_dir_start_[3];  //!< indicate if we have to scale in a given direction at the start index (faces scale in 1 direction, edges in 2 and )
-    // bool scale_dir_end_[3];    //!< indicate if we have to scale in a given direction at the end index (faces scale in 1 direction, edges in 2 and )
-
     const iface_t ibidule_;  //!< the id of the face, edge or corner that is responsible for this ghostblock
 
     // other block
@@ -132,16 +114,6 @@ class NeighborBlock : public GhostBlock {
                                                                                             cum_block_id_(block_id),
                                                                                             rank_rma_(rank) {
         //---------------------------------------------------------------------
-        // m_assert(this->core() == M_N, "the core = %d should be %d", this->core(), M_N);
-        // m_assert(this->gs(0) == M_GS && this->gs(1) == M_GS, "the gs = %d %d should be %d", this->gs(0), this->gs(1), M_GS);
-        // given the ibidule, determine if I have to scale and in which direction
-        // real_t sign[3];
-        // GhostGetSign(ibidule, sign);
-        // // I scale at the start of the block if the sign is negative
-        // for (lda_t ida = 0; ida < 3; ++ida) {
-        //     scale_dir_start_[ida] = sign[ida] < (-0.5);  // scale the start if the sign is negative
-        //     scale_dir_end_[ida]   = 0.5 < sign[ida];     // scale the end if the sign is positive
-        // }
         //---------------------------------------------------------------------
     }
 
@@ -211,25 +183,18 @@ class NeighborBlock : public GhostBlock {
             // the end = min of how many the src can give to the trg and how many the trg can receive
             const bidx_t end_idx = m_min(static_cast<bidx_t>((src_end - trg_pos[id]) / trg_hgrid[id]), trg_max);
 
-            // m_assert(!(scale_dir_start_[id] && (end_idx - start_idx) != M_GS), "if we have to scale in this direction, the ghost must be MAXIMUM. here: %d - %d vs %d", end_idx, start_idx, M_GS);
-            // m_assert(!(scale_dir_end_[id] && (end_idx - start_idx) != M_GS), "if we have to scale in this direction, the ghost must be MAXIMUM. here: %d - %d vs %d", end_idx, start_idx, M_GS);
-
-            // if we need to scale, we save the other index (if in the start, save the end and vice-versa)
-            // start_[id] = scale_dir_start_[id] ? end_idx : start_idx;
-            // end_[id]   = scale_dir_end_[id] ? start_idx : end_idx;
-
             // check that if the start is negative, it's at least the whole ghosting region
             m_assert(!(start_idx < 0 && start_idx != trg_min), "if the start index = %d is negative, if must cover the whole ghost region", start_idx);
             m_assert(!(end_idx > trg_core && end_idx != trg_max), "if the start index = %d is negative, if must cover the whole ghost region", end_idx);
             // if one of the indexes is outside of the block, we reset it to the closest boundary and register it for ghost scaling
 
-            // determine if we need to scale the direction in the start or the end
-            scale_dir_start_[id] = (start_idx == trg_min);
-            scale_dir_end_[id]   = (end_idx == trg_max);
+            // determine if we need to change the start or the end index in the specified direction 
+            is_ghost_dir_start_[id] = (start_idx == trg_min);
+            is_ghost_dir_end_[id]   = (end_idx == trg_max);
 
             // if yes, register the closest block boundary instead
-            start[id] = scale_dir_start_[id] ? 0 : start_idx;
-            end[id]   = scale_dir_end_[id] ? trg_core : end_idx;
+            start[id] = is_ghost_dir_start_[id] ? 0 : start_idx;
+            end[id]   = is_ghost_dir_end_[id] ? trg_core : end_idx;
         }
         m_assert(start[0] <= end[0], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[0], end[0], shift_[0], src_pos[0], trg_pos[0]);
         m_assert(start[1] <= end[1], "the starting index must be < the ending index, here: %d <= %d, the shift = %d: the src_pos = %f, trg_pos = %f", start[1], end[1], shift_[1], src_pos[1], trg_pos[1]);

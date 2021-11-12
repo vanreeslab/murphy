@@ -1,0 +1,29 @@
+#CXX = mpiicpc
+#CC = mpiicc
+CXX = mpicxx
+CC = mpicc
+#CXX = CC
+#CC = cc
+
+# override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
+
+#CXXFLAGS := -DMPI_NONASYNC -g -O3 --debug -fopenmp #-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -DLOG_ALLRANKS -DMPI_NONASYNC #-DVERBOSE -DLOG_ALLRANKS
+CXXFLAGS := -O3 -g --debug -fopenmp -fno-omit-frame-pointer -fno-optimize-sibling-calls -DVERBOSE -DLOG_ALLRANKS #-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -DLOG_ALLRANKS -DMPI_NONASYNC #-DVERBOSE -DLOG_ALLRANKS
+
+LDFLAGS := -fopenmp #-fsanitize=address -fsanitize=undefined #-lstdc++ -lm
+
+#FFTW_INC := ${EBROOTFFTW}/include
+#FFTW_LIB := ${EBROOTFFTW}/lib
+
+HDF5_INC := ${CRAY_HDF5_PARALLEL_PREFIX}/include
+HDF5_LIB := ${CRAY_HDF5_PARALLEL_PREFIX}/lib
+
+#P4EST_INC := /global/homes/t/tgillis/p4est-2.3.2-cray6.0.9/include
+#P4EST_LIB := /global/homes/t/tgillis/p4est-2.3.2-cray6.0.9/lib
+#P4EST_INC := /global/homes/t/tgillis/p4est-2.3.2-intel19.0.3/include
+#P4EST_LIB := /global/homes/t/tgillis/p4est-2.3.2-intel19.0.3/lib
+P4EST_INC := /global/homes/t/tgillis/p4est-2.3.2-gcc10.1.0-openmpi4.1.1/include
+P4EST_LIB := /global/homes/t/tgillis/p4est-2.3.2-gcc10.1.0-openmpi4.1.1/lib
+#
+#FLUPS_INC := /home/ucl/tfl/tgillis/flups/include
+#FLUPS_LIB := /home/ucl/tfl/tgillis/flups/lib

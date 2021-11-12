@@ -14,6 +14,10 @@
 #include "core/types.hpp"
 #include "hdf5.h"
 
+#ifndef MPI_NONASYNC
+#define M_MPI_AGGRESSIVE
+#endif
+
 // register the current git commit for tracking purpose
 #ifdef GIT_COMMIT
 #define M_GIT_COMMIT GIT_COMMIT
@@ -42,7 +46,7 @@
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 8  //!< memory space for the ghost points (not the actual number of ghost points!)
+#define M_GS 6  //!< memory space for the ghost points (not the actual number of ghost points!)
 #else
 #define M_GS BLOCK_GS
 #endif

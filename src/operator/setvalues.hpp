@@ -88,12 +88,15 @@ class SetValue : public BlockOperator {
 // };
 
 // declare later defined functions as lambdas
-extern lambda_t<real_t, const real_t[], const real_t[], const real_t>                            scalar_exp;
+extern lambda_t<real_t, const real_t[], const real_t[], const real_t>               scalar_exp;
+extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t> scalar_compact_exp;
+extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const real_t> scalar_diff_exp;
+
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const lda_t>               scalar_tube;
+extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const lda_t> scalar_compact_tube;
+
 extern lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, const lda_t> scalar_ring;
-extern lambda_t<real_t, const real_t[], const real_t[],
-                const lda_t, const real_t, const real_t, const real_t, const std::vector<short_t>, const std::vector<real_t> >
-    scalar_compact_ring;
+extern lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, const real_t, const real_t > scalar_compact_ring;
 
 //  = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
 //     // get the position

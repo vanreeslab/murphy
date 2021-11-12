@@ -264,7 +264,6 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(((2 * i2 - ha_lim) >= (ctx->sspan->start[2])) && ((2 * i2 + ha_lim) < ctx->sspan->end[2]), "the source domain is too small in dir 2: %d >= %d and %d < %d", 2 * i2 - ha_lim, ctx->sspan->start[2], 2 * i2 + ha_lim, ctx->sspan->end[2]);
 
             //get the local adress of the source, which is twice finer compared to the target
-            // const real_t* const lsdata = sdata + m_idx(2 * i0, 2 * i1, 2 * i2, 0, ctx->sdata.stride());
             const ConstMemData lsdata(sdata, sdata.ptr(2 * i0, 2 * i1, 2 * i2));
 
             // apply the filter
@@ -278,7 +277,6 @@ class InterpolatingWavelet : public Wavelet {
                         // add the info
                         const real_t fact = ha[id0] * ha[id1] * ha[id2];
                         value += fact * lsdata(id0, id1, id2);
-                        // value += fact * lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
 
                         // check for nan's
                         m_assert(std::isfinite(lsdata(id0, id1, id2)), "nan detected -- i0 = %d ; i1 = %d i2 =%d", id0, id1, id2);
@@ -290,16 +288,8 @@ class InterpolatingWavelet : public Wavelet {
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
 
             tdata(i0, i1, i2) = value;
-            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
-
         for_loop(&op, ctx->tspan);
-        // // get the start and end
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-
-        // // run that shit
-        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     }
 
@@ -344,7 +334,6 @@ class InterpolatingWavelet : public Wavelet {
             m_assert((i2_s * 2) <= i2, "if not, we made something wrong...: source = %d, target = %d", i2_s, i2);
 
             const ConstMemData lsdata(sdata, sdata.ptr(i0_s, i1_s, i2_s));
-            // const real_t* const lsdata = sdata + m_idx(i0_s, i1_s, i2_s, 0, ctx->sdata.stride());
 
             // get the filter, depending on if I am odd or even
             const real_t* const ks_x = (odd_x) ? (ks) : (js);
@@ -371,7 +360,6 @@ class InterpolatingWavelet : public Wavelet {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; id0 += 2) {
                         const real_t fact   = ks_x[id0] * ks_y[id1] * ks_z[id2];
                         const real_t svalue = lsdata((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2);
-                        // const real_t svalue = lsdata[m_idx((id0 + 1) / 2, (id1 + 1) / 2, (id2 + 1) / 2, 0, ctx->sdata.stride())];
                         value += fact * svalue;
 
                         // check for nan's
@@ -382,13 +370,8 @@ class InterpolatingWavelet : public Wavelet {
             }
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
             tdata(i0, i1, i2) = value;
-            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
         for_loop(&op, ctx->tspan);
-
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
 
@@ -466,10 +449,10 @@ class InterpolatingWavelet : public Wavelet {
                     for (bidx_t id0 = -lim[0]; id0 <= lim[0]; ++id0) {
                         // if I consider myself, don't take me into account
                         const bool to_skip = (fabs(id0) + fabs(id1) + fabs(id2)) == 0.0;
-                        // minus to inverse the dual lifting
+                        // minus to inverse the dual lifting => (-1)^3 = -1
                         const real_t fact   = -(iga_x[id0] * iga_y[id1] * iga_z[id2]) * (!to_skip);
                         const real_t svalue = lsdata(id0, id1, id2);
-                        // const real_t svalue = lsdata[m_idx(id0, id1, id2, 0, ctx->sdata.stride())];
+
                         // sum-up
                         value += fact * svalue;
 
@@ -481,23 +464,16 @@ class InterpolatingWavelet : public Wavelet {
             }
             m_assert(std::isfinite(value), "the value cannot be nan: block @ %d %d %d: %f", i0, i1, i2, value);
             tdata(i0, i1, i2) = value;
-            // tdata[m_idx(i0, i1, i2, 0, ctx->tdata.stride())] = value;
         };
-
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
         // count = 1: dx, dy and dz
         count = 1;
         for_loop(&op, ctx->tspan);
-        // for_loop(&op, start, end);
         // count = 2: dxy, dxz and dyz
         count = 2;
         for_loop(&op, ctx->tspan);
-        // for_loop(&op, start, end);
         // count = 3: dxyz
         count = 3;
         for_loop(&op, ctx->tspan);
-        // for_loop(&op, start, end);
         //-------------------------------------------------------------------------
     };
 
@@ -520,18 +496,19 @@ class InterpolatingWavelet : public Wavelet {
         const real_t* const ga     = ga_<TN, TNT> + ga_lim;
 
         // check if we need to store some value -> get the target pointer
-        bool          store         = !(ctx->tdata->is_null());
-        bool          store_on_mask = (ctx->alpha < 0.0) && store;
-        real_t        temp          = 0.0;
-        real_t* const tdata         = (store) ? (ctx->tdata->ptr(0, 0, 0)) : (&temp);
-        // real_t* const tdata         = (store) ? (ctx->tdata.Write()) : (&temp);
+        bool store         = !(ctx->tdata->is_null());
+        bool store_on_mask = (ctx->alpha < 0.0) && store;
+        // we need to create a proxy to the store data in case the pointer is null
+        // we don't need something fancy here, just not nullptr being accessed when doing store_data(0,0,0)
+        real_t   trash;
+        MemData  trash_data(&trash);
+        const MemData* store_data = (store) ? (ctx->tdata) : &trash_data;
 
         // get the source pointer
-        // const real_t* const sdata = ctx->sdata.Read();
         const ConstMemData sdata = ctx->sdata[0];
 
         // go
-        auto op = [=, &tdata, &details](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        auto op = [=, &store_data, &details](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
             // get if we are odd or even in the cupgridblockrrent location
             const short_t odd_x = m_sign(i0) * (i0 % 2);
             const short_t odd_y = m_sign(i1) * (i1 % 2);
@@ -577,11 +554,14 @@ class InterpolatingWavelet : public Wavelet {
             details[0] = m_max(fabs(detail), details[0]);
             details[1] = m_min(fabs(detail), details[1]);
 
-            // store if needed, the index is 0 if not store
-            // const bidx_t store_id = store * m_idx(i0, i1, i2, 0, ctx->tdata.stride());
-            const bidx_t store_id = store * ctx->tdata->offset(i0, i1, i2);
-            const real_t value    = store_on_mask ? (detail * tdata[store_id]) : (detail * (fabs(detail) < ctx->alpha));
-            tdata[store_id]       = value;
+            // get the storing policy:
+            // the problem is that tdata can be nullptr and we want to avoid a bad access in that case
+            // so we just access the storedata with 0 index in case we don't wanna store
+            real_t* const lstore = store_data->ptr(i0 * store, i1 * store, i2 * store);
+            // if store on mask is true, store is true as well (cfr above)
+            const real_t value = (store_on_mask) ? (detail * lstore[0]) : (detail * (fabs(detail) < ctx->alpha));
+            // do the actual store
+            lstore[0] = value;
         };
 
         // reset the detail max (to be sure)
@@ -589,9 +569,6 @@ class InterpolatingWavelet : public Wavelet {
         details[1] = std::numeric_limits<real_t>::max();  // will be min
         // let's go
         for_loop(&op, ctx->tspan);
-        // const bidx_t start[3] = {ctx->tspan->start[0], ctx->tspan->start[1], ctx->tspan->start[2]};
-        // const bidx_t end[3]   = {ctx->trgend[0], ctx->trgend[1], ctx->trgend[2]};
-        // for_loop(&op, start, end);
     };
 
     // void ForwardWaveletTransform_(const InterpCtx* const  ctx, real_t* const  details_max) const override {

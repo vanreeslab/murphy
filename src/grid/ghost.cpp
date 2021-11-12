@@ -15,25 +15,6 @@
 #define M_NNEIGHBOR 26
 
 /**
- * @brief the localization of the interface
- */
-// static lid_t face_start[6][3] = {{0, 0, 0}, {M_N, 0, 0}, {0, 0, 0}, {0, M_N, 0}, {0, 0, 0}, {0, 0, M_N}};
-
-/**
- * @brief Construct a new Ghost object 
- * 
- * see @ref Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp) for details
- * 
- * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
- * @param interp the Wavelet to use, will drive the number of ghost points to consider
- */
-Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(grid, -1, P8EST_MAXLEVEL + 1, interp, profiler) {
-    //-------------------------------------------------------------------------
-    // we called the function Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, Wavelet* interp)
-    //-------------------------------------------------------------------------
-}
-
-/**
  * @brief Construct a new Ghost, allocate the ghost lists and initiates the communications
  * 
  * Once created, the ghost is fixed for a given grid. if the grid changes, a new Ghost objects has to be created.
@@ -43,8 +24,8 @@ Ghost::Ghost(ForestGrid* grid, const Wavelet* interp, Prof* profiler) : Ghost(gr
  * be computed. To reduce the memory cost, only the needed ghost points will be computed.
  * 
  * @param grid the ForestGrid to use, must have been initiated using ForestGrid::SetupP4estGhostMesh() 
- * @param min_level the minimum level on which the GP are initiated
- * @param max_level the maximum level on which the GP are initiated
+ * @param min_level the minimum level at which a block will get a neighbor (the level of the block, not the one of the ghost!)
+ * @param max_level the maximum level at which a block will get a neighbor (the level of the block, not the one of the ghost!)
  * @param interp the Wavelet to use, will drive the number of ghost points to consider
  */
 Ghost::Ghost(ForestGrid* grid, const level_t min_level, const level_t max_level, const Wavelet* interp, Prof* profiler) : interp_(interp) {
@@ -134,13 +115,13 @@ void Ghost::InitList_() {
 
     // displacement
     m_profStart(prof_, "MPI_Win_create");
-    MPI_Aint  win_disp_mem_size = mesh->local_num_quadrants * sizeof(MPI_Aint);
-    MPI_Aint* local2disp        = static_cast<MPI_Aint*>(m_calloc(win_disp_mem_size));
+    MPI_Aint  win_disp_memsize  = mesh->local_num_quadrants * sizeof(MPI_Aint);
+    MPI_Aint* local2disp        = reinterpret_cast<MPI_Aint*>(m_calloc(win_disp_memsize));
     MPI_Win   local2disp_window = MPI_WIN_NULL;
-    MPI_Win_create(local2disp, win_disp_mem_size, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
-    m_assert(win_disp_mem_size >= 0, "the memory size should be >=0");
+    MPI_Win_create(local2disp, win_disp_memsize, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
+    m_assert(win_disp_memsize >= 0, "the memory size should be >=0");
     m_assert(local2disp_window != MPI_WIN_NULL, "window must be ready");
-    m_verb("allocating %ld bytes in the window for %d active quad", win_disp_mem_size, mesh->local_num_quadrants);
+    m_verb("allocating %ld bytes in the window for %d active quad", win_disp_memsize, mesh->local_num_quadrants);
     m_profStop(prof_, "MPI_Win_create");
 
     // free the info
@@ -148,7 +129,7 @@ void Ghost::InitList_() {
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
-    iblock_t    active_mirror_count = 0;
+    iblock_t     active_mirror_count = 0;
     const bidx_t nmlocal             = ghost->mirrors.elem_count;  //number of ghost blocks
     // get the base address
     // fill the displacement
@@ -166,7 +147,13 @@ void Ghost::InitList_() {
             m_assert(local_id >= 0, "the address cannot be negative");
             m_assert(local_id < mesh->local_num_quadrants, "the address cannot be > %d", mesh->local_num_quadrants);
             const GridBlock* mirror_block = p4est_GetBlock<GridBlock>(mirror_quad);
-            local2disp[local_id]          = active_mirror_count * mirror_block->BlockLayout().n_elem;
+#ifndef NDEBUG
+            size_t id = active_mirror_count * mirror_block->BlockLayout().n_elem;
+            m_assert(id < std::numeric_limits<MPI_Aint>::max(), "the value must be lower than the max value of int");
+            local2disp[local_id] = static_cast<MPI_Aint>(id);
+#else
+            local2disp[local_id] = static_cast<MPI_Aint>(active_mirror_count * mirror_block->BlockLayout().n_elem);
+#endif
             active_mirror_count++;
             m_assert(active_mirror_count <= nmlocal, "the number of mirrors cannot be bigger than the local number:  %d vs %d", active_mirror_count, nmlocal);
         }
@@ -179,8 +166,12 @@ void Ghost::InitList_() {
 
     // start the exposure epochs if any
     m_profStart(prof_, "init list on blocks");
+#ifdef M_MPI_AGGRESSIVE
     MPI_Win_post(ingroup_, 0, local2disp_window);
     MPI_Win_start(outgroup_, 0, local2disp_window);
+#else
+    MPI_Win_fence(0, local2disp_window);
+#endif
 
     // init the list on every active block that matches the level requirements
     const p4est_Essentials essential = grid_->p4estEssentials();
@@ -188,16 +179,20 @@ void Ghost::InitList_() {
         DoOpMeshLevel(nullptr, &GridBlock::GhostInitLists, grid_, il, &essential, interp_, local2disp_window);
     }
 
-    // complete the epoch and wait for the exposure one
+// complete the epoch and wait for the exposure one
+#ifdef M_MPI_AGGRESSIVE
     MPI_Win_complete(local2disp_window);
     MPI_Win_wait(local2disp_window);
+#else
+    MPI_Win_fence(0, local2disp_window);
+#endif
     m_profStop(prof_, "init list on blocks");
 
     //................................................
-    m_profStart(prof_,"MPI_Win_free");
+    m_profStart(prof_, "MPI_Win_free");
     MPI_Win_free(&local2disp_window);
     m_free(local2disp);
-    m_profStop(prof_,"MPI_Win_free");
+    m_profStop(prof_, "MPI_Win_free");
 
     //................................................
     // allocate the status
@@ -236,7 +231,7 @@ void Ghost::InitComm_() {
 
     //................................................
     // compute the number of admissible local mirrors and store their reference in the array
-    iblock_t n_mirror_to_send = 0;
+    iblock_t n_mirror_to_send    = 0;
     size_t   mirror_to_send_size = 0;
     for (iblock_t im = 0; im < ghost->mirrors.elem_count; im++) {
         qdrt_t* mirror       = p8est_quadrant_array_index(&ghost->mirrors, im);
@@ -247,15 +242,15 @@ void Ghost::InitComm_() {
         if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
             GridBlock* mirror_block = p4est_GetBlock<GridBlock>(mirror_quad);
             mirror_to_send_size += mirror_block->BlockLayout().n_elem;
-            n_mirror_to_send+=1;
+            n_mirror_to_send += 1;
         }
     }
     m_verb("I have %d mirrors to send", n_mirror_to_send);
 
     // allocate memory
     m_profStart(prof_, "allocate mem");
-    MPI_Aint win_mem_size = mirror_to_send_size * sizeof(real_t);
-    mirrors_              = static_cast<real_t*>(m_calloc(win_mem_size));
+    MPI_Aint win_mem_size        = mirror_to_send_size * sizeof(real_t);
+    mirrors_                     = static_cast<real_t*>(m_calloc(win_mem_size));
     MPI_Aint win_status_mem_size = mesh->local_num_quadrants * sizeof(short_t);
     status_                      = static_cast<short_t*>(m_calloc(win_status_mem_size));
     m_profStop(prof_, "allocate mem");
@@ -312,6 +307,7 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                m_verb("adding rank %d to the ingroup (now %d ranks", ir, n_in_group);
                 break;
             }
         }
@@ -338,6 +334,7 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                m_verb("adding rank %d to the outgroup (now %d ranks", ir, n_in_group);
                 break;
             }
         }
@@ -423,31 +420,41 @@ void Ghost::SyncStatusUpdate(const level_t min_level, const level_t max_level) {
     m_begin;
     //-------------------------------------------------------------------------
     // start the exposure epochs if any (we need to be accessed by the neighbors even is we have not block on that level)
+#ifdef M_MPI_AGGRESSIVE
     MPI_Win_post(ingroup_, 0, status_window_);
     MPI_Win_start(outgroup_, 0, status_window_);
+#else
+    MPI_Win_fence(0, status_window_);
+#endif
 
     // update neigbbor status, only use the already computed status on level il + 1
     level_t local_min_level = m_max(min_level, min_level_);
     level_t local_max_level = m_min(max_level, max_level_);
-    
+
     for (level_t il = local_min_level; il <= local_max_level; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SyncStatusUpdate, grid_, il, status_, status_window_);
     }
 
-    // finalize the comm
+// finalize the comm
+#ifdef M_MPI_AGGRESSIVE
     MPI_Win_complete(status_window_);
     MPI_Win_wait(status_window_);
+#else
+    MPI_Win_fence(0, status_window_);
+#endif
     //-------------------------------------------------------------------------
     m_end;
 }
 
 void Ghost::SyncStatusFinalize() {
+    m_begin;
     //-------------------------------------------------------------------------
     // deallocate the
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::SyncStatusFinalize, grid_, il);
     }
     //-------------------------------------------------------------------------
+    m_end;
 }
 
 /**
@@ -471,7 +478,7 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
     m_assert(new_len[0] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[0], new_len[0], M_GS);
     m_assert(new_len[1] <= M_GS, "there is not enough space for the ghosts -> requested: %d, actual: %d, space; %d", ghost_len[1], new_len[1], M_GS);
     m_verb("length set: %s %d %d", (new_len[0] == ghost_len[0] && new_len[1] == ghost_len[1]) ? "" : "!WARNING! the ghost lenghts have been changed to", new_len[0], new_len[1]);
-    
+
     m_profStart(prof_, "loop");
     for (level_t il = min_level_; il <= max_level_; il++) {
         DoOpMeshLevel(nullptr, &GridBlock::GhostUpdateSize, grid_, il, new_len);
@@ -500,6 +507,7 @@ void Ghost::SetLength(bidx_t ghost_len[2]) {
  */
 void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     m_begin;
+    m_assert(!field->is_expr(),"I cannot ghost an expression");
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
     //-------------------------------------------------------------------------
@@ -516,8 +524,12 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
     // post the exposure epoch for my own mirrors: I am a target warning that origin group will RMA me
     // start the access epoch, to get info from neighbors: I am an origin warning that I will RMA the target group
     m_profStart(prof_, "(02) RMA - post start");
+#ifdef M_MPI_AGGRESSIVE
     MPI_Win_post(ingroup_, 0, mirrors_window_);
     MPI_Win_start(outgroup_, 0, mirrors_window_);
+#else
+    MPI_Win_fence(0, mirrors_window_);
+#endif
     m_profStop(prof_, "(02) RMA - post start");
 
     m_profStart(prof_, "(03) RMA - get");
@@ -546,6 +558,7 @@ void Ghost::PullGhost_Post(const Field* field, const lda_t ida) {
  */
 void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     m_begin;
+    m_assert(!field->is_expr(),"I cannot ghost an expression");
     m_assert(ida >= 0, "the ida must be >=0!");
     m_assert(cur_ida_ == ida, "the ongoing dimension (%d) must be over first", cur_ida_);
     m_assert(grid_->is_mesh_valid(), "the mesh needs to be valid before entering here");
@@ -553,12 +566,20 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     m_profStart(prof_, "pullghost wait" + prof_msg_);
     //................................................
     // finish the access epochs for the exposure epoch to be over
+#ifdef M_MPI_AGGRESSIVE
     m_profStart(prof_, "(05) RMA - complete");
     MPI_Win_complete(mirrors_window_);
     m_profStop(prof_, "(05) RMA - complete");
     m_profStart(prof_, "(06) RMA - wait");
     MPI_Win_wait(mirrors_window_);
     m_profStop(prof_, "(06) RMA - wait");
+#else
+    m_profStart(prof_, "(05) RMA - complete");
+    m_profStop(prof_, "(05) RMA - complete");
+    m_profStart(prof_, "(06) RMA - wait");
+    MPI_Win_fence(0, mirrors_window_);
+    m_profStop(prof_, "(06) RMA - wait");
+#endif
 
     // we now have all the information needed to compute the ghost points in coarser blocks
     m_profStart(prof_, "(07) computation");
@@ -571,8 +592,12 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
 
     // post exposure and access epochs for to put the values to my neighbors
     m_profStart(prof_, "(08) RMA - post start");
+#ifdef M_MPI_AGGRESSIVE
     MPI_Win_post(ingroup_, 0, mirrors_window_);
     MPI_Win_start(outgroup_, 0, mirrors_window_);
+#else
+    MPI_Win_fence(0, mirrors_window_);
+#endif
     m_profStop(prof_, "(08) RMA - post start");
 
     // start what can be done = sibling and parents copy
@@ -582,13 +607,21 @@ void Ghost::PullGhost_Wait(const Field* field, const lda_t ida) {
     }
     m_profStop(prof_, "(09) RMA - put");
 
-    // finish the access epochs for the exposure epoch to be over
+// finish the access epochs for the exposure epoch to be over
+#ifdef M_MPI_AGGRESSIVE
     m_profStart(prof_, "(10) RMA complete");
     MPI_Win_complete(mirrors_window_);
     m_profStop(prof_, "(10) RMA complete");
     m_profStart(prof_, "(11) RMA wait");
     MPI_Win_wait(mirrors_window_);
     m_profStop(prof_, "(11) RMA wait");
+#else
+    m_profStart(prof_, "(10) RMA - complete");
+    m_profStop(prof_, "(10) RMA - complete");
+    m_profStart(prof_, "(11) RMA - wait");
+    MPI_Win_fence(0, mirrors_window_);
+    m_profStop(prof_, "(11) RMA - wait");
+#endif
 
     m_profStart(prof_, "(12) pull from window");
     LoopOnMirrorBlock_(&Ghost::PullFromWindow4Block, field);
@@ -678,7 +711,7 @@ void Ghost::LoopOnMirrorBlock_(const gop_t op, const Field* field) {
     // get the grid info
     p8est_t*       forest  = grid_->p4est_forest();
     p8est_ghost_t* ghost   = grid_->p4est_ghost();
-    const iblock_t    nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
+    const iblock_t nqlocal = ghost->mirrors.elem_count;  //number of ghost blocks
 
     //#pragma omp parallel for
     for (iblock_t bid = 0; bid < nqlocal; ++bid) {

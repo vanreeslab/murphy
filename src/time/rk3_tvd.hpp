@@ -32,6 +32,7 @@ class RK3_TVD {
 
     void DoDt(const real_t dt, real_t* time) const;
 
-    real_t ComputeDt(const RKFunctor* rhs, const Field* velocity) const;
+    real_t ComputeDt(const RKFunctor* rhs, const real_t max_ve, const real_t nu = 0.0) const;
+    real_t ComputeDt(const RKFunctor* rhs, const Field* velocity, const real_t nu = 0.0) const;
 };
 #endif

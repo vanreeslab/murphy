@@ -54,7 +54,7 @@ static size_t PartitionerBlockSize(const CartBlock* block, const lda_t lda) {
  * @param grid the grid on which the partitionning is done
  * @param destructive dictate if the partitioning is used to permanently change the grid or to go from one grid to another.
  */
-Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destructive) {
+Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid, bool destructive) {
     m_begin;
     //-------------------------------------------------------------------------
     const rank_t commsize = grid->mpisize();
@@ -72,13 +72,13 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
         m_assert(fields->size() == grid->NField(), "the number of fields must match so we don't loose information during the partitioning");
         for (const auto fid : *fields) {
             // add the total count
-            n_lda_ += fid.second->lda();
+            n_lda_ += fid.second->lda() * (!fid.second->is_expr());
             m_assert(grid->IsAField(fid.second), "the field MUST be present in the grid");
         }
     } else {
         // create the struct to send the max out of the fields
         for (const auto fid : *fields) {
-            n_lda_ = m_max(n_lda_, fid.second->lda());
+            n_lda_ = m_max(n_lda_, fid.second->lda() * (!fid.second->is_expr()));
             // m_assert(grid->IsAField(fid->second),"the field MUST be present in the grid");
         }
     }
@@ -183,7 +183,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                 // get howmany the receiver will receive (not his/her entire block numbers)
                 const p4est_gloidx_t q_leftlimit  = m_max(forest->global_first_quadrant[c_recver], opart_begin);
                 const p4est_gloidx_t q_rightlimit = m_min(forest->global_first_quadrant[c_recver + 1], opart_end);
-                const iblock_t          n_q2send     = q_rightlimit - q_leftlimit;
+                const iblock_t       n_q2send     = q_rightlimit - q_leftlimit;
                 // if I want to allocate a send for myself, skip
                 if (c_recver == rank || n_q2send == 0) {
                     tqcount += n_q2send;
@@ -231,8 +231,8 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
             for (p4est_topidx_t it = forest->first_local_tree; it <= forest->last_local_tree; it++) {
                 p8est_tree_t *mytree = p8est_tree_array_index(forest->trees, it);
                 for (iblock_t qid = 0; qid < mytree->quadrants.elem_count; qid++) {
-                    qdrt_t *quad   = p8est_quadrant_array_index(&mytree->quadrants, qid);
-                    iblock_t   offset = mytree->quadrants_offset;
+                    qdrt_t * quad   = p8est_quadrant_array_index(&mytree->quadrants, qid);
+                    iblock_t offset = mytree->quadrants_offset;
                     // get the global ID and allocate a new block only if the quad is new
                     p4est_gloidx_t global_id = rank_offset + offset + qid;
                     if (!(opart_begin <= global_id && global_id < opart_end)) {
@@ -308,7 +308,7 @@ Partitioner::Partitioner(map<string, Field* > *fields, Grid *grid, bool destruct
                 // get howmany the sender will send (not his/her entire block numbers)
                 const p4est_gloidx_t q_leftlimit  = m_max(oldpart[c_sender], cpart_begin);
                 const p4est_gloidx_t q_rightlimit = m_min(oldpart[c_sender + 1], cpart_end);
-                const iblock_t          n_q2recv     = q_rightlimit - q_leftlimit;
+                const iblock_t       n_q2recv     = q_rightlimit - q_leftlimit;
                 // if I am the sender, advance the tqcount counter and skip
                 if (c_sender == rank || n_q2recv == 0) {
                     tqcount += n_q2recv;
@@ -384,11 +384,11 @@ Partitioner::~Partitioner() {
         MPI_Request_free(back_send_request_ + i);
     }
 
-    if(n_send_request_ > 0){
+    if (n_send_request_ > 0) {
         send_buf_.Free();
     }
 
-    if(n_recv_request_ > 0){
+    if (n_recv_request_ > 0) {
         recv_buf_.Free();
     }
 
@@ -472,9 +472,11 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
                 const Field *fid  = iter.second;
                 real_t *     lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
-                memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
-                // update the counters
-                idacount += fid->lda();
+                if (!fid->is_expr()) {
+                    memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
+                    // update the counters
+                    idacount += fid->lda();
+                }
 
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
             }
@@ -507,9 +509,11 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 const real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
-                memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
-                // update the counters
-                idacount += fid->lda();
+                if (!fid->is_expr()) {
+                    memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
+                    // update the counters
+                    idacount += fid->lda();
+                }
             }
         }
         m_verb("I have finished the recv of request %d", ir);
@@ -564,17 +568,17 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
  * @param fields the field(s) that will be transfered (only one field is accepted if the non-destructive mode is enabled)
  * @param dir the direction, forward or backward
  */
-void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
+void Partitioner::Start(map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
     m_assert(dir == M_FORWARD || dir == M_BACKWARD, "the dir can be forward or backward");
     m_assert(!(dir == M_BACKWARD && destructive_), "unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
     //-------------------------------------------------------------------------
-    rank_t   n_recv_request;
-    rank_t   n_send_request;
-    iblock_t * q_send_cum_request;
-    iblock_t * q_send_cum_block;
-    real_t *send_buf;
+    rank_t    n_recv_request;
+    rank_t    n_send_request;
+    iblock_t *q_send_cum_request;
+    iblock_t *q_send_cum_block;
+    real_t *  send_buf;
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
@@ -629,9 +633,11 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
                 // real_t* data = ;
                 real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
-                memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
-                // update the counters
-                idacount += fid->lda();
+                if (!fid->is_expr()) {
+                    memcpy(lbuf, block->RawPointer(fid, 0), block_size * fid->lda() * sizeof(real_t));
+                    // update the counters
+                    idacount += fid->lda();
+                }
             }
         }
         // start the send
@@ -648,17 +654,17 @@ void Partitioner::Start(map<string, Field* > *fields, const m_direction_t dir) {
  * @param dir the direction, forward or backward
  * @param do_copy do we need to copy the non-traveling blocks or not
  */
-void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
+void Partitioner::End(map<string, Field *> *fields, const m_direction_t dir) {
     m_begin;
     m_assert(dir == M_FORWARD || dir == M_BACKWARD, "the dir can be forward or backward");
     m_assert(!(dir == M_BACKWARD && destructive_), "unable to perform backward on destructive partitioner");
     m_assert(!(fields->size() > 1 && !destructive_), "the partitioner has been allocated in destructive mode, unable to transfert mode than 1 field");
     //-------------------------------------------------------------------------
-    rank_t  n_recv_request;
-    rank_t  n_send_request;
+    rank_t    n_recv_request;
+    rank_t    n_send_request;
     iblock_t *q_recv_cum_request;
     iblock_t *q_recv_cum_block;
-    real_p recv_buf;
+    real_p    recv_buf;
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
@@ -709,9 +715,11 @@ void Partitioner::End(map<string, Field* > *fields, const m_direction_t dir) {
                 m_assert(fid->lda() <= n_lda_, "unable to transfert so much data with the allocated buffers");
                 const real_t *lbuf = buf + block_size * idacount;
                 // copy the whole memory at once on the dim
-                memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
-                // update the counters
-                idacount += fid->lda();
+                if (!fid->is_expr()) {
+                    memcpy(block->RawPointer(fid, 0), lbuf, block_size * fid->lda() * sizeof(real_t));
+                    // update the counters
+                    idacount += fid->lda();
+                }
             }
         }
     }

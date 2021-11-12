@@ -58,7 +58,7 @@ inline static p8est_quadrant_t* p4est_GetQuadFromMirror(const p8est_t* forest, c
     //--------------------------------------------------------------------------
 };
 
-inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const char level) {
+inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, const level_t level) {
     m_assert(level >= 0, "the level = %d must be >=0", level);
     m_assert(level < P8EST_MAXLEVEL, "the level = %d must be <= %d", level, P8EST_MAXLEVEL);
     //--------------------------------------------------------------------------
@@ -67,7 +67,7 @@ inline static p4est_locidx_t p4est_NumQuadOnLevel(const p8est_mesh_t* mesh, cons
     return num;
     //--------------------------------------------------------------------------
 };
-inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, const char level, const p4est_locidx_t quad_id) {
+inline static p4est_locidx_t p4est_GetQuadIdOnLevel(const p8est_mesh_t* mesh, const level_t level, const p4est_locidx_t quad_id) {
     m_assert(quad_id < numeric_limits<int>::max(), "quad id is too big");
     //--------------------------------------------------------------------------
     sc_array_t quad_id_array = mesh->quad_level[level];

@@ -123,10 +123,11 @@ static struct argp_option options[] = {
     {"level-max", 2009, "level", 0, "the maximum level on the grid (integer: num)"},
     {"tstart", 2010, "value", 0, "the start time of the simulation"},
     {"tfinal", 2011, "value", 0, "the final time of the simulation"},
+    {"opt-tol", 2012, 0, OPTION_ARG_OPTIONAL, "use the optimal tolerance rule to determine ctol"},
 
     /* general parameters */
     {0, 0, 0, OPTION_DOC, "Other parameters:", 3},
-    {"reynolds", 3001, "double", 0, "the Reynolds number"},
+    {"reynolds", 3001, "double", 0, "the Reynolds number (u * L)/nu (negative value means no diffusion)"},
     {"vr-normal", 3002, "dir", 0, "vortex ring normal"},
     {"vr-center", 3003, "c_x,c_y,c_z", 0, "vortex ring center"},
     {"vr-radius", 3004, "rad", 0, "vortex ring radius"},
@@ -165,6 +166,8 @@ static struct argp_option options[] = {
     {"conv-weno", 4005, 0, OPTION_ARG_OPTIONAL, "convergence weno"},
     // two-level weno
     {"2lvl-weno", 4006, 0, OPTION_ARG_OPTIONAL, "two-level weno"},
+    // weak scalability
+    {"weak-scal", 4007, 0, OPTION_ARG_OPTIONAL, "weak scalability"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -210,13 +213,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 2005: { /* rtol */
             real_t* tol = &arguments->refine_tol;
             error_t err = atof_list(1, arg, tol);
-            m_log("refinement tolerance: %f", tol[0]);
+            m_log("refinement tolerance: %e", tol[0]);
             return err;
         }
         case 2006: { /* ctol */
             real_t* tol = &arguments->coarsen_tol;
             error_t err = atof_list(1, arg, tol);
-            m_log("coarsening tolerance: %f", tol[0]);
+            m_log("coarsening tolerance: %e", tol[0]);
             return err;
         }
         case 2007: { /* no adapt */
@@ -247,6 +250,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err  = atof_list(1, arg, time);
             m_log("final time: %f", time[0]);
             return err;
+        }
+        case 2012: { /* optimal tol */
+            arguments->optimal_tol = true;
+            m_log("optimal tol rule used");
+            return 0;
         }
         //................................................
         case 3001: { /* Reynolds */
@@ -394,6 +402,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4006: { /* convergence weno */
             m_log("Two levels weno convergence selected");
             arguments->do_2lvl_weno = true;
+            return 0;
+        }
+        case 4007: { /* convergence weno */
+            m_log("weak scalability selected");
+            arguments->do_weak_scal = true;
             return 0;
         }
         
