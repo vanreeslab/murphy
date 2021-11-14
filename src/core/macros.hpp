@@ -33,7 +33,7 @@
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 0
+#define M_WAVELET_NT 2
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -46,7 +46,7 @@
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 6  //!< memory space for the ghost points (not the actual number of ghost points!)
+#define M_GS 8  //!< memory space for the ghost points (not the actual number of ghost points!)
 #else
 #define M_GS BLOCK_GS
 #endif

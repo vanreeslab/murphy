@@ -66,7 +66,7 @@ void EpsilonTest::Run() {
         m_log("================================================================================");
         //......................................................................
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {false, false, false};
+        bool  period[3]   = {true, true, true};
         lid_t grid_len[3] = {3, 3, 1};
         Grid  grid(level_start_, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
@@ -98,7 +98,12 @@ void EpsilonTest::Run() {
         real_t coarse_moment0;
         real_t coarse_moment1[3];
         moment(&grid,&scal, &coarse_moment0, coarse_moment1);
+        m_log("----------------------------------------------------------");
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
+        m_log("moments1 after coarsening: %e vs %e -> error = %e", sol_moment1[0], coarse_moment1[0], abs(sol_moment1[0] - coarse_moment1[0]));
+        m_log("moments1 after coarsening: %e vs %e -> error = %e", sol_moment1[1], coarse_moment1[1], abs(sol_moment1[1] - coarse_moment1[1]));
+        m_log("moments1 after coarsening: %e vs %e -> error = %e", sol_moment1[2], coarse_moment1[2], abs(sol_moment1[2] - coarse_moment1[2]));
+        m_log("----------------------------------------------------------");
 
         // track the number of block, levels
         level_t grid_level_min = grid.MinLevel();
@@ -150,10 +155,12 @@ void EpsilonTest::Run() {
         moment(&grid, &scal, &moment0, moment1);
         // real_t dmoment0, dmoment1[3];
         // dmoment(&grid, &scal, &dmoment0, dmoment1);
-        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment0, moment0, abs(sol_moment0 - moment0));
-        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[0], moment1[0], abs(sol_moment1[0] - moment1[0]));
-        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[1], moment1[1], abs(sol_moment1[1] - moment1[1]));
-        m_log("analytical moments after refinement: %e vs %e -> error = %.12e", sol_moment1[2], moment1[2], abs(sol_moment1[2] - moment1[2]));
+        m_log("----------------------------------------------------------");
+        m_log("moments after refinement: %e vs %e -> error = %.12e", sol_moment0, moment0, abs(sol_moment0 - moment0));
+        m_log("moments after refinement: %e vs %e -> error = %.12e", sol_moment1[0], moment1[0], abs(sol_moment1[0] - moment1[0]));
+        m_log("moments after refinement: %e vs %e -> error = %.12e", sol_moment1[1], moment1[1], abs(sol_moment1[1] - moment1[1]));
+        m_log("moments after refinement: %e vs %e -> error = %.12e", sol_moment1[2], moment1[2], abs(sol_moment1[2] - moment1[2]));
+        m_log("----------------------------------------------------------");
         // m_log("analytical moments after refinement: %e vs %e -> error = %e", sol_dmoment0, dmoment0, abs(sol_dmoment0 - dmoment0));
 
         // m_log("moment 0: from %e to %e: error %e", sol_moment0, moment0, fabs(sol_moment0 - moment0));
