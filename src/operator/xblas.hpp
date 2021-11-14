@@ -7,6 +7,7 @@
 #include "grid/field.hpp"
 #include "grid/forestgrid.hpp"
 #include "grid/cartblock.hpp"
+#include "wavelet/wavelet.hpp"
 
 class BMax : public BlockOperator {
    public:

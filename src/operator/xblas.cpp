@@ -87,17 +87,19 @@ void BMinMax::ComputeBMinMaxGridBlock(const qid_t* qid, const CartBlock* block, 
 }
 
 //------------------------------------------------------------------------------
-BMoment::BMoment() noexcept: BlockOperator(nullptr){
+BMoment::BMoment() noexcept : BlockOperator(nullptr) {
     //--------------------------------------------------------------------------
     // we need one more point at the back of the block
-    ghost_len_need_[0] = ghost_len_res_[0];
-    ghost_len_need_[1] = ghost_len_res_[1] + 1;
+    ghost_len_need_[0] = ghost_len_res_[0] + 2;  // + interp->nghost_front_refine();
+    ghost_len_need_[1] = ghost_len_res_[1] + 3;  // + interp->nghost_back_refine();
+
     //--------------------------------------------------------------------------
 };
-BMoment::BMoment(const bidx_t*  ghost_len) noexcept: BlockOperator(ghost_len){
+BMoment::BMoment(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len) {
     //--------------------------------------------------------------------------
-    ghost_len_need_[0] = ghost_len_res_[0];
-    ghost_len_need_[1] = ghost_len_res_[1] + 1;
+    // get the ghost sizes right
+    ghost_len_need_[0] = ghost_len_res_[0] + 2;  // interp->nghost_front_refine();
+    ghost_len_need_[1] = ghost_len_res_[1] + 3;  // interp->nghost_back_refine();
     //--------------------------------------------------------------------------
 };
 
@@ -111,6 +113,7 @@ void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* m
     m_begin;
     m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
     //--------------------------------------------------------------------------
+
     // go on the blocks, for each dim separately
     for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
         // reset the moments
@@ -129,50 +132,113 @@ void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* m
 
 void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const {
     //--------------------------------------------------------------------------
-    // get the starting pointer:
-    const real_t*      h    = block->hgrid();
-    const ConstMemData data = block->data(fid_x, ida);
+    const real_t* h        = block->hgrid();
+    ConstMemData  data_src = block->data(fid_x, ida);
 
     real_t lmoment0    = 0.0;
     real_t lmoment1[3] = {0.0, 0.0, 0.0};
 
-    bidx_t limits_front[3] = {span_.start[0], span_.start[1], span_.start[2]};
-    bidx_t limits_back[3]  = {span_.end[0], span_.end[1], span_.end[2]};
-
     // let's go!
-    auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    auto simpson = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+        // m_log("simpson at %d %d %d",i0,i1,i2);
+        const real_t fact_v0[6] = {0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
+        const real_t fact_v1[6] = {1.0 / 256.0, -9.0 / 128.0, 27.0 / 32.0, 33.0 / 128.0, -9.0 / 256.0, 0.0};
+        const real_t fact_v2[6] = {0.0, -1.0 / 16.0, 9.0 / 16.0, 9.0 / 16.0, -1.0 / 16.0, 0.0};
+        const real_t fact_v3[6] = {0.0, -9.0 / 256.0, 33.0 / 128.0, 27.0 / 32.0, -9.0 / 128.0, 1.0 / 256.0};
+        const real_t fact_v4[6] = {0.0, 0.0, 0.0, 1.0, 0.0, 0.0};
+
+        real_t sum = 0.0;
+        real_t weights[6];
+        for (bidx_t i = 0; i < 6; ++i) {
+            // simpson
+            // weights[i] =(1.0/3.0*fact_v0[i] + 4.0/3.0*fact_v2[i] + 1.0/3.0*fact_v4[i])*0.5;
+            // bode
+            weights[i] = (14.0 / 45.0 * fact_v0[i] + 64.0 / 45.0 * fact_v1[i] + 24.0 / 45.0 * fact_v2[i] + 64.0 / 45.0 * fact_v3[i] + 14.0 / 45.0 * fact_v4[i]) * 0.25;
+            sum+=weights[i];
+        }
+        m_assert(fabs(sum-1.0)<100.0*std::numeric_limits<real_t>::epsilon(),"the sum must be 1.0 instead of %e",sum);
+        // m_assert(false,"coucou");
+        // simpson weights
+        // const real_t weights[3] = {1.0 / 3.0, 4.0 / 3.0, 1.0 / 3.0}; // simpson
+        // const real_t weights[5] = {14.0 / 45.0, 64.0 / 45.0, 24.0 / 45.0, 64.0 / 45.0, 14.0 / 45.0};  /// bode
+        // const real_t weights[4] = {-1.0/16.0,17.0/16.0,17.0/16.0,-1.0/16.0};
+        const bidx_t shift[3]={-2,-2,-2};
+        // simpson on a interval of h, the middle point is recomputed using the iwt
+        // const real_t weights[5] = {-1.0/64.0,1.0/8.0,25.0/32.0,1.0/8.0,-1.0/64.0};
+        // const real_t weights[4] = {-1.0/24.0,13.0/24.0,13.0/24.0,-1.0/24.0};
+        // local data
+        LocalData ldata(&data_src, i0, i1, i2);
+
         // get the position
         real_t origin[3];
         block->pos(i0, i1, i2, origin);
-        
-        // get the local data
-        const short_t id_edge = ((i0 == limits_front[0]) || (i0 == limits_back[0])) +
-                                ((i1 == limits_front[1]) || (i1 == limits_back[1])) +
-                                ((i2 == limits_front[2]) || (i2 == limits_back[2]));
 
-        const real_t coef  = pow(0.5, id_edge);
-        const real_t value = data(i0, i1, i2);
+        real_t local_m00 = 0.0;
+        real_t local_m10 = 0.0;
+        real_t local_m11 = 0.0; 
+        real_t local_m12 = 0.0;
+        for (bidx_t is2 = 0; is2 < 6; ++is2) {
+            for (bidx_t is1 = 0; is1 < 6; ++is1) {
+                for (bidx_t is0 = 0; is0 < 6; ++is0) {
 
-        lmoment0 += coef * value;
-        lmoment1[0] += coef * value * (origin[0]);
-        lmoment1[1] += coef * value * (origin[1]);
-        lmoment1[2] += coef * value * (origin[2]);
+                    const real_t fact = weights[is0] * weights[is1] * weights[is2];
+                    const real_t value = ldata(is0 + shift[0], is1 + shift[1], is2 + shift[2]);
+                    // m_assert(value == 1.0,"the value must be = 1.0 instead of %e",value);
+                    local_m00 += fact * value;
+                    local_m10 += fact * value * (origin[0] + h[0] * (is0+shift[0]));
+                    local_m11 += fact * value * (origin[1] + h[1] * (is1+shift[1]));
+                    local_m12 += fact * value * (origin[2] + h[2] * (is2+shift[2]));
+                }
+            }
+        }
+        // m_assert(local_m00 == 1.0,"the sum must be %e instead of %e at %d %d %d",((h[0]*h[1]*h[2])),local_m00,i0,i1,i2);
 
-        // #pragma unroll 8
-        //         for (lda_t id = 0; id < 8; ++id) {
-        //             const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
-        //             const real_t value     = ldata(is_dim[0], is_dim[1], is_dim[2]);
-
-        //             lmoment0 += coef * value;
-        //             lmoment1[0] += coef * value * (origin[0] + h[0] * is_dim[0]);
-        //             lmoment1[1] += coef * value * (origin[1] + h[1] * is_dim[1]);
-        //             lmoment1[2] += coef * value * (origin[2] + h[2] * is_dim[2]);
-        //         }
+        lmoment0 += local_m00;
+        lmoment1[0] += local_m10;
+        lmoment1[1] += local_m11;
+        lmoment1[2] += local_m12;
     };
-    // create a new span that will take 1 GP
-    const bidx_t span_shift[2][3] = {{0, 0, 0}, {-1, -1, -1}};
-    MemSpan      moment_span(&span_, span_shift);
-    for_loop(&op, moment_span);
+
+    //  // let's go!
+    // auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+    //     // get the position
+    //     real_t origin[3];
+    //     block->pos(i0, i1, i2, origin);
+
+    //     // get the local data
+    //     const short_t id_edge = ((i0 == limits_front[0]) || (i0 == limits_back[0])) +
+    //                             ((i1 == limits_front[1]) || (i1 == limits_back[1])) +
+    //                             ((i2 == limits_front[2]) || (i2 == limits_back[2]));
+
+    //     const real_t coef  = pow(0.5, id_edge);
+    //     const real_t value = data(i0, i1, i2);
+
+    //     lmoment0 += coef * value;
+    //     lmoment1[0] += coef * value * (origin[0]);
+    //     lmoment1[1] += coef * value * (origin[1]);
+    //     lmoment1[2] += coef * value * (origin[2]);
+
+    //     // #pragma unroll 8
+    //     //         for (lda_t id = 0; id < 8; ++id) {
+    //     //             const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
+    //     //             const real_t value     = ldata(is_dim[0], is_dim[1], is_dim[2]);
+
+    //     //             lmoment0 += coef * value;
+    //     //             lmoment1[0] += coef * value * (origin[0] + h[0] * is_dim[0]);
+    //     //             lmoment1[1] += coef * value * (origin[1] + h[1] * is_dim[1]);
+    //     //             lmoment1[2] += coef * value * (origin[2] + h[2] * is_dim[2]);
+    //     //         }
+    // };
+
+    m_assert(((span_.end[0]-span_.start[0]) % 2) == 0,"the span must be a modulo of 2: from %d to %d",span_.start[0],span_.end[0]);
+    m_assert(((span_.end[1]-span_.start[1]) % 2) == 0,"the span must be a modulo of 2: from %d to %d",span_.start[1],span_.end[1]);
+    m_assert(((span_.end[2]-span_.start[2]) % 2) == 0,"the span must be a modulo of 2: from %d to %d",span_.start[2],span_.end[2]);
+    
+    // create a new span that will take the last GP
+    // const bidx_t span_shift[2][3] = {{0, 0, 0}, {-1, -1, -1}};
+    // MemSpan      moment_span(&span_, span_shift);
+    const bidx_t jumps[3] = {1,1,1};
+    for_loop(&simpson, span_,jumps);
 
     const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
     moments[0] += vol * lmoment0;
@@ -180,7 +246,7 @@ void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, 
     moments[2] += vol * lmoment1[1];
     moments[3] += vol * lmoment1[2];
     //--------------------------------------------------------------------------
-}
+};
 
 //------------------------------------------------------------------------------
 BAvg::BAvg() noexcept : BlockOperator(nullptr){};
