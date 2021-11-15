@@ -38,13 +38,13 @@ void TwoLevelConvWeno::InitParam(ParserArguments* param) {
     //-------------------------------------------------------------------------
 }
 
-// static const real_t sigma     = 0.05;
+static const real_t sigma     = 0.2;
 // static const real_t radius    = 0.25;
 // static const real_t beta      = 3.0;
 // static const auto   freq      = std::vector<short_t>{};  //std::vector<short_t>{5, 1000};
 // static const auto   amp       = std::vector<real_t>{};   //std::vector<real_t>{0.2, 0.2};
-// static const real_t center[3] = {1.0,1.0,};
-static const bidx_t grid_len[3] = {2, 2, 2};
+static const real_t center[3] = {1.0,1.0,};
+static const bidx_t grid_len[3] = {3, 3, 3};
 // lambdas
 
 void TwoLevelConvWeno::Run() {

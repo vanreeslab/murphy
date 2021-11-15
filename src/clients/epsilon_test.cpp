@@ -10,12 +10,12 @@
 #include "operator/xblas.hpp"
 #include "tools/ioh5.hpp"
 
-static const real_t sigma     = 0.05;
-static const real_t radius    = 0.5;
-static const real_t beta      = 3.0;
-static const auto   freq      = std::vector<short_t>{};  //std::vector<short_t>{5, 1000};
-static const auto   amp       = std::vector<real_t>{};   //std::vector<real_t>{0.2, 0.2};
-static const real_t center[3] = {1.5, 1.5, 0.5};
+// static const real_t sigma     = 0.2;
+// static const real_t center[3] = {1.5, 1.5, 1.5};
+#define  D 1
+
+static const real_t sigma     = D / 15.0;
+static const real_t center[3] = {D / 2.0, D / 2.0, D / 2.0};
 
 using std::string;
 using std::to_string;
@@ -41,20 +41,14 @@ static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, 
     // get the position
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
-    // block->data(fid,0)(i0,i1,i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
-    block->data(fid,0)(i0,i1,i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta);
-    // real_t* data = block->data(fid).Write(i0, i1, i2);
-    // // set value
-    // // data[0] = scalar_exp(pos, center, sigma);
-    // data[0] = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    block->data(fid, 0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
 };
 static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
     // get the position
     real_t pos[3];
     block->pos(i0, i1, i2, pos);
     // set value
-    return scalar_compact_ring(pos, center, 2, radius, sigma, beta);
-    // return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
+    return scalar_exp(pos, center, sigma);
 };
 
 void EpsilonTest::Run() {
@@ -66,25 +60,34 @@ void EpsilonTest::Run() {
         m_log("================================================================================");
         //......................................................................
         // create a grid, put a ring on it on the fixel level
-        bool  period[3]   = {true, true, true};
-        lid_t grid_len[3] = {3, 3, 1};
+        bool  period[3]   = {false, false, false};
+        lid_t grid_len[3] = {D, D, D};
         Grid  grid(level_start_, period, grid_len, M_GRIDBLOCK, MPI_COMM_WORLD, nullptr);
         grid.level_limit(level_min_, level_max_);
 
+        // get the field
         Field scal("scalar", 1);
         grid.AddField(&scal);
         scal.bctype(M_BC_ZERO);
 
+        // init the value
         SetValue init(lambda_initcond);
-        init(&grid,&scal);
+        init(&grid, &scal);
 
         //......................................................................
-        // get the moments
+        // get the moments at the starting point
         BMoment moment;
         real_t  sol_moment0;
         real_t  sol_moment1[3];
         grid.GhostPull(&scal, &moment);
-        moment(&grid,&scal, &sol_moment0, sol_moment1);
+        moment(&grid, &scal, &sol_moment0, sol_moment1);
+
+#ifndef NDEBUG
+        BSum   sum;
+        real_t average;
+        sum(&grid, &scal, &average);
+        m_assert(std::fabs(average - sol_moment0) < 100.0 * std::numeric_limits<real_t>::epsilon(), "the two value MUST be the same here");
+#endif
 
         //......................................................................
         // get the tolerance and epsilon, coarsening only
@@ -97,7 +100,7 @@ void EpsilonTest::Run() {
         grid.GhostPull(&scal, &moment);
         real_t coarse_moment0;
         real_t coarse_moment1[3];
-        moment(&grid,&scal, &coarse_moment0, coarse_moment1);
+        moment(&grid, &scal, &coarse_moment0, coarse_moment1);
         m_log("----------------------------------------------------------");
         m_log("moments after coarsening: %e vs %e -> error = %e", sol_moment0, coarse_moment0, abs(sol_moment0 - coarse_moment0));
         m_log("moments1 after coarsening: %e vs %e -> error = %e", sol_moment1[0], coarse_moment1[0], abs(sol_moment1[0] - coarse_moment1[0]));

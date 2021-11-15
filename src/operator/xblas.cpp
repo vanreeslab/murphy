@@ -115,20 +115,12 @@ void BMoment::operator()(const ForestGrid* grid, const Field* fid_x, real_t* mom
     m_assert(IsGhostValid(fid_x), "the field <%s> must be up to date", fid_x->name().c_str());
     //--------------------------------------------------------------------------
     for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
-        // #ifdef M_MPI_AGGRESSIVE
-        //         MPI_Request requests[4];
-        // #endif
         // moment 0
         auto op_moment_0 = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
             ConstMemData data_src = block->ConstData(fid_x, ida);
             return data_src(i0, i1, i2);
         };
-
-        // #ifdef M_MPI_AGGRESSIVE
-        //         ComputeIntegral(grid, op_moment_0, moment0 + ida, requests + 0);
-        // #else
         ComputeIntegral(grid, op_moment_0, moment0 + ida);
-        // #endif
 
         for (lda_t dir = 0; dir < 3; ++dir) {
             // moment 0
@@ -138,16 +130,8 @@ void BMoment::operator()(const ForestGrid* grid, const Field* fid_x, real_t* mom
                 ConstMemData data_src = block->ConstData(fid_x, ida);
                 return data_src(i0, i1, i2) * pos[dir];
             };
-            // #ifdef M_MPI_AGGRESSIVE
-            //             ComputeIntegral(grid, op_moment_1, moment1+ dir + 3*ida, requests + 1 + dir);
-            // #else
             ComputeIntegral(grid, op_moment_1, moment1 + dir + 3 * ida);
-            // #endif
         }
-        // #ifdef M_MPI_AGGRESSIVE
-        //         MPI_Waitall(4, requests, MPI_STATUSES_IGNORE);
-        // #endif
-        m_log("moments are %e %e %e %e", moment0[0], moment1[0], moment1[1], moment1[2]);
     }
     //--------------------------------------------------------------------------
     m_end;
@@ -227,42 +211,39 @@ void BMoment::operator()(const ForestGrid* grid, const Field* fid_x, real_t* mom
 // };
 
 //------------------------------------------------------------------------------
-BAvg::BAvg() noexcept : BlockOperator(nullptr){};
-BAvg::BAvg(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
-
 /**
- * @brief compute the sum of the values on the grid
+ * @brief compute the sum of the values on the grid, sum global must of size fid_x->lda()
  */
-void BAvg::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_global) const {
+void BSum::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_global) const {
     m_begin;
+    m_assert(IsGhostValid(fid_x), "the field <%s> must be up to date", fid_x->name().c_str());
     //--------------------------------------------------------------------------
-    // reset the sum
-    real_t sum_local = 0.0;
-    // go on the blocks, for each dim separately
-    for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
-        DoOpMesh(this, &BAvg::ComputeBAvgGridBlock, grid, fid_x, ida, &sum_local);
+    for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
+        auto op_sum = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
+            ConstMemData data_src = block->ConstData(fid_x, ida);
+            return data_src(i0, i1, i2);
+        };
+        ComputeIntegral(grid, op_sum, sum_global + ida);
     }
-    // allreduce sync:
-    MPI_Allreduce(&sum_local, sum_global, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
     //--------------------------------------------------------------------------
     m_end;
 }
 
-void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const {
-    //--------------------------------------------------------------------------
-    // get the starting pointer:
-    const real_t*      h    = block->hgrid();
-    const ConstMemData data = block->data(fid_x, ida);
+// void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const {
+//     //--------------------------------------------------------------------------
+//     // get the starting pointer:
+//     const real_t*      h    = block->hgrid();
+//     const ConstMemData data = block->data(fid_x, ida);
 
-    real_t sum_local = 0.0;
-    // let's go!
-    auto op = [=, &sum_local](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        sum_local += data(i0, i1, i2);
-    };
-    for_loop(&op, span_);
-    sum[0] += sum_local * h[0] * h[1] * h[2];
-    //--------------------------------------------------------------------------
-}
+//     real_t sum_local = 0.0;
+//     // let's go!
+//     auto op = [=, &sum_local](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//         sum_local += data(i0, i1, i2);
+//     };
+//     for_loop(&op, span_);
+//     sum[0] += sum_local * h[0] * h[1] * h[2];
+//     //--------------------------------------------------------------------------
+// }
 
 //------------------------------------------------------------------------------
 BDensity::BDensity() noexcept : BlockOperator(nullptr){};

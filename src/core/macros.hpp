@@ -27,13 +27,13 @@
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 6
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
 
 #ifndef WAVELET_NT
-#define M_WAVELET_NT 2
+#define M_WAVELET_NT 0
 #else
 #define M_WAVELET_NT WAVELET_NT
 #endif
@@ -46,7 +46,7 @@
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 8  //!< memory space for the ghost points (not the actual number of ghost points!)
+#define M_GS 10  //!< memory space for the ghost points (not the actual number of ghost points!)
 #else
 #define M_GS BLOCK_GS
 #endif

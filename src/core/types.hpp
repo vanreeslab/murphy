@@ -31,7 +31,6 @@ using lambda_t = std::function<R(T...)>;
  */
 template <typename R, typename... T>
 using lambda_i3_t = lambda_t<R, const bidx_t, const bidx_t, const bidx_t, T...>;
-// using lambda_i3block_t = std::function<R(const bidx_t i0, const bidx_t i1, const bidx_t i2, T...)>;
 
 //------------------------------------------------------------------------------
 /**

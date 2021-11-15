@@ -36,13 +36,9 @@ class BMoment : public Integral<2> {
     void operator()(const ForestGrid* grid, const Field* fid_x, real_t* moment0, real_t* moment1) const;
 };
 
-class BAvg : public BlockOperator {
+class BSum :  public Integral<0> {
    public:
-    explicit BAvg() noexcept;
-    explicit BAvg(const bidx_t* ghost_len) noexcept;
-
     void operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum) const;
-    void ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const;
 };
 
 class BDensity : public BlockOperator {
