@@ -24,8 +24,8 @@ typedef enum AdvectionType_t {
 template <AdvectionType_t type, short_t order>
 class Advection : public Stencil<GridBlock>, public RKFunctor {
    protected:
-   bool         accumulate_ = false;    //!<  used to determine if we accumuate or not the solution
-    const real_t nu_ = 0.0;
+    bool         accumulate_ = false;  //!<  used to determine if we accumuate or not the solution
+    const real_t nu_         = 0.0;
     const Field* u_          = nullptr;  //!< velocity field used for the advection
 
    public:

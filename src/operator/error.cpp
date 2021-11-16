@@ -3,7 +3,7 @@
 #include "core/forloop.hpp"
 
 template <>
-void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const Field* field, const Field* sol, Field* error, real_t* norm_2, real_t* norm_i) const{
+void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const Field* field, const Field* sol, Field* error, real_t* norm_2, real_t* norm_i) const {
     m_assert(IsGhostValid(field), "we cannot compute the ghost, please get the ghost before for field <%s>", field->name().c_str());
     m_assert(IsGhostValid(sol), "we cannot compute the ghost, please get the ghost before for field <%s>", field->name().c_str());
     //--------------------------------------------------------------------------
@@ -27,8 +27,9 @@ void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const
 
             // ei is camputed and updated
             error_i = m_max(std::fabs(value), error_i);
-            // error 2 is returned to be integrated
-            return value * value;
+            /// error 2 is returned to be integrated
+            const real_t error2 = value * value;
+            return error2;
         };
         // integrate error 2 and get the errori
         real_t error_2 = 0.0;
@@ -36,7 +37,7 @@ void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const
 
         // finalize the computation
         if (norm_i != nullptr) {
-            norm_i[ida] = error_i;
+            MPI_Allreduce(&error_i,norm_i+ida,1,M_MPI_REAL,MPI_SUM,MPI_COMM_WORLD);
         }
         if (norm_2 != nullptr) {
             norm_2[ida] = sqrt(error_2);
@@ -70,7 +71,8 @@ void Error::ErrorMagic<lambda_error_t>(const ForestGrid* grid, const level_t lev
             // ei is camputed and updated
             error_i = m_max(std::fabs(value), error_i);
             // error 2 is returned to be integrated
-            return value * value;
+            const real_t error2 = value * value;
+            return  error2 ;
         };
         // integrate error 2 and get the errori
         real_t error_2 = 0.0;
@@ -78,7 +80,7 @@ void Error::ErrorMagic<lambda_error_t>(const ForestGrid* grid, const level_t lev
 
         // finalize the computation
         if (norm_i != nullptr) {
-            norm_i[ida] = error_i;
+            MPI_Allreduce(&error_i,norm_i+ida,1,M_MPI_REAL,MPI_SUM,MPI_COMM_WORLD);
         }
         if (norm_2 != nullptr) {
             norm_2[ida] = sqrt(error_2);
