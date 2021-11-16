@@ -33,7 +33,11 @@ void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const
         };
         // integrate error 2 and get the errori
         real_t error_2 = 0.0;
-        ComputeIntegral(grid, op, &error_2);
+        if (level >= 0) {
+            ComputeIntegral(grid, level, op, &error_2);
+        } else {
+            ComputeIntegral(grid, op, &error_2);
+        }
 
         // finalize the computation
         if (norm_i != nullptr) {
@@ -76,7 +80,11 @@ void Error::ErrorMagic<lambda_error_t>(const ForestGrid* grid, const level_t lev
         };
         // integrate error 2 and get the errori
         real_t error_2 = 0.0;
-        ComputeIntegral(grid, op, &error_2);
+        if (level >= 0) {
+            ComputeIntegral(grid, level, op, &error_2);
+        } else {
+            ComputeIntegral(grid, op, &error_2);
+        }
 
         // finalize the computation
         if (norm_i != nullptr) {
