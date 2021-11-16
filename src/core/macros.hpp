@@ -126,7 +126,8 @@
     ({                                                                                    \
         size_t m_calloc_size_        = (size_t)(size) + M_ALIGNMENT - 1;                  \
         size_t m_calloc_padded_size_ = (m_calloc_size_) - (m_calloc_size_ % M_ALIGNMENT); \
-        void*  m_calloc_data_        = aligned_alloc(M_ALIGNMENT, m_calloc_padded_size_); \
+        void * m_calloc_data_;\
+        posix_memalign(&m_calloc_data_,M_ALIGNMENT,m_calloc_padded_size_);\
         std::memset(m_calloc_data_, 0, m_calloc_padded_size_);                            \
         m_calloc_data_;                                                                   \
     })
