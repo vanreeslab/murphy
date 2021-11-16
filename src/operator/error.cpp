@@ -44,7 +44,7 @@ void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const
 
         // finalize the computation
         if (norm_i != nullptr) {
-            MPI_Allreduce(&error_i,norm_i+ida,1,M_MPI_REAL,MPI_SUM,MPI_COMM_WORLD);
+            MPI_Allreduce(&error_i,norm_i+ida,1,M_MPI_REAL,MPI_MAX,MPI_COMM_WORLD);
         }
         if (norm_2 != nullptr) {
             norm_2[ida] = sqrt(error_2);
@@ -94,7 +94,7 @@ void Error::ErrorMagic<lambda_error_t>(const ForestGrid* grid, const level_t lev
 
         // finalize the computation
         if (norm_i != nullptr) {
-            MPI_Allreduce(&error_i,norm_i+ida,1,M_MPI_REAL,MPI_SUM,MPI_COMM_WORLD);
+            MPI_Allreduce(&error_i,norm_i+ida,1,M_MPI_REAL,MPI_MAX,MPI_COMM_WORLD);
         }
         if (norm_2 != nullptr) {
             norm_2[ida] = sqrt(error_2);
