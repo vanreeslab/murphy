@@ -8,7 +8,7 @@
 #include "operator/blockoperator.hpp"
 #include "core/doop.hpp"
 
-using integrant_t = lambda_i3_t<real_t, const CartBlock*>;
+using integrand_t = lambda_i3_t<real_t, const CartBlock*>;
 
 /**
  * @brief Implements the integration of an integrant on the grid.
@@ -45,7 +45,7 @@ class Integral : public BlockOperator {
      * @warning the user is responsible to check that the integrant is actually valid when evaluated
      * @warning the user is responsible to check the completion of the request
      */
-    void ComputeIntegral(const ForestGrid* grid, const integrant_t op, real_t* result) const {
+    void ComputeIntegral(const ForestGrid* grid, const integrand_t op, real_t* result) const {
         m_begin;
         //----------------------------------------------------------------------
         // allocate a small array
@@ -64,7 +64,7 @@ class Integral : public BlockOperator {
      * @warning the user is responsible to check that the integrant is actually valid when evaluated
      * @warning the user is responsible to check the completion of the request
      */
-    void ComputeIntegral(const ForestGrid* grid, const level_t il, const integrant_t op, real_t* result) const {
+    void ComputeIntegral(const ForestGrid* grid, const level_t il, const integrand_t op, real_t* result) const {
         m_begin;
         m_assert(0 <= il, "the level you asked is negative: %d", il);
         //----------------------------------------------------------------------
@@ -88,7 +88,7 @@ class Integral : public BlockOperator {
      * @param ida 
      * @param op 
      */
-    void ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrant_t op, real_t* result) const {
+    void ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrand_t op, real_t* result) const {
         //----------------------------------------------------------------------
         m_assert(false, "The integral at order %d is not defined", ORDER);
         result[0] = 0.0;
@@ -97,10 +97,10 @@ class Integral : public BlockOperator {
 };
 
 template <>
-void Integral<0>::ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrant_t op, real_t* result) const;
+void Integral<0>::ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrand_t op, real_t* result) const;
 template <>
-void Integral<2>::ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrant_t op, real_t* result) const;
-// template <>
-// Integral<4>::ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const lda_t ida, const integrant_t* op, real_t* result) const;
+void Integral<2>::ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrand_t op, real_t* result) const;
+template <>
+void Integral<4>::ComputeIntegralBlock(const qid_t* qid, const CartBlock* block, const integrand_t op, real_t* result) const;
 
 #endif
