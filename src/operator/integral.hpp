@@ -66,7 +66,7 @@ class Integral : public BlockOperator {
      */
     void ComputeIntegral(const ForestGrid* grid, const level_t il, const integrant_t op, real_t* result) const {
         m_begin;
-        m_assert(0<=il,"the level you asked is negative: %d",il);
+        m_assert(0 <= il, "the level you asked is negative: %d", il);
         //----------------------------------------------------------------------
         // allocate a small array
         real_t local_integral = 0.0;

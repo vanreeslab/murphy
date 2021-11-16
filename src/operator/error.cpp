@@ -26,7 +26,10 @@ void Error::ErrorMagic<Field>(const ForestGrid* grid, const level_t level, const
             }
 
             // ei is camputed and updated
-            error_i = m_max(std::fabs(value), error_i);
+            const bool is_erri_valid = (span_.start[0] <= i0) && (i0 < span_.end[0]) &&
+                                       (span_.start[1] <= i1) && (i1 < span_.end[1]) &&
+                                       (span_.start[2] <= i2) && (i2 < span_.end[2]);
+            error_i = m_max(std::fabs(value)*is_erri_valid, error_i);
             /// error 2 is returned to be integrated
             const real_t error2 = value * value;
             return error2;
@@ -73,7 +76,10 @@ void Error::ErrorMagic<lambda_error_t>(const ForestGrid* grid, const level_t lev
             }
 
             // ei is camputed and updated
-            error_i = m_max(std::fabs(value), error_i);
+            const bool is_erri_valid = (span_.start[0] <= i0) && (i0 < span_.end[0]) &&
+                                       (span_.start[1] <= i1) && (i1 < span_.end[1]) &&
+                                       (span_.start[2] <= i2) && (i2 < span_.end[2]);
+            error_i = m_max(std::fabs(value)*is_erri_valid, error_i);
             // error 2 is returned to be integrated
             const real_t error2 = value * value;
             return  error2 ;
