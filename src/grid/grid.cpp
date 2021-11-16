@@ -48,7 +48,11 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataT
     // setup the ghost stuctures as the mesh will not change anymore
     SetupMeshGhost();
     //--------------------------------------------------------------------------
-    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", p4est_forest_->global_num_quadrants, p4est_forest_->trees->elem_count, p4est_forest_->mpisize, omp_get_max_threads());
+    const p4est_gloidx_t n_quad_global = p4est_forest_->global_num_quadrants;
+    const size_t         n_tree_global = p4est_forest_->trees->elem_count;
+    const rank_t         comm_size     = p4est_forest_->mpisize;
+    const rank_t         nthread       = omp_get_max_threads();
+    m_log("uniform grid created with %ld blocks on %ld trees using %d ranks and %d threads", n_quad_global, n_tree_global, comm_size, nthread);
     m_end;
 }
 
@@ -271,8 +275,9 @@ void Grid::GhostPull_SetLength(const Field* field, bidx_t ghost_len[2]) const {
     m_assert(IsAField(field), "the field does not belong to this grid");
     m_assert(ghost_ != nullptr, "The ghost structure is not valid, unable to use it");
     //--------------------------------------------------------------------------
-    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), field->ghost_status(ghost_len) ? "OK" : "to be computed", ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
-    if (!field->ghost_status(ghost_len)) {
+    const bool ghost_status = field->ghost_status(ghost_len);
+    m_log("ghost check: field <%s> is %s (requested %d %d, provided %d %d)", field->name().c_str(), ghost_status ? ("OK") : ("to be computed"), ghost_len[0], ghost_len[1], field->get_ghost_len(0), field->get_ghost_len(1));
+    if (!ghost_status) {
         ghost_->SetLength(ghost_len);
     }
     //--------------------------------------------------------------------------
