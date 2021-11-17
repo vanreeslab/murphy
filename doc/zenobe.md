@@ -1,33 +1,37 @@
 ## Zenobe
 
-<!-- 
-#### intel mpi 2018
 
 ```bash
 module purge
-module load compiler/gcc/7.2.0
-module load compiler/intel/comp_and_lib/2019.3.199
-module load intelmpi/2018.0.1/64
+module load OpenMPI/.4.1.2-GCC-8.3.0
+
+export PREFIX=$HOME/lib-OpenMPI-4.1.2rc3-GCC-8.3.0
+export CFLAGS="-march=ivybridge"
+export CXXFLAGS="-march=ivybridge"
+
+# hdf5
+gzip -d hdf5-1.12.1.tar.gz
+tar -xvf hdf5-1.12.1.tar
+cd hdf5-1.12.1/
+./configure --prefix=${PREFIX} --enable-parallel --enable-optimization=high --enable-build-mode=production --with-default-api-version=v110
+make install -j
+
+
+# ------------------------------------------------------------------------------
 # p4est
 wget https://p4est.github.io/release/p4est-2.3.2.tar.gz
 tar -xvf p4est-2.3.2.tar.gz
-cd p4est-2.3.2
+cd p4est-2.3.2/
+./configure --prefix=${PREFIX} --enable-mpi --enable-openmp
+make install -j
 
-CC=mpiicc CXX=mpiicpc F77=mpiifort FC=mpiifort ./configure --prefix=/home/acad/ucl-tfl/tgillis/soft_all/p4est-2.3.2-intel2019.3-impi2018.0 CFLAGS="-Ofast -Wall -qopenmp -xavx -axcore-avx2" --enable-mpi --enable-openmp
+
 ```
 
+:warning: when running a job, use `mpirun --mca osc pt2pt`, otherwise it will not work
 
-### OpenUCX
-```bash
-wget https://github.com/openucx/ucx/releases/download/v1.11.2/ucx-1.11.2.tar.gz
-tar -xvf ucx-1.11.2.tar.gz
-cd ucx-1.11.2
-./configure --with-mcpu=ivybridge --prefix=/home/acad/ucl-tfl/tgillis/soft_all/ucx-1.11.2-gcc-8.3.0
-#or
-# module load UCX/1.11.0-GCCcore-8.3.0
-``` -->
 
-### OpenMPI
+<!-- ### OpenMPI
 ```bash
 # ------------------------------------------------------------------------------
 # load the needed modules
@@ -165,40 +169,10 @@ Generic Unix FS: yes
 IBM Spectrum Scale/GPFS: yes
 Lustre: no
 PVFS2/OrangeFS: no
-```
+``` -->
 
 
 
 
 
 
-
-
-## UCX + OpenMPI
-
-```bash
-module purge
-module load OpenMPI/.4.1.2-GCC-8.3.0
-
-export PREFIX=$HOME/lib-OpenMPI-4.1.2-GCC-8.3.0
-export CFLAGS="-march=ivybridge"
-export CXXFLAGS="-march=ivybridge"
-
-# hdf5
-gzip -d hdf5-1.12.1.tar.gz
-tar -xvf hdf5-1.12.1.tar
-
-./configure --prefix=${PREFIX} --enable-parallel --enable-optimization=high --enable-build-mode=production --with-default-api-version=v110
-make install -j
-
-
-# ------------------------------------------------------------------------------
-# p4est
-wget https://p4est.github.io/release/p4est-2.3.2.tar.gz
-tar -xvf p4est-2.3.2.tar.gz
-cd p4est-2.3.2/
-./configure --prefix=${PREFIX} --enable-mpi --enable-openmp --with-blas=-lopenblas
-make install -j
-
-
-```
