@@ -374,7 +374,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     }
 
     m_profStart(prof_, "dump field");
-    if (iter % iter_dump() == 0 ) {
+    if ((iter % iter_dump() == 0) && iter > 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_, ghost_len_ioh5);
