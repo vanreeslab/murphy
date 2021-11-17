@@ -114,7 +114,7 @@ tar -xvf p4est-2.3.2.tar.gz
 cd p4est-2.3.2
 
 ./configure --prefix=${PREFIX} --enable-mpi --enable-openmp
-``` -->
+```
 
 this is the result
 ```bash

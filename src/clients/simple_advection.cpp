@@ -86,7 +86,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     m_profStart(prof_, "init");
 
     // setup the grid
-    bidx_t length[3] = {3,3,4};
+    bidx_t length[3] = {3,3,6};
     bool   period[3] = {false, false, false};
     grid_          = new Grid(param->init_lvl, period, length,M_GRIDBLOCK, MPI_COMM_WORLD, prof_);
 

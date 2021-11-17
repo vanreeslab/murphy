@@ -12,7 +12,7 @@
 
 // static const real_t sigma     = 0.2;
 // static const real_t center[3] = {1.5, 1.5, 1.5};
-#define  D 1
+#define  D 2
 static const real_t sigma     = D / 15.0;
 static const real_t center[3] = {D / 2.0, D / 2.0, D / 2.0};
 
