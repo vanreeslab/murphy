@@ -141,7 +141,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->SetExpr(vel_, lambda_velocity);
 
     tstart_ = param->time_start;
-    tfinal_ = 1.0;
+    tfinal_ = param->time_final;
     m_profStop(prof_, "init");
     //-------------------------------------------------------------------------
 }
