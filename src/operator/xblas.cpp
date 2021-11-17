@@ -1,4 +1,5 @@
 #include "xblas.hpp"
+
 #include "core/doop.hpp"
 #include "core/forloop.hpp"
 
@@ -85,21 +86,23 @@ void BMinMax::ComputeBMinMaxGridBlock(const qid_t* qid, const CartBlock* block, 
     for_loop(&op, span_);
     //-------------------------------------------------------------------------
 }
+//==============================================================================
+// //------------------------------------------------------------------------------
+// BMoment::BMoment() noexcept : BlockOperator(nullptr) {
+//     //--------------------------------------------------------------------------
+//     // we need one more point at the back of the block
+//     ghost_len_need_[0] = ghost_len_res_[0] + 2;  // + interp->nghost_front_refine();
+//     ghost_len_need_[1] = ghost_len_res_[1] + 3;  // + interp->nghost_back_refine();
 
-//------------------------------------------------------------------------------
-BMoment::BMoment() noexcept: BlockOperator(nullptr){
-    //--------------------------------------------------------------------------
-    // we need one more point at the back of the block
-    ghost_len_need_[0] = ghost_len_res_[0];
-    ghost_len_need_[1] = ghost_len_res_[1] + 1;
-    //--------------------------------------------------------------------------
-};
-BMoment::BMoment(const bidx_t*  ghost_len) noexcept: BlockOperator(ghost_len){
-    //--------------------------------------------------------------------------
-    ghost_len_need_[0] = ghost_len_res_[0];
-    ghost_len_need_[1] = ghost_len_res_[1] + 1;
-    //--------------------------------------------------------------------------
-};
+//     //--------------------------------------------------------------------------
+// };
+// BMoment::BMoment(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len) {
+//     //--------------------------------------------------------------------------
+//     // get the ghost sizes right
+//     ghost_len_need_[0] = ghost_len_res_[0] + 2;  // interp->nghost_front_refine();
+//     ghost_len_need_[1] = ghost_len_res_[1] + 3;  // interp->nghost_back_refine();
+//     //--------------------------------------------------------------------------
+// };
 
 /**
  * @brief compute the 0th and the first moment of the block
@@ -107,103 +110,140 @@ BMoment::BMoment(const bidx_t*  ghost_len) noexcept: BlockOperator(ghost_len){
  * @param moment0 the value of the 0th moment = integral (length = #lda of the field)
  * @param moment1 the vlaue of the 1st moments: m_x, m_y and m_z (length = 3 * #lda of the field)
  */
-void BMoment::operator()(const ForestGrid*  grid, const Field*  fid_x, real_t* moment0, real_t* moment1) const {
+void BMoment::operator()(const ForestGrid* grid, const Field* fid_x, real_t* moment0, real_t* moment1) const {
     m_begin;
-    m_assert(fid_x->ghost_status(ghost_len_need_), "the field <%s> must be up to date", fid_x->name().c_str());
+    m_assert(IsGhostValid(fid_x), "the field <%s> must be up to date", fid_x->name().c_str());
     //--------------------------------------------------------------------------
-    // go on the blocks, for each dim separately
-    for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
-        // reset the moments
-        real_t moments[4] = {0.0,0.0,0.0,0.0};
+    for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
+        // moment 0
+        auto op_moment_0 = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
+            ConstMemData data_src = block->ConstData(fid_x, ida);
+            return data_src(i0, i1, i2);
+        };
+        ComputeIntegral(grid, op_moment_0, moment0 + ida);
 
-        // store the dimension and go!
-        DoOpMesh(this, &BMoment::ComputeBMomentGridBlock, grid, fid_x, ida,moments);
-
-        // allreduce sync:
-        MPI_Allreduce(moments, moment0 + ida, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
-        MPI_Allreduce(moments+1, moment1 + 3 * ida, 3, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
+        for (lda_t dir = 0; dir < 3; ++dir) {
+            // moment 0
+            auto op_moment_1 = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
+                real_t pos[3];
+                block->pos(i0, i1, i2, pos);
+                ConstMemData data_src = block->ConstData(fid_x, ida);
+                return data_src(i0, i1, i2) * pos[dir];
+            };
+            ComputeIntegral(grid, op_moment_1, moment1 + dir + 3 * ida);
+        }
     }
     //--------------------------------------------------------------------------
     m_end;
 }
 
-void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const {
-    //--------------------------------------------------------------------------
-    // get the starting pointer:
-    const real_t*      h    = block->hgrid();
-    const ConstMemData data = block->data(fid_x, ida);
+// void BMoment::ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const {
+//     //--------------------------------------------------------------------------
+//     const real_t* h        = block->hgrid();
+//     ConstMemData  data_src = block->data(fid_x, ida);
 
-    real_t lmoment0    = 0.0;
-    real_t lmoment1[3] = {0.0, 0.0, 0.0};
+//     real_t lmoment0    = 0.0;
+//     real_t lmoment1[3] = {0.0, 0.0, 0.0};
 
-    // let's go!
-    auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        // get the position
-        real_t origin[3];
-        block->pos(i0, i1, i2, origin);
-        // m_pos(origin, i0, i1, i2, block->hgrid(), block->xyz());
+//     // let's go!
+//     auto op = [=, &lmoment0, &lmoment1](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//         // simpson weights
+//         const bidx_t n_loop =4 ;
+//         const bidx_t shift[3] = {1,1,1};
+//         const real_t weights[4] = {-1.0 / 24.0, 13.0 / 24.0, 13.0 / 24.0, -1.0 / 24.0};
+//         // const bidx_t n_loop     = 2;
+//         // const bidx_t shift[3]   = {0, 0, 0};
+//         // const real_t weights[2] = {0.5, 0.5};
+//         // local data
+//         LocalData ldata(&data_src, i0, i1, i2);
 
-        constexpr real_t coef = 0.125;
-        const LocalData  ldata(&data, i0, i1, i2);
+//         // get the position
+//         real_t origin[3];
+//         block->pos(i0, i1, i2, origin);
 
-#pragma unroll 8
-        for (lda_t id = 0; id < 8; ++id) {
-            const bidx_t is_dim[3] = {id % 2, (id % 4) / 2, id / 4};
-            const real_t value     = ldata(is_dim[0], is_dim[1], is_dim[2]);
+//         real_t local_m00 = 0.0;
+//         real_t local_m10 = 0.0;
+//         real_t local_m11 = 0.0;
+//         real_t local_m12 = 0.0;
 
-            lmoment0 += coef * value;
-            lmoment1[0] += coef * value * (origin[0] + h[0] * is_dim[0]);
-            lmoment1[1] += coef * value * (origin[1] + h[1] * is_dim[1]);
-            lmoment1[2] += coef * value * (origin[2] + h[2] * is_dim[2]);
-        }
-    };
-    for_loop(&op, span_);
+// #ifndef NDEBUG
+//         real_t sum_fact = 0.0;
+// #endif
+//         for (bidx_t is2 = 0; is2 < n_loop; ++is2) {
+//             for (bidx_t is1 = 0; is1 < n_loop; ++is1) {
+//                 for (bidx_t is0 = 0; is0 < n_loop; ++is0) {
+//                     const real_t fact  = weights[is0] * weights[is1] * weights[is2];
+//                     const real_t value = ldata(is0 - shift[0], is1 - shift[1], is2 - shift[2]);
+//                     local_m00 += fact * value;
+//                     local_m10 += fact * value * (origin[0] + h[0] * (is0 - shift[0]));
+//                     local_m11 += fact * value * (origin[1] + h[1] * (is1 - shift[1]));
+//                     local_m12 += fact * value * (origin[2] + h[2] * (is2 - shift[2]));
 
-    const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
-    moments[0] += vol * lmoment0;
-    moments[1] += vol * lmoment1[0];
-    moments[2] += vol * lmoment1[1];
-    moments[3] += vol * lmoment1[2];
-    //--------------------------------------------------------------------------
-}
+// #ifndef NDEBUG
+//                     sum_fact += fact;
+// #endif
+//                 }
+//             }
+//         }
+//         m_assert(std::fabs(sum_fact - 1.0) < 10.0 * std::numeric_limits<real_t>::epsilon(), "the sum must be 1 -> error = %e", std::fabs(sum_fact - 1.0));
+//         lmoment0 += local_m00;
+//         lmoment1[0] += local_m10;
+//         lmoment1[1] += local_m11;
+//         lmoment1[2] += local_m12;
+//     };
+
+//     m_assert(((span_.end[0] - span_.start[0]) % 2) == 0, "the span must be a modulo of 2: from %d to %d", span_.start[0], span_.end[0]);
+//     m_assert(((span_.end[1] - span_.start[1]) % 2) == 0, "the span must be a modulo of 2: from %d to %d", span_.start[1], span_.end[1]);
+//     m_assert(((span_.end[2] - span_.start[2]) % 2) == 0, "the span must be a modulo of 2: from %d to %d", span_.start[2], span_.end[2]);
+
+//     // create a new span that will take the last GP
+//     // const bidx_t span_shift[2][3] = {{0, 0, 0}, {-1, -1, -1}};
+//     // MemSpan      moment_span(&span_, span_shift);
+//     // const bidx_t jumps[3] = {1, 1, 1};
+//     for_loop(&op, span_);
+
+//     const real_t vol = block->hgrid(0) * block->hgrid(1) * block->hgrid(2);
+//     moments[0] += vol * lmoment0;
+//     moments[1] += vol * lmoment1[0];
+//     moments[2] += vol * lmoment1[1];
+//     moments[3] += vol * lmoment1[2];
+//     //--------------------------------------------------------------------------
+// };
 
 //------------------------------------------------------------------------------
-BAvg::BAvg() noexcept : BlockOperator(nullptr){};
-BAvg::BAvg(const bidx_t* ghost_len) noexcept : BlockOperator(ghost_len){};
-
 /**
- * @brief compute the sum of the values on the grid
+ * @brief compute the sum of the values on the grid, sum global must of size fid_x->lda()
  */
-void BAvg::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_global) const {
+void BSum::operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum_global) const {
     m_begin;
+    m_assert(IsGhostValid(fid_x), "the field <%s> must be up to date", fid_x->name().c_str());
     //--------------------------------------------------------------------------
-    // reset the sum
-    real_t sum_local = 0.0;
-    // go on the blocks, for each dim separately
-    for (lda_t ida = 0; ida < fid_x->lda(); ++ida) {
-        DoOpMesh(this, &BAvg::ComputeBAvgGridBlock, grid, fid_x, ida, &sum_local);
+    for (lda_t ida = 0; ida < fid_x->lda(); ida++) {
+        auto op_sum = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
+            ConstMemData data_src = block->ConstData(fid_x, ida);
+            return data_src(i0, i1, i2);
+        };
+        ComputeIntegral(grid, op_sum, sum_global + ida);
     }
-    // allreduce sync:
-    MPI_Allreduce(&sum_local, sum_global, 1, M_MPI_REAL, MPI_SUM, MPI_COMM_WORLD);
     //--------------------------------------------------------------------------
     m_end;
 }
 
-void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const {
-    //--------------------------------------------------------------------------
-    // get the starting pointer:
-    const real_t* h    = block->hgrid();
-    const ConstMemData data = block->data(fid_x, ida);
+// void BAvg::ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const {
+//     //--------------------------------------------------------------------------
+//     // get the starting pointer:
+//     const real_t*      h    = block->hgrid();
+//     const ConstMemData data = block->data(fid_x, ida);
 
-    real_t sum_local = 0.0;
-    // let's go!
-    auto op = [=, &sum_local](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
-        sum_local += data(i0, i1, i2);
-    };
-    for_loop(&op, span_);
-    sum[0] += sum_local * h[0] * h[1] * h[2];
-    //--------------------------------------------------------------------------
-}
+//     real_t sum_local = 0.0;
+//     // let's go!
+//     auto op = [=, &sum_local](const bidx_t i0, const bidx_t i1, const bidx_t i2) -> void {
+//         sum_local += data(i0, i1, i2);
+//     };
+//     for_loop(&op, span_);
+//     sum[0] += sum_local * h[0] * h[1] * h[2];
+//     //--------------------------------------------------------------------------
+// }
 
 //------------------------------------------------------------------------------
 BDensity::BDensity() noexcept : BlockOperator(nullptr){};
@@ -241,7 +281,7 @@ void BDensity::ComputeBDensityGridBlock(const qid_t* qid, const CartBlock* block
 
 // /**
 //  * @brief compute the 0th and the first moment of the block
-//  * 
+//  *
 //  * @param moment0 the value of the 0th moment = integral (length = #lda of the field)
 //  * @param moment1 the vlaue of the 1st moments: m_x, m_y and m_z (length = 3 * #lda of the field)
 //  */
@@ -271,10 +311,10 @@ void BDensity::ComputeBDensityGridBlock(const qid_t* qid, const CartBlock* block
 
 // /**
 //  * @brief Integrate the discrete moments on the block
-//  * 
-//  * @param qid 
-//  * @param block 
-//  * @param fid_x 
+//  *
+//  * @param qid
+//  * @param block
+//  * @param fid_x
 //  */
 // void BDiscreteMoment::ComputeBDiscreteMomentGridBlock(const qid_t*  qid, GridBlock*  block, const Field*  fid_x) {
 //     m_assert((end_ - start_) % 4 == 0, "the span done = %d to %d must be a modulo of 4", start_, end_);

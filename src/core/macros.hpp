@@ -27,7 +27,7 @@
 
 // check if the compilation defines the order of the wavelet. if not, we do it
 #ifndef WAVELET_N
-#define M_WAVELET_N 4
+#define M_WAVELET_N 2
 #else
 #define M_WAVELET_N WAVELET_N
 #endif
@@ -46,7 +46,7 @@
 #define M_ALIGNMENT 16  //!< memory alignement (in Byte, 16 = 2 doubles = 4 floats)
 
 #ifndef BLOCK_GS
-#define M_GS 6  //!< memory space for the ghost points (not the actual number of ghost points!)
+#define M_GS 4  //!< memory space for the ghost points (not the actual number of ghost points!)
 #else
 #define M_GS BLOCK_GS
 #endif
@@ -126,7 +126,8 @@
     ({                                                                                    \
         size_t m_calloc_size_        = (size_t)(size) + M_ALIGNMENT - 1;                  \
         size_t m_calloc_padded_size_ = (m_calloc_size_) - (m_calloc_size_ % M_ALIGNMENT); \
-        void*  m_calloc_data_        = aligned_alloc(M_ALIGNMENT, m_calloc_padded_size_); \
+        void * m_calloc_data_;\
+        posix_memalign(&m_calloc_data_,M_ALIGNMENT,m_calloc_padded_size_);\
         std::memset(m_calloc_data_, 0, m_calloc_padded_size_);                            \
         m_calloc_data_;                                                                   \
     })

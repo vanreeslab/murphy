@@ -143,6 +143,7 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
         }
@@ -152,6 +153,7 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_5 + il);
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
@@ -160,6 +162,7 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_3 + il);
             m_log("M_CONS - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
         }
@@ -169,6 +172,7 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_5 + il);
             m_log("M_CONS - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_5[il]);
         }
@@ -333,6 +337,7 @@ TEST_P(Adapt, weno_periodic_cosinus_field) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
         }
@@ -342,6 +347,7 @@ TEST_P(Adapt, weno_periodic_cosinus_field) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_5 + il);
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
         }
@@ -350,6 +356,7 @@ TEST_P(Adapt, weno_periodic_cosinus_field) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_3 + il);
             m_log("M_CONS - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
         }
@@ -359,6 +366,7 @@ TEST_P(Adapt, weno_periodic_cosinus_field) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_5 + il);
             m_log("M_CONS - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_5[il]);
         }
@@ -523,12 +531,13 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_3 + il);
             m_log("M_WENO_Z - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_3[il]);
 
             // check the moment
             real_t sum;
-            BAvg   sum_grid;
+            BSum   sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
@@ -540,12 +549,13 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_weno_5 + il);
             m_log("M_WENO_Z - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_weno_5[il]);
 
             // check the moment
             real_t sum;
-            BAvg   sum_grid;
+            BSum   sum_grid;
             sum_grid(&grid, &dtest, &sum);
             m_log("sum of dtest = %e", sum);
 
@@ -556,6 +566,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_3 + il);
             m_log("M_CONS - 3: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_3[il]);
         }
@@ -565,6 +576,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
             adv(&grid, &test, &dtest);
             // now, we need to check
             Error error;
+            grid.GhostPull(&dtest,&error);
             error.Normi(&grid, &dtest, &cos_sol, erri_adv_cons_5 + il);
             m_log("M_CONS - 5: checking res = %f, ei = %e", std::pow(2, il), erri_adv_cons_5[il]);
         }
@@ -720,7 +732,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
 //             // check the moment
 //             real_t sum;
-//             BAvg  sum_grid;
+//             BSum  sum_grid;
 //             sum_grid(&grid, &dtest, &sum);
 //             m_log("sum of dtest = %e", sum);
 
@@ -736,7 +748,7 @@ TEST_F(ValidStencilUniform, weno_extrap_cosinus) {
 
 //             // check the moment
 //             real_t sum;
-//             BAvg  sum_grid;
+//             BSum  sum_grid;
 //             sum_grid(&grid, &dtest, &sum);
 //             m_log("sum of dtest = %e", sum);
 

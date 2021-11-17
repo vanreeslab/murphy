@@ -5,9 +5,9 @@
 #include "core/types.hpp"
 #include "operator/blockoperator.hpp"
 #include "grid/field.hpp"
-#include "grid/forestgrid.hpp"
-#include "grid/cartblock.hpp"
+#include "operator/integral.hpp"
 
+//==============================================================================
 class BMax : public BlockOperator {
    public:
     explicit BMax() noexcept;
@@ -27,22 +27,18 @@ class BMinMax : public BlockOperator {
     void ComputeBMinMaxGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t res[2]) const;
 };
 
-class BMoment : public BlockOperator {
-   public:
-    explicit BMoment() noexcept;
-    explicit BMoment(const bidx_t* ghost_len) noexcept;
+//==============================================================================
+// Integral types
+//------------------------------------------------------------------------------
 
+class BMoment : public Integral<2> {
+   public:
     void operator()(const ForestGrid* grid, const Field* fid_x, real_t* moment0, real_t* moment1) const;
-    void ComputeBMomentGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t moments[4]) const;
 };
 
-class BAvg : public BlockOperator {
+class BSum :  public Integral<0> {
    public:
-    explicit BAvg() noexcept;
-    explicit BAvg(const bidx_t* ghost_len) noexcept;
-
     void operator()(const ForestGrid* grid, const Field* fid_x, real_t* sum) const;
-    void ComputeBAvgGridBlock(const qid_t* qid, const CartBlock* block, const Field* fid_x, const lda_t ida, real_t* sum) const;
 };
 
 class BDensity : public BlockOperator {

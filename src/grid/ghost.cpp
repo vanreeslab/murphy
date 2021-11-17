@@ -117,7 +117,7 @@ void Ghost::InitList_() {
     m_profStart(prof_, "MPI_Win_create");
     MPI_Aint  win_disp_memsize  = mesh->local_num_quadrants * sizeof(MPI_Aint);
     MPI_Aint* local2disp        = reinterpret_cast<MPI_Aint*>(m_calloc(win_disp_memsize));
-    MPI_Win   local2disp_window = MPI_WIN_NULL;
+    MPI_Win   local2disp_window;
     MPI_Win_create(local2disp, win_disp_memsize, sizeof(MPI_Aint), info, MPI_COMM_WORLD, &local2disp_window);
     m_assert(win_disp_memsize >= 0, "the memory size should be >=0");
     m_assert(local2disp_window != MPI_WIN_NULL, "window must be ready");
@@ -290,11 +290,15 @@ void Ghost::InitComm_() {
     }
 #endif
 
-    //................................................
+    //..........................................................................
     // get the list of ranks that will generate a call to access my mirrors
     rank_t n_in_group = 0;
-    // over allocate the array to its max size and fill it only partially... not great
-    rank_t* group_ranks = static_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
+    // note: we over allocate this array to its max size and fill it only partially, not the best
+    rank_t* group_ranks = reinterpret_cast<rank_t*>(m_calloc(mpi_size * sizeof(rank_t)));
+
+#ifndef NDEBUG
+    int* rank_will_call_me = reinterpret_cast<int*>(m_calloc(mpi_size * sizeof(int)));
+#endif
     for (rank_t ir = 0; ir < mpi_size; ir++) {
         // for every mirror send to the current
         iblock_t send_first = ghost->mirror_proc_offsets[ir];
@@ -307,6 +311,10 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= mirror_level && mirror_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+#ifndef NDEBUG
+                // if the rank will call me, register its rank
+                rank_will_call_me[ir] = 1;
+#endif
                 m_verb("adding rank %d to the ingroup (now %d ranks", ir, n_in_group);
                 break;
             }
@@ -315,9 +323,22 @@ void Ghost::InitComm_() {
     // get the RMA mirror group ready - the group that will need my info
     MPI_Group global_group;
     MPI_Comm_group(MPI_COMM_WORLD, &global_group);
-    // MPI_Win_get_group(mirrors_window_, &win_group);
     MPI_Group_incl(global_group, n_in_group, group_ranks, &ingroup_);
     m_assert(!(n_in_group == 0 && ingroup_ != MPI_GROUP_EMPTY), "if there is no cpu, the group must be empty");
+
+#ifdef NDEBUG
+    // we know that the cpus that will call me are the one I will call
+    // so take all the cpus from the global groups and that are in the ingroup and define the new group like that
+    MPI_Group_intersection(global_group, ingroup_, &outgroup_);
+#endif
+
+#ifndef NDEBUG
+    // if we are in debug mode get the outgoing group the old fashion way
+    // and check that the two groups are consistent!
+    // scatter the information to all the mpi ranks that I have detected they will access me
+    int* rank_has_detected_me = reinterpret_cast<int*>(m_calloc(mpi_size * sizeof(int)));
+    MPI_Alltoall(rank_will_call_me, 1, MPI_INT, rank_has_detected_me, 1, MPI_INT, MPI_COMM_WORLD);
+    m_free(rank_will_call_me);
 
     //................................................
     // get the list of ranks that will received a call from me to access their mirrors
@@ -334,24 +355,24 @@ void Ghost::InitComm_() {
             if ((min_level_ - 1) <= ghost_level && ghost_level <= (max_level_ + 1)) {
                 group_ranks[n_in_group] = ir;
                 n_in_group += 1;
+                // I can register a rank ONLY if it has detected that I will access
+                m_assert(rank_has_detected_me[ir] == 1, "the rank %d has not detected my access", ir);
                 m_verb("adding rank %d to the outgroup (now %d ranks", ir, n_in_group);
                 break;
+            } else {
+                m_assert(false, "This shouldn't happen in the present version of the code");
             }
         }
     }
+    m_free(rank_has_detected_me);
     // add the cpus that will get a call from me
     MPI_Group_incl(global_group, n_in_group, group_ranks, &outgroup_);
-    MPI_Group_free(&global_group);
     m_assert(!(n_in_group == 0 && ingroup_ != MPI_GROUP_EMPTY), "if there is no cpu, the group must be empty");
-#ifndef NDEBUG
-    {
-        int test;
-        MPI_Group_compare(ingroup_, outgroup_, &test);
-        m_assert(test != MPI_UNEQUAL, "the ingroup and outgroup must be the same: test = %d vs %d, %d, %d and %d", test, MPI_IDENT, MPI_CONGRUENT, MPI_SIMILAR, MPI_UNEQUAL);
-    }
 #endif
 
     //................................................
+    // this group is useless now, and YES we can delete it immediatly
+    MPI_Group_free(&global_group);
     // free the allocated memory
     m_free(group_ranks);
     //-------------------------------------------------------------------------

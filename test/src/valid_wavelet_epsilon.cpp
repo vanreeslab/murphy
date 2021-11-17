@@ -172,6 +172,7 @@ TEST_P(Epsilon, periodic) {
     // measure the error
     real_t normi;
     Error  error;
+    grid.GhostPull(&scal,&error);
     error.Normi(&grid, &scal, &lambda_error, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 
@@ -301,6 +302,7 @@ TEST_P(Epsilon, extrap) {
     // measure the error
     real_t normi;
     Error  error;
+    grid.GhostPull(&scal,&error);
     error.Normi(&grid, &scal, &lambda_error, &normi);
     m_log("epsilon = %e, error = %.12e", epsilon, normi);
 

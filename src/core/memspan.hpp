@@ -72,7 +72,7 @@ struct MemSpan {
     explicit MemSpan(){};
     explicit MemSpan(const bidx_t in_start, const bidx_t in_end) noexcept;
     explicit MemSpan(const bidx_t in_start[3], const bidx_t in_end[3]) noexcept;
-    explicit MemSpan(const MemSpan* old_span, const bidx_t shift[3]) noexcept;
+    explicit MemSpan(const MemSpan* old_span, const bidx_t shift[2][3]) noexcept;
 };
 
 #endif

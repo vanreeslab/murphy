@@ -108,7 +108,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_sin) {
             };
             // the error is computed in the ghost region (AS WELL)
             Error error(ghost_len);
-
+            grid.GhostPull(&test,&error);
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &lambda_sol, err2 + il, erri + il);
             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL + 1), erri[il], err2[il]);
@@ -208,6 +208,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_periodic_cos) {
                        cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
             };
             Error error(ghost_len);
+            grid.GhostPull(&test,&error);
             // sanity check
             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -306,6 +307,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_extrap_cos) {
                        cos(2.0 * M_PI * freq[2] / cos_len[2] * pos[2]);
             };
             Error error(ghost_len);
+            grid.GhostPull(&test,&error);
             // sanity check
             //             error.Norms(&grid, il + 1 + BLVL, &test, &sol, err2 + il, erri + il);
             //             m_log("checking in dim %d on HIGH: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -485,6 +487,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_dirichlet0_polynom
             // now, we need to check
             real_t norm2, normi;
             Error  error(ghost_len);
+            grid.GhostPull(&test,&error);
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);
@@ -582,6 +585,7 @@ TEST_P(ValidWaveletInterpolation, ghost_reconstruction_perper_neuman0_cos) {
             // now, we need to check
             real_t norm2, normi;
             Error  error(ghost_len);
+            grid.GhostPull(&test,&error);
             error.Norms(&grid, &test, &sol, err2 + il, erri + il);
 
             m_log("checking in dim %d: res = %f, ei = %e e2 = %e", id, std::pow(2, il + BLVL), erri[il], err2[il]);

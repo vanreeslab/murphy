@@ -43,7 +43,7 @@ void ConvergenceWeno::InitParam(ParserArguments* param) {
 
 static const real_t sigma     = 0.05;
 static const real_t radius    = 0.25;
-static const real_t beta      = 3.0;
+static const real_t beta_ring      = 3.0;
 static const auto   freq      = std::vector<short_t>{};  //std::vector<short_t>{5, 1000};
 static const auto   amp       = std::vector<real_t>{};   //std::vector<real_t>{0.2, 0.2};
 static const real_t center[3] = {0.5, 0.5, 0.5};
@@ -55,8 +55,8 @@ static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, 
     block->pos(i0, i1, i2, pos);
     // set value
     // data[0] = scalar_exp(pos, center, sigma);
-    // block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
-    block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta);
+    // block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta_ring, freq, amp);
+    block->data(fid,0)(i0, i1, i2) = scalar_compact_ring(pos, center, 2, radius, sigma, beta_ring);
 };
 static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block) -> real_t {
     // get the position
@@ -65,8 +65,8 @@ static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const 
     // set value
     // const real_t rhox = (pos[0] - center[0]) / sigma;
     // return std::exp(-rhox * rhox);
-    // return scalar_compact_ring(pos, center, 2, radius, sigma, beta, freq, amp);
-    return scalar_compact_ring(pos, center, 2, radius, sigma, beta);
+    // return scalar_compact_ring(pos, center, 2, radius, sigma, beta_ring, freq, amp);
+    return scalar_compact_ring(pos, center, 2, radius, sigma, beta_ring);
 };
 
 void ConvergenceWeno::Run() {
@@ -160,7 +160,7 @@ void ConvergenceWeno::Run() {
             const lda_t idy = (normal + 2) % 3;
             const lda_t idz = normal;
 
-            const real_t gamma  = beta * sigma;
+            const real_t gamma  = beta_ring * sigma;
             const real_t x      = pos[idx] - center[idx];
             const real_t y      = pos[idy] - center[idy];
             const real_t z      = pos[idz] - center[idz];

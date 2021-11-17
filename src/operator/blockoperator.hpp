@@ -5,6 +5,7 @@
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "tools/prof.hpp"
+#include "grid/field.hpp"
 
 /**
  * @brief represents the simplest operator on a block that operates from [start_,start_,start_] to [end_,end_,end_]
@@ -39,6 +40,7 @@ class BlockOperator {
     };
 
     [[nodiscard]] inline bool DoGhost() const { return (ghost_len_res_[0] + ghost_len_res_[1]) > 0; }
+    [[nodiscard]] inline bool IsGhostValid(const Field* field) const { return field->ghost_status(ghost_len_need_); }
 
     inline virtual void Profile(Prof* profiler) { prof_ = profiler; }
 

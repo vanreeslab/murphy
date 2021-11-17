@@ -242,6 +242,7 @@ TEST_F(ValidRK, rk3_tvd) {
 
         // compute the error
         Error error;
+        grid.GhostPull(&phi,&error);
         error.Normi(&grid, &phi, &lambda_sol, erri_tvd + id);
         m_log("RK3 - TVD: checking iter_max = %d, ei = %e", iter_max, erri_tvd[id]);
 
