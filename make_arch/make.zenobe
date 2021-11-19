@@ -4,7 +4,7 @@ CC = mpicc
 # override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
 
 #CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
-CXXFLAGS := -g -O3 -fopenmp -march=ivybridge # -DMPI_NONASYNC # -DLOG_ALLRANKS #-DMPI_NONASYNC -DNDEBUG
+CXXFLAGS := -g -O3 -fopenmp -march=ivybridge -DMPI_NONASYNC # -DLOG_ALLRANKS #-DMPI_NONASYNC -DNDEBUG
 
 # -DNDEBUG
 # -DLOG_ALLRANKS
