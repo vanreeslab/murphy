@@ -365,13 +365,12 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     grid_->DumpLevels(iter, folder_diag_, string("_" + tag));
     m_profStop(prof_, "dump levels");
 
-    if (iter % iter_adapt() == 0) {
-        m_profStart(prof_, "dump det histogram");
-        // grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
+    m_profStart(prof_, "dump det histogram");
+    if ((iter % iter_dump() == 0) && iter > 0) {
         DetailVsError distr(grid_->interp());
         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
-        m_profStop(prof_, "dump det histogram");
     }
+    m_profStop(prof_, "dump det histogram");
 
     m_profStart(prof_, "dump field");
     if ((iter % iter_dump() == 0) && iter > 0) {
@@ -399,7 +398,6 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     //-------------------------------------------------------------------------
     m_end;
 }
-
 
 // void SimpleAdvection::GridDetErr(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
 //     m_begin;
