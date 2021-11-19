@@ -1,6 +1,6 @@
 #!/bin/bash
 # Submission script for Engaging
-#SBATCH --time=2:00:00
+#SBATCH --time=4:00:00
 #
 ##SBATCH --ntasks-per-node=64
 #SBATCH --mem-per-cpu=3925
@@ -26,8 +26,9 @@ cp ${HOME_MURPHY}/${MNAME} .
 #run that shit
 #mpirun ./${MNAME} --sadv --profile --iter-max=50000 --iter-dump=50000 --level-min=2 --level-max=9 --ilevel=${ILEVEL} --rtol=${RTOL} --ctol=${CTOL} ${NO_ADAPT} --tfinal=0.5 --weno=5 --fix-weno --cfl-max=1.0 > log_$SLURM_JOB_ID.log
 #mpirun --mca pml ucx --mca osc ucx --mca btl ^uct \
-mpirun -n ${SLURM_NPROCS} ./${MNAME} --sadv --profile --iter-max=50000 --iter-dump=50000 --level-min=0 --level-max=12 \
-                   --ilevel=${ILEVEL} --rtol=${RTOL} --ctol=${CTOL} ${NO_ADAPT} --tfinal=1.0 ${WENO} --cfl-max=0.25 > log_$SLURM_JOB_ID.log
+mpirun --mca pml ucx --mca osc ucx --mca btl ^uct -n ${SLURM_NPROCS} \
+        ./${MNAME} --sadv --profile --iter-max=500000 --iter-dump=500000 --level-min=0 --level-max=12 \
+                   --ilevel=${ILEVEL} --rtol=${RTOL} --ctol=${CTOL} ${NO_ADAPT} --tfinal=3.0 ${WENO} --cfl-max=0.25 > log_$SLURM_JOB_ID.log
 #mpirun --mca pml ucx --mca btl ^uct --tag-output valgrind --leak-check=full ./${MNAME} --sadv --profile --iter-max=50000 --iter-dump=50000 --level-min=0 --level-max=4 --ilevel=${ILEVEL} --rtol=${RTOL} --ctol=${CTOL} ${NO_ADAPT} --tfinal=0.1 --weno=5 --cfl-max=1.0 > log_$SLURM_JOB_ID.log
 
 

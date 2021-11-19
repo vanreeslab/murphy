@@ -3,7 +3,7 @@
 #SBATCH --time=02:00:00
 #
 ##SBATCH --ntasks=64
-#SBATCH --ntasks-per-node=64
+#SBATCH --ntasks-per-node=16
 #SBATCH --mem-per-cpu=2625
 #SBATCH --partition=batch,hmem
 #
@@ -27,13 +27,11 @@ cp -r $HOME_MURPHY/make_arch/make.nic5_intel $SCRATCH/$RUN_DIR/make_arch
 # get the commit id
 cd $HOME_MURPHY
 GITCOMMIT=$(git describe --always --dirty)
+echo "commit = $GITCOMMIT"
 
 # go there
 cd $SCRATCH/$RUN_DIR 
 
-# get the machine file
-MACHINEFILE="nodes.$SLURM_JOBID"
-srun -l /bin/hostname | sort -n | awk '{print $2}' > $MACHINEFILE
 #==============================================================================
 COUNT_GS=4
 for N in {2,4,6}
@@ -46,18 +44,16 @@ do
         GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5_intel make -j OPTS="-DWAVELET_N=${N} -DWAVELET_NT=${NT} -DBLOCK_GS=${COUNT_GS}"
         # move to the full name
         MURPHY_NAME=murphy_${N}_${NT}
-        # weno 3
         cp murphy ${MURPHY_NAME}
-        mpirun ./${MURPHY_NAME} --conv-weno --ilevel=4 --level-max=9 > log_${N}${NT}_$SLURM_JOB_ID.log
-        # weno 5
-        ## conservative 3
-        #cp murphy ${MURPHY_NAME}_c3
-        #mpirun --mca pml ucx --mca osc ucx --mca btl ^uct ./${MURPHY_NAME}_c3 --conv-weno --ilevel=4 --level-max=7 --weno=3 --fix-weno > log_${N}${NT}_c3_$SLURM_JOB_ID.log
-        ## conservative 5
-        #cp murphy ${MURPHY_NAME}_c5
-        #mpirun --mca pml ucx --mca osc ucx --mca btl ^uct ./${MURPHY_NAME}_c5 --conv-weno --ilevel=4 --level-max=7 --weno=5 --fix-weno > log_${N}${NT}_c5_$SLURM_JOB_ID.log
-        # destroy the compilation infos
-        GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5_intel make destroy
+
+        for RE in {-1,0.01,0.1,1,10,100}
+        do
+            echo "Reynolds = ${RE}"
+            mpirun ./${MURPHY_NAME} --2lvl-weno --level-max=4 --reynolds=${RE} > log_w3_re${RE}_${N}${NT}_$SLURM_JOB_ID.log
+            mpirun ./${MURPHY_NAME} --2lvl-weno --level-max=4 --fix-weno --reynolds=${RE} > log_c3_re${RE}_${N}${NT}_$SLURM_JOB_ID.log
+        done
+
+        GIT_COMMIT=${GITCOMMIT} ARCH_FILE=make_arch/make.nic5_intel make clean
 
         #increment the GP
         if ! { [ $N -eq 2 ] && [ $NT -eq 0 ]; }; then
