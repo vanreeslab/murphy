@@ -21,13 +21,13 @@ cp ./run/run_scalability_kern_lumi.sh ${RUN_DIR}/
 cd ${RUN_DIR}
 
 # let's go for the adaptive simulations
-i=2
-while [ $i -le 2 ]
+i=1
+while [ $i -le 20 ]
 do
 	# submit
     #echo "sbatch --ntasks=$(( ${i}*32 )) --job-name=weak_${i} ./run_scalability_kern_cori.sh"
     sbatch --nodes=${i} --job-name=weak_${i} ./run_scalability_kern_lumi.sh
-    sbatch --nodes=${i} --job-name=weak_${i} -m cyclic ./run_scalability_kern_lumi.sh
+    #sbatch --nodes=${i} --job-name=weak_${i} -m cyclic ./run_scalability_kern_lumi.sh
 	
 	# increment the counter
 	((i++))

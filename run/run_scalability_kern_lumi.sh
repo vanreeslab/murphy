@@ -1,15 +1,19 @@
 #!/bin/bash
+##SBATCH --partition=standard
 #SBATCH --partition=debug
-#SBATCH --time=0:30:00
+#SBATCH --time=00:030:00
 #SBATCH --ntasks-per-node=128
 #SBATCH --account=project_465000036
 
 echo "------------------------"
 echo "welcome to the job: ${SLURM_JOB_NAME} -> id = ${SLURM_JOB_ID}"
+echo "max rma calls: $MPICH_RMA_MAX_PENDING"
 echo "------------------------"
 
+
 # run
-srun -n 128 -u ./murphy --weak-scal --profile
+MPICH_RMA_MAX_PENDING=2048 srun -u ./murphy --weak-scal --profile
+#srun -n 128 -u ./murphy --weak-scal --profile
 
 
 
