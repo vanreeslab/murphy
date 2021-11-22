@@ -5,84 +5,69 @@
 #include "core/types.hpp"
 #include "grid/ghostblock.hpp"
 
-constexpr void face_sign(const bool mask_bool, const iface_t iface, iface_t* face_dir, real_t sign[3]) {
-    //-------------------------------------------------------------------------
-    const real_t  mask = static_cast<real_t>(mask_bool);
-    const iface_t dir  = (iface / 2) * mask;
-    // store the dir
-    (*face_dir) += mask * dir;
-    // update the sign
-    sign[dir] += mask * (((iface % 2) == 1) ? 1.0 : -1.0);
-    sign[(dir + 1) % 3] += 0.0;
-    sign[(dir + 2) % 3] += 0.0;
-    //-------------------------------------------------------------------------
-}
+// inline void face_sign(const bool mask_bool, const iface_t iface, iface_t* face_dir, real_t sign[3]) {
+//     //-------------------------------------------------------------------------
+//     const real_t  mask = static_cast<real_t>(mask_bool);
+//     const iface_t dir  = mask_bool ? (iface / 2) : 0;
+//     m_assert((0 <= dir) && (dir < 3), "the dir must be between 0 and 2 and not %d", dir);
+//     // store the dir
+//     (*face_dir) += (mask_bool) ? (dir) : 0;
+//     // update the sign
+//     sign[dir] += mask * (((iface % 2) == 1) ? 1.0 : -1.0);
+//     // sign[(dir + 1) % 3] += 0.0;
+//     // sign[(dir + 2) % 3] += 0.0;
+//     //-------------------------------------------------------------------------
+// }
 
-constexpr void edge_sign(const bool mask_bool, const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
-    /*
-    the plane convention for the sign variable convention for the sign
-    2 +--------------+ 3
-      |              |
-      |              |
-      |dir2          |
-      |              |
-    0 +--------------+ 1
-        dir1
-    */
-    //-------------------------------------------------------------------------
-    const real_t  mask = static_cast<real_t>(mask_bool);
-    const iface_t dir  = (iedge / 4) * mask;                  // this is the direction of the edge
-    const iface_t dir1 = static_cast<iface_t>(dir == 0);      // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
-    const iface_t dir2 = 2 - static_cast<iface_t>(dir == 2);  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
-    // store the dir
-    (*edge_dir) += mask * dir;
-    // update the sign
-    sign[dir] += 0.0;
-    sign[dir1] += mask * (((iedge % 4) % 2) == 1 ? +1.0 : -1.0);
-    sign[dir2] += mask * (((iedge % 4) / 2) == 1 ? +1.0 : -1.0);
-    //-------------------------------------------------------------------------
-}
+// inline void edge_sign(const bool mask_bool, const iface_t iedge, iface_t* edge_dir, real_t sign[3]) {
+//     /*
+//     the plane convention for the sign variable convention for the sign
+//     2 +--------------+ 3
+//       |              |
+//       |              |
+//       |dir2          |
+//       |              |
+//     0 +--------------+ 1
+//         dir1
+//     */
+//     //-------------------------------------------------------------------------
+//     const real_t  mask = static_cast<real_t>(mask_bool);
+//     const iface_t dir  = mask_bool ? (iedge / 4) : 0;         // this is the direction of the edge
+//     const iface_t dir1 = static_cast<iface_t>(0 == dir);      // dir1 in the plane: dir1 = x if dir = y or z, or y if dir = x
+//     const iface_t dir2 = 2 - static_cast<iface_t>(2 == dir);  // dir2 in the plane: dir2 = y if dir=z, = z if dir=x or dir = y
+//     m_assert((0 <= dir) && (dir < 3), "the dir must be between 0 and 2 and not %d", dir);
+//     m_assert((0 <= dir1) && (dir1 < 3), "the dir must be between 0 and 2 and not %d", dir1);
+//     m_assert((0 <= dir2) && (dir2 < 3), "the dir must be between 0 and 2 and not %d", dir2);
+//     m_assert((dir != dir1) && (dir1 != dir2) && (dir != dir2), "the dir must be differents: %d %d %d", dir, dir1, dir2);
+//     // store the dir
+//     (*edge_dir) += (mask_bool) ? (dir) : 0;
+//     // update the sign
+//     // sign[dir] += 0.0;
+//     sign[dir1] += mask * (((iedge % 4) % 2) == 1 ? +1.0 : -1.0);
+//     sign[dir2] += mask * (((iedge % 4) / 2) == 1 ? +1.0 : -1.0);
+//     //-------------------------------------------------------------------------
+// }
 
-constexpr void corner_sign(const bool mask_bool, const iface_t icorner, real_t sign[3]) {
-    //-------------------------------------------------------------------------
-    const real_t mask = static_cast<real_t>(mask_bool);
-    sign[0] += mask * ((icorner % 2) == 1 ? +1.0 : -1.0);
-    sign[1] += mask * (((icorner % 4) / 2) == 1 ? +1.0 : -1.0);
-    sign[2] += mask * ((icorner / 4) == 1 ? +1.0 : -1.0);
-    //-------------------------------------------------------------------------
-}
+// inline void corner_sign(const bool mask_bool, const iface_t icorner, real_t sign[3]) {
+//     //-------------------------------------------------------------------------
+//     const real_t mask = static_cast<real_t>(mask_bool);
+//     sign[0] += mask * ((icorner % 2) == 1 ? +1.0 : -1.0);
+//     sign[1] += mask * (((icorner % 4) / 2) == 1 ? +1.0 : -1.0);
+//     sign[2] += mask * ((icorner / 4) == 1 ? +1.0 : -1.0);
+//     //-------------------------------------------------------------------------
+// }
 
-/**
- * @brief Given a face, edge or a corner returns the outgoing normal (sign)
- * 
- * @param ibidule for a face (`ibidule<6`), an edge (`6<= ibidule < 18`) or a corner (`18<= ibidule < 26`). can also be -1, we return 0.0 then
- * @param sign the sign of the outgoing normal
- */
-static void GhostGetSign(const iface_t ibidule, real_t sign[3]) {
-    //-------------------------------------------------------------------------
-    iface_t dir = 0;
-    for (iface_t i = 0; i < 3; ++i) {
-        sign[i] = 0.0;
-    }
-    face_sign((0 <= ibidule) && (ibidule < 6), ibidule, &dir, sign);
-    edge_sign((6 <= ibidule) && (ibidule < 18), ibidule - 6, &dir, sign);
-    corner_sign((18 <= ibidule) && (ibidule < 26), ibidule - 18, sign);
-
-    m_assert(sign[0] == 0.0 || sign[0] == 1.0 || sign[0] == -1.0, "wrong sign value: %e", sign[0]);
-    m_assert(sign[1] == 0.0 || sign[1] == 1.0 || sign[1] == -1.0, "wrong sign value: %e", sign[1]);
-    m_assert(sign[2] == 0.0 || sign[2] == 1.0 || sign[2] == -1.0, "wrong sign value: %e", sign[2]);
-    //-------------------------------------------------------------------------
-};
+void GhostGetSign(const iface_t ibidule, real_t sign[3]);
 
 /**
  * @brief NeighborBlock: a @ref SubBlock that will be used to compute ghost points.
- * 
+ *
  * It stores the relationship between two blocks, identified as source or target.
  * Although it depends on the context, the source is usually my neighbor and the target is usually me (it can be the opposite, see reversed children!)
- * 
+ *
  * @warning Because every block owns the first and the last point, there is twice the same information (might be on different levels)
  * the way to handle that depends on the difference of levels, but the rule is simple: we always trust the finer information (cfr wavelet needs)
- * 
+ *
  */
 template <typename T>
 class NeighborBlock : public GhostBlock {
