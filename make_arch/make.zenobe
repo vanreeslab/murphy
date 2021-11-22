@@ -1,0 +1,23 @@
+CXX = mpicxx
+CC = mpicc
+
+# override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
+
+#CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
+CXXFLAGS := -g -O3 -fopenmp -march=ivybridge -DMPI_NONASYNC # -DLOG_ALLRANKS #-DMPI_NONASYNC -DNDEBUG
+
+# -DNDEBUG
+# -DLOG_ALLRANKS
+# -DVERBOSE 
+LDFLAGS := -fopenmp -lstdc++
+
+#PREFIX := ${HOME}/lib-OpenMPI-4.1.2-GCC-8.3.0
+PREFIX := ${HOME}/lib-OpenMPI-4.1.2rc3-GCC-8.3.0
+HDF5_INC := ${PREFIX}/include
+HDF5_LIB := ${PREFIX}/lib
+
+P4EST_INC := ${PREFIX}/include
+P4EST_LIB := ${PREFIX}/lib
+
+
+#eof
