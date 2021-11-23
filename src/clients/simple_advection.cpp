@@ -308,7 +308,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
         real_t value = 0.0;
         // value += scalar_compact_ring(pos, new_ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
         // value += scalar_compact_exp(pos, new_exp_center, exp_sigma, exp_beta);
-        value += scalar_diff_exp(pos, exp_center, exp_sigma,nu_,time);
+        value += scalar_diff_exp(pos, new_ring_center, exp_sigma, nu_, time);
         return value;
     };
     // compute the error
