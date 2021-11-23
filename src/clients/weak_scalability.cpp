@@ -61,7 +61,7 @@ void WeakScalability::Run() {
     bool   period[3] = {true, false, false};
     bidx_t length[3] = {m_max(1,comm_size/128), 1, 1};
     m_log("length is %d %d %d",length[0],length[1],length[2]);
-    Grid   grid(2, period, length, M_GRIDBLOCK,MPI_COMM_WORLD, prof_);
+    Grid   grid(1, period, length, M_GRIDBLOCK,MPI_COMM_WORLD, prof_);
     grid.level_limit(0, P8EST_QMAXLEVEL);
 
     //..........................................................................
@@ -85,7 +85,7 @@ void WeakScalability::Run() {
     // dump(&grid, &scal, 0);
 
     // adapt the grid
-    grid.SetTol(1e-5, 1e-7);
+    grid.SetTol(1e-1, 1e-2);
     grid.SetRecursiveAdapt(true);
     grid.Adapt(&scal, &tube);
 
@@ -95,7 +95,7 @@ void WeakScalability::Run() {
     vel.bctype(M_BC_EXTRAP);
     // vel.is_temp(true);
     vel.is_expr(true);
-    grid.AddField(&vel);
+    // grid.AddField(&vel);
     // SetValue set_velocity(lambda_velocity, ghost_len_interp);
     // set_velocity(&grid, &vel);
     grid.SetExpr(&vel,lambda_velocity);
@@ -145,7 +145,7 @@ void WeakScalability::Run() {
         //......................................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
-        real_t dt = rk3.ComputeDt(&adv_stencil, &vel);
+        real_t dt = rk3.ComputeDt(&adv_stencil,1.0);
         m_profStop(prof_, "compute dt");
 
         //......................................................................
