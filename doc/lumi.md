@@ -18,7 +18,7 @@ module load cray-ucx/2.7.0-1
 ```bash
 wget https://p4est.github.io/release/p4est-2.3.3.tar.gz
 tar -xvf p4est-2.3.3.tar.gz
-cd p4est-2.3.2
+cd p4est-2.3.3
 CC=cc CXX=CC F77=ftn FC=ftn ./configure --prefix=${HOME}/lib-cray-8.0.0-mpich-ucx-8.1.8 CFLAGS="-Ofast -Wall -fopenmp" --enable-mpi --enable-openmp
 make install -j
 ```
