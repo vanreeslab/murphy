@@ -173,6 +173,9 @@ void SimpleAdvection::Run() {
     real_t        t    = tstart_;
     const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
 
+    t_deterr_ = 0.25;
+    t_deterr_accum_ = 0.0;
+
     // let's gooo
     m_profStart(prof_, "run");
     const real_t wtime_start = MPI_Wtime();
@@ -255,7 +258,7 @@ void SimpleAdvection::Run() {
     if (iter % iter_diag() != 0) {
         m_profStart(prof_, "diagnostics");
         real_t time_now = MPI_Wtime();
-        Diagnostics(t, 0.0, iter, time_now);
+        Diagnostics(t, dt, iter, time_now);
         m_profStop(prof_, "diagnostics");
     }
 
@@ -266,6 +269,14 @@ void SimpleAdvection::Run() {
     m_end;
 }
 
+/**
+ * @brief 
+ * 
+ * @param time current time
+ * @param dt the value of DT we have just done
+ * @param iter 
+ * @param wtime 
+ */
 void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
     m_begin;
     m_assert(scal_->lda() == 1, "the scalar field must be scalar");
@@ -273,13 +284,18 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     rank_t rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    //..........................................................................
+    // update the time accum
+    t_deterr_accum_ += dt;
+
+    //..........................................................................
     // if the folder does not exist, create it
     struct stat st = {0};
     if (rank == 0 && stat(folder_diag_.c_str(), &st) == -1) {
         mkdir(folder_diag_.c_str(), 0770);
     }
 
-    //................................................
+    //..........................................................................
     m_profStart(prof_, "cmpt moments");
     real_t  moment0;
     real_t  moment1[3];
@@ -366,9 +382,11 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     m_profStop(prof_, "dump levels");
 
     m_profStart(prof_, "dump det histogram");
-    if ((iter % iter_dump() == 0) && iter > 0) {
+    // if ((iter % (100*iter_adapt()) == 0) && iter > 0) {
+    if ((t_deterr_accum_ > t_deterr_) || iter==0) {
         DetailVsError distr(grid_->interp());
         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
+        t_deterr_accum_ = 0.0;
     }
     m_profStop(prof_, "dump det histogram");
 
