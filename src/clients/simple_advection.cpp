@@ -243,13 +243,12 @@ void SimpleAdvection::Run() {
 
         // dump some info
         real_t wtime_now = MPI_Wtime();
-        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal_, iter, iter_max(), dt, wtime_now - wtime_start);
-
         //................................................
         // advance in time
         m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
+        m_log("now -> time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal_, iter, iter_max(), dt, wtime_now - wtime_start);
         m_profStop(prof_, "do dt");
         m_log_level_minus;
     }
@@ -287,6 +286,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     //..........................................................................
     // update the time accum
     t_deterr_accum_ += dt;
+    m_log("time is now, %e, accum = %e",time,t_deterr_accum_);
 
     //..........................................................................
     // if the folder does not exist, create it
@@ -386,7 +386,8 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     if (!(t_deterr_accum_ < t_deterr_) || iter==0 || time >= tfinal_) {
         DetailVsError distr(grid_->interp());
         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
-        t_deterr_accum_ = 0.0;
+        // reset the correct increment
+        t_deterr_accum_ = time - (int)(time/t_deterr_) * t_deterr_;
         m_log("dump deterr at time %e - iter %d",time,iter);
     }
     m_profStop(prof_, "dump det histogram");

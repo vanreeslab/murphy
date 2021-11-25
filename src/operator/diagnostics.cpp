@@ -2,11 +2,12 @@
 
 DetailVsError::DetailVsError(const Wavelet* interp) noexcept : BlockOperator(nullptr) {
     ghost_len_need_[0] = interp->nghost_front();
-    ghost_len_need_[1] = interp->nghost_front();
+    ghost_len_need_[1] = interp->nghost_back();
 }
 
 void DetailVsError::operator()(const iter_t id, const std::string folder, const std::string suffix, const Grid* grid, Field* field, const lambda_error_t* sol) {
     m_begin;
+    m_assert(IsGhostValid(field),"the ghost of the field %s are not large enough",field->name().c_str());
     //--------------------------------------------------------------------------
     // allow to get only the detail distribution
     do_error_ = (sol != nullptr);
