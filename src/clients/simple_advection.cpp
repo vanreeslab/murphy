@@ -383,7 +383,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
 
     m_profStart(prof_, "dump det histogram");
     // if ((iter % (100*iter_adapt()) == 0) && iter > 0) {
-    if ((t_deterr_accum_ >= t_deterr_) || iter==0 || time >= tfinal_) {
+    if (!(t_deterr_accum_ < t_deterr_) || iter==0 || time >= tfinal_) {
         DetailVsError distr(grid_->interp());
         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
         t_deterr_accum_ = 0.0;
