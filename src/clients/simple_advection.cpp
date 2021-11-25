@@ -382,15 +382,13 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     m_profStop(prof_, "dump levels");
 
     m_profStart(prof_, "dump det histogram");
-    // if ((iter % (100*iter_adapt()) == 0) && iter > 0) {
-    if ((t_deterr_accum_ - t_deterr_) > ((-1000.0) * std::numeric_limits<real_t>::epsilon()) ||
-        iter == 0 ||
-        time >= tfinal_) {
+    if ((t_deterr_accum_ - t_deterr_) > ((-1000.0) * std::numeric_limits<real_t>::epsilon()) || iter == 0 || time >= tfinal_) {
         DetailVsError distr(grid_->interp());
         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
         // reset the correct increment
-        t_deterr_accum_ = time - (int)(time/t_deterr_) * t_deterr_;
-        m_log("dump deterr at time %e - iter %d -> accum is now %e",time,iter,t_deterr_accum_);
+        const iter_t n_dump = ((time + m_min(dt, t_deterr_) / 10.0) / t_deterr_);
+        t_deterr_accum_     = time - n_dump * t_deterr_;
+        m_log("dump deterr at time %e - iter %d -> accum is now %e", time, iter, t_deterr_accum_);
     }
     m_profStop(prof_, "dump det histogram");
 
