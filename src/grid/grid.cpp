@@ -737,8 +737,8 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 #ifdef M_MPI_AGGRESSIVE
         partition.SendRecv(&fields_, M_FORWARD);
 #else
-        part.Start(&fields_, M_FORWARD);
-        part.End(&fields_, M_FORWARD);
+        partition.Start(&fields_, M_FORWARD);
+        partition.End(&fields_, M_FORWARD);
 #endif
 
         m_profStop(prof_, "partition comm");
