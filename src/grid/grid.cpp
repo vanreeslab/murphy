@@ -731,17 +731,18 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //......................................................................
         // update the partitioning and check for new block to change
         m_profStart(prof_, "partition init");
-        Partitioner partition(&fields_, this, true);
+        Partitioner* partition= new Partitioner(&fields_, this, true);
         m_profStop(prof_, "partition init");
         m_profStart(prof_, "partition comm");
 #ifdef M_MPI_AGGRESSIVE
-        partition.SendRecv(&fields_, M_FORWARD);
+        partition->SendRecv(&fields_, M_FORWARD);
 #else
-        partition.Start(&fields_, M_FORWARD);
-        partition.End(&fields_, M_FORWARD);
+        partition->Start(&fields_, M_FORWARD);
+        partition->End(&fields_, M_FORWARD);
 #endif
-
+        delete(partition);
         m_profStop(prof_, "partition comm");
+        m_log("partitioning is over");
 
         //......................................................................
         // create a new ghost and mesh as the partioning is done
