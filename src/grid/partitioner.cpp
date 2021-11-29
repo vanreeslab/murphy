@@ -450,6 +450,8 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         m_assert(!destructive_, "we cannot send backward and be destructive, otherwise the status are not sent");
     }
 
+    m_log("partioning: send and receive");
+
     //..........................................................................
     // performs the send of the request is
     auto send_my_request = [=](const lid_t is) {

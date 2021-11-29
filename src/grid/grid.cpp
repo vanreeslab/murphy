@@ -43,7 +43,12 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataT
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
+#ifdef M_MPI_AGGRESSIVE
     part.SendRecv(&fields_, M_FORWARD);
+#else
+    part.Start(&fields_, M_FORWARD);
+    part.End(&fields_, M_FORWARD);
+#endif
 
     // setup the ghost stuctures as the mesh will not change anymore
     SetupMeshGhost();
@@ -729,7 +734,13 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         Partitioner partition(&fields_, this, true);
         m_profStop(prof_, "partition init");
         m_profStart(prof_, "partition comm");
+#ifdef M_MPI_AGGRESSIVE
         partition.SendRecv(&fields_, M_FORWARD);
+#else
+        part.Start(&fields_, M_FORWARD);
+        part.End(&fields_, M_FORWARD);
+#endif
+
         m_profStop(prof_, "partition comm");
 
         //......................................................................
