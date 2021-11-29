@@ -413,7 +413,7 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
     lid_t *q_recv_cum_block;
 
     real_t *send_buf;
-    real_p  recv_buf;
+    real_t *recv_buf;
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
@@ -537,9 +537,12 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
             int n_recv_ready = 0;
             MPI_Testsome(n_recv_request, recv_request, &n_recv_ready, current_recv_id, MPI_STATUSES_IGNORE);
             // perform the recv if they are ready
-            for (int ir = 0; ir < n_recv_ready; ++ir) {
+            int n_to_recv = (n_recv_ready != MPI_UNDEFINED) ? n_to_recv : 0;
+            for (int ir = 0; ir < n_to_recv; ++ir) {
                 recv_my_request(current_recv_id[ir]);
                 n_recv_done += 1;
+                // reset the id to 0
+                current_recv_id[ir] = 0;
             }
         }
         // once done, send 1 request
@@ -548,15 +551,16 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
             n_send_done += 1;
         }
     }
+    m_assert((n_send_done == n_send_request) && (n_recv_done == n_recv_request), "the number of requests done must = the number of total requests: %d vs %d and %d vs %d", n_send_done, n_send_request, n_recv_done, n_recv_request);
     m_free(current_recv_id);
 
     // wait for all the send to be ok (should be trivial)
     if (n_send_request > 0) {
         MPI_Waitall(n_send_request, send_request, MPI_STATUSES_IGNORE);
     }
-    if (n_recv_request > 0) {
-        MPI_Waitall(n_recv_request, recv_request, MPI_STATUSES_IGNORE);
-    }
+    // if (n_recv_request > 0) {
+    //     MPI_Waitall(n_recv_request, recv_request, MPI_STATUSES_IGNORE);
+    // }
 }
 
 /**
