@@ -13,22 +13,22 @@ echo "scratch file = ${SCRATCH}"
 # compilation
 # 4.0
 make clean
-ARCH_FILE=make_arch/make.nic5 make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
+ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6"
 mv murphy murphy40
 # 4.2
 make clean
-ARCH_FILE=make_arch/make.nic5 make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
+ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=4 -DWAVELET_NT=2 -DBLOCK_GS=8"
 mv murphy murphy42
-## 6.0
-#make clean
-#ARCH_FILE=make_arch/make.nic5 make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
-#mv murphy murphy60
+# 6.0
+make clean
+ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=0 -DBLOCK_GS=10"
+mv murphy murphy60
 ## 6.2
 #make clean
-#ARCH_FILE=make_arch/make.nic5 make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
+#ARCH_FILE=make_arch/make.nic5_intel make -j12 OPTS="-DWAVELET_N=6 -DWAVELET_NT=2 -DBLOCK_GS=12"
 #mv murphy murphy62
 #=============================
-i=0
+i=1
 while [ $i -le 4 ]
 do
     export NCPUS_TMP=$(echo "$(( ($i+1)*128 ))")
@@ -49,16 +49,27 @@ do
 	    export MNAME=murphy40
         export WENO="--weno=3 --fix-weno"
 	    sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c3_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
-        export WENO="--weno=5 --fix-weno"
-	    sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
+        #export WENO="--weno=5 --fix-weno"
+	    #sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
 
         # 4.2
 	    export MNAME=murphy42
         export WENO="--weno=3 --fix-weno"
 	    sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c3_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
-        export WENO="--weno=5 --fix-weno"
-	    sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
+        #export WENO="--weno=5 --fix-weno"
+	    #sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_a6_t${r} ./run/run_perfvsacc_kern_nic5.sh
     done
+
+
+    ##--------------------------------------------------------------------------
+	# 4.2
+    export RTOL=$(bc -l <<< "scale=16; 10^(-${i}-2)")
+    export CTOL=$(bc -l <<< "scale=16; 10^(-${i}-4)")
+	export MNAME=murphy60
+    export WENO="--weno=5 --fix-weno"
+	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5 --fix-weno"
+    #sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
     
     ##--------------------------------------------------------------------------
 	# refine only
@@ -70,15 +81,16 @@ do
 	export MNAME=murphy40
     export WENO="--weno=3 --fix-weno"
 	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c3_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
-    export WENO="--weno=5 --fix-weno"
-    sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5 --fix-weno"
+    #sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
 
 	# 4.2
 	export MNAME=murphy42
     export WENO="--weno=3 --fix-weno"
 	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c3_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
-    export WENO="--weno=5 --fix-weno"
-    sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5 --fix-weno"
+    #sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c5_${i}_r6_t0 ./run/run_perfvsacc_kern_nic5.sh
+
 
     ##--------------------------------------------------------------------------
 	# do not adapt
@@ -90,15 +102,15 @@ do
 	export MNAME=murphy40
     export WENO="--weno=3 --fix-weno"
 	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c3_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
-    export WENO="--weno=5 --fix-weno"
-	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_w5_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5 --fix-weno"
+	#sbatch --ntasks=${NCPUS} --job-name=${MNAME}_w5_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
 
     # 4.2
 	export MNAME=murphy42
     export WENO="--weno=3 --fix-weno"
 	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_c3_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
-    export WENO="--weno=5 --fix-weno"
-	sbatch --ntasks=${NCPUS} --job-name=${MNAME}_w5_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
+    #export WENO="--weno=5 --fix-weno"
+	#sbatch --ntasks=${NCPUS} --job-name=${MNAME}_w5_${i}_a0_t0 ./run/run_perfvsacc_kern_nic5.sh
 
 	# increment the counter
 	((i++))
