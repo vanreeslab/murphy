@@ -375,9 +375,9 @@ extern char  m_log_level_prefix[32];
     ({                                                                           \
         int m_log_rank_;                                                         \
         MPI_Comm_rank(MPI_COMM_WORLD, &m_log_rank_);                             \
+        char m_log_msg_[1024];                                               \
+        sprintf(m_log_msg_, format, ##__VA_ARGS__);                          \
         if (m_log_rank_ == 0) {                                                  \
-            char m_log_msg_[1024];                                               \
-            sprintf(m_log_msg_, format, ##__VA_ARGS__);                          \
             fprintf(stdout, "[murphy] %s %s\n", m_log_level_prefix, m_log_msg_); \
         }                                                                        \
     })
