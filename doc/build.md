@@ -89,6 +89,8 @@ Some compilations flags are available to change the behavior of the code:
 - `-DNDEBUG` disable the assertion checks and the other debuging sections
 - `-DLOG_MUTE` disable every logs
 - `-DCOLOR_PROF` enable color output in the profiler (disabled by default)
+- `-DMPI_NONASYNC` ask for non-asynchronous MPI calls + remove the fancy optimization options
+- `-DOLD_GCC` replaces the `aligned_alloc` by `posix_memalign` to support GCC 8
 <!-- - ```-DMG_GAUSSSEIDEL``` uses the gauss-seidel smoother instead of the Jacobi one -->
 
 To use them, you can append the make command, e.g. to change the wavelet behavior

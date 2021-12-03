@@ -40,9 +40,18 @@ void WriteInfo(int argc, char** argv) {
         fprintf(file, "\tM_WAVELET_NT = %d\n", M_WAVELET_NT);
 #ifdef M_MPI_AGGRESSIVE
         fprintf(file, "\tM_MPI_AGGRESSIVE ? yes\n");
+#else
+        fprintf(file, "\tM_MPI_AGGRESSIVE ? no\n");
 #endif
 #ifndef NDEBUG
         fprintf(file, "\tNDEBUG ? no\n");
+#else
+        fprintf(file, "\tNDEBUG ? yes\n");
+#endif
+#if (M_OLD_GCC==1)
+        fprintf(file, "\tOLD_GCC ? yes\n");
+#else
+        fprintf(file, "\tOLD_GCC ? no\n");
 #endif
         fprintf(file, "- argument list:\n");
         for (int i = 0; i < argc; ++i) {

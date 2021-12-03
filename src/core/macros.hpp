@@ -14,8 +14,12 @@
 #include "core/types.hpp"
 #include "hdf5.h"
 
+#ifdef OLD_GCC
+#define M_OLD_GCC 1
+#endif
+
 #ifndef MPI_NONASYNC
-#define M_MPI_AGGRESSIVE
+#define M_MPI_AGGRESSIVE 1
 #endif
 
 // register the current git commit for tracking purpose
@@ -91,6 +95,7 @@
         ((uintptr_t)m_isaligned_a_) % M_ALIGNMENT == 0; \
     })
 
+
 #if defined(__INTEL_COMPILER)
 #define m_assume_aligned(a)                                                   \
     ({                                                                        \
@@ -111,7 +116,7 @@
         void* m_free_data_ = (void*)(data); \
         _mm_free(m_free_data_);             \
     })
-#else  //defined(__GNUC__)
+#else  //defined(__GNUC__) of defined(__clang__)
 #define m_assume_aligned(a)                                                   \
     ({                                                                        \
         __typeof__(a) m_assume_aligned_a_ = (a);                              \
@@ -122,15 +127,27 @@
  * @brief allocate a given size (in Byte) and set to 0 the array.
  * the return pointer is aligned to M_ALIGMEMENT
  */
+#if (M_OLD_GCC == 1)
 #define m_calloc(size)                                                                    \
     ({                                                                                    \
         size_t m_calloc_size_        = (size_t)(size) + M_ALIGNMENT - 1;                  \
         size_t m_calloc_padded_size_ = (m_calloc_size_) - (m_calloc_size_ % M_ALIGNMENT); \
-        void * m_calloc_data_;\
-        posix_memalign(&m_calloc_data_,M_ALIGNMENT,m_calloc_padded_size_);\
+        void*  m_calloc_data_;                                                            \
+        posix_memalign(&m_calloc_data_, M_ALIGNMENT, m_calloc_padded_size_);              \
         std::memset(m_calloc_data_, 0, m_calloc_padded_size_);                            \
         m_calloc_data_;                                                                   \
     })
+#else
+#define m_calloc(size)                                                                         \
+    ({                                                                                         \
+        size_t m_calloc_size_        = (size_t)(size) + M_ALIGNMENT - 1;                       \
+        size_t m_calloc_padded_size_ = (m_calloc_size_) - (m_calloc_size_ % M_ALIGNMENT);      \
+        void*  m_calloc_data_        = std::aligned_alloc(M_ALIGNMENT, m_calloc_padded_size_); \
+        std::memset(m_calloc_data_, 0, m_calloc_padded_size_);                                 \
+        m_calloc_data_;                                                                        \
+    })
+#endif
+
 /**
  * @brief frees the pointer allocated using @ref m_calloc()
  */
@@ -179,11 +196,34 @@
         (m_sign_zero_ < m_sign_a_) - (m_sign_a_ < m_sign_zero_); \
     })
 
-#define m_fequal(a, b)                                                                 \
-    ({                                                                                 \
-        real_t m_equal_a_ = (a);                                                       \
-        real_t m_equal_b_ = (b);                                                       \
-        (std::fabs(m_equal_a_ - m_equal_b_) < std::numeric_limits<real_t>::epsilon()); \
+/**
+ * @brief returns true if a = b
+ */
+#define m_fequal(a, b)                                                                           \
+    ({                                                                                           \
+        real_t m_equal_a_ = (a);                                                                 \
+        real_t m_equal_b_ = (b);                                                                 \
+        (std::fabs(m_equal_a_ - m_equal_b_) < (100.0 * std::numeric_limits<real_t>::epsilon())); \
+    })
+
+/**
+ * @brief returns true a >= b
+ */
+#define m_fgeq(a, b)                                                                           \
+    ({                                                                                           \
+        real_t m_fgeg_a_ = (a);                                                                 \
+        real_t m_fgeq_b_ = (b);                                                                 \
+        ((m_fgeg_a_ - m_fgeq_b_) > (100.0 * std::numeric_limits<real_t>::epsilon())); \
+    })
+
+/**
+ * @brief returns true a <= b
+ */
+#define m_fleq(a, b)                                                                           \
+    ({                                                                                           \
+        real_t m_fgeg_a_ = (a);                                                                 \
+        real_t m_fgeq_b_ = (b);                                                                 \
+        ((m_fgeg_a_ - m_fgeq_b_) < (-100.0 * std::numeric_limits<real_t>::epsilon())); \
     })
 
 /** @} */
@@ -202,16 +242,16 @@
  * @param xyz the position of the origin of the block (!= the position of (0,0,0))
  * 
  */
-#define m_pos(pos, i0, i1, i2, hgrid, xyz)      \
-    ({                                          \
-        __typeof__(i0) m_pos_i0_ = (i0);        \
-        __typeof__(i1) m_pos_i1_ = (i1);        \
-        __typeof__(i2) m_pos_i2_ = (i2);        \
-                                                \
-        pos[0] = m_pos_i0_ * hgrid[0] + xyz[0]; \
-        pos[1] = m_pos_i1_ * hgrid[1] + xyz[1]; \
-        pos[2] = m_pos_i2_ * hgrid[2] + xyz[2]; \
-    })
+// #define m_pos(pos, i0, i1, i2, hgrid, xyz)      \
+//     ({                                          \
+//         __typeof__(i0) m_pos_i0_ = (i0);        \
+//         __typeof__(i1) m_pos_i1_ = (i1);        \
+//         __typeof__(i2) m_pos_i2_ = (i2);        \
+//                                                 \
+//         pos[0] = m_pos_i0_ * hgrid[0] + xyz[0]; \
+//         pos[1] = m_pos_i1_ * hgrid[1] + xyz[1]; \
+//         pos[2] = m_pos_i2_ * hgrid[2] + xyz[2]; \
+//     })
 
 /**
  * @brief returns the position of a point (i0,i1,i2) wrt ot the origin of the block
