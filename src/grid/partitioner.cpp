@@ -538,13 +538,10 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         if (n_recv_done < n_recv_request) {
             int n_recv_ready = 0;
             MPI_Testsome(n_recv_request, recv_request, &n_recv_ready, current_recv_id, MPI_STATUSES_IGNORE);
-            // perform the recv if they are ready
-            int n_to_recv = (n_recv_ready != MPI_UNDEFINED) ? n_to_recv : 0;
-            for (int ir = 0; ir < n_to_recv; ++ir) {
+            m_assert(MPI_UNDEFINED < 0, "the MPI undefined value must be <0");
+            for (int ir = 0; ir < n_recv_ready; ++ir) {
                 recv_my_request(current_recv_id[ir]);
                 n_recv_done += 1;
-                // reset the id to 0
-                current_recv_id[ir] = 0;
             }
         }
         // once done, send 1 request
