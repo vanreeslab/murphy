@@ -14,10 +14,10 @@ class ExprData : public Data<const real_t> {
 
    public:
     explicit ExprData() = delete;
-    explicit ExprData(const lambda_expr_t* expr, const real_t offset_pos[3], const real_t h[3], const lda_t ida) : expr_(expr),
-                                                                                                                  ida_(ida),
-                                                                                                                  offset_pos_{offset_pos[0], offset_pos[1], offset_pos[2]},
-                                                                                                                  h_{h[0], h[1], h[2]} {};
+    explicit ExprData(const lambda_expr_t* expr, const real_t offset_pos[3], const real_t h[3], const lda_t ida) : ida_(ida),
+                                                                                                                   expr_(expr),
+                                                                                                                   offset_pos_{offset_pos[0], offset_pos[1], offset_pos[2]},
+                                                                                                                   h_{h[0], h[1], h[2]} {};
 
     /**
      * @brief return a copy of data located at (i0,i1,i2) position

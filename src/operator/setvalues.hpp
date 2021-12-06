@@ -27,7 +27,7 @@ class SetValue : public BlockOperator {
 
    public:
     explicit SetValue() = delete;
-    explicit SetValue(const lambda_setvalue_t& expr, const bidx_t* ghost_len = nullptr) : expr_(expr), BlockOperator(ghost_len){};
+    explicit SetValue(const lambda_setvalue_t& expr, const bidx_t* ghost_len = nullptr) : BlockOperator(ghost_len),expr_(expr){};
 
     /**
      * @brief set the expr_ to the grid in the given field

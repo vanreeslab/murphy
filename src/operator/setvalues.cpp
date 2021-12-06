@@ -104,7 +104,7 @@ lambda_t<real_t, const real_t[], const real_t[], const real_t, const real_t, con
     const real_t oo_sigma2 = 1.0 / (sigma * sigma);
 
     // compute the gaussian
-    const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center[idy], pos[idx] - center[idx]);
+    // const real_t alpha   = 2.0 * M_PI + atan2(pos[idy] - center[idy], pos[idx] - center[idx]);
     const real_t radr    = sqrt(pow(pos[idx] - center[idx], 2) + pow(pos[idy] - center[idy], 2));
     const real_t rad1r   = radr - radius;
     const real_t rad2r   = radr + radius;
@@ -146,7 +146,7 @@ lambda_t<real_t, const real_t[], const real_t[], const lda_t, const real_t, cons
     const real_t x        = pos[idx] - x_center;
     const real_t y        = pos[idy] - y_center;
 
-    const real_t alpha = atan2(y, x);
+    // const real_t alpha = atan2(y, x);
 
     // add the modes
     real_t z_center = center[idz];

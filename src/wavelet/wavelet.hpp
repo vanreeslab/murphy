@@ -28,7 +28,7 @@ struct InterpCtx {
     explicit InterpCtx(const real_t   in_alpha,
                        const MemSpan* src_span, const ConstMemData* src_data,
                        const MemSpan* trg_span, const MemData* trg_data)
-        : sspan(src_span), tspan(trg_span), sdata(src_data), tdata(trg_data), alpha{in_alpha} {};
+        : alpha{in_alpha}, sspan(src_span), tspan(trg_span), sdata(src_data), tdata(trg_data){};
 };
 
 #define M_GS_MIN 0

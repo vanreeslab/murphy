@@ -63,11 +63,20 @@ void TimeDependent::Run() {
     // time integration
     iter_t iter = 0;
     real_t t    = tstart_;
+    real_t dt   = 0.0;
+
+    //--------------------------------------------------------------------------
+    m_profStart(prof_, "diagnostics");
+    {
+        m_log_level_plus;
+        real_t time_now = MPI_Wtime();
+        Diagnostics(t, dt, iter, time_now);
+        m_log_level_minus;
+    }
 
     // let's gooo
     m_profStart(prof_, "run");
     const real_t wtime_start = MPI_Wtime();
-    real_t       dt          = 0.0;
     while (t < tfinal_ && iter < iter_max()) {
         m_log("--------------------------------------------------------------------------------");
         //......................................................................
@@ -118,15 +127,12 @@ void TimeDependent::Run() {
     m_profStop(prof_, "run");
     //--------------------------------------------------------------------------
     // run the last diag
-    if (iter % iter_diag() != 0) {
-        m_profStart(prof_, "diagnostics");
-        {
-            m_log_level_plus;
-            real_t time_now = MPI_Wtime();
-            Diagnostics(t, dt, iter, time_now);
-            m_log_level_minus;
-        }
-        m_profStop(prof_, "diagnostics");
+    m_profStart(prof_, "diagnostics");
+    {
+        m_log_level_plus;
+        real_t time_now = MPI_Wtime();
+        Diagnostics(t, dt, iter, time_now);
+        m_log_level_minus;
     }
     //--------------------------------------------------------------------------
     m_end;

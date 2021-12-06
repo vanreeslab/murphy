@@ -721,9 +721,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //......................................................................
         // solve the dependencies on the grid
         // warn the user that we do not interpolate a temporary field
-        for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
-            m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
-        }
+        // for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
+        //     m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
+        // }
         m_profStart(prof_, "solve dependency");
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "solve dependency");
@@ -793,7 +793,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
             for (auto fid : fields_) {
-                m_log("changing ghost status of <%s>", fid.second->name().c_str());
+                // m_log("changing ghost status of <%s>", fid.second->name().c_str());
                 const bidx_t ghost_len[2] = {0, 0};
                 if (!fid.second->is_expr()) {
                     fid.second->ghost_len(ghost_len);
