@@ -129,13 +129,13 @@ void FlowEnright::DoTimeStep(real_t* time, real_t* dt) {
         const real_t vel = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
         return (vel * cos(M_PI * period_time));
     };
-
-    m_log("multiplicator of velocity = %e", cos(M_PI * period_time));
     grid_->SetExpr(vel_, lambda_velocity);
+
+    const real_t max_vel = m_max(1.0 * cos(M_PI * period_time), 0.01);
 
     //..........................................................................
     // update the time step and perform the integration
-    dt[0] = rk3_->ComputeDt(advection_, 1.0, 0.0);
+    dt[0] = rk3_->ComputeDt(advection_, max_vel, 0.0);
     rk3_->DoDt(dt[0], time);
     //--------------------------------------------------------------------------
     m_end;
