@@ -50,6 +50,10 @@ void TimeDependent::InitParam(ParserArguments* param) {
     real_t coarsen_tol = (param->coarsen_tol < 0.0) ? 0.0 : ((optimal_tol_) ? (param->refine_tol / pow(2.0, M_WAVELET_N)) : (param->coarsen_tol));
     grid_->SetTol(param->refine_tol, coarsen_tol);
 
+    // times
+    tstart_ = 0.0;
+    tfinal_ = param->time_final;
+
     // call the setup function
     Setup(param);
 
