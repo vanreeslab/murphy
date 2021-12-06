@@ -120,15 +120,17 @@ void FlowEnright::DoTimeStep(real_t* time, real_t* dt) {
     m_begin;
     //--------------------------------------------------------------------------
     // udpdate the velocity
-    const real_t        period_time     = tfinal_;
-    const lambda_expr_t lambda_velocity = [time, period_time](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+    const real_t        period_time     = time[0] / tfinal_;
+    const lambda_expr_t lambda_velocity = [period_time](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
         const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
         const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
         const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
 
         const real_t vel = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
-        return (vel * cos(2.0 * M_PI * time[0] / period_time));
+        return (vel * cos(M_PI * period_time));
     };
+
+    m_log("multiplicator of velocity = %e", cos(M_PI * period_time));
     grid_->SetExpr(vel_, lambda_velocity);
 
     //..........................................................................
@@ -183,7 +185,6 @@ void FlowEnright::Diagnostics(const real_t time, const real_t dt, const lid_t it
     }
 
     m_profStart(prof_, "dump diag");
-    FILE*   file_error;
     FILE*   file_diag;
     level_t min_level       = grid_->MinLevel();
     level_t max_level       = grid_->MaxLevel();

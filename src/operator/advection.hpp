@@ -30,7 +30,7 @@ class Advection : public Stencil<GridBlock>, public RKFunctor {
 
    public:
     // create the advection, just store the u field
-    explicit Advection(const Field* u, const real_t nu = 0.0, Prof* profiler = nullptr) : u_(u), Stencil<GridBlock>(), RKFunctor(), nu_(nu) {
+    explicit Advection(const Field* u, const real_t nu = 0.0, Prof* profiler = nullptr) : Stencil<GridBlock>(), RKFunctor(), u_(u), nu_(nu) {
         if constexpr (order == 3) {
             // we need one point outside the domain that need 1 ghost point
             ghost_len_need_[0] = 2;
