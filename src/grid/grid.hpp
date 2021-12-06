@@ -19,6 +19,7 @@
 #include "tools/patch.hpp"
 #include "tools/prof.hpp"
 #include "wavelet/wavelet.hpp"
+#include "core/exprdata.hpp"
 
 /**
  * @brief provide understandable grid management
@@ -27,7 +28,7 @@
 class Grid : public ForestGrid {
    protected:
     std::map<std::string, Field*> fields_;  //!< map of every field registered to this grid (the key is the field name, `field->name()`)
-    std::map<std::string, lambda_i3_t<real_t,lda_t> > expr_; //!< map of every expression registered to this grid (the key is the field name, `field->name()`)
+    std::map<std::string, lambda_expr_t > expr_; //!< map of every expression registered to this grid (the key is the field name, `field->name()`)
 
     Prof*    prof_   = nullptr;  //!< the profiler to use, may stay null
     Ghost*   ghost_  = nullptr;  //!< the ghost structure that handles one dimension of a field
@@ -82,7 +83,7 @@ class Grid : public ForestGrid {
     void DeleteField(const Field* field);
     void ResetFields(const std::map<std::string, Field*>* fields);
 
-    void SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr);
+    void SetExpr(Field* field, const lambda_expr_t expr);
 
     /**@}*/
 

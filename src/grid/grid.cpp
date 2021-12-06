@@ -215,7 +215,7 @@ void Grid::AddField(Field* field) {
  * @param field the pointer of the field associated with the expression
  * @param expr the expression ot be set
  */
-void Grid::SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr) {
+void Grid::SetExpr(Field* field, const lambda_expr_t expr) {
     m_begin;
     m_assert(field->is_expr(), "The field must be an expression here");
     //--------------------------------------------------------------------------

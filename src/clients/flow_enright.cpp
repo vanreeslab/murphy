@@ -13,11 +13,12 @@ using std::string;
 using std::to_string;
 
 // exponential
-static const real_t exp_sigma     = 0.05;
-static const real_t exp_beta      = 3.0;
+static const real_t exp_sigma     = 0.075;
+static const real_t exp_beta      = 2.0;
 static const real_t exp_center[3] = {0.35, 0.35, 0.35};
 
 static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+    //--------------------------------------------------------------------------
     const real_t xc = x;  //- exp_center[0];
     const real_t yc = y;  //- exp_center[1];
     const real_t zc = z;  //- exp_center[2];
@@ -25,9 +26,8 @@ static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, 
     const real_t vy = (-1.0) * sin(2.0 * M_PI * xc) * pow(sin(M_PI * yc), 2) * sin(2.0 * M_PI * zc);
     const real_t vz = (-1.0) * sin(2.0 * M_PI * xc) * sin(2.0 * M_PI * yc) * pow(sin(M_PI * zc), 2);
 
-    const real_t value = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
-    m_log("value in %e %e %e is %e", x, y, z, value);
-    return value;
+    return vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
+    //--------------------------------------------------------------------------
 };
 
 FlowEnright::~FlowEnright() {
