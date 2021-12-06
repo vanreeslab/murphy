@@ -56,6 +56,9 @@ struct ParserArguments {
     iter_t iter_diag     = 1;
     iter_t iter_adapt    = 1;
     iter_t iter_dump     = 1;
+
+    real_t time_dump = 0.1;
+
     // bool   no_weno       = false;
     // bool   weno_5        = false;
     bool fix_weno    = false;

@@ -55,6 +55,7 @@ void FlowEnright::Setup(ParserArguments* param) {
 
     // cfl
     cfl_ = param->cfl_max;
+    time_dump_field_ = param->time_dump;
 
     //..........................................................................
     scal_ = new Field("scalar", 1);
@@ -200,7 +201,6 @@ void FlowEnright::Diagnostics(const real_t time, const real_t dt, const lid_t it
                             (time == tfinal_) ||
                             (m_fgeq(time_accum_field_, time_dump_field_));
 
-    m_log("should I dump? %d: %e vs %e",m_fgeq(time_accum_field_, time_dump_field_),time_accum_field_,time_dump_field_);
     if (dump_field) {
         m_log("dump scalar");
         // dump the vorticity field
