@@ -19,7 +19,7 @@ static const real_t velocity[3] = {0.0, 0.0, 1.0};
 //     block->data(fid, 1)(i0, i1, i2) = velocity[1];
 //     block->data(fid, 2)(i0, i1, i2) = velocity[2];
 // };
-static const lambda_i3_t<real_t, lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) -> real_t {
+static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
     return (ida == 2);
 };
 

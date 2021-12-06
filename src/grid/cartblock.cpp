@@ -102,7 +102,7 @@ Data<const real_t>* CartBlock::ConstDataPtr(const Field* const fid, const lda_t 
         // we could use the at to be faster but the find returns the correct address, which is nice
         auto it = expr_map_.find(fid->name());
         m_assert(it != expr_map_.end(), "the field \"%s\" does not exist in this block", fid->name().c_str());
-        return new ExprData(&it->second, ida);
+        return new ExprData(it->second, xyz_, hgrid_, ida);
     } else {
         MemLayout myself = BlockLayout();
 #ifndef NDEBUG

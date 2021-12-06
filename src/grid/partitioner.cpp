@@ -450,8 +450,6 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         m_assert(!destructive_, "we cannot send backward and be destructive, otherwise the status are not sent");
     }
 
-    m_log("partioning: send and receive");
-
     //..........................................................................
     // performs the send of the request is
     auto send_my_request = [=](const lid_t is) {
@@ -566,14 +564,14 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         int        is_over = 0;
         MPI_Status status;
         MPI_Request_get_status(send_request[is], &is_over, &status);
-        m_assert(is_over, "The send request num %e with source %d is not finished from ", is, status.MPI_SOURCE);
+        m_assert(is_over, "The send request num %d with source %d is not finished from ", is, status.MPI_SOURCE);
     }
     for (lid_t ir = 0; ir < n_recv_request; ++ir) {
         // get the status of the request and check it's over
         int        is_over = 0;
         MPI_Status status;
         MPI_Request_get_status(recv_request[ir], &is_over, &status);
-        m_assert(is_over, "The send request num %e with source %d is not finished from ", ir, status.MPI_SOURCE);
+        m_assert(is_over, "The send request num %d with source %d is not finished from ", ir, status.MPI_SOURCE);
     }
 #endif
 }

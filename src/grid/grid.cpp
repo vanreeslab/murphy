@@ -742,7 +742,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
 #endif
         delete(partition);
         m_profStop(prof_, "partition comm");
-        m_log("partitioning is over");
+        // m_log("partitioning is over");
 
         //......................................................................
         // create a new ghost and mesh as the partioning is done
@@ -821,7 +821,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_verb("resetting the analytical expression");
     for (auto expr_it : expr_) {
         string field_name = expr_it.first;
-        m_log("field name = %s",field_name.c_str());
         DoOpTree(nullptr, &GridBlock::SetExpr, this, fields_[field_name], expr_it.second);
     }
 

@@ -11,6 +11,7 @@
 #include "clients/simple_advection.hpp"
 #include "clients/twolevel_convweno.hpp"
 #include "clients/weak_scalability.hpp"
+#include "clients/flow_enright.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -131,6 +132,10 @@ TestCase* MurphyInit(int argc, char** argv) {
         return testcase;
     } else if (argument.do_weak_scal) {
         testcase = new WeakScalability();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else if (argument.do_enright) {
+        testcase = new FlowEnright();
         testcase->InitParam(&argument);
         return testcase;
     } else {

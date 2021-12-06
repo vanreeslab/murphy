@@ -10,8 +10,8 @@ class TestCase {
 
     iter_t iter_max_   = 0;
     iter_t iter_adapt_ = 0;
-    iter_t iter_diag_  = 0;
-    iter_t iter_dump_  = 0;
+    iter_t iter_diag_  = 1;
+    iter_t iter_dump_  = 1;
 
    public:
     bool dump_detail() const { return dump_detail_; }

@@ -213,7 +213,7 @@
     ({                                                                                           \
         real_t m_fgeg_a_ = (a);                                                                 \
         real_t m_fgeq_b_ = (b);                                                                 \
-        ((m_fgeg_a_ - m_fgeq_b_) > (100.0 * std::numeric_limits<real_t>::epsilon())); \
+        ((m_fgeg_a_ - m_fgeq_b_) > (-100.0 * std::numeric_limits<real_t>::epsilon())); \
     })
 
 /**
@@ -223,7 +223,7 @@
     ({                                                                                           \
         real_t m_fgeg_a_ = (a);                                                                 \
         real_t m_fgeq_b_ = (b);                                                                 \
-        ((m_fgeg_a_ - m_fgeq_b_) < (-100.0 * std::numeric_limits<real_t>::epsilon())); \
+        ((m_fgeg_a_ - m_fgeq_b_) < (100.0 * std::numeric_limits<real_t>::epsilon())); \
     })
 
 /** @} */

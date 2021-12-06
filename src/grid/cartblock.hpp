@@ -43,7 +43,7 @@ class CartBlock {
     real_t  hgrid_[3] = {0.0, 0.0, 0.0};  //!< the grid spacing of the block
 
     std::map<std::string, MemPtr> mem_map_;  //<! a map of the pointers to the actual data
-    std::map<std::string, lambda_i3_t<real_t,lda_t> > expr_map_;  //<! a map of the expression that might have been stored
+    std::map<std::string, lambda_expr_t > expr_map_;  //<! a map of the expression that might have been stored
 
    public:
     explicit CartBlock(const real_t length, const real_t xyz[3], const level_t level) noexcept;

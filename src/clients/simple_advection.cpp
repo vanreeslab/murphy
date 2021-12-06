@@ -30,7 +30,7 @@ static const real_t velocity[3] = {0.0, 0.0, 0.0};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 #endif
 
-static const lambda_i3_t<real_t, lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) -> real_t {
+static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
 #if M_DIFF_ONLY
     return 0.0;
 #else
