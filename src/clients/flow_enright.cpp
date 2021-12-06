@@ -17,19 +17,6 @@ static const real_t exp_sigma     = 0.075;
 static const real_t exp_beta      = 2.0;
 static const real_t exp_center[3] = {0.35, 0.35, 0.35};
 
-static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
-    //--------------------------------------------------------------------------
-    const real_t xc = x;  //- exp_center[0];
-    const real_t yc = y;  //- exp_center[1];
-    const real_t zc = z;  //- exp_center[2];
-    const real_t vx = (+2.0) * pow(sin(M_PI * xc), 2) * sin(2.0 * M_PI * yc) * sin(2.0 * M_PI * zc);
-    const real_t vy = (-1.0) * sin(2.0 * M_PI * xc) * pow(sin(M_PI * yc), 2) * sin(2.0 * M_PI * zc);
-    const real_t vz = (-1.0) * sin(2.0 * M_PI * xc) * sin(2.0 * M_PI * yc) * pow(sin(M_PI * zc), 2);
-
-    return vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
-    //--------------------------------------------------------------------------
-};
-
 FlowEnright::~FlowEnright() {
     m_begin;
     //--------------------------------------------------------------------------
@@ -88,6 +75,15 @@ void FlowEnright::Setup(ParserArguments* param) {
     }
 
     //..........................................................................
+    const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+        //--------------------------------------------------------------------------
+        const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
+        const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
+        const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
+
+        return vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
+        //--------------------------------------------------------------------------
+    };
     // set the velocity field
     vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
@@ -123,6 +119,20 @@ void FlowEnright::Setup(ParserArguments* param) {
 void FlowEnright::DoTimeStep(real_t* time, real_t* dt) {
     m_begin;
     //--------------------------------------------------------------------------
+    // udpdate the velocity
+    const real_t        period_time     = tfinal_;
+    const lambda_expr_t lambda_velocity = [time, period_time](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+        const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
+        const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
+        const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
+
+        const real_t vel = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
+        return (vel * cos(2.0 * M_PI * time[0] / period_time));
+    };
+    grid_->SetExpr(vel_, lambda_velocity);
+
+    //..........................................................................
+    // update the time step and perform the integration
     dt[0] = rk3_->ComputeDt(advection_, 1.0, 0.0);
     rk3_->DoDt(dt[0], time);
     //--------------------------------------------------------------------------
