@@ -131,7 +131,7 @@ void FlowEnright::DoTimeStep(real_t* time, real_t* dt) {
     };
     grid_->SetExpr(vel_, lambda_velocity);
 
-    const real_t max_vel = m_max(1.0 * cos(M_PI * period_time), 0.01);
+    const real_t max_vel = m_max(1.0 * std::fabs(cos(M_PI * period_time)), 0.01);
 
     //..........................................................................
     // update the time step and perform the integration

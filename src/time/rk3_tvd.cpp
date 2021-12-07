@@ -174,7 +174,7 @@ real_t RK3_TVD::ComputeDt(const RKFunctor* rhs, const real_t max_vel, const real
     m_assert(cfl_dt > 0.0, "the CFL dt = %e must be positive", cfl_dt);
     m_assert(r_dt > 0.0, "the r dt = %e must be positive", r_dt);
 
-    m_verb("RK3-TVD: advection dt = %e, using h = %e, CFL limit = %e, and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
+    m_log("RK3-TVD: advection dt = %e, using h = %e, CFL limit = %e, and max_vel = %e", cfl_dt, h_fine, cfl_limit, max_vel);
     m_verb("RK3-TVD: diffusion dt = %e, using h = %e, r limit = %e, and nu = %e", r_dt, h_fine, r_limit, nu);
     m_log("RK3-TVD: final dt = %e -> min(%e , %e)",m_min(cfl_dt, r_dt),cfl_dt,r_dt);
     //-------------------------------------------------------------------------
