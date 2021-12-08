@@ -12,11 +12,59 @@
 using std::string;
 using std::to_string;
 
+//==============================================================================
 // exponential
 static const real_t exp_sigma     = 0.075;
 static const real_t exp_beta      = 2.0;
 static const real_t exp_center[3] = {0.35, 0.35, 0.35};
 
+//==============================================================================
+EnrightRhs::EnrightRhs(const real_t time, RKFunctor* advection, Field* vel) {
+    // -------------------------------------------------------------------------
+    time_final_ = time;
+    advection_  = advection;
+    vel_        = vel;
+    // -------------------------------------------------------------------------
+}
+
+void EnrightRhs::RhsSet(Grid* grid, const real_t time, Field* field_u, Field* field_y) {
+    // -------------------------------------------------------------------------
+    // update the velocity
+    const real_t        period_time     = time / time_final_;
+    const lambda_expr_t lambda_velocity = [period_time](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+        const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
+        const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
+        const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
+
+        const real_t vel = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
+        return (vel * cos(M_PI * period_time));
+    };
+    grid->SetExpr(vel_, lambda_velocity);
+
+    // call the real advection
+    advection_->RhsSet(grid, time, field_u, field_y);
+    // -------------------------------------------------------------------------
+};
+
+void EnrightRhs::RhsAcc(Grid* grid, const real_t time, Field* field_u, Field* field_y) {
+    // -------------------------------------------------------------------------
+    // update the velocity
+    const real_t        period_time     = time / time_final_;
+    const lambda_expr_t lambda_velocity = [period_time](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+        const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
+        const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
+        const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
+
+        const real_t vel = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
+        return (vel * cos(M_PI * period_time));
+    };
+    grid->SetExpr(vel_, lambda_velocity);
+    // call the real advection
+    advection_->RhsAcc(grid, time, field_u, field_y);
+    // -------------------------------------------------------------------------
+};
+
+//==============================================================================
 FlowEnright::~FlowEnright() {
     m_begin;
     //--------------------------------------------------------------------------
@@ -24,6 +72,7 @@ FlowEnright::~FlowEnright() {
 
     delete scal_;
     delete vel_;
+    delete enright_rhs_;
     delete advection_;
     delete rk3_;
     //--------------------------------------------------------------------------
@@ -41,7 +90,7 @@ void FlowEnright::Setup(ParserArguments* param) {
     m_assert(weno_ == 3 || weno_ == 5, "the weno order must be 3 or 5");
 
     // cfl
-    cfl_ = param->cfl_max;
+    cfl_             = param->cfl_max;
     time_dump_field_ = param->time_dump;
 
     //..........................................................................
@@ -75,20 +124,11 @@ void FlowEnright::Setup(ParserArguments* param) {
     }
 
     //..........................................................................
-    const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
-        //--------------------------------------------------------------------------
-        const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
-        const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
-        const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
-
-        return vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
-        //--------------------------------------------------------------------------
-    };
-    // set the velocity field
+    // set the velocity field as empty as it's not needed here
     vel_ = new Field("velocity", 3);
     vel_->bctype(M_BC_EXTRAP);
     vel_->is_expr(true);
-    grid_->SetExpr(vel_, lambda_velocity);
+    // grid_->SetExpr(vel_, lambda_velocity);
 
     //..........................................................................
     // advection
@@ -109,7 +149,9 @@ void FlowEnright::Setup(ParserArguments* param) {
         m_assert(false, "weno order = %d not valid", weno_);
     }
 
-    rk3_ = new RK3_TVD(grid_, scal_, advection_, prof_, cfl_);
+    // create the RHS and the RK3
+    enright_rhs_ = new EnrightRhs(tfinal_, advection_, vel_);
+    rk3_         = new RK3_TVD(grid_, scal_, enright_rhs_, prof_, cfl_);
 
     m_profStop(prof_, "setup");
     //--------------------------------------------------------------------------
@@ -119,23 +161,25 @@ void FlowEnright::Setup(ParserArguments* param) {
 void FlowEnright::DoTimeStep(real_t* time, real_t* dt) {
     m_begin;
     //--------------------------------------------------------------------------
-    // udpdate the velocity
-    const real_t        period_time     = time[0] / tfinal_;
-    const lambda_expr_t lambda_velocity = [period_time](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
-        const real_t vx = (+2.0) * pow(sin(M_PI * x), 2) * sin(2.0 * M_PI * y) * sin(2.0 * M_PI * z);
-        const real_t vy = (-1.0) * sin(2.0 * M_PI * x) * pow(sin(M_PI * y), 2) * sin(2.0 * M_PI * z);
-        const real_t vz = (-1.0) * sin(2.0 * M_PI * x) * sin(2.0 * M_PI * y) * pow(sin(M_PI * z), 2);
-
-        const real_t vel = vx * (ida == 0) + vy * (ida == 1) + vz * (ida == 2);
-        return (vel * cos(M_PI * period_time));
-    };
-    grid_->SetExpr(vel_, lambda_velocity);
-
-    const real_t max_vel = m_max(1.0 * std::fabs(cos(M_PI * period_time)), 0.01);
-
+    // get the biggest velocity over the time-step to ensure stability
+    // if I go forward, I will only decrease the velocity so the current velocity is my bound
+    // and I get that
+    //      v0 >= v_stab  =>  dt0 <= dt_stab
+    // so I will always be stable
+    const real_t v0 = m_max(std::fabs(cos(M_PI * time[0] / tfinal_)), 0.01);
+    // if I go backward, it gets tricky because the velocity increases with time
+    // so I have that:
+    //      v0 <= v_stab  => dt0 >= dt_stab and I might become unstable by having a time-step too big
+    // so because I know that my time-step is too big, I can evaluate the velocity v2 at (t + dt0)
+    // this gives me another velocity v2 such that v0 <= v1 <= v2
+    // and therefore dt0 >= dt_stab >= dt2
+    const real_t dt2     = rk3_->ComputeDt(advection_, v0, 0.0);
+    const real_t t2      = time[0] + dt2;
+    const real_t v2      = m_max(std::fabs(cos(M_PI * t2 / tfinal_)), 0.01);
+    const real_t max_vel = (time[0] < tfinal_) ? v0 : v2;
     //..........................................................................
     // update the time step and perform the integration
-    dt[0] = rk3_->ComputeDt(advection_, max_vel, 0.0);
+    dt[0] = rk3_->ComputeDt(advection_, m_max(max_vel, 0.01), 0.0);
     rk3_->DoDt(dt[0], time);
     //--------------------------------------------------------------------------
     m_end;

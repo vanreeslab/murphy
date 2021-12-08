@@ -62,14 +62,14 @@ class Advection : public Stencil<GridBlock>, public RKFunctor {
     // return the number of ghost points, needed, depend on the stencil etc
     // lid_t NGhost() const override { return 0; };
 
-    void RhsSet(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
+    void RhsSet(Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         // -------------------------------------------------------------------------
         accumulate_ = false;
         Stencil<GridBlock>::operator()(grid, field_u, field_y);
         accumulate_ = false;  // reset the value to false for other calls
         // -------------------------------------------------------------------------
     };
-    void RhsAcc(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
+    void RhsAcc(Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         // -------------------------------------------------------------------------
         accumulate_ = true;
         Stencil<GridBlock>::operator()(grid, field_u, field_y);

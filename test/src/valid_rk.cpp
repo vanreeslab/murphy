@@ -64,7 +64,7 @@ class RKRhs : public RKFunctor {
         SetValue init(lambda_set);
         init(grid, field_y);
     };
-    void RhsAcc(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
+    void RhsAcc( Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         m_log("evaluation in field %s", field_y->name().c_str());
         m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
 
