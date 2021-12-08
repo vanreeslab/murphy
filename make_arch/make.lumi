@@ -1,22 +1,22 @@
 CXX = CC
 CC = cc
 
-# flags
-CXXFLAGS := -O3 -g -fopenmp
-LDFLAGS := -fopenmp
+# override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
 
-# in case of trouble with MPI: -DMPI_NONASYNC
+#CXXFLAGS := -O3 -g -fopenmp # -fsanitize=undefined -fsanitize=address #-DLOG_ALLRANKS -Wall
+CXXFLAGS := -g -Ofast -flto -DNDEBUG
+LDFLAGS := -fopenmp  #-fsanitize=undefined -fsanitize=address
 
-# hdf5
+#FFTW_INC := ${EBROOTFFTW}/include
+#FFTW_LIB := ${EBROOTFFTW}/lib
+
 HDF5_INC := ${CRAY_HDF5_PARALLEL_PREFIX}/include
 HDF5_LIB := ${CRAY_HDF5_PARALLEL_PREFIX}/lib
 
-# p4est
-P4EST_INC := /global/homes/t/tgillis/p4est-2.3.2-gcc10.1.0-openmpi4.1.1/include
-P4EST_LIB := /global/homes/t/tgillis/p4est-2.3.2-gcc10.1.0-openmpi4.1.1/lib
+P4EST_INC := /users/thgillis/lib-cray-8.0.0-mpich-ucx-8.1.8/include
+P4EST_LIB := /users/thgillis/lib-cray-8.0.0-mpich-ucx-8.1.8/lib
+#P4EST_INC := /users/thgillis/lib-cray-8.0.0/include
+#P4EST_LIB := /users/thgillis/lib-cray-8.0.0/lib
 
-
-
-# do not change this line
-OPTS += -DWAVELET_N=4 -DWAVELET_NT=0 -DBLOCK_GS=6
+#end of file
 

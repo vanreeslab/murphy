@@ -145,6 +145,7 @@ static struct argp_option options[] = {
     {"eps-start", 3016, "double", 0, "start epsilon (epsilon test)"},
     {"delta-eps", 3017, "double", 0, "factor from one epsilon to another (epsilon test)"},
     {"cfl-max", 3018, "double", 0, "The max CLF number"},
+    {"time-dump", 3019, "double", 0, "dump the field every x secs"},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients/testcases:", 4},
@@ -168,6 +169,8 @@ static struct argp_option options[] = {
     {"2lvl-weno", 4006, 0, OPTION_ARG_OPTIONAL, "two-level weno"},
     // weak scalability
     {"weak-scal", 4007, 0, OPTION_ARG_OPTIONAL, "weak scalability"},
+    // weak scalability
+    {"enright", 4008, 0, OPTION_ARG_OPTIONAL, "Enright velocity flow"},
 
     /* help */
     {0, 0, 0, OPTION_DOC, "Help:", -1},
@@ -368,6 +371,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             m_log("CFL max: %f", cfl[0]);
             return err;
         }
+        case 3019: { /* time-dump */
+            real_t* time = &arguments->time_dump;
+            error_t err = atof_list(1, arg, time);
+            m_log("time dump: %f", time[0]);
+            return err;
+        }
         //................................................
         case 4000: { /* Navier-Stockes */
             m_log("Navier-Stokes testcase selected");
@@ -407,6 +416,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         case 4007: { /* convergence weno */
             m_log("weak scalability selected");
             arguments->do_weak_scal = true;
+            return 0;
+        }
+        case 4008: { /* Enright */
+            m_log("enright flow selected");
+            arguments->do_enright = true;
             return 0;
         }
         

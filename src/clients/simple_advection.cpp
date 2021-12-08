@@ -30,7 +30,7 @@ static const real_t velocity[3] = {0.0, 0.0, 0.0};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 #endif
 
-static const lambda_i3_t<real_t, lda_t> lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) -> real_t {
+static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
 #if M_DIFF_ONLY
     return 0.0;
 #else
@@ -86,7 +86,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     m_profStart(prof_, "init");
 
     // setup the grid
-    bidx_t length[3] = {3,3,4};
+    bidx_t length[3] = {3,3,6};
     bool   period[3] = {false, false, false};
     grid_          = new Grid(param->init_lvl, period, length,M_GRIDBLOCK, MPI_COMM_WORLD, prof_);
 
@@ -141,7 +141,7 @@ void SimpleAdvection::InitParam(ParserArguments* param) {
     grid_->SetExpr(vel_, lambda_velocity);
 
     tstart_ = param->time_start;
-    tfinal_ = 1.0;
+    tfinal_ = param->time_final;
     m_profStop(prof_, "init");
     //-------------------------------------------------------------------------
 }
@@ -172,6 +172,9 @@ void SimpleAdvection::Run() {
     iter_t        iter = 0;
     real_t        t    = tstart_;
     const RK3_TVD rk3(grid_, scal_, advection, prof_, cfl_);
+
+    t_deterr_ = 0.25;
+    t_deterr_accum_ = 0.0;
 
     // let's gooo
     m_profStart(prof_, "run");
@@ -240,13 +243,12 @@ void SimpleAdvection::Run() {
 
         // dump some info
         real_t wtime_now = MPI_Wtime();
-        m_log("RK3 - time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal_, iter, iter_max(), dt, wtime_now - wtime_start);
-
         //................................................
         // advance in time
         m_profStart(prof_, "do dt");
         rk3.DoDt(dt, &t);
         iter++;
+        m_log("now -> time = %f/%f - step %d/%d - dt = %e - wtime = %e", t, tfinal_, iter, iter_max(), dt, wtime_now - wtime_start);
         m_profStop(prof_, "do dt");
         m_log_level_minus;
     }
@@ -255,7 +257,7 @@ void SimpleAdvection::Run() {
     if (iter % iter_diag() != 0) {
         m_profStart(prof_, "diagnostics");
         real_t time_now = MPI_Wtime();
-        Diagnostics(t, 0.0, iter, time_now);
+        Diagnostics(t, dt, iter, time_now);
         m_profStop(prof_, "diagnostics");
     }
 
@@ -266,6 +268,14 @@ void SimpleAdvection::Run() {
     m_end;
 }
 
+/**
+ * @brief 
+ * 
+ * @param time current time
+ * @param dt the value of DT we have just done
+ * @param iter 
+ * @param wtime 
+ */
 void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
     m_begin;
     m_assert(scal_->lda() == 1, "the scalar field must be scalar");
@@ -273,13 +283,19 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     rank_t rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    //..........................................................................
+    // update the time accum
+    t_deterr_accum_ += dt;
+    m_log("time is now, %e, accum = %e",time,t_deterr_accum_);
+
+    //..........................................................................
     // if the folder does not exist, create it
     struct stat st = {0};
     if (rank == 0 && stat(folder_diag_.c_str(), &st) == -1) {
         mkdir(folder_diag_.c_str(), 0770);
     }
 
-    //................................................
+    //..........................................................................
     m_profStart(prof_, "cmpt moments");
     real_t  moment0;
     real_t  moment1[3];
@@ -308,7 +324,7 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
         real_t value = 0.0;
         // value += scalar_compact_ring(pos, new_ring_center, ring_normal, ring_radius, ring_sigma, ring_beta);
         // value += scalar_compact_exp(pos, new_exp_center, exp_sigma, exp_beta);
-        value += scalar_diff_exp(pos, exp_center, exp_sigma,nu_,time);
+        value += scalar_diff_exp(pos, new_exp_center, exp_sigma, nu_, time);
         return value;
     };
     // compute the error
@@ -365,16 +381,19 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     grid_->DumpLevels(iter, folder_diag_, string("_" + tag));
     m_profStop(prof_, "dump levels");
 
-    if (iter % iter_adapt() == 0) {
-        m_profStart(prof_, "dump det histogram");
-        // grid_->DistributionDetails(iter, folder_diag_, tag, scal_, 128, 1.0);
+    m_profStart(prof_, "dump det histogram");
+    if ((t_deterr_accum_ - t_deterr_) > ((-1000.0) * std::numeric_limits<real_t>::epsilon()) || iter == 0 || time >= tfinal_) {
         DetailVsError distr(grid_->interp());
         distr(iter, folder_diag_, tag, grid_, scal_, &lambda_ring);
-        m_profStop(prof_, "dump det histogram");
+        // reset the correct increment
+        const iter_t n_dump = ((time + m_min(dt, t_deterr_) / 10.0) / t_deterr_);
+        t_deterr_accum_     = time - n_dump * t_deterr_;
+        m_log("dump deterr at time %e - iter %d -> accum is now %e", time, iter, t_deterr_accum_);
     }
+    m_profStop(prof_, "dump det histogram");
 
     m_profStart(prof_, "dump field");
-    if (iter % iter_dump() == 0 ) {
+    if ((iter % iter_dump() == 0) && iter > 0) {
         // dump the vorticity field
         IOH5 dump(folder_diag_);
         grid_->GhostPull(scal_, ghost_len_ioh5);
@@ -399,7 +418,6 @@ void SimpleAdvection::Diagnostics(const real_t time, const real_t dt, const iter
     //-------------------------------------------------------------------------
     m_end;
 }
-
 
 // void SimpleAdvection::GridDetErr(const real_t time, const real_t dt, const iter_t iter, const real_t wtime) {
 //     m_begin;

@@ -53,5 +53,4 @@ class BlockOperator {
         ghost_len[1] = ghost_len_res_[1];
     }
 };
-
 #endif

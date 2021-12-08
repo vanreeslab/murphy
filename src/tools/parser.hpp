@@ -10,10 +10,10 @@
 #include "patch.hpp"
 
 struct ParserArguments {
-    level_t          init_lvl  = 0;                      //!< the level at which the grid is initialized
-    bool             period[3] = {false, false, false};  //!< the periodicity of the domain
-    lid_t            length[3] = {1, 1, 1};              //!< the aspect ratio of the domain
-    std::list<Patch> patch;                              //!< list of imposed level regions for the initialization
+    level_t          init_lvl  = 0;                   //!< the level at which the grid is initialized
+    bool             period[3] = {true, true, true};  //!< the periodicity of the domain
+    lid_t            length[3] = {1, 1, 1};           //!< the aspect ratio of the domain
+    std::list<Patch> patch;                           //!< list of imposed level regions for the initialization
 
     bool profile          = false;
     bool do_navier_stokes = false;
@@ -24,8 +24,9 @@ struct ParserArguments {
     bool do_conv_weno     = false;
     bool do_2lvl_weno     = false;
     bool do_weak_scal     = false;
+    bool do_enright     = false;
 
-    real_t reynolds    = -1.0; //!< Reynolds number, negative values means no diffusion
+    real_t reynolds    = -1.0;  //!< Reynolds number, negative values means no diffusion
     real_t refine_tol  = 1e-2;
     real_t coarsen_tol = 1e-4;
     bool   optimal_tol = false;
@@ -55,6 +56,9 @@ struct ParserArguments {
     iter_t iter_diag     = 1;
     iter_t iter_adapt    = 1;
     iter_t iter_dump     = 1;
+
+    real_t time_dump = 0.1;
+
     // bool   no_weno       = false;
     // bool   weno_5        = false;
     bool fix_weno    = false;

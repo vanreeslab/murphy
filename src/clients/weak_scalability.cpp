@@ -13,11 +13,14 @@ static const real_t sigma_tube  = 0.05;
 static const real_t center[3]   = {0.5, 0.5, 0.5};
 static const real_t velocity[3] = {0.0, 0.0, 1.0};
 
-static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
-    m_assert(fid->lda() == 3, "the velocity field must be a vector");
-    block->data(fid, 0)(i0, i1, i2) = velocity[0];
-    block->data(fid, 1)(i0, i1, i2) = velocity[1];
-    block->data(fid, 2)(i0, i1, i2) = velocity[2];
+// static const lambda_setvalue_t lambda_velocity = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
+//     m_assert(fid->lda() == 3, "the velocity field must be a vector");
+//     block->data(fid, 0)(i0, i1, i2) = velocity[0];
+//     block->data(fid, 1)(i0, i1, i2) = velocity[1];
+//     block->data(fid, 2)(i0, i1, i2) = velocity[2];
+// };
+static const lambda_expr_t lambda_velocity = [](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
+    return (ida == 2);
 };
 
 WeakScalability::~WeakScalability() {
@@ -58,7 +61,7 @@ void WeakScalability::Run() {
     bool   period[3] = {true, false, false};
     bidx_t length[3] = {m_max(1,comm_size/32), 1, 1};
     m_log("length is %d %d %d",length[0],length[1],length[2]);
-    Grid   grid(1, period, length, M_GRIDBLOCK,MPI_COMM_WORLD, prof_);
+    Grid   grid(3, period, length, M_GRIDBLOCK,MPI_COMM_WORLD, prof_);
     grid.level_limit(0, P8EST_QMAXLEVEL);
 
     //..........................................................................
@@ -90,10 +93,12 @@ void WeakScalability::Run() {
     // set the velocity field
     Field vel("velocity", 3);
     vel.bctype(M_BC_EXTRAP);
-    vel.is_temp(true);
-    grid.AddField(&vel);
-    SetValue set_velocity(lambda_velocity, ghost_len_interp);
-    set_velocity(&grid, &vel);
+    // vel.is_temp(true);
+    vel.is_expr(true);
+    // grid.AddField(&vel);
+    // SetValue set_velocity(lambda_velocity, ghost_len_interp);
+    // set_velocity(&grid, &vel);
+    grid.SetExpr(&vel,lambda_velocity);
 
     m_profStop(prof_, "init");
 
@@ -128,8 +133,8 @@ void WeakScalability::Run() {
             m_profStart(prof_, "set velocity");
             const bidx_t ghost_len_interp[2] = {m_max(grid.interp()->nghost_front(), 2),
                                                 m_max(grid.interp()->nghost_back(), 2)};
-            SetValue     set_velocity(lambda_velocity, ghost_len_interp);
-            set_velocity(&grid,&vel);
+            // SetValue     set_velocity(lambda_velocity, ghost_len_interp);
+            // set_velocity(&grid,&vel);
             m_assert(vel.ghost_status(ghost_len_interp), "the velocity ghosts must have been computed");
             m_profStop(prof_, "set velocity");
             m_log_level_minus;
@@ -140,7 +145,7 @@ void WeakScalability::Run() {
         //......................................................................
         // get the time-step given the field
         m_profStart(prof_, "compute dt");
-        real_t dt = rk3.ComputeDt(&adv_stencil, &vel);
+        real_t dt = rk3.ComputeDt(&adv_stencil,1.0);
         m_profStop(prof_, "compute dt");
 
         //......................................................................

@@ -18,16 +18,19 @@ class SimpleAdvection : public TestCase {
     real_t tstart_ = 0.0;
     real_t tfinal_ = 0.0;
 
+    real_t t_deterr_       = 0.25;
+    real_t t_deterr_accum_ = 0.0;
+
     real_t cfl_ = 0.0;
-    real_t nu_= 0.0;
+    real_t nu_  = 0.0;
 
     level_t level_min_ = 0;
     level_t level_max_ = P8EST_QMAXLEVEL;
 
-    Field*  vel_;
-    Field*  scal_;
-    Grid*   grid_;
-    Prof*   prof_;
+    Field* vel_;
+    Field* scal_;
+    Grid*  grid_;
+    Prof*  prof_;
 
     std::string folder_diag_ = "data";
 

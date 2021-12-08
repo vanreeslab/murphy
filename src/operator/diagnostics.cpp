@@ -2,11 +2,12 @@
 
 DetailVsError::DetailVsError(const Wavelet* interp) noexcept : BlockOperator(nullptr) {
     ghost_len_need_[0] = interp->nghost_front();
-    ghost_len_need_[1] = interp->nghost_front();
+    ghost_len_need_[1] = interp->nghost_back();
 }
 
 void DetailVsError::operator()(const iter_t id, const std::string folder, const std::string suffix, const Grid* grid, Field* field, const lambda_error_t* sol) {
     m_begin;
+    m_assert(IsGhostValid(field),"the ghost of the field %s are not large enough",field->name().c_str());
     //--------------------------------------------------------------------------
     // allow to get only the detail distribution
     do_error_ = (sol != nullptr);
@@ -38,22 +39,22 @@ void DetailVsError::operator()(const iter_t id, const std::string folder, const 
 #ifndef NDEBUG
         long block_count = 0;
 #endif
-        
-        for (iter_t ierr = 0; ierr <= (do_error_*n_cat_); ++ierr) {
-            for (level_t il=0; il<=P8EST_QMAXLEVEL;++il){
-            for (iter_t idet = 0; idet <= n_cat_; ++idet) {
-                // get the center of the category
-                const real_t h_cat      = (log10(max_cat_) - log10(min_cat_)) / (n_cat_);
-                const real_t err_bound = pow(10.0, log10(min_cat_) + ierr * h_cat);
-                const real_t det_bound = pow(10.0, log10(min_cat_) + idet * h_cat);
 
-                // write it down
-                const size_t id = idet + (n_cat_ + 1) * (il + P8EST_MAXLEVEL * ierr);
-                fprintf(file_diag, "%e;%d;%e;%d\n", err_bound * do_error_, il, det_bound, n_blocks_glob_[id]);
+        for (iter_t ierr = 0; ierr <= (do_error_ * n_cat_); ++ierr) {
+            for (level_t il = 0; il <= P8EST_QMAXLEVEL; ++il) {
+                for (iter_t idet = 0; idet <= n_cat_; ++idet) {
+                    // get the center of the category
+                    const real_t h_cat     = (log10(max_cat_) - log10(min_cat_)) / (n_cat_);
+                    const real_t err_bound = pow(10.0, log10(min_cat_) + ierr * h_cat);
+                    const real_t det_bound = pow(10.0, log10(min_cat_) + idet * h_cat);
+
+                    // write it down
+                    const size_t id = idet + (n_cat_ + 1) * (il + P8EST_MAXLEVEL * ierr);
+                    fprintf(file_diag, "%e;%d;%e;%d\n", err_bound * do_error_, il, det_bound, n_blocks_glob_[id]);
 #ifndef NDEBUG
-                block_count += n_blocks_glob_[id];
+                    block_count += n_blocks_glob_[id];
 #endif
-            }
+                }
             }
         }
         fclose(file_diag);

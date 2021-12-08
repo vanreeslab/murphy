@@ -37,7 +37,7 @@ using std::map;
 using std::memcpy;
 
 #ifndef NDEBUG
-static size_t PartitionerBlockSize(const CartBlock* block, const lda_t lda) {
+static size_t PartitionerBlockSize(const CartBlock *block, const lda_t lda) {
     const size_t n_elem = block->BlockLayout().n_elem;
     const size_t offset = block->PartitionDataOffset();
     return (n_elem * lda + offset);
@@ -88,13 +88,13 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid, bool destruct
     //..........................................................................
     // store the location of the quads in the old partition
     // note: we have to know the new partition to use it
-    
+
     p4est_gloidx_t *oldpart = reinterpret_cast<p4est_gloidx_t *>(m_calloc((commsize + 1) * sizeof(p4est_gloidx_t)));
     memcpy(oldpart, forest->global_first_quadrant, (commsize + 1) * sizeof(p4est_gloidx_t));
 
-    // get the blocksize from the grid. We cannot get it from the quadrants or the blocks 
+    // get the blocksize from the grid. We cannot get it from the quadrants or the blocks
     // because we might have no quads and still get some coming.
-    partition_blocksize_ = BlockPartitionSize(grid->block_type(),n_lda_);
+    partition_blocksize_ = BlockPartitionSize(grid->block_type(), n_lda_);
 
     // init the array of current blocks and store their adress before we send it
     const iblock_t n_loc_block = forest->local_num_quadrants;
@@ -242,8 +242,8 @@ Partitioner::Partitioner(map<string, Field *> *fields, Grid *grid, bool destruct
                         m_assert(quad->level >= 0, "the level=%d must be >=0", quad->level);
                         // real_t     len   = p4est_QuadLen(quad->level);
                         // CartBlock *block = AllocateGridBlock(grid->block_type(), len, xyz, quad->level);
-                        AllocateBlockForP4est(grid->block_type(),xyz,quad);
-                        CartBlock* block = p4est_GetBlock<CartBlock>(quad);
+                        AllocateBlockForP4est(grid->block_type(), xyz, quad);
+                        CartBlock *block = p4est_GetBlock<CartBlock>(quad);
                         // add the fields to the block
                         block->AddFields(fields);
                         // store its access, replace the adress that was there but which is wrong now
@@ -413,7 +413,7 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
     lid_t *q_recv_cum_block;
 
     real_t *send_buf;
-    real_p  recv_buf;
+    real_t *recv_buf;
 
     MPI_Request *recv_request;
     MPI_Request *send_request;
@@ -536,7 +536,7 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
         if (n_recv_done < n_recv_request) {
             int n_recv_ready = 0;
             MPI_Testsome(n_recv_request, recv_request, &n_recv_ready, current_recv_id, MPI_STATUSES_IGNORE);
-            // perform the recv if they are ready
+            m_assert(MPI_UNDEFINED < 0, "the MPI undefined value must be <0");
             for (int ir = 0; ir < n_recv_ready; ++ir) {
                 recv_my_request(current_recv_id[ir]);
                 n_recv_done += 1;
@@ -548,15 +548,32 @@ void Partitioner::SendRecv(map<string, Field *> *fields, const m_direction_t dir
             n_send_done += 1;
         }
     }
+    m_assert((n_send_done == n_send_request) && (n_recv_done == n_recv_request), "the number of requests done must = the number of total requests: %d vs %d and %d vs %d", n_send_done, n_send_request, n_recv_done, n_recv_request);
     m_free(current_recv_id);
 
     // wait for all the send to be ok (should be trivial)
     if (n_send_request > 0) {
         MPI_Waitall(n_send_request, send_request, MPI_STATUSES_IGNORE);
     }
-    if (n_recv_request > 0) {
-        MPI_Waitall(n_recv_request, recv_request, MPI_STATUSES_IGNORE);
+
+#ifndef NDEBUG
+    // no need to Waitall on the recv requests as they have been processed
+    // if in debug stil do a test on all the requests
+    for (lid_t is = 0; is < n_send_request; ++is) {
+        // get the status of the request and check it's over
+        int        is_over = 0;
+        MPI_Status status;
+        MPI_Request_get_status(send_request[is], &is_over, &status);
+        m_assert(is_over, "The send request num %d with source %d is not finished from ", is, status.MPI_SOURCE);
     }
+    for (lid_t ir = 0; ir < n_recv_request; ++ir) {
+        // get the status of the request and check it's over
+        int        is_over = 0;
+        MPI_Status status;
+        MPI_Request_get_status(recv_request[ir], &is_over, &status);
+        m_assert(is_over, "The send request num %d with source %d is not finished from ", ir, status.MPI_SOURCE);
+    }
+#endif
 }
 
 /**

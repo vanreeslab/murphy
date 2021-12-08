@@ -83,12 +83,13 @@ TEST_P(Adapt, weno_periodic_cosinus_expr) {
 
         // set a constant velocity
         {
-            lambda_i3_t<real_t,lda_t> set_vel = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) -> real_t {
+            // lambda_i3_t<real_t,lda_t> set_vel = [=](const bidx_t i0, const bidx_t i1, const bidx_t i2, const lda_t ida) -> real_t {
+            lambda_expr_t set_vel = [rand_vel](const real_t x, const real_t y, const real_t z, const lda_t ida) -> real_t {
                 return rand_vel[ida];
             };
 
             vel.is_expr(true);
-            grid.SetExpr(&vel,set_vel);
+            grid.SetExpr(&vel, set_vel);
         }
 
         // set the test field

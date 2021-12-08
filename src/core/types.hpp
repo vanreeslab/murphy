@@ -32,6 +32,9 @@ using lambda_t = std::function<R(T...)>;
 template <typename R, typename... T>
 using lambda_i3_t = lambda_t<R, const bidx_t, const bidx_t, const bidx_t, T...>;
 
+
+using lambda_expr_t = lambda_t<real_t, const real_t, const real_t, const real_t, const lda_t>;
+
 //------------------------------------------------------------------------------
 /**
  * @brief id of a quadrant

@@ -43,7 +43,12 @@ Grid::Grid(const level_t ilvl, const bool isper[3], const lid_t l[3], BlockDataT
 
     // partition the grid to have compatible grid
     Partitioner part = Partitioner(&fields_, this, true);
+#ifdef M_MPI_AGGRESSIVE
     part.SendRecv(&fields_, M_FORWARD);
+#else
+    part.Start(&fields_, M_FORWARD);
+    part.End(&fields_, M_FORWARD);
+#endif
 
     // setup the ghost stuctures as the mesh will not change anymore
     SetupMeshGhost();
@@ -210,7 +215,7 @@ void Grid::AddField(Field* field) {
  * @param field the pointer of the field associated with the expression
  * @param expr the expression ot be set
  */
-void Grid::SetExpr(Field* field, const lambda_i3_t<real_t, lda_t> expr) {
+void Grid::SetExpr(Field* field, const lambda_expr_t expr) {
     m_begin;
     m_assert(field->is_expr(), "The field must be an expression here");
     //--------------------------------------------------------------------------
@@ -716,9 +721,9 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //......................................................................
         // solve the dependencies on the grid
         // warn the user that we do not interpolate a temporary field
-        for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
-            m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
-        }
+        // for (auto fid = FieldBegin(); fid != FieldEnd(); ++fid) {
+        //     m_log("field <%s> %s", fid->second->name().c_str(), fid->second->is_temp() ? "is discarded" : "will be interpolated");
+        // }
         m_profStart(prof_, "solve dependency");
         DoOpTree(nullptr, &GridBlock::SolveDependency, this, interp_, FieldBegin(), FieldEnd());
         m_profStop(prof_, "solve dependency");
@@ -726,11 +731,18 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         //......................................................................
         // update the partitioning and check for new block to change
         m_profStart(prof_, "partition init");
-        Partitioner partition(&fields_, this, true);
+        Partitioner* partition= new Partitioner(&fields_, this, true);
         m_profStop(prof_, "partition init");
         m_profStart(prof_, "partition comm");
-        partition.SendRecv(&fields_, M_FORWARD);
+#ifdef M_MPI_AGGRESSIVE
+        partition->SendRecv(&fields_, M_FORWARD);
+#else
+        partition->Start(&fields_, M_FORWARD);
+        partition->End(&fields_, M_FORWARD);
+#endif
+        delete(partition);
         m_profStop(prof_, "partition comm");
+        // m_log("partitioning is over");
 
         //......................................................................
         // create a new ghost and mesh as the partioning is done
@@ -781,7 +793,7 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
         // if we adapted some blocks, then the ghosting is not valid
         if (global_n_quad_to_adapt > 0) {
             for (auto fid : fields_) {
-                m_log("changing ghost status of <%s>", fid.second->name().c_str());
+                // m_log("changing ghost status of <%s>", fid.second->name().c_str());
                 const bidx_t ghost_len[2] = {0, 0};
                 if (!fid.second->is_expr()) {
                     fid.second->ghost_len(ghost_len);
@@ -809,7 +821,6 @@ void Grid::AdaptMagic(/* criterion */ Field* field_detail, list<Patch>* patches,
     m_verb("resetting the analytical expression");
     for (auto expr_it : expr_) {
         string field_name = expr_it.first;
-        m_log("field name = %s",field_name.c_str());
         DoOpTree(nullptr, &GridBlock::SetExpr, this, fields_[field_name], expr_it.second);
     }
 

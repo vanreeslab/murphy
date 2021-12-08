@@ -424,7 +424,7 @@ void GridBlock::SmoothResolutionJump(const Wavelet* interp, std::map<std::string
             m_assert(this->status_level() <= M_ADAPT_SAME, "if my coarser neighbor has been newly created, I cannot have something different than SAME (now %d)", status_lvl_);
 
             // get the sign of the ibidule
-            real_t sign[3];
+            real_t sign[3] = {0.0,0.0,0.0};
             GhostGetSign(ibidule, sign);
 
             // create the start and end indexes
@@ -811,7 +811,7 @@ void GridBlock::GhostInitLists(const qid_t* qid, const p4est_Essentials* ess_inf
             m_verb("reading the list: adress: %p  and rank %d -> is ghost? %d", nghq, ngh_rank, isghost);
 
             // get the sign, i.e. the normal to the face, the edge of the corner we consider
-            real_t sign[3];
+            real_t sign[3] = {0.0, 0.0, 0.0};
             GhostGetSign(ibidule, sign);
 
             //................................................
@@ -1307,7 +1307,7 @@ void GridBlock::GhostPut_Post(const Field* field, const lda_t ida, const Wavelet
             // lambda to obtain the detail checking pattern
             auto overwrite = [=, &interp](const iface_t ibidule) -> void {
                 // get the sign of the ibidule
-                real_t sign[3];
+                real_t sign[3] = {0.0,0.0,0.0};
                 GhostGetSign(ibidule, sign);
 
                 // create the start and end indexes from the current block

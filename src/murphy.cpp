@@ -11,6 +11,7 @@
 #include "clients/simple_advection.hpp"
 #include "clients/twolevel_convweno.hpp"
 #include "clients/weak_scalability.hpp"
+#include "clients/flow_enright.hpp"
 #include "core/macros.hpp"
 #include "core/types.hpp"
 #include "p8est.h"
@@ -40,9 +41,18 @@ void WriteInfo(int argc, char** argv) {
         fprintf(file, "\tM_WAVELET_NT = %d\n", M_WAVELET_NT);
 #ifdef M_MPI_AGGRESSIVE
         fprintf(file, "\tM_MPI_AGGRESSIVE ? yes\n");
+#else
+        fprintf(file, "\tM_MPI_AGGRESSIVE ? no\n");
 #endif
 #ifndef NDEBUG
         fprintf(file, "\tNDEBUG ? no\n");
+#else
+        fprintf(file, "\tNDEBUG ? yes\n");
+#endif
+#if (M_OLD_GCC==1)
+        fprintf(file, "\tOLD_GCC ? yes\n");
+#else
+        fprintf(file, "\tOLD_GCC ? no\n");
 #endif
         fprintf(file, "- argument list:\n");
         for (int i = 0; i < argc; ++i) {
@@ -122,6 +132,10 @@ TestCase* MurphyInit(int argc, char** argv) {
         return testcase;
     } else if (argument.do_weak_scal) {
         testcase = new WeakScalability();
+        testcase->InitParam(&argument);
+        return testcase;
+    } else if (argument.do_enright) {
+        testcase = new FlowEnright();
         testcase->InitParam(&argument);
         return testcase;
     } else {
