@@ -176,7 +176,7 @@ void FlowEnright::DoTimeStep(real_t* time, real_t* dt) {
     const real_t dt2     = rk3_->ComputeDt(advection_, v0, 0.0);
     const real_t t2      = time[0] + dt2;
     const real_t v2      = m_max(std::fabs(cos(M_PI * t2 / tfinal_)), 0.01);
-    const real_t max_vel = (time[0] < tfinal_) ? v0 : v2;
+    const real_t max_vel = (time[0] < (tfinal_/2.0)) ? v0 : v2;
     //..........................................................................
     // update the time step and perform the integration
     dt[0] = rk3_->ComputeDt(advection_, m_max(max_vel, 0.01), 0.0);
