@@ -6,6 +6,7 @@
 class TwoLevelConvWeno : public TestCase {
     bool    adapt_;
     bool    fix_weno_;
+    bool do_adv_;
     level_t ilevel_;
 
     level_t level_min_;
