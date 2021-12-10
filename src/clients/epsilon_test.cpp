@@ -13,7 +13,7 @@
 // static const real_t sigma     = 0.2;
 // static const real_t center[3] = {1.5, 1.5, 1.5};
 #define  D 2
-static const real_t sigma     = D / 15.0;
+static const real_t sigma     = D / 48.0;
 static const real_t center[3] = {D / 2.0, D / 2.0, D / 2.0};
 
 using std::string;
@@ -60,9 +60,11 @@ void EpsilonTest::Run() {
 
         // break the symmetry if required
         const real_t local_h       = grid.FinestH();
-        real_t       new_center[3] = {center[0] + (break_me_)*M_PI / 4.0 * local_h,
-                                center[1] - (break_me_)*M_PI / 4.0 * local_h,
-                                center[2] + (break_me_)*M_PI / 5.0 * local_h};
+        real_t       new_center[3] = {center[0] + (break_me_)*M_PI * 4.0 * local_h,
+                                center[1] - (break_me_)*M_PI * 4.0 * local_h,
+                                center[2] + (break_me_)*M_PI * 3.0 *  local_h};
+
+        m_log("my center is now: %e %e %e",new_center[0],new_center[1],new_center[2]);
 
         // lambdas
         static lambda_setvalue_t lambda_initcond = [new_center](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block, const Field* fid) -> void {

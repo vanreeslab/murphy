@@ -14,7 +14,7 @@ using std::to_string;
 
 //==============================================================================
 // exponential
-static const real_t exp_sigma     = 0.075;
+static const real_t exp_sigma     = 0.1;
 static const real_t exp_beta      = 2.0;
 static const real_t exp_center[3] = {0.35, 0.35, 0.35};
 
