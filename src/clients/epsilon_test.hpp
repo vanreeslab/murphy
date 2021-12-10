@@ -6,6 +6,9 @@
 #include "core/types.hpp"
 
 class EpsilonTest : public TestCase {
+
+    bool break_me_ = false;
+
     level_t level_start_   = 4;
     level_t level_min_ = 0;
     level_t level_max_ = 10;

@@ -32,26 +32,15 @@ void EpsilonTest::InitParam(ParserArguments* param) {
     eps_start_ = param->eps_start;
     delta_eps_ = param->delta_eps;
 
+    break_me_ = param->break_sym;
+
     //-------------------------------------------------------------------------
 }
 
-// lambdas
-static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block, const Field* fid) -> void {
-    // get the position
-    real_t pos[3];
-    block->pos(i0, i1, i2, pos);
-    block->data(fid, 0)(i0, i1, i2) = scalar_exp(pos, center, sigma);
-};
-static lambda_error_t lambda_error = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
-    // get the position
-    real_t pos[3];
-    block->pos(i0, i1, i2, pos);
-    // set value
-    return scalar_exp(pos, center, sigma);
-};
 
 void EpsilonTest::Run() {
     //-------------------------------------------------------------------------
+    //......................................................................
     real_t depsilon = delta_eps_;
     real_t epsilon  = eps_start_;
     m_log("starting with epsilon = %e", epsilon);
@@ -68,6 +57,27 @@ void EpsilonTest::Run() {
         Field scal("scalar", 1);
         grid.AddField(&scal);
         scal.bctype(M_BC_ZERO);
+
+        // break the symmetry if required
+        const real_t local_h       = grid.FinestH();
+        real_t       new_center[3] = {center[0] + (break_me_)*M_PI / 4.0 * local_h,
+                                center[1] - (break_me_)*M_PI / 4.0 * local_h,
+                                center[2] + (break_me_)*M_PI / 5.0 * local_h};
+
+        // lambdas
+        static lambda_setvalue_t lambda_initcond = [new_center](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block, const Field* fid) -> void {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+            block->data(fid, 0)(i0, i1, i2) = scalar_exp(pos, new_center, sigma);
+        };
+        static lambda_error_t lambda_error = [new_center](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* block) -> real_t {
+            // get the position
+            real_t pos[3];
+            block->pos(i0, i1, i2, pos);
+            // set value
+            return scalar_exp(pos, new_center, sigma);
+        };
 
         // init the value
         SetValue init(lambda_initcond);
