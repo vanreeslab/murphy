@@ -26,13 +26,13 @@ class RKRhs : public RKFunctor {
     const Wavelet* interp_;
 
    public:
-    RKRhs(const lda_t vel_dir, const Wavelet* interp): interp_(interp),vel_dir_(vel_dir){}
+    RKRhs(const lda_t vel_dir, const Wavelet* interp) : interp_(interp), vel_dir_(vel_dir) {}
 
     // rk functor
     real_t cfl_rk3() const override { return 1.0; }
     real_t rdiff_rk3() const override { return 1.0; }
 
-    void RhsSet(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
+    void RhsSet(Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         m_log("evaluation in field %s", field_y->name().c_str());
         m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
 
@@ -58,13 +58,13 @@ class RKRhs : public RKFunctor {
             const real_t rho  = rhox * rhox + rhoy * rhoy + rhoz * rhoz;
             const real_t dpos = (pos[vel_dir_] - new_center[vel_dir_]);
 
-            block->data(fid,0)(i0, i1, i2) = -fact * std::exp(-rho) * dpos;
+            block->data(fid, 0)(i0, i1, i2) = -fact * std::exp(-rho) * dpos;
         };
 
         SetValue init(lambda_set);
         init(grid, field_y);
     };
-    void RhsAcc(const Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
+    void RhsAcc(Grid* grid, const real_t time, Field* field_u, Field* field_y) override {
         m_log("evaluation in field %s", field_y->name().c_str());
         m_assert(vel_dir_ >= 0 && vel_dir_ < 3, "the veldir = %d must be [0;3[", vel_dir_);
 

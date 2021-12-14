@@ -146,6 +146,8 @@ static struct argp_option options[] = {
     {"delta-eps", 3017, "double", 0, "factor from one epsilon to another (epsilon test)"},
     {"cfl-max", 3018, "double", 0, "The max CLF number"},
     {"time-dump", 3019, "double", 0, "dump the field every x secs"},
+    {"diff-only", 3020, 0, OPTION_ARG_OPTIONAL, "diffusion only"},
+    {"break-sym", 3021, 0, OPTION_ARG_OPTIONAL, "break the symmetry"},
 
     /* client choice parameters */
     {0, 0, 0, OPTION_DOC, "Available clients/testcases:", 4},
@@ -376,6 +378,16 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             error_t err = atof_list(1, arg, time);
             m_log("time dump: %f", time[0]);
             return err;
+        }
+        case 3020: { /* diff only */
+            arguments->diff_only = true;
+            m_log("diffusion only");
+            return 0;
+        }
+        case 3021: { /* diff only */
+            arguments->break_sym = true;
+            m_log("break the symmetry");
+            return 0;
         }
         //................................................
         case 4000: { /* Navier-Stockes */

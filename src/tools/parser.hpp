@@ -24,7 +24,9 @@ struct ParserArguments {
     bool do_conv_weno     = false;
     bool do_2lvl_weno     = false;
     bool do_weak_scal     = false;
-    bool do_enright     = false;
+    bool do_enright       = false;
+    bool diff_only        = false;
+    bool break_sym = false;
 
     real_t reynolds    = -1.0;  //!< Reynolds number, negative values means no diffusion
     real_t refine_tol  = 1e-2;

@@ -34,7 +34,10 @@ void TwoLevelConvWeno::InitParam(ParserArguments* param) {
     level_min_   = param->level_min;
     level_max_   = param->level_max;
 
+    do_adv_ = !(param->diff_only);
+
     nu_ = (param->reynolds < 0.0) ? 0.0 : ((1.0) / param->reynolds);
+    // nu_ = ((param->reynolds > 0.0) && (!do_adv_)) ? ((1.0) / param->reynolds) : 0.0;
     //-------------------------------------------------------------------------
 }
 
@@ -56,14 +59,16 @@ void TwoLevelConvWeno::Run() {
     //-------------------------------------------------------------------------
     // get a random velocity
     real_t rand_vel[3] = {0.0, 0.0, 0.0};
-    rank_t rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0) {
-        rand_vel[0] =  -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
-        rand_vel[1] =  -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
-        rand_vel[2] =  -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+    if (do_adv_) {
+        rank_t rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0) {
+            rand_vel[0] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+            rand_vel[1] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+            rand_vel[2] = -1.0 + (static_cast<real_t>(std::rand()) / static_cast<real_t>(RAND_MAX)) * 2.0;
+        }
+        MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     }
-    MPI_Bcast(rand_vel, 3, M_MPI_REAL, 0, MPI_COMM_WORLD);
     m_log("velocity = %e %e %e - nu = %e", rand_vel[0], rand_vel[1], rand_vel[2], nu_);
 
     static lambda_setvalue_t lambda_initcond = [](const bidx_t i0, const bidx_t i1, const bidx_t i2, const CartBlock* const block, const Field* const fid) -> void {
@@ -223,6 +228,35 @@ void TwoLevelConvWeno::Run() {
             }
         }
         {  // WENO 5
+            if (fix_weno_) {
+                Advection<M_CONS, 5> adv(&vel, nu_);
+                adv(&grid, &test, &dtest);
+            } else {
+                Advection<M_WENO_Z, 5> adv(&vel, nu_);
+                adv(&grid, &test, &dtest);
+            }
+            // now, we need to check
+            Error error;
+            grid.GhostPull(&dtest, &error);
+            real_t erri, err2;
+            error.Norms(&grid, &dtest, &lambda_sol_rhs, &err2, &erri);
+
+            const string scheme_name = (fix_weno_) ? "cons5" : "weno5";
+            const string id_name     = scheme_name + "_a" + to_string(adapt_) + "_w" + to_string(M_WAVELET_N) + to_string(M_WAVELET_NT) + "_nu" + to_string(nu_);
+
+            if (rank == 0) {
+                string fname     = "data/conv_" + id_name + ".data";
+                FILE*  file_diag = fopen(fname.c_str(), "a+");
+                fprintf(file_diag, "%e %e %e %e %e %e %d %d %ld\n", grid.rtol(), grid.ctol(), hmin, hmax, err2, erri, lmin, lmax, global_num_quad);
+                fclose(file_diag);
+            }
+            if (fix_weno_) {
+                m_log("CONS-5: %e %e %e %e", hmin, hmax, err2, erri);
+            } else {
+                m_log("WENO-5: %e %e %e %e", hmin, hmax, err2, erri);
+            }
+        }
+        {  // LAPLA 2
             if (fix_weno_) {
                 Advection<M_CONS, 5> adv(&vel, nu_);
                 adv(&grid, &test, &dtest);
