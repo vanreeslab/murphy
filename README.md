@@ -1,11 +1,20 @@
-# *MU*lti*R*esolution multi*PHY*sics
-*Anything that can ~~go wrong~~ **scale strong** will ~~go wrong~~ **scale strong*** (Philippe Chatelain, 2020)
+# MURPHY - *MU*lti*R*esolution multi*PHY*sics
 
-### copyright and licences
-> Copyright (c) Massachusetts Institute of Technology
+copyright © Massachusetts Institute of Technology
 
-### more documentation/information?
+`murhpy` is a multiresolution adaptive grid framework for numerical simulations on 3D block-structured collocated grids with distributed computational architectures.
+
+
+### Using Murphy
+
+`murphy` is released under a BSD-3 license.
+
+If you use it, please acknowledge by citing
+- [preprint on arXiv](https://arxiv.org/abs/2112.07537)
+
+
+### More documentation
 Please, refer to the following pages for detailed instructions
 - [Build murphy](doc/build.md)
-- [Implementation choices](doc/implementation.md)
-- [How to contribute?](doc/contribute.md)
+- [Documentation](doc/documentation.md)
+

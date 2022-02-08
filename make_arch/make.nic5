@@ -1,0 +1,26 @@
+CXX = mpic++
+CC = mpicc
+
+# override OPTS += -DWAVELET_N=2 -DWAVELET_NT=2 -DBLOCK_GS=2
+
+#CXXFLAGS := -O3 -g --debug -Wno-format-security -Wno-format-overflow -fopenmp
+CXXFLAGS := -g -O3 -march=native -fopenmp -DNDEBUG
+            #-Wall -Wextra -Wno-ignored-qualifiers -Wcast-align
+# -DNDEBUG
+# -DLOG_ALLRANKS
+# -DVERBOSE 
+LDFLAGS := -fopenmp
+
+FFTW_INC := ${EBROOTFFTW}/include
+FFTW_LIB := ${EBROOTFFTW}/lib
+
+HDF5_INC := ${PREFIX}/include
+HDF5_LIB := ${PREFIX}/lib
+
+#P4EST_INC := /home/ucl/tfl/tgillis/p4est-gompi-2021a-lib/include
+#P4EST_LIB := /home/ucl/tfl/tgillis/p4est-gompi-2021a-lib/lib
+P4EST_INC := ${PREFIX}/include
+P4EST_LIB := ${PREFIX}/lib
+
+#FLUPS_INC := /home/ucl/tfl/tgillis/flups-gompi-2021a-lib/include
+#FLUPS_LIB := /home/ucl/tfl/tgillis/flups-gompi-2021a-lib/lib

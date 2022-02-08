@@ -1,0 +1,9 @@
+FROM vanreeslab/murphy_ci:v1.11
+
+RUN apt-get -y update && apt-get -y upgrade
+
+# add the user
+RUN useradd -ms /bin/bash murphy
+USER murphy
+
+#end of the file

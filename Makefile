@@ -1,56 +1,68 @@
-################################################################################
-# @copyright Copyright © UCLouvain 2019
-# 
-# FLUPS is a Fourier-based Library of Unbounded Poisson Solvers.
-# 
-# Copyright (C) <2019> <Universite catholique de Louvain (UCLouvain), Belgique>
-# 
-# List of the contributors to the development of FLUPS, Description and complete License: see LICENSE file.
-# 
-# This program (FLUPS) is free software: 
-# you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with this program (see COPYING file).  If not, 
-# see <http://www.gnu.org/licenses/>.
-# 
-################################################################################
+# Makefile MURPHY
+#------------------------------------------------------------------------------
+# useful links: 
+# - automatic vars: https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html
+# - file names: https://www.gnu.org/software/make/manual/html_node/File-Name-Functions.html
+#------------------------------------------------------------------------------
 
 ################################################################################
 # ARCH DEPENDENT VARIABLES
 ARCH_FILE ?= make_arch/make.docker_gcc
 
+#only include the ARCH_FILE when we do not clean or destroy
+ifneq ($(MAKECMDGOALS),clean)
 include $(ARCH_FILE)
+endif
 
 ################################################################################
-# FROM HERE, DO NOT TOUCH
-#-----------------------------------------------------------------------------
+# FROM HERE, DO NOT CHANGE
+#-------------------------------------------------------------------------------
 PREFIX ?= ./
 NAME := murphy
 # library naming
 TARGET := $(NAME)
+# git commit
+GIT_COMMIT ?= $(shell git describe --always --dirty)
 
-#-----------------------------------------------------------------------------
-SRC_DIR := src
+#-------------------------------------------------------------------------------
+# get a list of all the source directories + the main one
+SRC_DIR := src $(shell find src/** -type d)
 TEST_DIR := test
 OBJ_DIR := build
 
-## add the headers to the vpaths
-INC := -I$(SRC_DIR)
+#-------------------------------------------------------------------------------
+# the sources/headers are listed without the folder, vpath will find them
+SRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.cpp)))
+HEAD := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(dir)/*.hpp)))
 
-#-----------------------------------------------------------------------------
-#---- FFTW
-FFTW_INC ?= /usr/include
-FFTW_LIB ?= /usr/lib
-FFTW_LIBNAME ?= -lfftw3_omp -lfftw3
-INC += -I$(FFTW_INC)
-LIB += -L$(FFTW_LIB) $(FFTW_LIBNAME) -Wl,-rpath,$(FFTW_LIB)
+# find the test sources, mandatory all in the same folder!
+TSRC := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(TEST_DIR)/$(dir)/*.cpp)))
+THEAD := $(foreach dir,$(SRC_DIR),$(notdir $(wildcard $(TEST_DIR)/$(dir)/*.hpp)))
 
+## generate object list
+OBJ := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
+DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
+# ASS := $(SRC:%.cpp=$(OBJ_DIR)/%.s)
+CDB := $(SRC:%.cpp=$(OBJ_DIR)/%.o.json)
+TIDY := $(SRC:%.cpp=$(OBJ_DIR)/%.tidy)
+
+TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
+TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
+TCDB := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o.json)
+
+#-------------------------------------------------------------------------------
+# add the folders to the includes and to the vpath
+
+## add the source dirs to the includes flags
+INC := $(foreach dir,$(SRC_DIR),-I$(dir))
+TINC := $(foreach dir,$(TEST_DIR)/$(SRC_DIR),-I$(dir))
+
+## add them to the VPATH as well (https://www.gnu.org/software/make/manual/html_node/Selective-Search.html)
+vpath %.hpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
+vpath %.cpp $(SRC_DIR) $(foreach dir,$(SRC_DIR),$(TEST_DIR)/$(dir))
+
+#-------------------------------------------------------------------------------
+# LIBRARIES
 #---- HDF5
 HDF5_INC ?= /usr/include
 HDF5_LIB ?= /usr/lib
@@ -70,64 +82,90 @@ GTEST_INC ?= /usr/include
 GTEST_LIB ?= /usr/lib
 GTEST_LIBNAME ?= -lgtest
 
-#-----------------------------------------------------------------------------
-## add the wanted folders - common folders
-SRC := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
-HEAD := $(wildcard $(SRC_DIR)/*.hpp)
-TSRC := $(notdir $(wildcard $(TEST_DIR)/$(SRC_DIR)/*.cpp))
-THEAD := $(wildcard $(TEST_DIR)/$(SRC_DIR)/*.hpp)
+################################################################################
+# mandatory flags
+M_FLAGS := -std=c++17 -fPIC -DGIT_COMMIT=\"$(GIT_COMMIT)\"
 
-## generate object list
-DEP := $(SRC:%.cpp=$(OBJ_DIR)/%.d)
-OBJ := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
-IN := $(SRC:%.cpp=$(OBJ_DIR)/%.in)
-TOBJ := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.o)
-TDEP := $(TSRC:%.cpp=$(TEST_DIR)/$(OBJ_DIR)/%.d)
+#-------------------------------------------------------------------------------
+# compile + dependence + json file
+$(OBJ_DIR)/%.o : %.cpp $(HEAD)
+ifeq ($(shell $(CXX) -v 2>&1 | grep -c "clang"), 1)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -MF $(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
+else
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MMD -c $< -o $@
+endif
+
+# json only
+$(OBJ_DIR)/%.o.json :  %.cpp $(HEAD)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(INC) $(DEF) $(M_FLAGS) -MJ $@ -E $< -o $(OBJ_DIR)/$*.ii
+
+#-------------------------------------------------------------------------------
+# tests
+# compile + dependence + json
+$(TEST_DIR)/$(OBJ_DIR)/%.o : %.cpp $(HEAD) $(THEAD)
+ifeq ($(shell $(CXX) -v 2>&1 | grep -c "clang"), 1)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MMD -MF $(OBJ_DIR)/$*.d -MJ $(OBJ_DIR)/$*.o.json -c $< -o $@
+else
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MMD -c $< -o $@
+endif
+
+# json only
+$(TEST_DIR)/$(OBJ_DIR)/%.o.json : %.cpp $(HEAD) $(THEAD)
+	$(CXX) $(CXXFLAGS) $(OPTS) $(TINC) $(INC) -I$(GTEST_INC) $(DEF) $(M_FLAGS) -MJ $@ -E $< -o $(TEST_DIR)/$(OBJ_DIR)/$*.ii
+
+# clang-tidy files, define the MPI_INC which is only for this target
+$(OBJ_DIR)/%.tidy : %.cpp $(HEAD)
+	clang-tidy $< --format-style=.clang-format --checks=all*
 
 ################################################################################
-$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cpp $(HEAD)
-	$(CXX) $(CXXFLAGS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
-
-$(TEST_DIR)/$(OBJ_DIR)/%.o : $(TEST_DIR)/$(SRC_DIR)/%.cpp $(THEAD)
-	$(CXX) $(CXXFLAGS) -I$(TEST_DIR)/$(SRC_DIR) $(INC) -I$(GTEST_INC) $(DEF) -std=c++11 -fPIC -MMD -c $< -o $@
-
-$(OBJ_DIR)/%.in : $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) $(INC) $(DEF) -std=c++11 -fPIC -MMD -E $< -o $@
-
-################################################################################
+.PHONY: default
 default: $(TARGET)
 
-all: $(TARGET)
+.PHONY: all
+all: $(TARGET) compdb
 
-preproc: $(IN)
-
+#-------------------------------------------------------------------------------
+# the main target
 $(TARGET): $(OBJ)
-	$(CXX) $(LDFLAGS) $^ -o $@ $(LIB)
+	$(CXX) $(LDFLAGS) $^ $(LIB) -o $@
 
+#-------------------------------------------------------------------------------
+# clang stuffs
+.PHONY: tidy
+tidy: $(TIDY)
+
+# for the sed commande, see https://sarcasm.github.io/notes/dev/compilation-database.html#clang and https://sed.js.org
+.PHONY: compdb
+compdb: $(CDB)
+	sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $^ > compile_commands.json
+
+# build the full compilation data-base, need to know the test libs!!
+.PHONY: compdb_full
+compdb_full: $(CDB) $(TCDB)
+	sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $^ > compile_commands.json
+
+#-------------------------------------------------------------------------------
+.PHONY: test 
 test: $(TOBJ) $(filter-out $(OBJ_DIR)/main.o,$(OBJ))
 	$(CXX) $(LDFLAGS) $^ -o $(TARGET)_$@ $(LIB) -L$(GTEST_LIB) $(GTEST_LIBNAME) -Wl,-rpath,$(GTEST_LIB)
 
-.PHONY: clean
+#-------------------------------------------------------------------------------
+#clean
+.PHONY: clean 
 clean:
-	@rm -rf $(OBJ_DIR)/*.o
-	@rm -rf $(TARGET)
+	@rm -rf $(OBJ_DIR)/*
+	@rm -rf $(OBJ_DIR)/*
 	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
+	@rm -rf $(TARGET)
 	@rm -rf $(TARGET)_test
 
-.PHONY: destroy
-destroy:
-	@rm -rf $(OBJ_DIR)/*.o
-	@rm -rf $(OBJ_DIR)/*.d
-	@rm -rf $(TARGET)
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.o
-	@rm -rf $(TEST_DIR)/$(OBJ_DIR)/*.d
-	@rm -rf $(TARGET)_test
-
-.PHONY: logo
+#-------------------------------------------------------------------------------
+.PHONY: logo info
 info: logo
 	$(info prefix = $(PREFIX)/lib )
 	$(info compiler = $(shell $(CXX) --version))
-	$(info compil. flags = $(CXXFLAGS) $(INC) $(DEF) -fPIC -MMD)
+	$(info compil. options = $(OPTS))
+	$(info compil. flags = $(CXXFLAGS) $(OPTS) $(INC) $(DEF) -fPIC -MMD)
 	$(info linker flags = -shared $(LDFLAGS))
 	$(info using arch file = $(ARCH_FILE) )
 	$(info LGF path = $(LGF_PATH) )
@@ -141,9 +179,12 @@ info: logo
 	$(info - lib: -L$(HDF5_LIB) $(HDF5_LIBNAME) -Wl,-rpath,$(HDF5_LIB))
 	$(info ------------)
 	$(info LIST OF OBJECTS:)
-	$(info - SRC = $(SRC))
-	$(info - OBJ = $(OBJ))
-	$(info - DEP = $(DEP))
+	$(info - SRC  = $(SRC))
+	$(info - HEAD = $(HEAD))
+	$(info - OBJ  = $(OBJ))
+	$(info - DEP  = $(DEP))
+	$(info - TEST_DIR = $(TEST_DIR))
+	$(info - TEST_DIR = $(TEST_DIR)/$(OBJ_DIR))
 	$(info - test SRC = $(TSRC))
 	$(info - test OBJ = $(TOBJ))
 	$(info - test DEP = $(TDEP))
@@ -165,3 +206,6 @@ logo:
 	$(info  '----------------' '----------------' '----------------' '----------------' '----------------' '----------------' )
 
 -include $(DEP)
+
+# mkdir the needed dirs
+$(shell   mkdir -p $(OBJ_DIR) $(TEST_DIR)/$(OBJ_DIR))

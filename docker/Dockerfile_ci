@@ -1,0 +1,50 @@
+FROM vanreeslab/murphy_base
+
+# update that everything and install the zlib
+RUN apt-get -y update && apt-get -y upgrade && apt-get -y install zlib1g zlib1g-dev libnuma-dev
+
+#p4est
+#RUN git clone --recursive https://github.com/cburstedde/p4est
+#RUN cd /p4est &&\
+#    git checkout feature-mesh-edge &&\
+#    git submodule init && git submodule update &&\
+#    F77=gfortran FC=gfortran ./bootstrap &&\
+#    F77=gfortran FC=gfortran CC=mpicc CXX=mpic++ LIBS=-L/usr/local/openblas/lib CFLAGS="-O3 -Wall"\
+#    ./configure --prefix=/soft/p4est-github --enable-mpi --enable-openmp --enable-debug --with-blas=-lopenblas &&\
+#    make install -j
+RUN wget https://p4est.github.io/release/p4est-2.3.2.tar.gz &&\
+    tar -xvf p4est-2.3.2.tar.gz &&\
+    cd p4est-2.3.2/ &&\
+    F77=gfortran FC=gfortran CC=mpicc CXX=mpic++ LIBS=-L/usr/local/openblas/lib CFLAGS="-O3 -Wall"\
+    ./configure --prefix=/soft/p4est-github --enable-mpi --enable-openmp --enable-debug --with-blas=-lopenblas &&\
+    make install -j
+RUN rm -rf /p4est
+
+#flups
+# flups is downloaded locally mannually RUN git clone https://git.immc.ucl.ac.be/examples/flups.git
+COPY flups /flups
+RUN cd /flups &&\
+    echo "CXX = mpic++" > make_arch/make.temp &&\
+    echo "CC = mpicc" >> make_arch/make.temp &&\
+    echo "CXXFLAGS := -O3 -std=c++17 -fopenmp -DNDEBUG -Wno-format-security -DPROF -Wno-c++11-narrowing" >> make_arch/make.temp  &&\
+    echo "CCFLAGS := -O3 -std=c99 -fopenmp -DNDEBUG -Wno-format-security -Wno-c++11-narrowing" >> make_arch/make.temp &&\
+    echo "LDFLAGS += -fopenmp -lstdc++ -lm" >> make_arch/make.temp &&\
+    echo "FFTW_INC := /usr/local/fftw/include" >> make_arch/make.temp &&\
+    echo "FFTW_LIB := /usr/local/fftw/lib" >> make_arch/make.temp &&\
+    echo "HDF5_INC := /usr/local/hdf5/include" >> make_arch/make.temp &&\
+    echo "HDF5_LIB := /usr/local/hdf5/lib" >> make_arch/make.temp &&\
+    ARCH_FILE=make_arch/make.temp PREFIX=/soft/flups make install -j
+RUN rm -rf /flups
+
+#Google test
+RUN git clone https://github.com/google/googletest.git
+RUN cd /googletest &&\
+    cmake . -DCMAKE_INSTALL_PREFIX=/soft/googletest &&\
+    make install -j
+RUN rm -rf /googletest
+
+# add an openMPI setting to make it run
+ENV OMPI_MCA_btl_vader_single_copy_mechanism none
+
+
+#end of the file

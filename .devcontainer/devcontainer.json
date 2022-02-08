@@ -7,28 +7,32 @@
 	// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 	// "dockerFile": "docker/Dockerfile",
 	// Rather use an image from DockerHub, first download it or build it
-	"image": "immc/murphy-ci:v1.1",
+	// "image": "vanreeslab/murphy:v1.9",
+	"image": "vanreeslab/murphy:v1.11",
 	// Set *default* container specific settings.json values on container create.
-	"settings": { 
-		"terminal.integrated.shell.linux": null
+	"settings": {
+		"telemetry.enableTelemetry": false,
+		"clang-tidy.checks": [
+			"mpi-*,openmp-*,google-*,performance-*,modernize-*,readability-*,misc-*,clang-analyzer-*,-modernize-avoid-c-arrays"
+		]
 	},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"ms-vscode.cpptools",
-		"bbenoist.doxygen"
-	]
+		"cschlosser.doxdocgen",
+		"notskm.clang-tidy",
+		"vadimcn.vscode-lldb",
+		"eamodio.gitlens"
+	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-
 	// Uncomment the next line to run commands after the container is created - for example installing git.
 	// "postCreateCommand": "apt-get update && apt-get install -y git",
-
 	// Uncomment when using a ptrace-based debugger like C++, Go, and Rust
-	// "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
-
+	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ]
+	
 	// Uncomment to use the Docker CLI from inside the container. See https://aka.ms/vscode-remote/samples/docker-in-docker.
 	// "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
-
 	// Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
 	// "remoteUser": "vscode"
 }
